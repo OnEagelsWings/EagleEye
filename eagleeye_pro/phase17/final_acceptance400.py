@@ -69,7 +69,10 @@ class Phase17FinalAcceptance400:
         '''); self.db.conn.commit()
     def _rowhash(self,d): return _sha({k:v for k,v in d.items() if k not in {'record_hash'}})
     def _auth(self,identity:Mapping[str,Any],case_id:str):
-        if case_id:self.governance.authorize(dict(identity),case_id=case_id,capability='case.read',object_type='phase17_final_acceptance_v400',object_id=case_id)
+        # Final Phase-17 acceptance is an approval action, not a read action.
+        # Case-scoped runs require a lead/reviewer role; global runs are therefore
+        # restricted to the system administrator because no case membership exists.
+        self.governance.authorize(dict(identity),case_id=case_id,capability='dossier.review',object_type='phase17_final_acceptance_v400',object_id=case_id or 'global')
     def _table_present(self,name): return bool(self.db.one("SELECT 1 x FROM sqlite_master WHERE type='table' AND name=?",(name,)))
     def _manifest_ok(self,b:int,ref:str):
         if b<=383:
@@ -86,7 +89,6 @@ class Phase17FinalAcceptance400:
         hold,soak,_,_=self._external(); out=[]
         if not hold: out.append('build398_real_model_human_holdout_pending')
         if not soak: out.append('build399_real_72h_windows_firefox_soak_pending')
-        # Still-open inherited external qualification items from the professional-pilot line.
         out += ['independent_build379_operational_qualification_pending','real_connector_chain_validation_pending','external_long_running_crawler_load_pending','postgres_object_store_team_backend_pending','real_case_entity_resolution_holdout_pending','external_dossier_domain_review_pending','tor_onion_end_to_end_pending']
         return out
     def run_acceptance(self,*,identity:Mapping[str,Any],case_id:str='',confirmation:str)->dict[str,Any]:
