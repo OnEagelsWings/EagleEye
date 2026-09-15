@@ -1,0 +1,25 @@
+{
+  "build": "384.0",
+  "checks": {
+    "benchmark_zero_violations": true,
+    "canonical_db_integration": true,
+    "code_audit_no_ast_errors": true,
+    "code_audit_no_eval_exec": true,
+    "control_plane_ready": true,
+    "historical_phase16_not_production": true,
+    "historical_phase16_pilot_receipt": true,
+    "network_silent": true,
+    "no_execution_authority": true,
+    "no_scope_expansion": true,
+    "phase17_tests_pass": true,
+    "requires_go": true,
+    "schema_within_phase17_gate": true,
+    "source_registry_seeded": true,
+    "version_coherent": true,
+    "waves_present": true
+  },
+  "code_fingerprint": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff",
+  "passed": 16,
+  "result": "pass",
+  "total": 16
+}

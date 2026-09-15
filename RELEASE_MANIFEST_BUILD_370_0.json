@@ -1,0 +1,58 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 22,
+    "result": "pass",
+    "total": 22
+  },
+  "benchmark": {
+    "cases": 3600,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "370.0",
+  "code_fingerprint": "e941ab4e26aae092cd4d9147c04683c67f0281324fbaf808877ff884f1733d03",
+  "controlled_tor_gateway": {
+    "control_port": false,
+    "loopback_socks_only": true,
+    "manual_confirmation": "TOR_LIVE",
+    "newnym": false,
+    "remote_onion_dns_required": true,
+    "socks_auth_isolation": true,
+    "tor_process_spawn": false,
+    "torrc_mutation": false
+  },
+  "crawler_continuity": {
+    "from_build": 370,
+    "mandatory_each_build": true,
+    "roadmap": "CRAWLER_ROADMAP_BUILD_370_TO_380.md",
+    "through_build": 380
+  },
+  "external_validation": {
+    "external_load": "not_run",
+    "external_long_running_soak": "not_run",
+    "external_onion_service": "not_run",
+    "real_local_tor_daemon": "not_run"
+  },
+  "local_validation": {
+    "socks5_contract": "pass",
+    "tor_crawler_replay": "pass",
+    "tor_http_fixture": "pass"
+  },
+  "package_version": "370.0.0",
+  "phase": "16",
+  "phase_builds_completed": 10,
+  "production_release_ready": false,
+  "regression_build369": "39/40 expected version boundary only",
+  "result": "pass",
+  "tests": {
+    "passed": 45,
+    "total": 45
+  },
+  "truthful_note": "Controlled local pilot qualification only. Local SOCKS fixture/replay evidence does not constitute real Tor daemon, external onion, load, soak, pentest or professional-pilot validation.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-370.0.0-py3-none-any.whl",
+    "sha256": "0fca164e112a7ef3452955057260f1b3d26a6c08bfd4e3c96112ae4be73b16ca",
+    "smoke_import": "pass"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "build": "389.0",
+  "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+  "failed": 0,
+  "passed": 13,
+  "probes": {
+    "ai_feed": "pass",
+    "dedupe": "pass",
+    "no_network_side_effects": "pass",
+    "normalization": "pass",
+    "provenance_hash_binding": "pass",
+    "quarantine_boundary": "pass",
+    "vault_promotion_boundary": "pass",
+    "web_auth": "pass"
+  },
+  "result": "pass",
+  "tests": 13
+}

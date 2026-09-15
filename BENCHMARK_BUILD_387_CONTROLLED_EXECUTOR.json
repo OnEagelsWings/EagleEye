@@ -1,0 +1,16 @@
+{
+  "build": "387.0",
+  "cases": 100,
+  "cases_per_second": 4.104,
+  "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "consumed_grants": 100,
+  "dispatches": 100,
+  "elapsed_seconds": 24.366713,
+  "network_fetches_executed_by_executor": 0,
+  "result": "pass",
+  "truthful_scope": "Controlled enqueue benchmark only. Jobs are never claimed or fetched by Build 387; external connector/network validation is not inferred.",
+  "unique_dispatches": 100,
+  "unique_jobs": 100,
+  "violations": 0,
+  "worker_attempts": 0
+}

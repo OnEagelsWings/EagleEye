@@ -1,0 +1,23 @@
+{
+  "build": "400.0",
+  "code_fingerprint": "b40f6082da337d5b9c97afc8d71e8a540af6acb7b55a699d04316d0e384cc104",
+  "internal_phase17_complete": true,
+  "phase18_entry_ready": true,
+  "professional_pilot_ready": true,
+  "external_holdout_qualified": false,
+  "external_72h_soak_qualified": false,
+  "broad_live_research_ready": false,
+  "production_release_ready": false,
+  "blockers": [
+    "build398_real_model_human_holdout_pending",
+    "build399_real_72h_windows_firefox_soak_pending",
+    "independent_build379_operational_qualification_pending",
+    "real_connector_chain_validation_pending",
+    "external_long_running_crawler_load_pending",
+    "postgres_object_store_team_backend_pending",
+    "real_case_entity_resolution_holdout_pending",
+    "external_dossier_domain_review_pending",
+    "tor_onion_end_to_end_pending"
+  ],
+  "truthful_note": "Phase 17 is internally complete and may enter Phase 18 engineering. This is not a broad live-research or production release."
+}

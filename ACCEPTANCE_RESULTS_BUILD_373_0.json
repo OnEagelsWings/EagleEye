@@ -1,0 +1,60 @@
+{
+  "build": "373.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "benchmark_4200": true,
+    "continuous_crawler": true,
+    "crawler_edges_live": true,
+    "crawler_increment_373": true,
+    "external_graph_nav_not_run": true,
+    "external_graph_ux_not_run": true,
+    "focus_offline": true,
+    "gate_acceptance": true,
+    "graph_projection_live": true,
+    "local_graph_validation": true,
+    "navigation_bounded": true,
+    "navigation_plan_live": true,
+    "navigation_tag_live": true,
+    "no_auto_merge": true,
+    "no_auto_scope": true,
+    "no_build373_tables": true,
+    "no_external_network": true,
+    "production_false": true,
+    "regression_functional_54": true,
+    "schema_165_133_8": true,
+    "schema_within_gate": true,
+    "tests_58_58": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "4c060e2ba0d8755d1c7067bbac1e7897b55d57f31a01563015200616119e9690",
+  "external_graph_navigation_validation": "not_run",
+  "external_graph_ux_validation": "not_run",
+  "passed": 23,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "canonical_entity_ledger_activated": true,
+    "file_bytes": 1695744,
+    "graph_navigation_new_tables": 0,
+    "graph_projection_new_tables": 0,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "total": 23,
+  "version": {
+    "coherent": true,
+    "package_version": "373.0.0",
+    "runtime_build": "373.0",
+    "schema_version": "373.0"
+  }
+}

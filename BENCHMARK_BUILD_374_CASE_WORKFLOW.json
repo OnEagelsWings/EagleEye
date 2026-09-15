@@ -1,0 +1,24 @@
+{
+  "build": "374.0",
+  "cases": 4400,
+  "categories": {
+    "ai_hold": 400,
+    "case_budget": 400,
+    "crawler_boundary": 400,
+    "graph_boundary": 400,
+    "handoff": 400,
+    "opsec_boundary": 400,
+    "pause_resume": 400,
+    "release_boundary": 400,
+    "source_budget": 400,
+    "truthfulness": 400,
+    "workflow_state": 400
+  },
+  "code_fingerprint": "6094a86f3d6eee21c492fe59452f08eb736f26e4e4129bfcd016eaffdd4353bf",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 4400,
+  "result": "pass",
+  "violation_examples": [],
+  "violations": 0
+}

@@ -1,0 +1,90 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 17,
+    "total": 17
+  },
+  "benchmark": {
+    "cases": 5000,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "377.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1654,
+    "python_lines": 186472,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "34544786842cf7d7c09e29e6e20a346fcbf7c46869ef467667517872a2b5c411",
+  "continuous_crawler_expansion_370_380": true,
+  "crawler_increment_build": 377,
+  "external_validation": {
+    "image_source": "not_run",
+    "professional_image_analyst": "not_run",
+    "reverse_image_provider": "not_run"
+  },
+  "image_live_validation": {
+    "automatic_face_identity": false,
+    "automatic_reverse_image_search": false,
+    "automatic_scene_location_confirmation": false,
+    "exact_pre_ingest_dedup": true,
+    "media_crawl_provenance": true,
+    "object_store_pressure_control": true,
+    "review_first_local_agent_handoff": true
+  },
+  "local_validation": {
+    "external_network_used": false,
+    "image_pipeline": "pass"
+  },
+  "package_version": "377.0.0",
+  "phase16_builds_completed": 17,
+  "production_release_ready": false,
+  "release_tree": {
+    "acceptance": "17/17 pass",
+    "benchmark": "5000/5000 pass",
+    "build376_regression": "33/34 pass; version assertion only",
+    "build377_tests": "43/43 pass",
+    "compileall": "pass"
+  },
+  "schema": {
+    "image_validation_new_tables": 0,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "build376_regression": {
+      "expected_release_boundary_failures": 1,
+      "functional_regressions": 0,
+      "passed": 33,
+      "total": 34
+    },
+    "build377": {
+      "passed": 43,
+      "total": 43
+    }
+  },
+  "truthful_note": "Build 377 hardens and locally validates the review-first image/media pipeline. No external image source, reverse-image provider, or professional image-analyst validation was performed.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-377.0.0-py3-none-any.whl",
+    "package_version": "377.0.0",
+    "runtime_build": "377.0",
+    "schema_version": "377.0",
+    "sha256": "06dc6554a1a6233ee90bc7b79ecd3111631a619c8455e737cc54f9175e880dae",
+    "size_bytes": 3857012,
+    "smoke_import": "pass"
+  }
+}

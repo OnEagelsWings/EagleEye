@@ -1,0 +1,21 @@
+{
+  "build": "368.0",
+  "code_fingerprint": "ec4854fc2c9d602645681ccf4b1da9c393288a4bf2c7aa15ab2425fa55c33f42",
+  "network_used_by_tests": false,
+  "probes": {
+    "ai": "pass",
+    "archive": "pass",
+    "catalog": "pass",
+    "crawler": "pass",
+    "federal": "pass",
+    "opsec": "pass",
+    "plan_only": "pass",
+    "receipt": "pass",
+    "replay": "pass",
+    "sanctions": "pass"
+  },
+  "result": "pass",
+  "tests_passed": 35,
+  "tests_total": 35,
+  "truthful_note": "35 Build-368 tests passed against the reconstructed source tree. Replay fixtures do not constitute external validation."
+}

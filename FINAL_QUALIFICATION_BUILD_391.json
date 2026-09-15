@@ -1,0 +1,73 @@
+{
+  "acceptance": {
+    "build": "391.0",
+    "checks": {
+      "candidate_claim_not_fact": true,
+      "claim_hash_valid": true,
+      "claim_reviewed": true,
+      "counterevidence_preserved": true,
+      "feed_layers": true,
+      "hypothesis_hash_valid": true,
+      "hypothesis_not_fact": true,
+      "kernel_notebook_bridge": true,
+      "legacy_probability_unused": true,
+      "no_direct_fetch": true,
+      "no_jobs_grants_promotions": true,
+      "no_truth_probability": true,
+      "predecessor_390": true,
+      "schema_integrity": true,
+      "snapshot_created": true,
+      "version_coherent": true
+    },
+    "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+    "passed": 16,
+    "result": "pass",
+    "total": 16
+  },
+  "benchmark": {
+    "build": "391.0",
+    "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+    "elapsed_seconds": 2.5385301860001164,
+    "evidence_promotions_created": 0,
+    "grants_created": 0,
+    "iterations": 1000,
+    "jobs_created": 0,
+    "legacy_kernel_hypotheses_created": 0,
+    "result": "pass",
+    "syntheses_per_second": 393.928740936372,
+    "violations": 0
+  },
+  "build": "391.0",
+  "build_acceptance_ready": true,
+  "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "functional_regressions": 0,
+  "gate": {
+    "build": "391.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build391_acceptance": true,
+      "build391_benchmark": true,
+      "build391_tests": true,
+      "candidate_claim_synthesis": true,
+      "counterevidence_preserved": true,
+      "hypothesis_proposals": true,
+      "kernel_notebook_bridge": true,
+      "legacy_probability_path_unused": true,
+      "no_auto_claim_acceptance": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 11,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 391 synthesizes finalized source-independent corroboration reviews into candidate claims, preserves counterevidence, supports review-only hypotheses and mirrors reviewed analytical objects into Investigation Kernel notebook entries. It does not declare facts, calculate truth probability, invoke the legacy kernel confidence path, promote evidence automatically, merge identities, or execute network research."
+  },
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "result": "pass"
+}

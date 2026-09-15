@@ -1,0 +1,23 @@
+{
+  "build": "360.0",
+  "cases": 2000,
+  "category_pass": {
+    "crawler_bounds": 200,
+    "crawler_recovery": 200,
+    "dossier": 200,
+    "image": 200,
+    "opsec": 200,
+    "provenance": 200,
+    "rbac": 200,
+    "schema_packaging": 200,
+    "truthful_release": 200,
+    "voice": 200
+  },
+  "code_fingerprint": "1b4376b93e2300658ac2461646b39d46ca97d10e831a264565b0fff159117d14",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "result": "pass",
+  "truthful_scope": "Internal deterministic Phase-15 release qualification only. No external pentest, load test, live Tor, remote multi-user pilot or third-party service validation is claimed.",
+  "violation_details": [],
+  "violations": 0
+}

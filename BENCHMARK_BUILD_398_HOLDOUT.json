@@ -1,0 +1,22 @@
+{
+  "baseline_metrics": {
+    "citation_precision": 1.0,
+    "citation_recall": 1.0,
+    "counterevidence_accuracy": 1.0,
+    "governance_compliance": 1.0,
+    "stop_decision_accuracy": 1.0,
+    "structural_score": 1.0
+  },
+  "build": "398.0",
+  "cases": 60,
+  "code_fingerprint": "6eba48fe6b47ea6a6217ae7b23c238fb9e6540ea11dff72d76292736bd6abcfd",
+  "deterministic_reference_runs": 60,
+  "elapsed_seconds": 0.007956,
+  "external_holdout_qualified": false,
+  "human_reviewed_cases": 0,
+  "real_model_runs": 0,
+  "reference_runs_per_second": 7541.476,
+  "result": "pass",
+  "scope": "internal deterministic structural baseline only; not a real-model or human-reviewed qualification",
+  "violations": 0
+}

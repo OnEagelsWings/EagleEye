@@ -1,0 +1,191 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "pydantic",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "pydantic>=2.10,<3"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "SQLAlchemy",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "SQLAlchemy>=2.0,<3"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "alembic",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "alembic>=1.14,<2"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "fastapi",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "fastapi>=0.115,<1"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "starlette",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "starlette>=0.50,<0.51"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "uvicorn",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "uvicorn>=0.34,<1"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "cryptography",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "cryptography>=46.0.4,<47"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "Pillow",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "Pillow>=12.3.0,<13"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "opencv-python-headless",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "opencv-python-headless>=4.10,<5"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "reportlab",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "reportlab>=4,<5"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "argon2-cffi",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "argon2-cffi>=25.1,<26"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "python-multipart",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "python-multipart>=0.0.20,<1"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "PyMuPDF",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "PyMuPDF>=1.25,<2"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "pypdf",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "pypdf>=5,<7"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "pdfplumber",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "pdfplumber>=0.11,<1"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    },
+    {
+      "name": "pytesseract",
+      "properties": [
+        {
+          "name": "eagleeye:requirement",
+          "value": "pytesseract>=0.3.13,<1"
+        }
+      ],
+      "type": "library",
+      "version": "range-from-pyproject"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "364.0.0"
+    }
+  },
+  "serialNumber": "urn:uuid:b44a3bad-7e35-550c-ac0b-d83cb5322d16",
+  "specVersion": "1.5",
+  "version": 1
+}

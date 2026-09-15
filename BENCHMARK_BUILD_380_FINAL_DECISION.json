@@ -1,0 +1,22 @@
+{
+  "build": "380.0",
+  "cases": 6000,
+  "categories": {
+    "ai_boundary": 600,
+    "decision_taxonomy": 600,
+    "external_matrix": 600,
+    "opsec_boundary": 600,
+    "phase_completion": 600,
+    "pilot_slo": 600,
+    "pilot_telemetry": 600,
+    "production_slo_boundary": 600,
+    "restricted_scope": 600,
+    "truthful_current_state": 600
+  },
+  "code_fingerprint": "0b367f97f28d33687ddbff6fb05b8652962a5f23aff1039145845c2cae32970d",
+  "external_validation_performed": false,
+  "network_used": false,
+  "result": "pass",
+  "truthful_scope": "Deterministic local final-decision/boundary benchmark only. Independent production qualification is not claimed.",
+  "violations": 0
+}

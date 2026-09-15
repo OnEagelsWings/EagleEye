@@ -1,0 +1,169 @@
+{
+  "acceptance": {
+    "passed": 20,
+    "result": "pass",
+    "total": 20
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "build": "393.0",
+    "claims_created": 0,
+    "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+    "dialogue_turns_per_second": 301.4388755778231,
+    "elapsed_seconds": 3.317422140999952,
+    "evidence_promotions_created": 0,
+    "grants_created": 0,
+    "hypotheses_created": 0,
+    "iterations": 1000,
+    "jobs_created": 0,
+    "legacy_kernel_hypotheses_created": 0,
+    "reasoning_plans_created": 0,
+    "result": "pass",
+    "session_id": "dialog393_8f60697d8a85eb4eb2c626a7",
+    "violations": 0
+  },
+  "build": "393.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "393.0",
+    "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+    "eval_exec_calls": [],
+    "new_module_direct_network_imports": [],
+    "python_files": 1787,
+    "python_lines": 203734,
+    "result": "pass"
+  },
+  "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+  "current_decision": "phase17_investigator_dialogue_challenge_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "393.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "blind_spot": true,
+      "build393_acceptance": true,
+      "build393_benchmark": true,
+      "build393_tests": true,
+      "challenge_engine": true,
+      "counter_argument": true,
+      "falsification": true,
+      "human_revision_review_required": true,
+      "investigator_dialogue": true,
+      "kernel_challenge_bridge": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth_acceptance": true,
+      "no_auto_upstream_mutation": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "plan_red_team": true,
+      "revision_proposals": true,
+      "schema_integrity": true,
+      "source_independence": true,
+      "version_coherent": true,
+      "weakest_assumption": true
+    },
+    "phase17_builds_completed": 13,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 393 adds a provenance-bound investigator dialogue and challenge layer over the Build-392 reasoning workspace. It can challenge weak assumptions, counterarguments, falsification needs, blind spots, source independence and plan sequencing, and can persist review-required revision proposals. It does not determine truth, assign probability, mutate claims/hypotheses/plans automatically, grant GO/LIVE authority, promote evidence, merge identities, or create network requests."
+  },
+  "package_version": "393.0.0",
+  "phase17_builds_integrated": 13,
+  "predecessor_build": "392.0",
+  "predecessor_code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "build": "393.0",
+    "classification_note": "All 18 deviations are historical version/package/launcher assertions from Builds 384-392 evaluated against current Build 393. No functional Phase-17 regression was observed.",
+    "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+    "expected_release_boundaries": 18,
+    "functional_regressions": 0,
+    "passed_unchanged": 224,
+    "phase17_files": {
+      "381": {
+        "expected_boundaries": 0,
+        "passed": 27
+      },
+      "382": {
+        "expected_boundaries": 0,
+        "passed": 30
+      },
+      "383": {
+        "expected_boundaries": 0,
+        "passed": 28
+      },
+      "384": {
+        "expected_boundaries": 2,
+        "passed": 7
+      },
+      "385": {
+        "expected_boundaries": 2,
+        "passed": 12
+      },
+      "386": {
+        "expected_boundaries": 2,
+        "passed": 14
+      },
+      "387": {
+        "expected_boundaries": 2,
+        "passed": 12
+      },
+      "388": {
+        "expected_boundaries": 2,
+        "passed": 10
+      },
+      "389": {
+        "expected_boundaries": 2,
+        "passed": 11
+      },
+      "390": {
+        "expected_boundaries": 2,
+        "passed": 14
+      },
+      "391": {
+        "expected_boundaries": 2,
+        "passed": 16
+      },
+      "392": {
+        "expected_boundaries": 2,
+        "passed": 20
+      },
+      "393": {
+        "expected_boundaries": 0,
+        "passed": 23
+      }
+    },
+    "result": "pass",
+    "tests_collected": 242
+  },
+  "schema": {
+    "build393_tables_present": true,
+    "indexes": 169,
+    "integrity_check": "ok",
+    "tables": 217,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build": "393.0",
+    "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+    "failed": 0,
+    "passed": 23,
+    "result": "pass",
+    "suite": "tests/test_build393_integrated.py",
+    "total": 23
+  },
+  "truthful_note": "Build 393 adds a provenance-bound investigator dialogue and challenge layer over the Build-392 case reasoning workspace. It can challenge weak assumptions, counterarguments, falsification needs, blind spots, alternative-explanation needs, source independence and plan sequencing; persist review-required revision proposals; and mirror a reviewed challenge turn into the Investigation Kernel notebook. It does not determine truth, assign probability/confidence, mutate claims/hypotheses/plans automatically, grant GO/LIVE authority, promote evidence, merge identities, dispatch jobs, or create network requests.",
+  "wheel": {
+    "filename": "eagleeye_personosint_pro-393.0.0-py3-none-any.whl",
+    "sha256": "d9f7b14de3eaad0739a6ecec73357765fc8a8069f33168a092b6530d3090264a",
+    "smoke_import": "pass"
+  }
+}

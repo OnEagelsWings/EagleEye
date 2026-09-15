@@ -1,0 +1,32 @@
+{
+  "build": "380.0",
+  "checks": {
+    "ai_no_release_authority": true,
+    "current_decision_pilot_only": true,
+    "external_gaps_visible": true,
+    "external_receipt_not_run": true,
+    "historical_379_evidence": true,
+    "no_cross_case_leaks": true,
+    "no_evidence_loss": true,
+    "no_unauthorized_network": true,
+    "opsec_no_system_mutation": true,
+    "phase16_complete": true,
+    "pilot_slo_pass": true,
+    "production_false": true,
+    "production_slo_not_claimed": true,
+    "runtime_ready": true,
+    "schema_within_gate": true,
+    "telemetry_no_network": true,
+    "telemetry_no_workers": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "0b367f97f28d33687ddbff6fb05b8652962a5f23aff1039145845c2cae32970d",
+  "current_decision": "professional_pilot_only",
+  "external_qualification_validated": false,
+  "network_used": false,
+  "production_candidate": false,
+  "production_release_ready": false,
+  "professional_pilot_ready": true,
+  "result": "pass",
+  "truthful_note": "Final local Phase-16 qualification. Controlled professional pilot is supported; general production candidacy is not claimed without independent Build-379 qualification."
+}

@@ -1,0 +1,30 @@
+{
+  "build": "378.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "audio_not_persisted": true,
+    "build_acceptance_ready": true,
+    "crawler_increment": true,
+    "editable_reconfirmation": true,
+    "exact_confirmation": true,
+    "explicit_sources": true,
+    "external_validation_not_run": true,
+    "no_new_tables": true,
+    "opsec_boundary": true,
+    "preview_hash_provenance": true,
+    "production_false": true,
+    "provider_gate_separate": true,
+    "push_to_talk": true,
+    "schema_within_gate": true,
+    "tor_gate_separate": true,
+    "version_coherent": true,
+    "voice_budget_limit": true,
+    "voice_no_direct_network": true,
+    "workflow_delegate": true
+  },
+  "code_fingerprint": "957c8665a0d6ce40289114de14daf4598e9d59c212de2685871cee15328c7eb8",
+  "passed": 19,
+  "production_release_ready": false,
+  "result": "pass",
+  "total": 19
+}

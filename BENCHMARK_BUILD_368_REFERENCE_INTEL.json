@@ -1,0 +1,24 @@
+{
+  "build": "368.0",
+  "cases": 3000,
+  "category_pass": {
+    "archive_exact": 300,
+    "archive_metadata_only": 300,
+    "federal_exact": 300,
+    "live_confirmation": 300,
+    "no_fuzzy": 300,
+    "opsec_boundary": 300,
+    "plan_only": 300,
+    "sanctions_minimization": 300,
+    "source_review": 300,
+    "truthful_release": 300
+  },
+  "code_fingerprint": "ec4854fc2c9d602645681ccf4b1da9c393288a4bf2c7aa15ab2425fa55c33f42",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 3000,
+  "result": "pass",
+  "truthful_scope": "Deterministic synthetic/adversarial qualification only; no external reference-source requests are made.",
+  "violation_details": [],
+  "violations": 0
+}

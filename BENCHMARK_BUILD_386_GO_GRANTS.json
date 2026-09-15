@@ -1,0 +1,14 @@
+{
+  "build": "386.0",
+  "cases": 200,
+  "cases_per_second": 17.909,
+  "code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "crawler_jobs_created": 0,
+  "elapsed_seconds": 11.167557,
+  "grants_persisted": 200,
+  "network_requests": 0,
+  "plaintext_token_hits": 0,
+  "result": "pass",
+  "truthful_scope": "200 repeated security-sensitive GO grants with full inherited access-chain verification retained; no external execution or connector validation is inferred.",
+  "violations": 0
+}

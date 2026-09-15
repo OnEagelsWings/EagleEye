@@ -1,0 +1,19 @@
+{
+  "build": "376.0",
+  "code_fingerprint": "b5f84a7b234123749da8a72d5733aeb1a407bb04c683436c017da35d3700fb53",
+  "failed": 0,
+  "network_used_by_tests": false,
+  "passed": 34,
+  "probes": {
+    "absence": "pass",
+    "coverage": "pass",
+    "crawler": "pass",
+    "dossier": "pass",
+    "gaps": "pass",
+    "opsec": "pass",
+    "staleness": "pass"
+  },
+  "result": "pass",
+  "tests": 34,
+  "truthful_note": "Evidence summary generated only after pytest Build-376 suite passed."
+}

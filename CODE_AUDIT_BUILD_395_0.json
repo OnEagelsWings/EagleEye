@@ -1,0 +1,19 @@
+{
+  "ast_errors": [],
+  "build": "395.0",
+  "code_fingerprint": "71ad7d5b523d511940862cad1d03c5739fc088f657ede77b0ed6decf0bef97a4",
+  "direct_network_imports_new_395": [],
+  "eval_exec_calls": [],
+  "python_code_lines": 207681,
+  "python_files": 1803,
+  "result": "pass",
+  "schema": {
+    "build395_tables_present": true,
+    "indexes": 178,
+    "integrity_check": "ok",
+    "tables": 231,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

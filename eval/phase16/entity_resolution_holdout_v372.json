@@ -1,0 +1,149 @@
+{
+  "version": "372.0",
+  "synthetic": true,
+  "purpose": "Deterministic offline holdout for Entity Resolution v2 safety and calibration. No real persons.",
+  "scenarios": [
+    {
+      "id": "same_exact_email",
+      "cohort": "strong_identifier_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Alice North", "anchors": [{"type": "email", "value": "alice.north@example.test", "reliability": 0.95, "source_ref": "source:registry-a"}]},
+      "right": {"name": "Alice North", "anchors": [{"type": "email", "value": "alice.north@example.test", "reliability": 0.95, "source_ref": "source:registry-b"}]}
+    },
+    {
+      "id": "same_exact_external",
+      "cohort": "strong_identifier_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Beatrice Vale", "anchors": [{"type": "external_id", "value": "SYN-EXT-1001", "reliability": 0.95, "source_ref": "source:official-a"}]},
+      "right": {"name": "B. Vale", "aliases": ["Beatrice Vale"], "anchors": [{"type": "external_id", "value": "SYN-EXT-1001", "reliability": 0.95, "source_ref": "source:official-b"}]}
+    },
+    {
+      "id": "same_multi_anchor",
+      "cohort": "multi_source_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Carla Stone", "anchors": [{"type": "email", "value": "carla.stone@example.test", "reliability": 0.95, "source_ref": "source:register-a"}, {"type": "external_id", "value": "SYN-EXT-1002", "reliability": 0.90, "source_ref": "source:authority-a"}]},
+      "right": {"name": "Carla Stone", "anchors": [{"type": "email", "value": "carla.stone@example.test", "reliability": 0.95, "source_ref": "source:register-b"}, {"type": "external_id", "value": "SYN-EXT-1002", "reliability": 0.90, "source_ref": "source:authority-b"}]}
+    },
+    {
+      "id": "same_transliteration_external",
+      "cohort": "name_variant_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Mikhail Levin", "anchors": [{"type": "external_id", "value": "SYN-EXT-1003", "reliability": 0.95, "source_ref": "source:official-a"}]},
+      "right": {"name": "Michael Levin", "aliases": ["Mikhail Levin"], "anchors": [{"type": "external_id", "value": "SYN-EXT-1003", "reliability": 0.95, "source_ref": "source:official-b"}]}
+    },
+    {
+      "id": "same_name_variant_email",
+      "cohort": "name_variant_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Alicia Ember", "aliases": ["Alice Ember"], "anchors": [{"type": "email", "value": "ember@example.test", "reliability": 0.95, "source_ref": "source:firstparty-a"}]},
+      "right": {"name": "Alice Ember", "anchors": [{"type": "email", "value": "ember@example.test", "reliability": 0.95, "source_ref": "source:firstparty-b"}]}
+    },
+    {
+      "id": "same_exact_phone",
+      "cohort": "strong_identifier_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Daria West", "anchors": [{"type": "phone", "value": "+49 555 10001", "reliability": 0.92, "source_ref": "source:official-a"}]},
+      "right": {"name": "Daria West", "anchors": [{"type": "phone", "value": "+49-555-10001", "reliability": 0.92, "source_ref": "source:official-b"}]}
+    },
+    {
+      "id": "distinct_same_name_email_conflict",
+      "cohort": "strong_conflict_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "John River", "anchors": [{"type": "email", "value": "john.river.1@example.test", "reliability": 0.95, "source_ref": "source:official-a"}]},
+      "right": {"name": "John River", "anchors": [{"type": "email", "value": "john.river.2@example.test", "reliability": 0.95, "source_ref": "source:official-b"}]}
+    },
+    {
+      "id": "distinct_same_name_external_conflict",
+      "cohort": "strong_conflict_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "James Lake", "anchors": [{"type": "external_id", "value": "SYN-A-2001", "reliability": 0.95, "source_ref": "source:registry-a"}]},
+      "right": {"name": "James Lake", "anchors": [{"type": "external_id", "value": "SYN-B-2001", "reliability": 0.95, "source_ref": "source:registry-b"}]}
+    },
+    {
+      "id": "distinct_near_name_phone_conflict",
+      "cohort": "strong_conflict_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "Sara Fields", "anchors": [{"type": "phone", "value": "+49 555 20001", "reliability": 0.95, "source_ref": "source:authority-a"}]},
+      "right": {"name": "Sarah Fields", "anchors": [{"type": "phone", "value": "+49 555 20002", "reliability": 0.95, "source_ref": "source:authority-b"}]}
+    },
+    {
+      "id": "distinct_same_org_email_conflict",
+      "cohort": "mixed_evidence_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "Robert Pine", "anchors": [{"type": "organisation", "value": "Synthetic Labs", "reliability": 0.80, "source_ref": "source:web-a"}, {"type": "email", "value": "robert.one@example.test", "reliability": 0.95, "source_ref": "source:official-a"}]},
+      "right": {"name": "Robert Pine", "anchors": [{"type": "organisation", "value": "Synthetic Labs", "reliability": 0.80, "source_ref": "source:web-b"}, {"type": "email", "value": "robert.two@example.test", "reliability": 0.95, "source_ref": "source:official-b"}]}
+    },
+    {
+      "id": "distinct_shared_email_external_conflict",
+      "cohort": "mixed_evidence_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "Nora Crest", "anchors": [{"type": "email", "value": "shared-box@example.test", "reliability": 0.70, "source_ref": "source:web-a"}, {"type": "external_id", "value": "SYN-NORA-A", "reliability": 0.98, "source_ref": "source:registry-a"}]},
+      "right": {"name": "Nora Crest", "anchors": [{"type": "email", "value": "shared-box@example.test", "reliability": 0.70, "source_ref": "source:web-b"}, {"type": "external_id", "value": "SYN-NORA-B", "reliability": 0.98, "source_ref": "source:registry-b"}]}
+    },
+    {
+      "id": "distinct_common_name_no_anchors",
+      "cohort": "common_name_distinct",
+      "ground_truth": "distinct",
+      "decoy_same_name_count": 4,
+      "left": {"name": "John Smith", "anchors": []},
+      "right": {"name": "John Smith", "anchors": []}
+    },
+    {
+      "id": "distinct_common_name_org_only",
+      "cohort": "common_name_distinct",
+      "ground_truth": "distinct",
+      "decoy_same_name_count": 3,
+      "left": {"name": "Maria Garcia", "anchors": [{"type": "organisation", "value": "Example Cooperative", "reliability": 0.65, "source_ref": "source:web-a"}]},
+      "right": {"name": "Maria Garcia", "anchors": [{"type": "organisation", "value": "Example Cooperative", "reliability": 0.65, "source_ref": "source:web-b"}]}
+    },
+    {
+      "id": "distinct_similar_name_no_anchors",
+      "cohort": "name_similarity_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "Daniel Meyer", "anchors": []},
+      "right": {"name": "Danielle Meyer", "anchors": []}
+    },
+    {
+      "id": "ambiguous_birth_year_conflict",
+      "cohort": "ambiguous_defer",
+      "ground_truth": "ambiguous",
+      "left": {"name": "Alex Grey", "anchors": [{"type": "birth_year", "value": "1980", "reliability": 0.80, "source_ref": "source:archive-a"}]},
+      "right": {"name": "Alex Grey", "anchors": [{"type": "birth_year", "value": "1990", "reliability": 0.80, "source_ref": "source:archive-b"}]}
+    },
+    {
+      "id": "ambiguous_org_location_only",
+      "cohort": "ambiguous_defer",
+      "ground_truth": "ambiguous",
+      "left": {"name": "Robert Cedar", "anchors": [{"type": "organisation", "value": "Example Works", "reliability": 0.80, "source_ref": "source:web-a"}, {"type": "location", "value": "Berlin", "reliability": 0.75, "source_ref": "source:web-a"}]},
+      "right": {"name": "Robert Cedar", "anchors": [{"type": "organisation", "value": "Example Works", "reliability": 0.80, "source_ref": "source:web-b"}, {"type": "location", "value": "Berlin", "reliability": 0.75, "source_ref": "source:web-b"}]}
+    },
+    {
+      "id": "ambiguous_alias_only",
+      "cohort": "ambiguous_defer",
+      "ground_truth": "ambiguous",
+      "left": {"name": "Elena Frost", "aliases": ["Lena Frost"], "anchors": []},
+      "right": {"name": "Lena Frost", "aliases": ["Elena Frost"], "anchors": []}
+    },
+    {
+      "id": "distinct_same_location_only",
+      "cohort": "weak_context_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "Peter Green", "anchors": [{"type": "location", "value": "Hamburg", "reliability": 0.60, "source_ref": "source:web-a"}]},
+      "right": {"name": "Petra Green", "anchors": [{"type": "location", "value": "Hamburg", "reliability": 0.60, "source_ref": "source:web-b"}]}
+    },
+    {
+      "id": "same_external_low_name_similarity",
+      "cohort": "name_variant_same",
+      "ground_truth": "same_entity",
+      "left": {"name": "Yosef Ben-Ami", "aliases": ["Joseph Ben Ami"], "anchors": [{"type": "external_id", "value": "SYN-EXT-1004", "reliability": 0.95, "source_ref": "source:official-a"}]},
+      "right": {"name": "Joseph Ben Ami", "aliases": ["Yosef Ben-Ami"], "anchors": [{"type": "external_id", "value": "SYN-EXT-1004", "reliability": 0.95, "source_ref": "source:official-b"}]}
+    },
+    {
+      "id": "distinct_same_name_phone_and_birth_conflict",
+      "cohort": "strong_conflict_distinct",
+      "ground_truth": "distinct",
+      "left": {"name": "Chris Oak", "anchors": [{"type": "phone", "value": "+49 555 30001", "reliability": 0.95, "source_ref": "source:official-a"}, {"type": "birth_year", "value": "1975", "reliability": 0.80, "source_ref": "source:archive-a"}]},
+      "right": {"name": "Chris Oak", "anchors": [{"type": "phone", "value": "+49 555 30002", "reliability": 0.95, "source_ref": "source:official-b"}, {"type": "birth_year", "value": "1985", "reliability": 0.80, "source_ref": "source:archive-b"}]}
+    }
+  ]
+}

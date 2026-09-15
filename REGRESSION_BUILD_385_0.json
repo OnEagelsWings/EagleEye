@@ -1,0 +1,20 @@
+{
+  "build": "385.0",
+  "build385_tests": {
+    "passed": 14,
+    "total": 14
+  },
+  "classification": "all observed historical failures are release-boundary assertions (version/health/app/launcher) and are unchanged from Build 384",
+  "code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "expected_release_boundary_failures": 30,
+  "functional_regressions": 0,
+  "historical_builds": "360-380",
+  "passed": 792,
+  "phase17_current_tests": {
+    "expected_release_boundary_failures": 2,
+    "functional_regressions": 0,
+    "passed": 120,
+    "total": 122
+  },
+  "total": 822
+}

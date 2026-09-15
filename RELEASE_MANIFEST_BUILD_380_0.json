@@ -1,0 +1,99 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 20,
+    "total": 20
+  },
+  "benchmark": {
+    "cases": 6000,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "380.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1684,
+    "python_lines": 192014,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "0b367f97f28d33687ddbff6fb05b8652962a5f23aff1039145845c2cae32970d",
+  "continuous_crawler_expansion_370_380": true,
+  "crawler_increment_build": 380,
+  "crawler_slo": {
+    "external_slo_state": "not_run",
+    "local_prequalification_accelerated": true,
+    "local_recovery_ratio": 1.0,
+    "pilot_slo_gate_pass": true,
+    "production_slo_gate_pass": false
+  },
+  "current_final_decision": "professional_pilot_only",
+  "external_qualification_validated": false,
+  "external_validation": {
+    "build379_independent_receipt": "not_run",
+    "externally_validated": false,
+    "remaining_items": [
+      "ai_real_case_planning_evaluation",
+      "build379_independent_operational_qualification",
+      "corporate_live_connectors",
+      "entity_resolution_real_world_holdout",
+      "external_graph_analyst_usability",
+      "external_image_provider_analyst_validation",
+      "external_long_running_crawler_soak_load",
+      "external_multi_analyst_workflow",
+      "external_remote_team_clients",
+      "external_voice_stt_multi_analyst_validation",
+      "postgres_team_backend",
+      "procurement_live_connectors",
+      "professional_dossier_review",
+      "real_tor_daemon_and_onion_service",
+      "reference_archive_live_connectors",
+      "s3_minio_object_store",
+      "team_search_backend"
+    ]
+  },
+  "final_qualification": {
+    "current_decision": "professional_pilot_only",
+    "result": "pass"
+  },
+  "package_version": "380.0.0",
+  "phase16_builds_completed": 20,
+  "phase16_complete": true,
+  "phase16_total_builds": 20,
+  "production_candidate": false,
+  "production_release_ready": false,
+  "professional_pilot_ready": true,
+  "schema": {
+    "build380_new_tables": 0,
+    "index": 133,
+    "integrity_check": "ok",
+    "table": 165,
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "build379_regression": {
+      "expected_release_boundary_failures": 1,
+      "functional_regressions": 0,
+      "passed": 51,
+      "total": 52
+    },
+    "build380": {
+      "passed": 54,
+      "total": 54
+    }
+  },
+  "truthful_note": "Phase 16 is complete. Current package is suitable for a controlled professional pilot. General production candidacy is not claimed because independent Build-379 qualification remains not_run; specialty paths remain separately gated.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-380.0.0-py3-none-any.whl",
+    "package_version": "380.0.0",
+    "runtime_build": "380.0",
+    "schema_version": "380.0",
+    "sha256": "092eb6a41c461aa60c189d027f897b9103773aeee3350b5beea7872bce103f79",
+    "size_bytes": 3891258,
+    "smoke_import": "pass"
+  }
+}

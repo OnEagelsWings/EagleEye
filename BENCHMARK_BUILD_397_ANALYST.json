@@ -1,0 +1,15 @@
+{
+  "assessments_per_second": 1742.836,
+  "assessments_valid": 1000,
+  "build": "397.0",
+  "cases": 1000,
+  "code_fingerprint": "cf2365f808e5abab6c693b15d13359c724b780b8bd3f77a6e7d7dc46c592e032",
+  "crawler_jobs_created": 0,
+  "elapsed_seconds": 0.573778,
+  "evidence_promotions_created": 0,
+  "go_grants_created": 0,
+  "result": "pass",
+  "scope": "local deterministic argumentative analyst assessment; no external model qualification inferred",
+  "truth_probability_assignments": 0,
+  "violations": 0
+}

@@ -1,0 +1,31 @@
+{
+  "build": "394.0",
+  "checks": {
+    "append_only_lineage": true,
+    "claim_version_created": true,
+    "discussion_integrity": true,
+    "evidence_metrics_immutable": true,
+    "feed_boundaries": true,
+    "kernel_notebook_only": true,
+    "multi_turn_chain": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go_live_fetch": true,
+    "no_execution_side_effects": true,
+    "no_truth_probability": true,
+    "plan_version_preserves_actions": true,
+    "predecessor_393": true,
+    "reviewed_dialogue_seeded_hypothesis_version": true,
+    "schema_integrity": true,
+    "shared_claim_not_double_counted": true,
+    "side_by_side_hypotheses": true,
+    "upstream_claim_unchanged": true,
+    "upstream_hypothesis_unchanged": true,
+    "upstream_plan_unchanged": true,
+    "version_coherent": true,
+    "version_integrity": true
+  },
+  "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+  "passed": 22,
+  "result": "pass",
+  "total": 22
+}

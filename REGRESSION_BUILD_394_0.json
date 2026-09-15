@@ -1,0 +1,16 @@
+{
+  "boundary_classification": "legacy version/schema/package and current-launcher assertions for builds 384-393",
+  "build": "394.0",
+  "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+  "current_build_tests": {
+    "passed": 21,
+    "total": 21
+  },
+  "expected_release_boundaries": 20,
+  "functional_regressions": 0,
+  "historical_360_380": "inherited via qualified Build-393 predecessor receipt",
+  "passed": 158,
+  "result": "pass",
+  "scope": "integrated_phase17_builds_384_to_394",
+  "total": 178
+}

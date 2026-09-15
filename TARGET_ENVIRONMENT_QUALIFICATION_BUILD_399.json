@@ -1,0 +1,13 @@
+{
+  "build": "399.0",
+  "code_fingerprint": "57039f48ed9aa243eccff245cc9b587408f20af89c5411afb8b9b4d13f4fffba",
+  "external_72h_soak_qualified": false,
+  "live_72h_sessions": 0,
+  "native_firefox_e2e_live_validated": false,
+  "native_windows_live_validated": false,
+  "qualification_note": "Real 72-hour Windows/Firefox target-environment evidence is intentionally pending and will be imported later. Synthetic/internal framework checks do not count.",
+  "recovery_live_validated": false,
+  "required_hours": 72,
+  "required_samples": 289,
+  "result": "pending_external"
+}

@@ -1,0 +1,18 @@
+{
+  "ast_errors": 0,
+  "build": "375.0",
+  "code_fingerprint": "e751840137d66ae9f4114694d7452e34ad783615f0199b311d5b4fb1931598c9",
+  "eval_exec_calls": 0,
+  "historical_subprocess_or_os_system_files": 15,
+  "independent_pentest": false,
+  "new_build375_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build375/service.py": [],
+    "src/eagleeye/interfaces/web/app375.py": [],
+    "src/eagleeye/phase16/ai_investigation_eval375.py": []
+  },
+  "python_files": 1636,
+  "python_lines": 184500,
+  "result": "pass",
+  "shell_true_calls": 0,
+  "tls_disable_patterns": 0
+}

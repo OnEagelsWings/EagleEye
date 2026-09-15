@@ -1,0 +1,65 @@
+{
+  "ast_errors": [],
+  "build": "400.0",
+  "code_fingerprint": "b40f6082da337d5b9c97afc8d71e8a540af6acb7b55a699d04316d0e384cc104",
+  "direct_network_imports_build400_core": {},
+  "embedded_private_key_markers": [],
+  "eval_exec_calls": [],
+  "network_import_files_count": 151,
+  "notes": [
+    "Broad network imports are expected in authorized connector/crawler layers and are counted, not treated as findings.",
+    "Build400 core/service/web layer contains no direct network client imports."
+  ],
+  "pickle_deserialization_calls": [],
+  "python_files": 1844,
+  "python_lines": 210555,
+  "qualified_gate_snapshot": {
+    "broad_live_research_ready": false,
+    "build": "400.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build400_acceptance": true,
+      "build400_benchmark": true,
+      "build400_tests": true,
+      "external_holdout_truthful": true,
+      "external_soak_truthful": true,
+      "internal_phase17_acceptance": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_live": true,
+      "no_auto_truth": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "phase17_predecessor_gate": true,
+      "phase18_entry_ready": true,
+      "production_not_falsely_released": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "external_72h_soak_qualified": false,
+    "external_holdout_qualified": false,
+    "phase17_builds_completed": 20,
+    "phase17_internal_complete": true,
+    "phase18_entry_ready": true,
+    "production_release_ready": false,
+    "professional_pilot_ready": true
+  },
+  "result": "pass",
+  "runtime_tls_disable_calls": [],
+  "schema": {
+    "build400_tables_present": true,
+    "indexes": 195,
+    "integrity_check": "ok",
+    "tables": 255,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "shell_true_calls": [],
+  "version": {
+    "coherent": true,
+    "package_version": "400.0.0",
+    "runtime_build": "400.0",
+    "schema_version": "400.0"
+  }
+}

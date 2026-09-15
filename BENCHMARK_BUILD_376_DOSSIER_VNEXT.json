@@ -1,0 +1,59 @@
+{
+  "build": "376.0",
+  "cases": 4800,
+  "categories": {
+    "absence_semantics": {
+      "cases": 400,
+      "violations": 0
+    },
+    "ai_boundary": {
+      "cases": 400,
+      "violations": 0
+    },
+    "coverage_semantics": {
+      "cases": 400,
+      "violations": 0
+    },
+    "crawler_increment": {
+      "cases": 400,
+      "violations": 0
+    },
+    "gap_no_auto_crawl": {
+      "cases": 400,
+      "violations": 0
+    },
+    "network_boundary": {
+      "cases": 400,
+      "violations": 0
+    },
+    "opsec_boundary": {
+      "cases": 400,
+      "violations": 0
+    },
+    "schema_boundary": {
+      "cases": 400,
+      "violations": 0
+    },
+    "stale_archive": {
+      "cases": 400,
+      "violations": 0
+    },
+    "stale_public_web": {
+      "cases": 400,
+      "violations": 0
+    },
+    "stale_registry": {
+      "cases": 400,
+      "violations": 0
+    },
+    "truthful_release": {
+      "cases": 400,
+      "violations": 0
+    }
+  },
+  "code_fingerprint": "b5f84a7b234123749da8a72d5733aeb1a407bb04c683436c017da35d3700fb53",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "result": "pass",
+  "violations": 0
+}

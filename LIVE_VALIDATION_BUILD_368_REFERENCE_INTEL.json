@@ -1,0 +1,12 @@
+{
+  "build": "368.0",
+  "federal_register": "not_run",
+  "govinfo_package": "plan_only",
+  "internet_archive_metadata": "not_run",
+  "nara_catalog": "plan_only",
+  "ofac_sdn": "plan_only",
+  "production_release_ready": false,
+  "status": "not_run",
+  "truthful_note": "No real external Build-368 request was executed during qualification.",
+  "unsc_consolidated": "plan_only"
+}

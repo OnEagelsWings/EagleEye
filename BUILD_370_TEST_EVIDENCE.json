@@ -1,0 +1,22 @@
+{
+  "build": "370.0",
+  "code_fingerprint": "e941ab4e26aae092cd4d9147c04683c67f0281324fbaf808877ff884f1733d03",
+  "network_used_by_tests": false,
+  "probes": {
+    "ai": "pass",
+    "backpressure": "pass",
+    "dns": "pass",
+    "gateway": "pass",
+    "isolation": "pass",
+    "lease": "pass",
+    "opsec": "pass",
+    "queue": "pass",
+    "roadmap": "pass"
+  },
+  "result": "pass",
+  "tests": {
+    "passed": 45,
+    "total": 45
+  },
+  "truthful_note": "Build-370 unit/integration qualification; the SOCKS protocol test uses a loopback fixture and does not contact Tor or an external onion service."
+}

@@ -1,0 +1,83 @@
+{
+  "acceptance": {
+    "passed": 19,
+    "result": "pass",
+    "total": 19
+  },
+  "benchmark": {
+    "operations": 1000,
+    "operations_per_second": 14387.256,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "395.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "direct_network_imports_new_395": 0,
+    "eval_exec_calls": 0,
+    "python_code_lines": 207681,
+    "python_files": 1803,
+    "result": "pass"
+  },
+  "code_fingerprint": "71ad7d5b523d511940862cad1d03c5739fc088f657ede77b0ed6decf0bef97a4",
+  "external_qualification_validated": false,
+  "package_version": "395.0.0",
+  "phase17_builds_completed": 15,
+  "production_candidate": false,
+  "production_release_ready": false,
+  "professional_pilot_ready": true,
+  "qualified_gate": {
+    "build": "395.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "append_only_history": true,
+      "branch_pointers": true,
+      "build395_acceptance": true,
+      "build395_benchmark": true,
+      "build395_tests": true,
+      "case_state_graph": true,
+      "controlled_adoption": true,
+      "immutable_evidence_history": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth": true,
+      "no_auto_upstream_mutation": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_identity_merge": true,
+      "no_live_confirmation": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "rollback_transitions": true,
+      "schema_integrity": true,
+      "superseded_tracking": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 15,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true
+  },
+  "regression": {
+    "build": "395.0",
+    "expected_release_boundary_failures": 21,
+    "functional_regressions": 0,
+    "notes": [
+      "21 failures are historical version/schema/current-launcher assertions from older builds against current Build 395.0.",
+      "Build 395 tests: 12/12 PASS.",
+      "Historical Build 360-380 qualification is inherited through the qualified Build 394 predecessor receipt and was not fully re-run in this delta build."
+    ],
+    "result": "pass",
+    "scope": "integrated Phase 17 builds 384-395",
+    "tests_passed_unchanged": 169,
+    "tests_total": 190
+  },
+  "schema": {
+    "build395_tables_present": true,
+    "indexes": 178,
+    "integrity_check": "ok",
+    "tables": 231,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

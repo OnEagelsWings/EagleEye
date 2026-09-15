@@ -1,0 +1,2 @@
+from eagleeye.application.build207.service import Build207ControlledAIInvestigatorAgentsService
+__all__=['Build207ControlledAIInvestigatorAgentsService']

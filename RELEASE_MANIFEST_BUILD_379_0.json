@@ -1,0 +1,97 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 18,
+    "total": 18
+  },
+  "benchmark": {
+    "cases": 5600,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "379.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1674,
+    "python_lines": 189176,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "135bea48ae4a95fff1ea1ca43cba15f4db03c76bed36e0b52f9a2eb598e08e3e",
+  "continuous_crawler_expansion_370_380": true,
+  "crawler_increment_build": 379,
+  "external_qualification": {
+    "automatic_evidence_eviction": false,
+    "production_decision_owned_by_build380": true,
+    "receipt_grants_network_scope": false,
+    "runtime_fault_injection_api": false
+  },
+  "external_validation": {
+    "external_failure_injection": "not_run",
+    "external_load": "not_run",
+    "external_one_hour_soak": "not_run",
+    "externally_validated": false,
+    "fingerprint_bound": true,
+    "signature": "Ed25519",
+    "signed_receipt_required": true,
+    "state": "not_run"
+  },
+  "local_prequalification": {
+    "accelerated_local_simulation": true,
+    "crawler_jobs_created": 500,
+    "failure_injections": 50,
+    "network_used": false,
+    "p95_failure_containment_seconds": 0.000149,
+    "p95_lease_recovery_seconds": 0.000149,
+    "p95_queue_dispatch_seconds": 0.000462,
+    "qualification_equivalent_duration_seconds": 3600,
+    "recovery_ratio": 1.0,
+    "result": "pass",
+    "wall_clock_duration_seconds": 0.01611,
+    "workers": 2
+  },
+  "package_version": "379.0.0",
+  "phase16_builds_completed": 19,
+  "production_release_ready": false,
+  "release_tree": {
+    "acceptance": "18/18 pass",
+    "benchmark": "5600/5600 pass",
+    "build378_regression": "43/44 pass; version assertion only",
+    "build379_tests": "52/52 pass",
+    "compileall": "pass",
+    "local_prequalification": "pass; accelerated deterministic local simulation"
+  },
+  "schema": {
+    "external_qualification_new_tables": 0,
+    "index": 133,
+    "integrity_check": "ok",
+    "table": 165,
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "build378_regression": {
+      "expected_release_boundary_failures": 1,
+      "functional_regressions": 0,
+      "passed": 43,
+      "total": 44
+    },
+    "build379": {
+      "passed": 52,
+      "total": 52
+    }
+  },
+  "truthful_note": "Build 379 completes local prequalification only. The local harness exercises 500 durable queue jobs and 50 lease-loss injections in accelerated time; it is not a one-hour wall-clock external soak. External qualification remains not_run until an independent Ed25519-signed fingerprint-bound receipt is supplied. Build 380 owns the final pilot/production decision.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-379.0.0-py3-none-any.whl",
+    "package_version": "379.0.0",
+    "runtime_build": "379.0",
+    "schema_version": "379.0",
+    "sha256": "04aeb96065988c5aaa0d6c25c88fa5f0c1f96892ab8d1ce1e23a30c4bc95849f",
+    "size_bytes": 3881291,
+    "smoke_import": "pass"
+  }
+}

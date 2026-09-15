@@ -1,0 +1,10 @@
+{
+  "build": "384.0",
+  "cases": 500,
+  "cases_per_second": 355.219,
+  "code_fingerprint": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff",
+  "elapsed_seconds": 1.4076,
+  "result": "pass",
+  "scope": "canonical-db integrated planning benchmark; no external network execution",
+  "violations": 0
+}

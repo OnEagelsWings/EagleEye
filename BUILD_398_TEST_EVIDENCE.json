@@ -1,0 +1,8 @@
+{
+  "build": "398.0",
+  "code_fingerprint": "6eba48fe6b47ea6a6217ae7b23c238fb9e6540ea11dff72d76292736bd6abcfd",
+  "result": "pass",
+  "scope": "integrated Build 398 framework tests",
+  "tests_passed": 11,
+  "tests_total": 11
+}

@@ -1,0 +1,14 @@
+{
+  "automatic_evidence_promotions": 0,
+  "automatic_go_grants": 0,
+  "automatic_truth_acceptance": 0,
+  "build": "389.0",
+  "candidates_per_second": 11070.67,
+  "cases": 1000,
+  "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+  "elapsed_seconds": 0.0903,
+  "network_fetches_by_result_intake": 0,
+  "passed": 1000,
+  "result": "pass",
+  "violations": 0
+}

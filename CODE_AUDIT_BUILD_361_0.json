@@ -1,0 +1,12 @@
+{
+  "ast_errors": 0,
+  "build": "361.0",
+  "compileall": "pass",
+  "eval_exec_calls": 0,
+  "new361_direct_network_imports": [],
+  "new361_subprocess_imports": [],
+  "python_files": 1502,
+  "python_lines": 169475,
+  "shell_true_calls": 0,
+  "tls_disable_matches": 0
+}

@@ -1,0 +1,91 @@
+{
+  "acceptance_result": "pass",
+  "artifact_hashes": {
+    "acceptance_sha256": "25ad1f04c2d22c07337e7f4c7aadcf6ee9c457a077dcc01adbac9dc9b047c348",
+    "benchmark_sha256": "0b380e3b632c57719ae778390d97263bbd75beef7af2aa8676ef8ae5f29807d9",
+    "runtime_manifest_sha256": "4eab14206943b1cff3a08339f90e98fc5a55c1a18025fc167fe9361a17fe3d7e",
+    "sbom_sha256": "034d5c5457dc993c8dab173612b462235c9af923314189d650afb11246c68aa5"
+  },
+  "artifacts": {
+    "acceptance": "ACCEPTANCE_RESULTS_BUILD_360_0.json",
+    "benchmark": "BENCHMARK_BUILD_360_FINAL_QUALIFICATION.json",
+    "readiness": "FINAL_READINESS_ASSESSMENT_BUILD_360.json",
+    "runtime_manifest": "RUNTIME_MANIFEST_BUILD_360_0.json",
+    "sbom": "SBOM_BUILD_360_0.cdx.json",
+    "test_evidence": "BUILD_360_TEST_EVIDENCE.json",
+    "training_basis": "TRAINING_BASIS_BUILD_360_AI_INVESTIGATION.json"
+  },
+  "benchmark_cases": 2000,
+  "benchmark_violations": 0,
+  "build": "360.0",
+  "code_fingerprint": "1b4376b93e2300658ac2461646b39d46ca97d10e831a264565b0fff159117d14",
+  "controlled_local_pilot_candidate_ready": true,
+  "external_validation": {
+    "external_load_failure_test": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "external_pentest": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "external_red_team": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "live_local_stt_model": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_postgresql": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_reverse_image_provider": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_s3_minio": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_team_search_backend": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_tor_gateway": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "professional_pilot": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "remote_multi_user_deployment": {
+      "blocking": true,
+      "status": "not_validated"
+    }
+  },
+  "internal_engineering_readiness_percent": 83,
+  "operative_production_readiness_score": 75,
+  "package_version": "360.0.0",
+  "production_release_ready": false,
+  "release_profile": "production_slim_auditable",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "source_date_epoch": 0,
+  "truthful_scope": "Build 360 is internally qualified as a controlled local pilot candidate. Independent external pentest/red-team, external load/failure validation, remote multi-user validation and professional pilot evidence remain outstanding; production release is not claimed."
+}

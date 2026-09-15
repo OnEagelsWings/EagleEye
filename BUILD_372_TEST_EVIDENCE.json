@@ -1,0 +1,25 @@
+{
+  "build": "372.0",
+  "code_fingerprint": "7d3ad9b25d75e0b33fe029d80f4065a7bcf803d7f3126670500e14bcc0c45513",
+  "probes": {
+    "ai": "pass",
+    "common_name": "pass",
+    "conflict_escape": "pass",
+    "false_link": "pass",
+    "holdout_eval": "pass",
+    "lead_quality": "pass",
+    "opsec": "pass",
+    "source_quality": "pass"
+  },
+  "regression_build371": {
+    "passed": 47,
+    "result": "expected_version_boundary_only",
+    "total": 48
+  },
+  "result": "pass",
+  "tests": {
+    "passed": 55,
+    "total": 55
+  },
+  "truthful_note": "Evidence generated only after pytest Build-372 55/55 PASS and Build-371 regression 47/48 with the sole historical version assertion."
+}

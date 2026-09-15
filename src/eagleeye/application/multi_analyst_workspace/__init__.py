@@ -1,0 +1,3 @@
+from eagleeye.application.build181.service import Build181MultiAnalystWorkspaceService
+MultiAnalystWorkspaceService=Build181MultiAnalystWorkspaceService
+__all__=['MultiAnalystWorkspaceService','Build181MultiAnalystWorkspaceService']

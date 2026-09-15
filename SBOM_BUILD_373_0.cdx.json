@@ -1,0 +1,94 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "pydantic",
+      "type": "library",
+      "version": "range:>=2.10,<3"
+    },
+    {
+      "name": "SQLAlchemy",
+      "type": "library",
+      "version": "range:>=2.0,<3"
+    },
+    {
+      "name": "alembic",
+      "type": "library",
+      "version": "range:>=1.14,<2"
+    },
+    {
+      "name": "fastapi",
+      "type": "library",
+      "version": "range:>=0.115,<1"
+    },
+    {
+      "name": "starlette",
+      "type": "library",
+      "version": "range:>=0.50,<0.51"
+    },
+    {
+      "name": "uvicorn",
+      "type": "library",
+      "version": "range:>=0.34,<1"
+    },
+    {
+      "name": "cryptography",
+      "type": "library",
+      "version": "range:>=46.0.4,<47"
+    },
+    {
+      "name": "Pillow",
+      "type": "library",
+      "version": "range:>=12.3.0,<13"
+    },
+    {
+      "name": "opencv-python-headless",
+      "type": "library",
+      "version": "range:>=4.10,<5"
+    },
+    {
+      "name": "reportlab",
+      "type": "library",
+      "version": "range:>=4,<5"
+    },
+    {
+      "name": "argon2-cffi",
+      "type": "library",
+      "version": "range:>=25.1,<26"
+    },
+    {
+      "name": "python-multipart",
+      "type": "library",
+      "version": "range:>=0.0.20,<1"
+    },
+    {
+      "name": "PyMuPDF",
+      "type": "library",
+      "version": "range:>=1.25,<2"
+    },
+    {
+      "name": "pypdf",
+      "type": "library",
+      "version": "range:>=5,<7"
+    },
+    {
+      "name": "pdfplumber",
+      "type": "library",
+      "version": "range:>=0.11,<1"
+    },
+    {
+      "name": "pytesseract",
+      "type": "library",
+      "version": "range:>=0.3.13,<1"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "373.0.0"
+    }
+  },
+  "specVersion": "1.5",
+  "version": 1
+}

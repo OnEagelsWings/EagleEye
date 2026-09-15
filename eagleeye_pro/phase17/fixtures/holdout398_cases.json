@@ -1,0 +1,1927 @@
+{
+  "case_count": 60,
+  "cases": [
+    {
+      "case_id": "H398-001",
+      "contains_private_personal_data": false,
+      "domain": "corporate_registry",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "corporate_registry_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "corporate_registry_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "corporate_registry_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "E2",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Conflicting incorporation dates. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two official registry snapshots disagree on incorporation date; an archived company page repeats the older date.",
+      "synthetic_fixture": true,
+      "title": "Conflicting incorporation dates"
+    },
+    {
+      "case_id": "H398-002",
+      "contains_private_personal_data": false,
+      "domain": "corporate_registry",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "corporate_registry_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Parent-company identity. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "A subsidiary filing names a parent; two mirrors reproduce the same filing.",
+      "synthetic_fixture": true,
+      "title": "Parent-company identity"
+    },
+    {
+      "case_id": "H398-003",
+      "contains_private_personal_data": false,
+      "domain": "corporate_registry",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "corporate_registry_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "corporate_registry_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Director appointment timeline. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Registry filing and official gazette independently agree; no counterevidence.",
+      "synthetic_fixture": true,
+      "title": "Director appointment timeline"
+    },
+    {
+      "case_id": "H398-004",
+      "contains_private_personal_data": false,
+      "domain": "corporate_registry",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "corporate_registry_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "corporate_registry_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Dissolution status. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Current registry says active while an older archive says dissolved.",
+      "synthetic_fixture": true,
+      "title": "Dissolution status"
+    },
+    {
+      "case_id": "H398-005",
+      "contains_private_personal_data": false,
+      "domain": "corporate_registry",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "corporate_registry_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "corporate_registry_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Registered address change. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Registry and tax notice independently support a recent address change.",
+      "synthetic_fixture": true,
+      "title": "Registered address change"
+    },
+    {
+      "case_id": "H398-006",
+      "contains_private_personal_data": false,
+      "domain": "procurement",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "procurement_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "procurement_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Award amount discrepancy. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Procurement portal and agency award notice disagree on the final amount.",
+      "synthetic_fixture": true,
+      "title": "Award amount discrepancy"
+    },
+    {
+      "case_id": "H398-007",
+      "contains_private_personal_data": false,
+      "domain": "procurement",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "procurement_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "procurement_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Supplier identity. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Tender award and official supplier register independently resolve the same entity.",
+      "synthetic_fixture": true,
+      "title": "Supplier identity"
+    },
+    {
+      "case_id": "H398-008",
+      "contains_private_personal_data": false,
+      "domain": "procurement",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "procurement_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Framework call-off. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "One procurement record supports a call-off; a scraped mirror duplicates it.",
+      "synthetic_fixture": true,
+      "title": "Framework call-off"
+    },
+    {
+      "case_id": "H398-009",
+      "contains_private_personal_data": false,
+      "domain": "procurement",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "procurement_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "procurement_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Cancelled tender. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Agency notice says cancelled; procurement index still lists open.",
+      "synthetic_fixture": true,
+      "title": "Cancelled tender"
+    },
+    {
+      "case_id": "H398-010",
+      "contains_private_personal_data": false,
+      "domain": "procurement",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "procurement_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "procurement_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Award date. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Portal and government gazette independently agree on the award date.",
+      "synthetic_fixture": true,
+      "title": "Award date"
+    },
+    {
+      "case_id": "H398-011",
+      "contains_private_personal_data": false,
+      "domain": "regulatory",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "regulatory_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "regulatory_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Licence status. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Regulator register and official decision independently support an active licence.",
+      "synthetic_fixture": true,
+      "title": "Licence status"
+    },
+    {
+      "case_id": "H398-012",
+      "contains_private_personal_data": false,
+      "domain": "regulatory",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "regulatory_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "regulatory_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Sanction effective date. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Decision PDF conflicts with a secondary regulator summary.",
+      "synthetic_fixture": true,
+      "title": "Sanction effective date"
+    },
+    {
+      "case_id": "H398-013",
+      "contains_private_personal_data": false,
+      "domain": "regulatory",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "regulatory_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Permit scope. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Only one authoritative permit document defines scope.",
+      "synthetic_fixture": true,
+      "title": "Permit scope"
+    },
+    {
+      "case_id": "H398-014",
+      "contains_private_personal_data": false,
+      "domain": "regulatory",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "regulatory_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "regulatory_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Enforcement closure. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Regulator notice says closed; archive preserves an earlier open notice.",
+      "synthetic_fixture": true,
+      "title": "Enforcement closure"
+    },
+    {
+      "case_id": "H398-015",
+      "contains_private_personal_data": false,
+      "domain": "regulatory",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "regulatory_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "regulatory_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Registration number. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two independent official regulator systems agree on the identifier.",
+      "synthetic_fixture": true,
+      "title": "Registration number"
+    },
+    {
+      "case_id": "H398-016",
+      "contains_private_personal_data": false,
+      "domain": "archives",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "archives_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "archives_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Archived policy version. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Archive snapshot and current official changelog support a prior policy version.",
+      "synthetic_fixture": true,
+      "title": "Archived policy version"
+    },
+    {
+      "case_id": "H398-017",
+      "contains_private_personal_data": false,
+      "domain": "archives",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "archives_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Mirror mistaken as independent. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two archives capture the same originating page and must count once.",
+      "synthetic_fixture": true,
+      "title": "Mirror mistaken as independent"
+    },
+    {
+      "case_id": "H398-018",
+      "contains_private_personal_data": false,
+      "domain": "archives",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "archives_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "archives_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Historic announcement conflict. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Archived announcement conflicts with later official correction.",
+      "synthetic_fixture": true,
+      "title": "Historic announcement conflict"
+    },
+    {
+      "case_id": "H398-019",
+      "contains_private_personal_data": false,
+      "domain": "archives",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "archives_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "archives_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Removed document existence. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Archive index and official document log independently support prior existence.",
+      "synthetic_fixture": true,
+      "title": "Removed document existence"
+    },
+    {
+      "case_id": "H398-020",
+      "contains_private_personal_data": false,
+      "domain": "archives",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "archives_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Snapshot timestamp ambiguity. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Only one archive timestamp supports the timing claim.",
+      "synthetic_fixture": true,
+      "title": "Snapshot timestamp ambiguity"
+    },
+    {
+      "case_id": "H398-021",
+      "contains_private_personal_data": false,
+      "domain": "source_independence",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "source_independence_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Syndicated press release. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Three sites republish one press release; only one origin group counts.",
+      "synthetic_fixture": true,
+      "title": "Syndicated press release"
+    },
+    {
+      "case_id": "H398-022",
+      "contains_private_personal_data": false,
+      "domain": "source_independence",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "source_independence_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "source_independence_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Independent official records. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Registry and court docket independently support the same event.",
+      "synthetic_fixture": true,
+      "title": "Independent official records"
+    },
+    {
+      "case_id": "H398-023",
+      "contains_private_personal_data": false,
+      "domain": "source_independence",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "source_independence_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Unknown origin article. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "One source supports while another has unresolved provenance.",
+      "synthetic_fixture": true,
+      "title": "Unknown origin article"
+    },
+    {
+      "case_id": "H398-024",
+      "contains_private_personal_data": false,
+      "domain": "source_independence",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "source_independence_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Archive plus origin. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Origin and archive copy must not count as two independent groups.",
+      "synthetic_fixture": true,
+      "title": "Archive plus origin"
+    },
+    {
+      "case_id": "H398-025",
+      "contains_private_personal_data": false,
+      "domain": "source_independence",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "source_independence_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "source_independence_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "source_independence_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "E2",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Independent contradiction. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two official source families support; a court record contradicts.",
+      "synthetic_fixture": true,
+      "title": "Independent contradiction"
+    },
+    {
+      "case_id": "H398-026",
+      "contains_private_personal_data": false,
+      "domain": "temporal_conflicts",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "temporal_conflicts_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "temporal_conflicts_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Effective versus publication date. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Official order and gazette expose two different relevant dates.",
+      "synthetic_fixture": true,
+      "title": "Effective versus publication date"
+    },
+    {
+      "case_id": "H398-027",
+      "contains_private_personal_data": false,
+      "domain": "temporal_conflicts",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "temporal_conflicts_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "temporal_conflicts_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Current versus historic status. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Current registry conflicts with historical snapshot.",
+      "synthetic_fixture": true,
+      "title": "Current versus historic status"
+    },
+    {
+      "case_id": "H398-028",
+      "contains_private_personal_data": false,
+      "domain": "temporal_conflicts",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "temporal_conflicts_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "temporal_conflicts_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Timeline corroboration. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two independent dated records establish the same sequence.",
+      "synthetic_fixture": true,
+      "title": "Timeline corroboration"
+    },
+    {
+      "case_id": "H398-029",
+      "contains_private_personal_data": false,
+      "domain": "temporal_conflicts",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "temporal_conflicts_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Timezone ambiguity. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Single source timestamp lacks timezone context.",
+      "synthetic_fixture": true,
+      "title": "Timezone ambiguity"
+    },
+    {
+      "case_id": "H398-030",
+      "contains_private_personal_data": false,
+      "domain": "temporal_conflicts",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "temporal_conflicts_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "temporal_conflicts_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Correction supersedes notice. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Original notice conflicts with official correction.",
+      "synthetic_fixture": true,
+      "title": "Correction supersedes notice"
+    },
+    {
+      "case_id": "H398-031",
+      "contains_private_personal_data": false,
+      "domain": "document_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "document_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Hash-matched duplicate. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two downloads share an identical hash and origin; count once.",
+      "synthetic_fixture": true,
+      "title": "Hash-matched duplicate"
+    },
+    {
+      "case_id": "H398-032",
+      "contains_private_personal_data": false,
+      "domain": "document_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "document_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "document_provenance_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Independent signed documents. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two independently issued signed documents support the claim.",
+      "synthetic_fixture": true,
+      "title": "Independent signed documents"
+    },
+    {
+      "case_id": "H398-033",
+      "contains_private_personal_data": false,
+      "domain": "document_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "unresolved",
+          "provenance": "synthetic_fixture",
+          "source_family": "coverage_or_negative_result",
+          "stance": "context"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 0,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Unverifiable PDF origin. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "A PDF supports the claim but provenance is unresolved.",
+      "synthetic_fixture": true,
+      "title": "Unverifiable PDF origin"
+    },
+    {
+      "case_id": "H398-034",
+      "contains_private_personal_data": false,
+      "domain": "document_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "document_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "document_provenance_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Document metadata conflict. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Content supports while metadata suggests a conflicting date.",
+      "synthetic_fixture": true,
+      "title": "Document metadata conflict"
+    },
+    {
+      "case_id": "H398-035",
+      "contains_private_personal_data": false,
+      "domain": "document_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "document_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "document_provenance_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Official document chain. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Register index and signed decision independently link to the same action.",
+      "synthetic_fixture": true,
+      "title": "Official document chain"
+    },
+    {
+      "case_id": "H398-036",
+      "contains_private_personal_data": false,
+      "domain": "open_data",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "open_data_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "open_data_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Dataset refresh lag. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Open-data API conflicts with a newer agency bulletin.",
+      "synthetic_fixture": true,
+      "title": "Dataset refresh lag"
+    },
+    {
+      "case_id": "H398-037",
+      "contains_private_personal_data": false,
+      "domain": "open_data",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "open_data_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "open_data_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Cross-dataset match. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two independent government datasets support the same organization identifier.",
+      "synthetic_fixture": true,
+      "title": "Cross-dataset match"
+    },
+    {
+      "case_id": "H398-038",
+      "contains_private_personal_data": false,
+      "domain": "open_data",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "open_data_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Single dataset observation. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Only one dataset contains the asserted record.",
+      "synthetic_fixture": true,
+      "title": "Single dataset observation"
+    },
+    {
+      "case_id": "H398-039",
+      "contains_private_personal_data": false,
+      "domain": "open_data",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "open_data_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Schema migration artifact. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Old and new dataset rows appear contradictory but share provenance.",
+      "synthetic_fixture": true,
+      "title": "Schema migration artifact"
+    },
+    {
+      "case_id": "H398-040",
+      "contains_private_personal_data": false,
+      "domain": "open_data",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "open_data_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "open_data_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Official data correction. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Dataset and correction notice conflict pending reconciliation.",
+      "synthetic_fixture": true,
+      "title": "Official data correction"
+    },
+    {
+      "case_id": "H398-041",
+      "contains_private_personal_data": false,
+      "domain": "negative_results",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "unresolved",
+          "provenance": "synthetic_fixture",
+          "source_family": "coverage_or_negative_result",
+          "stance": "context"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 0,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: No result is not nonexistence. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Search returns no matching record; absence cannot establish nonexistence.",
+      "synthetic_fixture": true,
+      "title": "No result is not nonexistence"
+    },
+    {
+      "case_id": "H398-042",
+      "contains_private_personal_data": false,
+      "domain": "negative_results",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "unresolved",
+          "provenance": "synthetic_fixture",
+          "source_family": "coverage_or_negative_result",
+          "stance": "context"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 0,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Closed register scope. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "A register lacks the record but covers only part of the jurisdiction.",
+      "synthetic_fixture": true,
+      "title": "Closed register scope"
+    },
+    {
+      "case_id": "H398-043",
+      "contains_private_personal_data": false,
+      "domain": "negative_results",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "unresolved",
+          "provenance": "synthetic_fixture",
+          "source_family": "coverage_or_negative_result",
+          "stance": "context"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 0,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Two scoped negative checks. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two independent scoped registers return no result, still requiring cautious wording.",
+      "synthetic_fixture": true,
+      "title": "Two scoped negative checks"
+    },
+    {
+      "case_id": "H398-044",
+      "contains_private_personal_data": false,
+      "domain": "negative_results",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "unresolved",
+          "provenance": "synthetic_fixture",
+          "source_family": "coverage_or_negative_result",
+          "stance": "context"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 0,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Historic index gap. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Archive index has a documented coverage gap during the relevant period.",
+      "synthetic_fixture": true,
+      "title": "Historic index gap"
+    },
+    {
+      "case_id": "H398-045",
+      "contains_private_personal_data": false,
+      "domain": "negative_results",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "negative_results_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Positive evidence overrides search gap. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "One official record exists despite a separate search yielding no result.",
+      "synthetic_fixture": true,
+      "title": "Positive evidence overrides search gap"
+    },
+    {
+      "case_id": "H398-046",
+      "contains_private_personal_data": false,
+      "domain": "entity_resolution_public",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "entity_resolution_public_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "entity_resolution_public_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: LEI and registry alignment. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "LEI record and national registry independently align a public company.",
+      "synthetic_fixture": true,
+      "title": "LEI and registry alignment"
+    },
+    {
+      "case_id": "H398-047",
+      "contains_private_personal_data": false,
+      "domain": "entity_resolution_public",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "entity_resolution_public_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "entity_resolution_public_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Same-name companies. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two same-name entities require disambiguation; evidence conflicts.",
+      "synthetic_fixture": true,
+      "title": "Same-name companies"
+    },
+    {
+      "case_id": "H398-048",
+      "contains_private_personal_data": false,
+      "domain": "entity_resolution_public",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "entity_resolution_public_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "entity_resolution_public_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Merger identifier transition. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Pre-merger and post-merger identifiers require temporal resolution.",
+      "synthetic_fixture": true,
+      "title": "Merger identifier transition"
+    },
+    {
+      "case_id": "H398-049",
+      "contains_private_personal_data": false,
+      "domain": "entity_resolution_public",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "entity_resolution_public_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Branch versus parent. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "One filing concerns a branch and must not be silently merged with parent.",
+      "synthetic_fixture": true,
+      "title": "Branch versus parent"
+    },
+    {
+      "case_id": "H398-050",
+      "contains_private_personal_data": false,
+      "domain": "entity_resolution_public",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "entity_resolution_public_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "entity_resolution_public_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Cross-register entity match. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two official registers independently match on multiple stable identifiers.",
+      "synthetic_fixture": true,
+      "title": "Cross-register entity match"
+    },
+    {
+      "case_id": "H398-051",
+      "contains_private_personal_data": false,
+      "domain": "financial_filings",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "financial_filings_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "financial_filings_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Fiscal year mismatch. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Annual report and regulator filing disagree on period labelling.",
+      "synthetic_fixture": true,
+      "title": "Fiscal year mismatch"
+    },
+    {
+      "case_id": "H398-052",
+      "contains_private_personal_data": false,
+      "domain": "financial_filings",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "financial_filings_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "financial_filings_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Revenue corroboration. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Filed accounts and tax publication independently support the reported figure.",
+      "synthetic_fixture": true,
+      "title": "Revenue corroboration"
+    },
+    {
+      "case_id": "H398-053",
+      "contains_private_personal_data": false,
+      "domain": "financial_filings",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "financial_filings_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "financial_filings_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Restated accounts. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Original filing conflicts with later restatement.",
+      "synthetic_fixture": true,
+      "title": "Restated accounts"
+    },
+    {
+      "case_id": "H398-054",
+      "contains_private_personal_data": false,
+      "domain": "financial_filings",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "financial_filings_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Single filing metric. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Only one official filing supports the metric.",
+      "synthetic_fixture": true,
+      "title": "Single filing metric"
+    },
+    {
+      "case_id": "H398-055",
+      "contains_private_personal_data": false,
+      "domain": "financial_filings",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "financial_filings_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "financial_filings_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Currency interpretation. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Two documents support amount but one uses a different currency context.",
+      "synthetic_fixture": true,
+      "title": "Currency interpretation"
+    },
+    {
+      "case_id": "H398-056",
+      "contains_private_personal_data": false,
+      "domain": "media_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "media_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Press release amplification. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Multiple outlets repeat one corporate release; count one origin.",
+      "synthetic_fixture": true,
+      "title": "Press release amplification"
+    },
+    {
+      "case_id": "H398-057",
+      "contains_private_personal_data": false,
+      "domain": "media_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "media_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "E2",
+          "independence_group": "media_provenance_support_2",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1",
+          "E2"
+        ],
+        "stop_decision": "stop_current_question_for_human_review",
+        "support_groups": 2,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Independent reporting plus filing. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Independent reporting and an official filing support the event.",
+      "synthetic_fixture": true,
+      "title": "Independent reporting plus filing"
+    },
+    {
+      "case_id": "H398-058",
+      "contains_private_personal_data": false,
+      "domain": "media_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "media_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        },
+        {
+          "citation_key": "C1",
+          "independence_group": "media_provenance_counter_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "independent_counter_source",
+          "stance": "contradicts"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 1,
+        "required_citations": [
+          "E1",
+          "C1"
+        ],
+        "stop_decision": "continue_discriminating_research",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Correction versus original story. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "A corrected article contradicts the original publication.",
+      "synthetic_fixture": true,
+      "title": "Correction versus original story"
+    },
+    {
+      "case_id": "H398-059",
+      "contains_private_personal_data": false,
+      "domain": "media_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "unresolved",
+          "provenance": "synthetic_fixture",
+          "source_family": "coverage_or_negative_result",
+          "stance": "context"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 0,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Anonymous-source report. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "One article asserts the claim without independently checkable provenance.",
+      "synthetic_fixture": true,
+      "title": "Anonymous-source report"
+    },
+    {
+      "case_id": "H398-060",
+      "contains_private_personal_data": false,
+      "domain": "media_provenance",
+      "evidence": [
+        {
+          "citation_key": "E1",
+          "independence_group": "media_provenance_support_1",
+          "provenance": "synthetic_fixture",
+          "source_family": "official_or_primary",
+          "stance": "supports"
+        }
+      ],
+      "expected": {
+        "contradiction_groups": 0,
+        "required_citations": [
+          "E1"
+        ],
+        "stop_decision": "pause_insufficient_evidence",
+        "support_groups": 1,
+        "truth_probability_allowed": false
+      },
+      "question": "Assess the evidence structure for: Video and official transcript. Preserve uncertainty and distinguish independent source groups.",
+      "scenario": "Original video and official transcript share origin and count together.",
+      "synthetic_fixture": true,
+      "title": "Video and official transcript"
+    }
+  ],
+  "schema": "phase17.holdout398.fixture.v1",
+  "synthetic": true
+}

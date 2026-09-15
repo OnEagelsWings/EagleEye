@@ -1,0 +1,30 @@
+{
+  "build": "379.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "ai_boundary": true,
+    "build_acceptance_ready": true,
+    "case_isolation": true,
+    "external_validation_not_run": true,
+    "fingerprint_binding": true,
+    "local_prequalification_pass": true,
+    "no_auto_eviction": true,
+    "no_new_tables": true,
+    "no_runtime_fault_api": true,
+    "object_store_pressure": true,
+    "opsec_boundary": true,
+    "production_false_build380_required": true,
+    "queue_lease_stability": true,
+    "receipt_no_network_scope": true,
+    "recovery_slo": true,
+    "schema_within_gate": true,
+    "signed_receipt_required": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "135bea48ae4a95fff1ea1ca43cba15f4db03c76bed36e0b52f9a2eb598e08e3e",
+  "external_qualification_validated": false,
+  "passed": 18,
+  "production_release_ready": false,
+  "result": "pass",
+  "total": 18
+}

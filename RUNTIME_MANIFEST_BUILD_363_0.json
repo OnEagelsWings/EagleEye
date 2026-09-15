@@ -1,0 +1,23 @@
+{
+  "ai_autonomous_after_go": true,
+  "automatic_external_connections_on_boot": 0,
+  "build": "363.0",
+  "controlled_local_pilot_candidate": true,
+  "crawler_improvement_build": 363,
+  "opsec_autonomous_defensive_supervision": true,
+  "package_version": "363.0.0",
+  "phase": "16",
+  "phase_builds_completed": 3,
+  "portable_search": "sqlite_fts5",
+  "portable_storage": "local_cas_v1",
+  "postgres_external_validation": "not_run",
+  "production_release_ready": false,
+  "s3_minio_external_validation": "not_run",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1863680,
+    "tables": 141,
+    "triggers": 8
+  },
+  "team_search_external_validation": "not_run"
+}

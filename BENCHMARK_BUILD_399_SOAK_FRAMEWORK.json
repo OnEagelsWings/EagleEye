@@ -1,0 +1,16 @@
+{
+  "build": "399.0",
+  "checks_per_second": 49517.845,
+  "code_fingerprint": "57039f48ed9aa243eccff245cc9b587408f20af89c5411afb8b9b4d13f4fffba",
+  "crawler_jobs_created": 0,
+  "elapsed_seconds": 0.020195,
+  "evidence_promotions_created": 0,
+  "external_72h_soak_qualified": false,
+  "framework_status_checks_valid": 1000,
+  "go_grants_created": 0,
+  "iterations": 1000,
+  "live_72h_sessions": 0,
+  "result": "pass",
+  "scope": "internal soak-framework benchmark only; not a 72-hour live test",
+  "violations": 0
+}

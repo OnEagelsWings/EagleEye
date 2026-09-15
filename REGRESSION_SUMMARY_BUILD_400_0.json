@@ -1,0 +1,607 @@
+{
+  "build": "400.0",
+  "build400": "11/11 PASS",
+  "classification_basis": "All failing assertions were inspected. They assert superseded build/schema/package/health versions or superseded current server/launcher targets; no functional behavior assertion failed.",
+  "expected_historical_release_boundaries": 56,
+  "failure_classification": [
+    {
+      "build": 360,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build360.py::test_version_schema_and_phase_complete"
+    },
+    {
+      "build": 360,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build360.py::test_server_app_requires_login_and_exposes_final_status"
+    },
+    {
+      "build": 361,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build361.py::test_version_schema"
+    },
+    {
+      "build": 361,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build361.py::test_web_health_and_phase16_auth_boundary"
+    },
+    {
+      "build": 362,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build362.py::test_version_and_schema"
+    },
+    {
+      "build": 362,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build362.py::test_web_health_and_status_auth_boundary"
+    },
+    {
+      "build": 363,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build363.py::test_version_schema"
+    },
+    {
+      "build": 363,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build363.py::test_web_health_and_status_auth"
+    },
+    {
+      "build": 364,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build364.py::test_version_schema"
+    },
+    {
+      "build": 364,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build364.py::test_local_web_health_and_auth"
+    },
+    {
+      "build": 365,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build365.py::test_version_schema"
+    },
+    {
+      "build": 366,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build366.py::test_version_schema"
+    },
+    {
+      "build": 367,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build367.py::test_version_schema"
+    },
+    {
+      "build": 368,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build368.py::test_version_schema"
+    },
+    {
+      "build": 369,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build369.py::test_version_schema"
+    },
+    {
+      "build": 370,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build370.py::test_version_schema"
+    },
+    {
+      "build": 371,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build371.py::test_version_schema"
+    },
+    {
+      "build": 372,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build372.py::test_version_schema"
+    },
+    {
+      "build": 373,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build373.py::test_version_schema"
+    },
+    {
+      "build": 373,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build373.py::test_server_points_to_app373"
+    },
+    {
+      "build": 373,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build373.py::test_generic_launchers_point_to_373"
+    },
+    {
+      "build": 374,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build374.py::test_version"
+    },
+    {
+      "build": 374,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build374.py::test_server_points_to_app374"
+    },
+    {
+      "build": 374,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build374.py::test_generic_launchers_point_to_374"
+    },
+    {
+      "build": 375,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build375.py::test_version"
+    },
+    {
+      "build": 376,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build376.py::test_version"
+    },
+    {
+      "build": 377,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build377.py::test_version"
+    },
+    {
+      "build": 378,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build378.py::test_version"
+    },
+    {
+      "build": 379,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build379.py::test_001_version"
+    },
+    {
+      "build": 380,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build380.py::test_001_version"
+    },
+    {
+      "build": 384,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build384_integrated.py::test_integrated_version_and_registry"
+    },
+    {
+      "build": 384,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build384_integrated.py::test_current_launchers_and_server_point_to_384"
+    },
+    {
+      "build": 385,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build385_integrated.py::test_version_schema_and_capabilities"
+    },
+    {
+      "build": 385,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build385_integrated.py::test_current_launchers_and_server_point_to_385"
+    },
+    {
+      "build": 386,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build386_integrated.py::test_version_schema_and_status"
+    },
+    {
+      "build": 386,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build386_integrated.py::test_current_launchers_and_server_point_to_386"
+    },
+    {
+      "build": 387,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build387_integrated.py::test_version_schema_and_status"
+    },
+    {
+      "build": 387,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build387_integrated.py::test_current_launchers_and_server_point_to_387"
+    },
+    {
+      "build": 388,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build388_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 388,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build388_integrated.py::test_current_launchers_server_point_388"
+    },
+    {
+      "build": 389,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build389_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 389,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build389_integrated.py::test_current_launchers_server_point_389"
+    },
+    {
+      "build": 390,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build390_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 390,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build390_integrated.py::test_current_launchers_server_point_390"
+    },
+    {
+      "build": 391,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build391_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 391,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build391_integrated.py::test_current_launchers_server_point_391"
+    },
+    {
+      "build": 392,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build392_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 392,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build392_integrated.py::test_current_launchers_server_point_392"
+    },
+    {
+      "build": 393,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build393_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 393,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build393_integrated.py::test_current_launchers_server_point_393"
+    },
+    {
+      "build": 394,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build394_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 395,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build395_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 396,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build396_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 397,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build397_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 398,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build398_integrated.py::test_version_schema_status"
+    },
+    {
+      "build": 399,
+      "classification": "historical_release_boundary",
+      "functional_regression": false,
+      "test": "tests/test_build399_integrated.py::test_version_schema_status"
+    }
+  ],
+  "functional_regressions": 0,
+  "per_build": [
+    {
+      "build": 360,
+      "failed": 2,
+      "passed": 19,
+      "warnings": 4
+    },
+    {
+      "build": 361,
+      "failed": 2,
+      "passed": 18,
+      "warnings": 0
+    },
+    {
+      "build": 362,
+      "failed": 2,
+      "passed": 18,
+      "warnings": 0
+    },
+    {
+      "build": 363,
+      "failed": 2,
+      "passed": 18,
+      "warnings": 0
+    },
+    {
+      "build": 364,
+      "failed": 2,
+      "passed": 24,
+      "warnings": 0
+    },
+    {
+      "build": 365,
+      "failed": 1,
+      "passed": 21,
+      "warnings": 0
+    },
+    {
+      "build": 366,
+      "failed": 1,
+      "passed": 25,
+      "warnings": 0
+    },
+    {
+      "build": 367,
+      "failed": 1,
+      "passed": 29,
+      "warnings": 0
+    },
+    {
+      "build": 368,
+      "failed": 1,
+      "passed": 34,
+      "warnings": 0
+    },
+    {
+      "build": 369,
+      "failed": 1,
+      "passed": 39,
+      "warnings": 0
+    },
+    {
+      "build": 370,
+      "failed": 1,
+      "passed": 44,
+      "warnings": 0
+    },
+    {
+      "build": 371,
+      "failed": 1,
+      "passed": 47,
+      "warnings": 0
+    },
+    {
+      "build": 372,
+      "failed": 1,
+      "passed": 54,
+      "warnings": 0
+    },
+    {
+      "build": 373,
+      "failed": 3,
+      "passed": 55,
+      "warnings": 0
+    },
+    {
+      "build": 374,
+      "failed": 3,
+      "passed": 63,
+      "warnings": 0
+    },
+    {
+      "build": 375,
+      "failed": 1,
+      "passed": 62,
+      "warnings": 0
+    },
+    {
+      "build": 376,
+      "failed": 1,
+      "passed": 33,
+      "warnings": 0
+    },
+    {
+      "build": 377,
+      "failed": 1,
+      "passed": 42,
+      "warnings": 60
+    },
+    {
+      "build": 378,
+      "failed": 1,
+      "passed": 43,
+      "warnings": 0
+    },
+    {
+      "build": 379,
+      "failed": 1,
+      "passed": 51,
+      "warnings": 0
+    },
+    {
+      "build": 380,
+      "failed": 1,
+      "passed": 53,
+      "warnings": 0
+    },
+    {
+      "build": 384,
+      "failed": 2,
+      "passed": 7,
+      "warnings": 0
+    },
+    {
+      "build": 385,
+      "failed": 2,
+      "passed": 12,
+      "warnings": 0
+    },
+    {
+      "build": 386,
+      "failed": 2,
+      "passed": 14,
+      "warnings": 0
+    },
+    {
+      "build": 387,
+      "failed": 2,
+      "passed": 12,
+      "warnings": 0
+    },
+    {
+      "build": 388,
+      "failed": 2,
+      "passed": 10,
+      "warnings": 0
+    },
+    {
+      "build": 389,
+      "failed": 2,
+      "passed": 11,
+      "warnings": 0
+    },
+    {
+      "build": 390,
+      "failed": 2,
+      "passed": 14,
+      "warnings": 0
+    },
+    {
+      "build": 391,
+      "failed": 2,
+      "passed": 16,
+      "warnings": 0
+    },
+    {
+      "build": 392,
+      "failed": 2,
+      "passed": 20,
+      "warnings": 0
+    },
+    {
+      "build": 393,
+      "failed": 2,
+      "passed": 21,
+      "warnings": 0
+    },
+    {
+      "build": 394,
+      "failed": 1,
+      "passed": 20,
+      "warnings": 0
+    },
+    {
+      "build": 395,
+      "failed": 1,
+      "passed": 11,
+      "warnings": 0
+    },
+    {
+      "build": 396,
+      "failed": 1,
+      "passed": 14,
+      "warnings": 0
+    },
+    {
+      "build": 397,
+      "failed": 1,
+      "passed": 12,
+      "warnings": 0
+    },
+    {
+      "build": 398,
+      "failed": 1,
+      "passed": 10,
+      "warnings": 0
+    },
+    {
+      "build": 399,
+      "failed": 1,
+      "passed": 13,
+      "warnings": 0
+    },
+    {
+      "build": 400,
+      "failed": 0,
+      "passed": 11,
+      "warnings": 0
+    }
+  ],
+  "phase15_16_fresh_current_tree": "Builds 360\u2013380 rerun in current Build400 tree; failures classified above.",
+  "phase17_381_384_suites": [
+    {
+      "failed": 0,
+      "passed": 27,
+      "suite": "test_phase17_build381",
+      "warnings": 0
+    },
+    {
+      "failed": 0,
+      "passed": 30,
+      "suite": "test_phase17_build382",
+      "warnings": 0
+    },
+    {
+      "failed": 0,
+      "passed": 28,
+      "suite": "test_phase17_build383",
+      "warnings": 0
+    },
+    {
+      "failed": 0,
+      "passed": 14,
+      "suite": "test_phase17_build384",
+      "warnings": 0
+    }
+  ],
+  "phase17_current_tree": "Builds 381\u2013400 rerun in current Build400 tree.",
+  "result": "pass_with_historical_boundaries",
+  "tests_failed": 56,
+  "tests_passed": 1119,
+  "tests_total": 1175
+}

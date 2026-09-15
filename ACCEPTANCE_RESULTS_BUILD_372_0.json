@@ -1,0 +1,58 @@
+{
+  "build": "372.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "benchmark_4000": true,
+    "conflict_escape_zero": true,
+    "continuous_crawler": true,
+    "crawler_increment_372": true,
+    "external_real_world_not_run": true,
+    "false_link_safe": true,
+    "gate_acceptance": true,
+    "holdout_20": true,
+    "holdout_pass": true,
+    "no_auto_merge": true,
+    "no_auto_threshold": true,
+    "no_build372_tables": true,
+    "no_real_person_data": true,
+    "precision_ge_090": true,
+    "production_false": true,
+    "recall_ge_080": true,
+    "regression_functional_47": true,
+    "schema_165_133_8": true,
+    "schema_within_gate": true,
+    "source_quality_pass": true,
+    "tests_55_55": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "7d3ad9b25d75e0b33fe029d80f4065a7bcf803d7f3126670500e14bcc0c45513",
+  "external_real_world_holdout_validation": "not_run",
+  "passed": 22,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "build372_specific_tables_added": 0,
+    "canonical_entity_ledger_activated": true,
+    "evaluation_results_persisted_in_case_tables": false,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "total": 22,
+  "version": {
+    "coherent": true,
+    "package_version": "372.0.0",
+    "runtime_build": "372.0",
+    "schema_version": "372.0"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "build": "385.0",
+  "build385_tests": {
+    "passed": 14,
+    "total": 14
+  },
+  "code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "historical_build360_380_regression": {
+    "expected_release_boundary_failures": 30,
+    "functional_regressions": 0,
+    "passed": 792,
+    "total": 822
+  },
+  "phase17_regression": {
+    "expected_release_boundary_failures": 2,
+    "functional_regressions": 0,
+    "passed": 120,
+    "total": 122
+  },
+  "probes": {
+    "audit_redaction": "pass",
+    "capability_matrix": "pass",
+    "execution_readiness": "pass",
+    "identifier_validation": "pass",
+    "launcher": "pass",
+    "no_jobs": "pass",
+    "no_network": "pass",
+    "pending_review_preserved": "pass",
+    "plan_only_ted": "pass",
+    "prepare_confirmation": "pass",
+    "schema": "pass",
+    "source_scope_gate": "pass",
+    "wave_confirmation_gate": "pass",
+    "web_auth": "pass"
+  },
+  "result": "pass"
+}

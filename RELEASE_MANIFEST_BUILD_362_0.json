@@ -1,0 +1,40 @@
+{
+  "acceptance": "pass",
+  "ai_improvement": "infrastructure-aware autonomous dossier with plausibility bands",
+  "benchmark": {
+    "cases": 1800,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "362.0",
+  "crawler_improvement": "backend-aware backpressure/migration readiness",
+  "name": "PostgreSQL Team Profile",
+  "opsec_improvement": "backend secret hygiene monitor and defensive job stop",
+  "package_version": "362.0.0",
+  "phase": 16,
+  "phase_progress": "2/20",
+  "postgresql_driver_available_in_build_environment": false,
+  "postgresql_external_validation": "not_run",
+  "postgresql_server_available_in_build_environment": false,
+  "production_release_ready": false,
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "build361_regression": "18/20 PASS (2 historical version assertions)",
+    "build362": "20/20 PASS"
+  },
+  "truthful_note": "PostgreSQL team migration and live-validation harness are implemented and internally qualified; no real PostgreSQL endpoint was available in this build environment, so external validation is not claimed."
+}

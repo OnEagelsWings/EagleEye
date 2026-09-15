@@ -1,0 +1,13 @@
+{
+  "automatic_go_grants": 0,
+  "build": "388.0",
+  "cases": 1000,
+  "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+  "elapsed_seconds": 0.3221,
+  "network_fetches_by_wave_controller": 0,
+  "passed": 1000,
+  "reconciliations_per_second": 3104.32,
+  "result": "pass",
+  "violations": 0,
+  "worker_claims_by_wave_controller": 0
+}

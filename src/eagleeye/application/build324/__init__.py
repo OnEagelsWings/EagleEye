@@ -1,0 +1,2 @@
+from .service import Build324IntelligenceGraphFabricV2Service
+__all__=['Build324IntelligenceGraphFabricV2Service']

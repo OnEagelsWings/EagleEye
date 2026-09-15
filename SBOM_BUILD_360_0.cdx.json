@@ -1,0 +1,497 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/alembic",
+      "name": "alembic",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "alembic>=1.14,<2"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/alembic",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/argon2-cffi",
+      "name": "argon2-cffi",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "argon2-cffi>=25.1,<26"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/argon2-cffi",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/bandit",
+      "name": "bandit",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "bandit>=1.8"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:test"
+        }
+      ],
+      "purl": "pkg:pypi/bandit",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/boto3",
+      "name": "boto3",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "boto3>=1.40,<2"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:data-platform"
+        }
+      ],
+      "purl": "pkg:pypi/boto3",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/cryptography",
+      "name": "cryptography",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "cryptography>=46.0.4,<47"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/cryptography",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/fastapi",
+      "name": "fastapi",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "fastapi>=0.115,<1"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/fastapi",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/faster-whisper",
+      "name": "faster-whisper",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "faster-whisper>=1.2,<2"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:voice-local"
+        }
+      ],
+      "purl": "pkg:pypi/faster-whisper",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpx",
+      "name": "httpx",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "httpx>=0.28,<1"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:test"
+        }
+      ],
+      "purl": "pkg:pypi/httpx",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/hypothesis",
+      "name": "hypothesis",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "hypothesis>=6.0"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:test"
+        }
+      ],
+      "purl": "pkg:pypi/hypothesis",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/import-linter",
+      "name": "import-linter",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "import-linter>=2.0"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:test"
+        }
+      ],
+      "purl": "pkg:pypi/import-linter",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/limits",
+      "name": "limits",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "limits>=5,<6"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:auth"
+        }
+      ],
+      "purl": "pkg:pypi/limits",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/opencv-python-headless",
+      "name": "opencv-python-headless",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "opencv-python-headless>=4.10,<5"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/opencv-python-headless",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pdfplumber",
+      "name": "pdfplumber",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "pdfplumber>=0.11,<1"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/pdfplumber",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pillow",
+      "name": "Pillow",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "Pillow>=12.3.0,<13"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/pillow",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/playwright",
+      "name": "playwright",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "playwright>=1.61,<2"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:collection"
+        }
+      ],
+      "purl": "pkg:pypi/playwright",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/psycopg",
+      "name": "psycopg",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "psycopg[binary]>=3.2,<4"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:data-platform"
+        }
+      ],
+      "purl": "pkg:pypi/psycopg",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic",
+      "name": "pydantic",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "pydantic>=2.10,<3"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pymupdf",
+      "name": "PyMuPDF",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "PyMuPDF>=1.25,<2"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/pymupdf",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pypdf",
+      "name": "pypdf",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "pypdf>=5,<7"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/pypdf",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pytesseract",
+      "name": "pytesseract",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "pytesseract>=0.3.13,<1"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/pytesseract",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/pytest",
+      "name": "pytest",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "pytest>=9.0"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:test"
+        }
+      ],
+      "purl": "pkg:pypi/pytest",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-multipart",
+      "name": "python-multipart",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "python-multipart>=0.0.20,<1"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/python-multipart",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/reportlab",
+      "name": "reportlab",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "reportlab>=4,<5"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/reportlab",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/scrapy",
+      "name": "Scrapy",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "Scrapy>=2.17,<3"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:collection"
+        }
+      ],
+      "purl": "pkg:pypi/scrapy",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/sqlalchemy",
+      "name": "SQLAlchemy",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "SQLAlchemy>=2.0,<3"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/sqlalchemy",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/starlette",
+      "name": "starlette",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "starlette>=0.50,<0.51"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/starlette",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/tldextract",
+      "name": "tldextract",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "tldextract>=5.3,<6"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:collection"
+        }
+      ],
+      "purl": "pkg:pypi/tldextract",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/uvicorn",
+      "name": "uvicorn",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "uvicorn>=0.34,<1"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "runtime"
+        }
+      ],
+      "purl": "pkg:pypi/uvicorn",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/webauthn",
+      "name": "webauthn",
+      "properties": [
+        {
+          "name": "eagleeye:declared_requirement",
+          "value": "webauthn>=2.5,<3"
+        },
+        {
+          "name": "eagleeye:dependency_scope",
+          "value": "optional:auth"
+        }
+      ],
+      "purl": "pkg:pypi/webauthn",
+      "type": "library"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "360.0.0"
+    },
+    "properties": [
+      {
+        "name": "eagleeye:sbom_scope",
+        "value": "declared-direct-and-optional-dependencies"
+      },
+      {
+        "name": "eagleeye:requirements-runtime-sha256",
+        "value": "c33e14b2b11e113c15bd4e14f001bedc3f3a5a7843b3c8cb0a4c6330da1ccdfa"
+      },
+      {
+        "name": "eagleeye:requirements-windows-sha256",
+        "value": "a2df81340c13e64912f15049024cf3b5b1712ae84b57d193273392d48bd345b8"
+      },
+      {
+        "name": "eagleeye:transitive_lock_status",
+        "value": "not_claimed"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:36000000-0000-4000-8000-000000000360",
+  "specVersion": "1.5",
+  "version": 1
+}

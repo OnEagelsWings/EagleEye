@@ -1,0 +1,14 @@
+{
+  "build": "364.0",
+  "cases": 2,
+  "clients": 2,
+  "cross_case_denial_http_status": 403,
+  "external_remote_clients_validated": false,
+  "externally_validated": false,
+  "proxy_headers_trusted": false,
+  "status": "pass",
+  "tls_handshake_verified_against_generated_ca": true,
+  "transport": "real_loopback_tls",
+  "truthful_note": "Real TLS transport and two independent authenticated clients were validated on loopback. This is not external remote-network validation.",
+  "users": 2
+}

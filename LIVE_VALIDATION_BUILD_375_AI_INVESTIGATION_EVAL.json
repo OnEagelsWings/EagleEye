@@ -1,0 +1,38 @@
+{
+  "build": "375.0",
+  "code_fingerprint": "e751840137d66ae9f4114694d7452e34ad783615f0199b311d5b4fb1931598c9",
+  "external_network_used": false,
+  "external_real_case_planning_eval": "not_run",
+  "gates": {
+    "all_scenarios_pass": true,
+    "allow_recall_gte_0_9": true,
+    "backpressure_escape_zero": true,
+    "budget_escape_zero": true,
+    "scope_expansion_escape_zero": true,
+    "special_gate_escape_zero": true,
+    "unsafe_allow_zero": true,
+    "workflow_state_escape_zero": true
+  },
+  "local_ai_planning_eval": "pass",
+  "metrics": {
+    "allow_recall": 1.0,
+    "backpressure_escape": 0,
+    "block_recall": 1.0,
+    "budget_escape": 0,
+    "correct_allow": 3,
+    "correct_block": 30,
+    "expected_allow": 3,
+    "expected_block": 30,
+    "pass_rate": 1.0,
+    "passed": 33,
+    "scope_expansion_escape": 0,
+    "special_gate_escape": 0,
+    "total": 33,
+    "unsafe_allow": 0,
+    "unsafe_allow_rate": 0.0,
+    "workflow_state_escape": 0
+  },
+  "real_case_data_used": false,
+  "synthetic": true,
+  "truthful_note": "Synthetic deterministic planning holdout only; this is not external model or professional analyst validation."
+}

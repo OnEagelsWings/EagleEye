@@ -1,0 +1,31 @@
+{
+  "build": "395.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "append_only_history": true,
+    "branch_pointers": true,
+    "build395_acceptance": true,
+    "build395_benchmark": true,
+    "build395_tests": true,
+    "case_state_graph": true,
+    "controlled_adoption": true,
+    "immutable_evidence_history": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go": true,
+    "no_auto_truth": true,
+    "no_auto_upstream_mutation": true,
+    "no_direct_fetch": true,
+    "no_execution_authority": true,
+    "no_identity_merge": true,
+    "no_live_confirmation": true,
+    "no_truth_probability": true,
+    "phase17_predecessor_gate": true,
+    "rollback_transitions": true,
+    "schema_integrity": true,
+    "superseded_tracking": true,
+    "version_coherent": true
+  },
+  "phase17_builds_completed": 15,
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true
+}

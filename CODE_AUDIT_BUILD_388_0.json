@@ -1,0 +1,10 @@
+{
+  "ast_errors": [],
+  "build": "388.0",
+  "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+  "eval_exec_calls": [],
+  "new388_network_imports": [],
+  "python_files": 1747,
+  "python_lines": 198438,
+  "result": "pass"
+}

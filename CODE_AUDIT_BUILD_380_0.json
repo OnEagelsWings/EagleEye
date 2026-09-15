@@ -1,0 +1,17 @@
+{
+  "ast_error_details": [],
+  "ast_errors": 0,
+  "build": "380.0",
+  "eval_exec_calls": 0,
+  "historical_subprocess_call_sites": 21,
+  "new_build380_direct_network_subprocess_imports": {
+    "src/eagleeye/application/build380/service.py": [],
+    "src/eagleeye/interfaces/web/app380.py": [],
+    "src/eagleeye/phase16/professional_pilot380.py": []
+  },
+  "python_files": 1684,
+  "python_lines": 192014,
+  "result": "pass",
+  "shell_true_calls": 0,
+  "tls_disable_patterns": 0
+}

@@ -1,0 +1,2 @@
+from eagleeye.application.build171.service import Build171ConnectorExpansionFrameworkService as ConnectorExpansionFrameworkService
+__all__=['ConnectorExpansionFrameworkService']

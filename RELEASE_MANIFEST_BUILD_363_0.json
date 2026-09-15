@@ -1,0 +1,23 @@
+{
+  "benchmark": {
+    "cases": 2000,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "363.0",
+  "code_fingerprint": "e60a010c857e3e88412dca4109cfe244cdb444fd66332db9a661e528d6d2048a",
+  "compileall": "pass",
+  "package_version": "363.0.0",
+  "phase": "16",
+  "production_release_ready": false,
+  "regression_build362": "18/20",
+  "result": "pass",
+  "s3_minio_externally_validated": false,
+  "schema_gate": "pass",
+  "team_search_externally_validated": false,
+  "tests": {
+    "passed": 20,
+    "total": 20
+  },
+  "truthful_note": "External S3/MinIO and Team Search validation remain not_run in this environment."
+}

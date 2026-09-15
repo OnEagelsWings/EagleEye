@@ -1,0 +1,78 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 22,
+    "result": "pass",
+    "total": 22
+  },
+  "benchmark": {
+    "cases": 4000,
+    "passed": 4000,
+    "violations": 0
+  },
+  "build": "372.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1606,
+    "python_lines": 181195,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "7d3ad9b25d75e0b33fe029d80f4065a7bcf803d7f3126670500e14bcc0c45513",
+  "crawler_source_quality_validation": "pass",
+  "external_real_world_holdout_validation": "not_run",
+  "holdout": {
+    "external_real_world_holdout_validation": "not_run",
+    "records": 20,
+    "review_positive_precision": 1.0,
+    "same_entity_candidate_recall": 0.857143,
+    "strong_identifier_conflict_escape_count": 0,
+    "synthetic_holdout_validation": "pass",
+    "unsafe_false_link_rate": 0.0
+  },
+  "package": "372.0.0",
+  "phase": 16,
+  "phase_progress": "12/20",
+  "production_release_ready": false,
+  "regression_build371": {
+    "passed": 47,
+    "result": "expected_version_boundary_only",
+    "total": 48
+  },
+  "result": "pass",
+  "schema": {
+    "build372_specific_tables_added": 0,
+    "canonical_entity_ledger_activated": true,
+    "evaluation_results_persisted_in_case_tables": false,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "passed": 55,
+    "total": 55
+  },
+  "truthful_note": "Synthetic holdout calibration and local replay qualification do not constitute external real-world entity-resolution accuracy validation.",
+  "wheel": {
+    "metadata_version": "372.0.0",
+    "name": "eagleeye_personosint_pro-372.0.0-py3-none-any.whl",
+    "runtime_build": "372.0",
+    "schema_version": "372.0",
+    "sha256": "b523fbf09e2bd1f98c8d852228cba6f78f2c087fc83bb823a3fbb482c62e8bd3",
+    "size_bytes": 3796280,
+    "smoke_import": "pass"
+  }
+}

@@ -1,0 +1,2 @@
+from eagleeye.application.build166.service import Build166MissingPersonWorkflowService as MissingPersonWorkflowService
+__all__=['MissingPersonWorkflowService']

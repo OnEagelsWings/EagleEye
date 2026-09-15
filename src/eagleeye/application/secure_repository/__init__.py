@@ -1,0 +1,3 @@
+from eagleeye.application.build182.service import Build182SecureRepositoryFederationService
+SecureRepositoryFederationService=Build182SecureRepositoryFederationService
+__all__=['SecureRepositoryFederationService','Build182SecureRepositoryFederationService']

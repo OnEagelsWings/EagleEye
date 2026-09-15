@@ -1,0 +1,2 @@
+from .service import Build203GlobalCountryPacksIICoInvestigatorService
+__all__=['Build203GlobalCountryPacksIICoInvestigatorService']

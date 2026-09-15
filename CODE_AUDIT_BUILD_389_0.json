@@ -1,0 +1,19 @@
+{
+  "ast_errors": [],
+  "build": "389.0",
+  "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+  "eval_exec_calls": [],
+  "new_389_direct_network_imports": [],
+  "python_files": 1755,
+  "python_lines": 199160,
+  "result": "pass",
+  "schema": {
+    "build389_tables_present": true,
+    "indexes": 153,
+    "integrity_check": "ok",
+    "tables": 192,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

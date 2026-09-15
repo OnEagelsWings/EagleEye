@@ -1,0 +1,22 @@
+{
+  "ast_errors": [],
+  "build": "385.0",
+  "build385_direct_network_imports": [],
+  "code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "eval_exec_calls": [],
+  "python_files": 1723,
+  "python_lines": 197057,
+  "result": "pass",
+  "schema": {
+    "build385_tables_present": true,
+    "indexes": 140,
+    "integrity_check": "ok",
+    "tables": 181,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "shell_true_calls": [],
+  "tls_disable_patterns": [],
+  "truthful_note": "Full-tree syntax audit plus focused Build-385 direct-network-import audit. Existing historical networking code is not reclassified as a Build-385 network capability."
+}

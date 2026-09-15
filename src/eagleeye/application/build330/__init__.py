@@ -1,0 +1,2 @@
+from .service import Build330GovernmentLegalDataExpansionService
+__all__=['Build330GovernmentLegalDataExpansionService']

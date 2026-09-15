@@ -1,0 +1,22 @@
+{
+  "build": "379.0",
+  "cases": 5600,
+  "categories": {
+    "ai_boundary": 560,
+    "case_isolation": 560,
+    "no_fault_api": 560,
+    "object_pressure": 560,
+    "opsec_boundary": 560,
+    "queue_lease": 560,
+    "receipt_boundary": 560,
+    "recovery_contract": 560,
+    "runtime_snapshot": 560,
+    "truthful_release": 560
+  },
+  "code_fingerprint": "135bea48ae4a95fff1ea1ca43cba15f4db03c76bed36e0b52f9a2eb598e08e3e",
+  "external_validation_performed": false,
+  "network_used": false,
+  "result": "pass",
+  "truthful_scope": "Deterministic local policy/boundary benchmark only; no external soak/load traffic or external receipt is claimed.",
+  "violations": 0
+}

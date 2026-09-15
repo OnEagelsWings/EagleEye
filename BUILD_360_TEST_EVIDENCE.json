@@ -1,0 +1,19 @@
+{
+  "build": "360.0",
+  "code_fingerprint": "1b4376b93e2300658ac2461646b39d46ca97d10e831a264565b0fff159117d14",
+  "probes": {
+    "crawler_failure": "pass",
+    "crawler_provenance": "pass",
+    "dossier": "pass",
+    "e2e": "pass",
+    "image": "pass",
+    "opsec": "pass",
+    "rbac": "pass",
+    "recovery": "pass",
+    "truthfulness": "pass",
+    "voice": "pass",
+    "web": "pass"
+  },
+  "result": "pass",
+  "truthful_note": "Build 360 internal end-to-end qualification. External independent security/load/pilot validation is deliberately not claimed."
+}

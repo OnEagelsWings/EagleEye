@@ -1,0 +1,12 @@
+{
+  "automatic_postgres_connect": false,
+  "build": "362.0",
+  "external_connections_opened_during_build_qualification": 0,
+  "package_version": "362.0.0",
+  "postgres_live_validation": "not_run",
+  "postgres_team_profile": "configured_on_explicit_request",
+  "production_release_ready": false,
+  "psycopg_available": false,
+  "runtime_default": "sqlite_portable",
+  "schema_version": "362.0"
+}

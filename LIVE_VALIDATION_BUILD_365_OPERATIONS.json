@@ -1,0 +1,24 @@
+{
+  "build": "365.0",
+  "checks": {
+    "ai_incident_hold_live": true,
+    "audit_chain_live": true,
+    "case_metrics_live": true,
+    "claimed_expected_case_job": true,
+    "critical_incident_live": true,
+    "opsec_case_containment_live": true,
+    "other_case_unchanged": true,
+    "readiness_truthful": true,
+    "trace_case_isolation_live": true,
+    "worker_lease_live": true
+  },
+  "code_fingerprint": "022bb3f80e892c5721d6f0dc76922f7776962bb547a946a0eaea4bfa431b435a",
+  "external_multi_user_operations_validated": false,
+  "external_network_used": false,
+  "externally_validated": false,
+  "local_sqlite_operations_live_validated": true,
+  "network_requests_executed": 0,
+  "queue_trace_incident_flow_live_validated": true,
+  "status": "pass",
+  "truthful_note": "Real local SQLite/job/audit runtime paths were exercised. No external network, remote client, load test or production environment was used."
+}

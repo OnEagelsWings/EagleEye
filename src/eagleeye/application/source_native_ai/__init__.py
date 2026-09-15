@@ -1,0 +1,3 @@
+from eagleeye.application.build193.service import Build193SourceNativeAIInvestigatorService
+SourceNativeAIInvestigatorService = Build193SourceNativeAIInvestigatorService
+__all__ = ["SourceNativeAIInvestigatorService", "Build193SourceNativeAIInvestigatorService"]

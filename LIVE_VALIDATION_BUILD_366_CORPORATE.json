@@ -1,0 +1,11 @@
+{
+  "build": "366.0",
+  "code_fingerprint": "252b92f45d5bd3d65c95991751e86b0bf2f99d0cbfac3314c1fdf370a5c79a73",
+  "externally_validated": false,
+  "gleif": "not_run",
+  "network_requests_executed": 0,
+  "network_used": false,
+  "sec_edgar": "not_run",
+  "status": "not_run",
+  "truthful_note": "No external corporate connector was executed from the Build-366 qualification environment. Use tools/live_corporate_validate_366.py with explicit --confirm LIVE for operator-triggered validation."
+}

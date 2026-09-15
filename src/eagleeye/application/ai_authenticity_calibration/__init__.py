@@ -1,0 +1,3 @@
+from eagleeye.application.build1858.service import Build1858AIAuthenticityCalibrationService
+AIAuthenticityCalibrationService=Build1858AIAuthenticityCalibrationService
+__all__=["Build1858AIAuthenticityCalibrationService","AIAuthenticityCalibrationService"]

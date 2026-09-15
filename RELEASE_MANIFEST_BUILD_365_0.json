@@ -1,0 +1,33 @@
+{
+  "benchmark": {
+    "cases": 2400,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "365.0",
+  "build_acceptance_ready": true,
+  "code_audit": "pass",
+  "code_fingerprint": "022bb3f80e892c5721d6f0dc76922f7776962bb547a946a0eaea4bfa431b435a",
+  "compileall": "pass",
+  "external_multi_user_operations_validated": false,
+  "local_operations_live_validation": "pass",
+  "local_sqlite_operations_live_validated": true,
+  "package_version": "365.0.0",
+  "phase": "16",
+  "production_release_ready": false,
+  "queue_trace_incident_flow_live_validated": true,
+  "regression_build364": "24/26 (2 expected version-boundary assertions)",
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1863680,
+    "tables": 141,
+    "triggers": 8
+  },
+  "schema_gate": "pass",
+  "tests": {
+    "passed": 22,
+    "total": 22
+  },
+  "truthful_note": "Build 365 has real local SQLite/job/audit operations evidence. External multi-user operations, load and production validation remain not_run."
+}

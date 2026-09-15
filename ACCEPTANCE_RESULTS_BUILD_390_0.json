@@ -1,0 +1,23 @@
+{
+  "build": "390.0",
+  "checks": {
+    "ai_feed_review_only": true,
+    "archive_not_counted": true,
+    "assessment_hash_valid": true,
+    "direct_network_fetch_false": true,
+    "duplicate_not_double_counted": true,
+    "finalize_no_truth": true,
+    "no_auto_promotion": true,
+    "no_jobs_or_grants": true,
+    "no_truth": true,
+    "predecessor_389": true,
+    "schema_integrity": true,
+    "two_independent_primary_groups": true,
+    "unknown_fails_closed": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+  "passed": 14,
+  "result": "pass",
+  "total": 14
+}

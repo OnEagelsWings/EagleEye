@@ -1,0 +1,11 @@
+{
+  "ast_error_details": [],
+  "ast_errors": 0,
+  "build": "387.0",
+  "build387_direct_network_imports": 0,
+  "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "eval_exec_calls": 0,
+  "python_files": 1739,
+  "python_lines": 197515,
+  "result": "pass"
+}

@@ -1,0 +1,94 @@
+{
+  "acceptance": {
+    "passed": 18,
+    "result": "pass",
+    "total": 18
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "cases": 1200,
+    "cases_per_second": 1794.023,
+    "crawler_jobs_created": 0,
+    "network_requests": 0,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "385.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "build385_direct_network_imports": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1723,
+    "python_lines": 197057,
+    "result": "pass"
+  },
+  "code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "current_decision": "phase17_acquisition_orchestration_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "385.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build385_acceptance": true,
+      "build385_benchmark": true,
+      "build385_tests": true,
+      "capability_matrix_seeded": true,
+      "no_arbitrary_url_execution": true,
+      "no_auto_scope_expansion": true,
+      "no_automatic_crawl_enqueue": true,
+      "no_automatic_source_approval": true,
+      "no_credential_injection": true,
+      "no_host_security_mutation": true,
+      "no_network_execution_added": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 5,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 385 bridges confirmed Phase-17 research waves to governed Phase-16 source preparation. It creates no external requests, grants no execution authority, and does not promote pending sources to approved or queued state."
+  },
+  "package_version": "385.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384,
+    385
+  ],
+  "predecessor_build": "384.0",
+  "predecessor_code_fingerprint": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundary_failures": 30,
+    "functional_regressions": 0,
+    "historical_passed": 792,
+    "historical_total": 822
+  },
+  "schema": {
+    "indexes": 140,
+    "integrity_check": "ok",
+    "tables": 181,
+    "triggers": 8,
+    "views": 0
+  },
+  "tests": {
+    "build385_passed": 14,
+    "build385_total": 14,
+    "phase17_expected_release_boundary_failures": 2,
+    "phase17_functional_regressions": 0,
+    "phase17_passed": 120,
+    "phase17_total": 122
+  },
+  "truthful_note": "Build 385 is the fully integrated Acquisition Orchestration v2 bridge on the verified Build-384/Build-380 line. It prepares governed source paths but creates no external requests, grants no connector execution authority, and does not claim general production readiness or external connector validation.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-385.0.0-py3-none-any.whl",
+    "sha256": "60e50b67adac79ef241e87cbc89bc4c9c99135d87c623ff1998101a454690cea",
+    "size_bytes": 3937397,
+    "smoke_import": "pass"
+  }
+}

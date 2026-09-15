@@ -1,0 +1,17 @@
+{
+  "ast_error_examples": [],
+  "ast_errors": 0,
+  "build": "374.0",
+  "eval_exec_calls": 0,
+  "new_build374_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build374/service.py": [],
+    "src/eagleeye/interfaces/web/app374.py": [],
+    "src/eagleeye/phase16/case_workflow374.py": []
+  },
+  "python_files": 1626,
+  "python_lines": 183937,
+  "result": "pass",
+  "shell_true_calls": 0,
+  "subprocess_import_files": 13,
+  "tls_disable_patterns": 0
+}

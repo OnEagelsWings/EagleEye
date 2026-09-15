@@ -1,0 +1,13 @@
+{
+  "ast_errors": 0,
+  "build": "368.0",
+  "eval_exec": 0,
+  "historical_subprocess_calls": 22,
+  "new368_direct_http_socket_subprocess_imports": [],
+  "python_files": 1568,
+  "python_lines": 177262,
+  "result": "pass",
+  "shell_true": 0,
+  "tls_disable_patterns": 0,
+  "truthful_note": "Static source scan; historical compatibility subprocess use is reported separately and is not introduced by Build 368."
+}

@@ -1,0 +1,2 @@
+from eagleeye.application.build165.service import Build165EntityResolutionFieldService as EntityResolutionFieldService
+__all__=['EntityResolutionFieldService']

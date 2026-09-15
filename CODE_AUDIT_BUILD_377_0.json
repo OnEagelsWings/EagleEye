@@ -1,0 +1,13 @@
+{
+  "ast_errors": 0,
+  "build": "377.0",
+  "eval_exec_calls": 0,
+  "historical_subprocess_calls": 20,
+  "new_build377_direct_network_socket_subprocess_imports": [],
+  "note": "Static audit is not an independent penetration test.",
+  "python_files": 1654,
+  "python_lines": 186472,
+  "result": "pass",
+  "shell_true": 0,
+  "tls_disable_patterns": 0
+}

@@ -1,0 +1,36 @@
+{
+  "build": "375.0",
+  "code_fingerprint": "e751840137d66ae9f4114694d7452e34ad783615f0199b311d5b4fb1931598c9",
+  "holdout_metrics": {
+    "allow_recall": 1.0,
+    "backpressure_escape": 0,
+    "block_recall": 1.0,
+    "budget_escape": 0,
+    "correct_allow": 3,
+    "correct_block": 30,
+    "expected_allow": 3,
+    "expected_block": 30,
+    "pass_rate": 1.0,
+    "passed": 33,
+    "scope_expansion_escape": 0,
+    "special_gate_escape": 0,
+    "total": 33,
+    "unsafe_allow": 0,
+    "unsafe_allow_rate": 0.0,
+    "workflow_state_escape": 0
+  },
+  "probes": {
+    "backpressure": "pass",
+    "budget": "pass",
+    "opsec": "pass",
+    "plan": "pass",
+    "scope": "pass",
+    "source": "pass",
+    "special": "pass",
+    "workflow": "pass"
+  },
+  "result": "pass",
+  "tests_passed": 63,
+  "tests_total": 63,
+  "truthful_note": "Probe evidence is paired with pytest qualification; synthetic holdout is not external validation."
+}

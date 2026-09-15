@@ -1,0 +1,79 @@
+{
+  "benchmark": {
+    "cases": 2600,
+    "violations": 0
+  },
+  "build": "366.0",
+  "corporate_live_validation": {
+    "build": "366.0",
+    "code_fingerprint": "252b92f45d5bd3d65c95991751e86b0bf2f99d0cbfac3314c1fdf370a5c79a73",
+    "externally_validated": false,
+    "gleif": "not_run",
+    "network_requests_executed": 0,
+    "network_used": false,
+    "sec_edgar": "not_run",
+    "status": "not_run",
+    "truthful_note": "No external corporate connector was executed from the Build-366 qualification environment. Use tools/live_corporate_validate_366.py with explicit --confirm LIVE for operator-triggered validation."
+  },
+  "external_network_used_by_acceptance": false,
+  "gate": {
+    "build": "366.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_improvement_tested": true,
+      "benchmark_2600_no_violations": true,
+      "catalog_tested": true,
+      "crawler_improvement_tested": true,
+      "explicit_live_confirmation_tested": true,
+      "gleif_contract_tested": true,
+      "no_literal_true_gate": true,
+      "opsec_improvement_tested": true,
+      "receipt_provenance_tested": true,
+      "replay_truthfulness_tested": true,
+      "schema_within_gate": true,
+      "sec_contract_tested": true,
+      "source_review_gate_tested": true,
+      "test_evidence_current": true,
+      "version_coherent": true
+    },
+    "external_corporate_validation_complete": false,
+    "gleif_externally_validated": false,
+    "production_release_ready": false,
+    "sec_edgar_externally_validated": false,
+    "truthful_note": "Build 366 implements and qualifies governed live corporate-data execution for public no-auth GLEIF/SEC sources. Deterministic replay never counts as external validation; external status becomes true only from a real read-only transport receipt or explicit live-validation file."
+  },
+  "probes": {
+    "ai": true,
+    "benchmark": true,
+    "catalog": true,
+    "confirmation": true,
+    "crawler": true,
+    "gate": true,
+    "gleif": true,
+    "opsec": true,
+    "production_false": true,
+    "receipt": true,
+    "replay": true,
+    "review": true,
+    "schema": true,
+    "sec": true,
+    "truthful_live_status": true,
+    "version": true
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  }
+}

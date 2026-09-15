@@ -1,0 +1,184 @@
+{
+  "acceptance": {
+    "passed": 22,
+    "result": "pass",
+    "total": 22
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "build": "394.0",
+    "claims_created": 0,
+    "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+    "discussion_elapsed_seconds": 1.684073048000073,
+    "discussion_turns": 500,
+    "discussion_turns_per_second": 296.8992352165346,
+    "evidence_promotions_created": 0,
+    "grants_created": 0,
+    "hypotheses_created": 0,
+    "jobs_created": 0,
+    "legacy_kernel_hypotheses_created": 0,
+    "reasoning_plans_created": 0,
+    "result": "pass",
+    "revision_elapsed_seconds": 0.21843728199996804,
+    "versioned_revisions": 50,
+    "versioned_revisions_per_second": 228.89865476355504,
+    "violations": 0
+  },
+  "build": "394.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "394.0",
+    "eval_exec_calls": [],
+    "new_build394_direct_network_imports": [],
+    "new_core": "eagleeye_pro/phase17/discussion_revision394.py",
+    "python_code_lines": 205426,
+    "python_files": 1795,
+    "result": "pass"
+  },
+  "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+  "current_decision": "phase17_investigator_discussion_versioned_revision_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "394.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "append_only_lineage": true,
+      "argument_counterargument": true,
+      "build394_acceptance": true,
+      "build394_benchmark": true,
+      "build394_tests": true,
+      "evidence_metrics_immutable": true,
+      "human_revision_review": true,
+      "hypothesis_comparison": true,
+      "immutable_upstream": true,
+      "kernel_version_bridge": true,
+      "multi_turn_discussion": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth_acceptance": true,
+      "no_auto_upstream_mutation": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_identity_merge": true,
+      "no_live_confirmation": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "version_coherent": true,
+      "versioned_revision": true
+    },
+    "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+    "phase17_builds_completed": 14,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 394 adds a multi-turn investigator discussion workspace, side-by-side hypothesis comparison, and append-only versioned working-copy revisions for claims, hypotheses and reasoning plans. Reviewed revisions create new Phase-17 versions rather than overwriting Build-391/392 source objects. Evidence-derived metrics remain immutable; no truth probability, evidence promotion, GO/LIVE authority, identity merge, network fetch or execution authority is added."
+  },
+  "package_version": "394.0.0",
+  "phase17_builds_integrated": 14,
+  "predecessor_build": "393.0",
+  "predecessor_code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "build": "394.0",
+    "classification_note": "All 20 current-delta deviations are the historical version/package/current-launcher assertions from Builds 384-393 evaluated against current Build 394. No functional Phase-17 regression was observed.",
+    "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+    "expected_release_boundaries": 20,
+    "functional_regressions": 0,
+    "historical_360_380": "qualified predecessor receipt inherited; not re-executed in Build 394 delta qualification",
+    "inherited_381_383_passed": 85,
+    "integrated_current_delta_scope": "384-394",
+    "passed_unchanged": 158,
+    "phase17_chain_collected_with_inherited_381_383": 263,
+    "phase17_chain_passed_with_inherited_381_383": 243,
+    "phase17_files": {
+      "381": {
+        "expected_boundaries": 0,
+        "passed": 27,
+        "qualification": "inherited"
+      },
+      "382": {
+        "expected_boundaries": 0,
+        "passed": 30,
+        "qualification": "inherited"
+      },
+      "383": {
+        "expected_boundaries": 0,
+        "passed": 28,
+        "qualification": "inherited"
+      },
+      "384": {
+        "expected_boundaries": 2,
+        "passed": 7
+      },
+      "385": {
+        "expected_boundaries": 2,
+        "passed": 12
+      },
+      "386": {
+        "expected_boundaries": 2,
+        "passed": 14
+      },
+      "387": {
+        "expected_boundaries": 2,
+        "passed": 12
+      },
+      "388": {
+        "expected_boundaries": 2,
+        "passed": 10
+      },
+      "389": {
+        "expected_boundaries": 2,
+        "passed": 11
+      },
+      "390": {
+        "expected_boundaries": 2,
+        "passed": 14
+      },
+      "391": {
+        "expected_boundaries": 2,
+        "passed": 16
+      },
+      "392": {
+        "expected_boundaries": 2,
+        "passed": 20
+      },
+      "393": {
+        "expected_boundaries": 2,
+        "passed": 21
+      },
+      "394": {
+        "expected_boundaries": 0,
+        "passed": 21
+      }
+    },
+    "result": "pass",
+    "tests_collected": 178
+  },
+  "schema": {
+    "build394_tables_present": true,
+    "indexes": 174,
+    "integrity_check": "ok",
+    "tables": 224,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build": "394.0",
+    "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+    "failed": 0,
+    "passed": 21,
+    "result": "pass",
+    "suite": "tests/test_build394_integrated.py",
+    "total": 21
+  },
+  "truthful_note": "Build 394 adds a multi-turn investigator discussion workspace, side-by-side competing-hypothesis comparison, and append-only versioned working-copy revisions for claims, hypotheses and reasoning plans. Reviewed Build-393 dialogue outcomes may seed revisions. Build-391/392 source objects are not overwritten and evidence-derived corroboration metrics are immutable. No truth probability, automatic evidence promotion, GO/LIVE authority, identity merge, crawler dispatch, direct network fetch or execution authority is added.",
+  "wheel": {
+    "filename": "eagleeye_personosint_pro-394.0.0-py3-none-any.whl",
+    "sha256": "90f45c74d19783c6c3136695e206259adeeee3fbf40b29eb66ef81e79a6b6096",
+    "smoke_import": "pass"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "benchmark": {
+    "cases": 2800,
+    "violations": 0
+  },
+  "build": "367.0",
+  "external_network_used_by_acceptance": false,
+  "gate": {
+    "build": "367.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_improvement_tested": true,
+      "benchmark_2800_no_violations": true,
+      "catalog_tested": true,
+      "crawler_improvement_tested": true,
+      "explicit_live_confirmation_tested": true,
+      "no_literal_true_gate": true,
+      "opsec_improvement_tested": true,
+      "receipt_provenance_tested": true,
+      "replay_truthfulness_tested": true,
+      "schema_within_gate": true,
+      "source_review_gate_tested": true,
+      "ted_contract_tested": true,
+      "ted_plan_only_tested": true,
+      "test_evidence_current": true,
+      "usaspending_contract_tested": true,
+      "version_coherent": true
+    },
+    "external_public_money_validation_complete": false,
+    "production_release_ready": false,
+    "ted_notice_externally_validated": false,
+    "truthful_note": "Build 367 qualifies exact-record public-money retrieval through the existing governed GET/HEAD crawler. TED Search remains plan-only because its official search endpoint requires POST. Replay/fixture execution can never be promoted to external validation.",
+    "usaspending_externally_validated": false
+  },
+  "probes": {
+    "ai": true,
+    "benchmark": true,
+    "catalog": true,
+    "confirmation": true,
+    "crawler": true,
+    "gate": true,
+    "opsec": true,
+    "production_false": true,
+    "receipt": true,
+    "replay": true,
+    "review": true,
+    "schema": true,
+    "ted": true,
+    "ted_plan": true,
+    "truthful_live_status": true,
+    "usaspending": true,
+    "version": true
+  },
+  "public_money_live_validation": {
+    "build": "367.0",
+    "network_used": false,
+    "status": "not_run",
+    "ted_notice": "not_run",
+    "truthful_note": "No real USAspending or TED request was executed by the Build-367 qualification environment. Replay/contract tests do not count as external validation.",
+    "usaspending": "not_run"
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  }
+}

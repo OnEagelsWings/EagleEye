@@ -1,0 +1,27 @@
+{
+  "build": "392.0",
+  "checks": {
+    "argument_graph": true,
+    "counterevidence_issue": true,
+    "coverage_gap_preserved": true,
+    "epistemic_layers_preserved": true,
+    "external_actions_require_go": true,
+    "feed_boundaries": true,
+    "human_plan_review_required": true,
+    "kernel_notebook_bridge": true,
+    "no_direct_fetch": true,
+    "no_execution_authority": true,
+    "no_jobs_grants_promotions_or_legacy_hypotheses": true,
+    "plan_hash_valid": true,
+    "plan_reviewed": true,
+    "predecessor_391": true,
+    "schema_integrity": true,
+    "version_coherent": true,
+    "workspace_contested": true,
+    "workspace_hash_valid": true
+  },
+  "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+  "passed": 18,
+  "result": "pass",
+  "total": 18
+}

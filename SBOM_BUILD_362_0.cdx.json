@@ -1,0 +1,23 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "362.0.0"
+    }
+  },
+  "properties": [
+    {
+      "name": "eagleeye:postgres-external-validation",
+      "value": "not_run"
+    },
+    {
+      "name": "eagleeye:production-release-ready",
+      "value": "false"
+    }
+  ],
+  "specVersion": "1.5",
+  "version": 1
+}

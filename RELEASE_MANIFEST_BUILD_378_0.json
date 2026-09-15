@@ -1,0 +1,97 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 19,
+    "total": 19
+  },
+  "benchmark": {
+    "cases": 5200,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "378.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1664,
+    "python_lines": 188001,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "957c8665a0d6ce40289114de14daf4598e9d59c212de2685871cee15328c7eb8",
+  "continuous_crawler_expansion_370_380": true,
+  "crawler_increment_build": 378,
+  "external_validation": {
+    "multi_analyst_voice": "not_run",
+    "voice_crawler_network": "not_run",
+    "voice_stt": "not_run"
+  },
+  "local_validation": {
+    "external_network_used": false,
+    "voice_pipeline": "pass"
+  },
+  "package_version": "378.0.0",
+  "phase16_builds_completed": 18,
+  "production_release_ready": false,
+  "release_tree": {
+    "acceptance": "19/19 pass",
+    "benchmark": "5200/5200 pass",
+    "build377_regression": "42/43 pass; version assertion only",
+    "build378_tests": "44/44 pass",
+    "compileall": "pass"
+  },
+  "schema": {
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "voice_validation_new_tables": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "build377_regression": {
+      "expected_release_boundary_failures": 1,
+      "functional_regressions": 0,
+      "passed": 42,
+      "total": 43
+    },
+    "build378": {
+      "passed": 44,
+      "total": 44
+    }
+  },
+  "truthful_note": "Build 378 locally validates a review-first voice/transcript-to-crawler intent pipeline. No external STT service, multi-analyst voice workflow, or external crawler network validation was performed.",
+  "voice_live_validation": {
+    "audio_persisted": false,
+    "automatic_scope_expansion": false,
+    "automatic_source_selection": false,
+    "case_workflow_delegation": true,
+    "direct_voice_network_authority": false,
+    "edit_requires_reconfirmation": true,
+    "explicit_source_selection": true,
+    "fresh_preflight_before_enqueue": true,
+    "preview_hash_provenance": true,
+    "provider_gate_separate": true,
+    "push_to_talk_local_stt_reused": true,
+    "request_budget_preview": true,
+    "tor_gate_separate": true,
+    "voice_crawler_intent_preview": true
+  },
+  "wheel": {
+    "name": "eagleeye_personosint_pro-378.0.0-py3-none-any.whl",
+    "package_version": "378.0.0",
+    "runtime_build": "378.0",
+    "schema_version": "378.0",
+    "sha256": "8ad3931b76d768fd0409d27c1a867a218015a96c57bba772fafa0c187abc032c",
+    "size_bytes": 3871419,
+    "smoke_import": "pass"
+  }
+}

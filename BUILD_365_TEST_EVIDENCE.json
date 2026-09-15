@@ -1,0 +1,21 @@
+{
+  "build": "365.0",
+  "code_fingerprint": "022bb3f80e892c5721d6f0dc76922f7776962bb547a946a0eaea4bfa431b435a",
+  "probes": {
+    "ai": "pass",
+    "crawler": "pass",
+    "incidents": "pass",
+    "metrics": "pass",
+    "operations": "pass",
+    "opsec": "pass",
+    "trace": "pass",
+    "workers": "pass"
+  },
+  "result": "pass",
+  "tests_passed": 22,
+  "tests_total": 22,
+  "truthful_external": {
+    "external_multi_user_operations": false,
+    "production_release_ready": false
+  }
+}

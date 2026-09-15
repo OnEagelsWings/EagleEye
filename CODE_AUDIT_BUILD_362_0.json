@@ -1,0 +1,11 @@
+{
+  "ast_errors": 0,
+  "eval_exec": 0,
+  "new_module_direct_network_client_imports": [],
+  "new_module_os_mutations": 0,
+  "new_module_subprocess_calls": 0,
+  "new_module_subprocess_import": false,
+  "python_files": 1512,
+  "python_lines": 169437,
+  "shell_true": 0
+}

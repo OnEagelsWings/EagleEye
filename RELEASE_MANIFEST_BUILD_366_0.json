@@ -1,0 +1,53 @@
+{
+  "artifact_hashes": {
+    "acceptance": "3aa6cc68c7f48aa21af9b274914033c765eb4af2974d805924e26265e9139f8a",
+    "benchmark": "7d2c71dec159cafc1b63c34a5f6d3dc0213eb2cfdf28ae21ee93b971202a3712",
+    "code_audit": "2b35389b2c09ea77b32428c35446ba0b223432cfda63bd005060d4095b9d4960",
+    "live_validation": "4e352b5f0c2344e97aa327dac0622037ce29d26f744a9efaa13d5c2b46c9af63",
+    "test_evidence": "c31e685bf9925dd9b3986009f7df79b7f982cc405511ecf19d2e0689dcce5ba6"
+  },
+  "artifacts": {
+    "acceptance": "ACCEPTANCE_RESULTS_BUILD_366_0.json",
+    "benchmark": "BENCHMARK_BUILD_366_CORPORATE.json",
+    "code_audit": "CODE_AUDIT_BUILD_366_0.json",
+    "live_validation": "LIVE_VALIDATION_BUILD_366_CORPORATE.json",
+    "runtime_manifest": "RUNTIME_MANIFEST_BUILD_366_0.json",
+    "sbom": "SBOM_BUILD_366_0.cdx.json",
+    "test_evidence": "BUILD_366_TEST_EVIDENCE.json"
+  },
+  "benchmark": {
+    "cases": 2600,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "366.0",
+  "build_acceptance_ready": true,
+  "code_fingerprint": "252b92f45d5bd3d65c95991751e86b0bf2f99d0cbfac3314c1fdf370a5c79a73",
+  "compileall": "pass",
+  "external_corporate_validation_complete": false,
+  "gleif_external_validation": "not_run",
+  "network_used_by_acceptance": false,
+  "network_used_by_benchmark": false,
+  "package_version": "366.0.0",
+  "phase": "16",
+  "production_release_ready": false,
+  "regression_build365": "21/22 (1 expected version-boundary assertion)",
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1863680,
+    "tables": 141,
+    "triggers": 8
+  },
+  "schema_gate": "pass",
+  "sec_edgar_external_validation": "not_run",
+  "tests": {
+    "passed": 26,
+    "total": 26
+  },
+  "truthful_note": "Build 366 qualifies governed corporate-data execution and replay/provenance truthfulness. GLEIF and SEC app-runtime external validation remain not_run; replay cannot set externally_validated=true.",
+  "wheel": {
+    "file": "eagleeye_personosint_pro-366.0.0-py3-none-any.whl",
+    "sha256": "c37dde66df103cbb7427d6c73951d4b0c255050e052ae556c7ca6d13719ad3f0"
+  }
+}

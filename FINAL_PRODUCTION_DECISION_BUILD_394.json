@@ -1,0 +1,8 @@
+{
+  "build": "394.0",
+  "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+  "decision": "professional_pilot_only",
+  "production_candidate": false,
+  "production_release_ready": false,
+  "reason": "Build-394 internal/integrated qualification passed, but inherited external qualification gaps from the professional-pilot line remain unresolved."
+}

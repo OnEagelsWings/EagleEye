@@ -1,0 +1,48 @@
+{
+  "ast_errors": [],
+  "build": "392.0",
+  "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+  "eval_exec_calls": [],
+  "new_module_direct_network_imports": [],
+  "python_files": 1779,
+  "python_lines": 202346,
+  "release_gate": {
+    "build": "392.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "argument_graph": true,
+      "build392_acceptance": true,
+      "build392_benchmark": true,
+      "build392_tests": true,
+      "case_reasoning_workspace": true,
+      "epistemic_layers_preserved": true,
+      "human_plan_review_required": true,
+      "kernel_notebook_plan_bridge": true,
+      "next_plan_proposals": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "research_gap_reasoning": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 12,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 392 creates a deterministic case reasoning workspace over reviewed Phase-17 claims, counterevidence, hypotheses and research gaps. It can propose and human-review a next-investigation plan and mirror an approved plan into the Investigation Kernel notebook. It does not assign truth probability, grant GO, execute research, promote evidence, merge identities, or create network requests."
+  },
+  "result": "pass",
+  "schema": {
+    "build392_tables_present": true,
+    "indexes": 166,
+    "integrity_check": "ok",
+    "tables": 212,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

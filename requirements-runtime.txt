@@ -1,0 +1,17 @@
+# EagleEye PersonOSINT Pro Build 349.0 canonical runtime dependencies
+pydantic>=2.10,<3
+SQLAlchemy>=2.0,<3
+alembic>=1.14,<2
+fastapi>=0.128,<1
+starlette>=0.50,<0.51
+uvicorn>=0.34,<1
+cryptography>=46.0,<47
+Pillow>=12.0,<13
+opencv-python-headless>=4.10,<5
+reportlab>=4,<5
+argon2-cffi>=25.1,<26
+python-multipart>=0.0.18,<1
+PyMuPDF>=1.26,<2
+pypdf>=5.9,<7
+pdfplumber>=0.11,<1
+pytesseract>=0.3.13,<1

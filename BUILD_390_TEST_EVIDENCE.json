@@ -1,0 +1,9 @@
+{
+  "build": "390.0",
+  "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+  "functional_regressions": 0,
+  "passed": 16,
+  "pytest_output": "................                                                         [100%]\n16 passed in 3.89s",
+  "result": "pass",
+  "total": 16
+}

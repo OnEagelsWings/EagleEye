@@ -1,0 +1,21 @@
+{
+  "build": "377.0",
+  "cases": 5000,
+  "categories": {
+    "dedup": 500,
+    "epistemics": 500,
+    "handoff": 500,
+    "no_auto_reverse": 500,
+    "no_identity": 500,
+    "no_scene_confirmation": 500,
+    "opsec_boundary": 500,
+    "pressure": 500,
+    "provenance": 500,
+    "truthful_release": 500
+  },
+  "code_fingerprint": "34544786842cf7d7c09e29e6e20a346fcbf7c46869ef467667517872a2b5c411",
+  "external_validation_performed": false,
+  "network_used": false,
+  "result": "pass",
+  "violations": 0
+}

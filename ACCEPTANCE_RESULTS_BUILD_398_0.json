@@ -1,0 +1,33 @@
+{
+  "build": "398.0",
+  "checks": {
+    "baseline_frozen": true,
+    "exact_external_import": true,
+    "exact_freeze": true,
+    "external_pending_truthful": true,
+    "frozen": true,
+    "integrity": true,
+    "minimum_50": true,
+    "no_auto_evidence": true,
+    "no_auto_go": true,
+    "no_execution": true,
+    "no_network": true,
+    "no_truth_training": true,
+    "one_external_case_not_enough": true,
+    "reference_review_not_external": true,
+    "reference_runs_60": true,
+    "reference_scores": true,
+    "requires_human": true,
+    "requires_real_model": true,
+    "schema": true,
+    "sixty_distinct": true,
+    "version": true
+  },
+  "checks_passed": 21,
+  "checks_total": 21,
+  "code_fingerprint": "6eba48fe6b47ea6a6217ae7b23c238fb9e6540ea11dff72d76292736bd6abcfd",
+  "external_holdout_qualified": false,
+  "human_reviewed_cases_in_release_evidence": 0,
+  "real_model_runs_in_release_evidence": 0,
+  "result": "pass"
+}

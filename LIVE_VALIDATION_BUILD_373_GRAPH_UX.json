@@ -1,0 +1,36 @@
+{
+  "build": "373.0",
+  "checks": {
+    "comparison_edge_live": true,
+    "crawler_provenance_edge_live": true,
+    "focus_offline_live": true,
+    "graph_projection_live": true,
+    "navigation_bounded_live": true,
+    "navigation_tag_live": true,
+    "no_auto_merge": true,
+    "no_external_network": true,
+    "plan_allowed_live": true
+  },
+  "code_fingerprint": "4c060e2ba0d8755d1c7067bbac1e7897b55d57f31a01563015200616119e9690",
+  "external_graph_navigation_validation": "not_run",
+  "external_graph_ux_validation": "not_run",
+  "external_network_used": false,
+  "graph_metrics": {
+    "crawler_entity_leads": 2,
+    "edges": 3,
+    "entity_nodes": 2,
+    "nodes": 3,
+    "review_candidate_edges": 3,
+    "reviewed_entity_links": 0,
+    "source_nodes": 1,
+    "strong_conflict_veto_edges": 0
+  },
+  "local_graph_workflow_validation": "pass",
+  "navigation_plan": {
+    "allowed": true,
+    "estimated_max_requests": 5,
+    "max_total_requests": 30
+  },
+  "result": "pass",
+  "truthful_note": "StaticTransport plus local queueing only. No professional analyst usability study and no external graph-navigation network validation were performed."
+}

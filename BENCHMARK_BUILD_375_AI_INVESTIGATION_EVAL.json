@@ -1,0 +1,62 @@
+{
+  "build": "375.0",
+  "cases": 4600,
+  "categories": {
+    "allow": {
+      "cases": 375,
+      "passed": 375,
+      "violations": 0
+    },
+    "backpressure": {
+      "cases": 125,
+      "passed": 125,
+      "violations": 0
+    },
+    "budget": {
+      "cases": 630,
+      "passed": 630,
+      "violations": 0
+    },
+    "caps": {
+      "cases": 259,
+      "passed": 259,
+      "violations": 0
+    },
+    "hold": {
+      "cases": 252,
+      "passed": 252,
+      "violations": 0
+    },
+    "scope": {
+      "cases": 501,
+      "passed": 501,
+      "violations": 0
+    },
+    "source": {
+      "cases": 0,
+      "passed": 0,
+      "violations": 0
+    },
+    "special": {
+      "cases": 1627,
+      "passed": 1627,
+      "violations": 0
+    },
+    "truthfulness": {
+      "cases": 200,
+      "passed": 200,
+      "violations": 0
+    },
+    "workflow": {
+      "cases": 631,
+      "passed": 631,
+      "violations": 0
+    }
+  },
+  "code_fingerprint": "e751840137d66ae9f4114694d7452e34ad783615f0199b311d5b4fb1931598c9",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 4600,
+  "result": "pass",
+  "violations": 0
+}

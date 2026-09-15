@@ -1,0 +1,71 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 19,
+    "result": "pass",
+    "total": 19
+  },
+  "benchmark": {
+    "cases": 4400,
+    "passed": 4400,
+    "violations": 0
+  },
+  "build": "374.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1626,
+    "python_lines": 183937,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "6094a86f3d6eee21c492fe59452f08eb736f26e4e4129bfcd016eaffdd4353bf",
+  "continuous_crawler_program_370_380": true,
+  "crawler_increment": 374,
+  "external_case_workflow_validation": "not_run",
+  "external_multi_analyst_handoff_validation": "not_run",
+  "local_case_workflow_validation": "pass",
+  "package": "374.0.0",
+  "phase": 16,
+  "phase_progress": "14/20",
+  "production_release_ready": false,
+  "regression_build373": {
+    "expected_boundary_failures": 3,
+    "passed": 55,
+    "result": "expected_release_boundary_only",
+    "total": 58
+  },
+  "result": "pass",
+  "schema": {
+    "case_workflow_new_tables": 0,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "passed": 66,
+    "total": 66
+  },
+  "truthful_note": "Local deterministic case-workflow, handoff and crawler qualification does not constitute external multi-analyst workflow or production-network validation.",
+  "wheel": {
+    "metadata_version": "374.0.0",
+    "name": "eagleeye_personosint_pro-374.0.0-py3-none-any.whl",
+    "runtime_build": "374.0",
+    "schema_version": "374.0",
+    "sha256": "8cc36099d589587b461093463036087fd8e7701003731ef14f2c4756dee09827",
+    "size_bytes": 3825060,
+    "smoke_import": "pass"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0bdf2d720186fa2ef19e6cdf05fab9a5855a5a7a060d14fabeb79848feeb301c"
+        }
+      ],
+      "name": "eagleeye-personosint-pro",
+      "type": "library",
+      "version": "390.0.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "EagleEye Intelligence Platform",
+      "type": "application",
+      "version": "390.0.0"
+    }
+  },
+  "serialNumber": "urn:uuid:913062439e80c0f98ca311475ba47463",
+  "specVersion": "1.5",
+  "version": 1
+}

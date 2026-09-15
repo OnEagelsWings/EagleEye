@@ -1,0 +1,114 @@
+{
+  "acceptance": {
+    "passed": 15,
+    "result": "pass",
+    "total": 15
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "automatic_go_grants": 0,
+    "build": "388.0",
+    "cases": 1000,
+    "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+    "elapsed_seconds": 0.3221,
+    "network_fetches_by_wave_controller": 0,
+    "passed": 1000,
+    "reconciliations_per_second": 3104.32,
+    "result": "pass",
+    "violations": 0,
+    "worker_claims_by_wave_controller": 0
+  },
+  "build": "388.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "388.0",
+    "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+    "eval_exec_calls": [],
+    "new388_network_imports": [],
+    "python_files": 1747,
+    "python_lines": 198438,
+    "result": "pass"
+  },
+  "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+  "current_decision": "phase17_governed_research_waves_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "388.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build388_acceptance": true,
+      "build388_benchmark": true,
+      "build388_tests": true,
+      "coverage_feedback": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_live": true,
+      "no_auto_scope_expansion": true,
+      "no_auto_worker_claim": true,
+      "no_direct_fetch": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "sequential_wave_governance": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 8,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 388 governs sequential research-wave continuation from completed Build-387 dispatches. It observes worker results and artifacts, feeds evidence-linked coverage, and requires explicit human advance before another GO/LIVE cycle. It does not auto-issue GO, auto-confirm LIVE, claim workers, fetch networks, or auto-promote raw artifacts to Evidence Vault evidence."
+  },
+  "package_version": "388.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384,
+    385,
+    386,
+    387,
+    388
+  ],
+  "predecessor_build": "387.0",
+  "predecessor_code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundary_failures": 8,
+    "functional_regressions": 0,
+    "historical_360_380_receipt": "RELEASE_MANIFEST_BUILD_387_0.json",
+    "phase17_passed": 57,
+    "phase17_total": 65
+  },
+  "schema": {
+    "build388_tables_present": true,
+    "indexes": 146,
+    "integrity_check": "ok",
+    "tables": 186,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build": "388.0",
+    "build388_tests": {
+      "passed": 12,
+      "total": 12
+    },
+    "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+    "phase17_regression": {
+      "expected_release_boundaries": 8,
+      "functional_regressions": 0,
+      "passed": 57,
+      "total": 65
+    },
+    "result": "pass"
+  },
+  "truthful_note": "Build 388 closes the first governed research-wave feedback loop. It observes completed Build-387 dispatches, returns stored artifact provenance into coverage, and requires explicit human advance before a new GO/LIVE cycle. It performs no direct network fetch, worker claim, automatic GO/LIVE, or automatic Evidence Vault promotion and does not claim general production readiness.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-388.0.0-py3-none-any.whl",
+    "sha256": "0831c1fece24b63aaae7eda915a946dc8970efb6c0bee0400b45227b2fa0c28f",
+    "size_bytes": 3969243,
+    "smoke_import": "pass"
+  }
+}

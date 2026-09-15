@@ -1,0 +1,57 @@
+{
+  "acceptance": {
+    "passed": 20,
+    "result": "pass",
+    "total": 20
+  },
+  "benchmark": {
+    "cases": 100,
+    "consumed_grants": 100,
+    "dispatches": 100,
+    "network_fetches_executed_by_executor": 0,
+    "result": "pass",
+    "unique_jobs": 100,
+    "violations": 0,
+    "worker_attempts": 0
+  },
+  "build": "387.0",
+  "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "gate": {
+    "build": "387.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "atomic_dispatch": true,
+      "build387_acceptance": true,
+      "build387_benchmark": true,
+      "build387_tests": true,
+      "executor_no_direct_fetch": true,
+      "executor_no_worker_claim": true,
+      "no_auto_scope_expansion": true,
+      "no_host_security_mutation": true,
+      "one_time_grant_consumption": true,
+      "phase16_connector_gate_reuse": true,
+      "phase17_predecessor_gate": true,
+      "post_reservation_revalidation": true,
+      "schema_integrity": true,
+      "version_coherent": true,
+      "workflow_budget_recheck": true
+    },
+    "phase17_builds_completed": 7,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 387 consumes an explicit Build-386 GO grant exactly once and enqueues already-reviewed read-only Phase-16 connector jobs only after exact LIVE confirmation and last-moment revalidation. The executor itself performs no network fetch and does not claim a worker lease."
+  },
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "result": "pass",
+  "schema": {
+    "build387_tables_present": true,
+    "indexes": 144,
+    "integrity_check": "ok",
+    "tables": 183,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "truthful_note": "Build 387 qualifies the controlled enqueue boundary only. It performs no network fetch, claims no worker lease, and does not promote external connector validation or general production readiness."
+}

@@ -1,0 +1,2 @@
+from eagleeye.application.build176.service import Build176MultilingualContentIntelligenceService as MultilingualContentIntelligenceService
+__all__=['MultilingualContentIntelligenceService']

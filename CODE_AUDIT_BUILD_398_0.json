@@ -1,0 +1,20 @@
+{
+  "ast_errors": 0,
+  "build": "398.0",
+  "code_fingerprint": "6eba48fe6b47ea6a6217ae7b23c238fb9e6540ea11dff72d76292736bd6abcfd",
+  "direct_network_imports_build398_core": [],
+  "eval_exec_calls": 0,
+  "python_files": 1827,
+  "python_lines": 209697,
+  "result": "pass",
+  "schema": {
+    "build398_tables_present": true,
+    "indexes": 190,
+    "integrity_check": "ok",
+    "tables": 247,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "shell_true_calls": 0
+}

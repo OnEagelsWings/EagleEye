@@ -1,0 +1,2 @@
+from eagleeye.application.build196.service import Build196CrossCaseIntelligenceService as CrossCaseIntelligenceService
+__all__=['CrossCaseIntelligenceService']

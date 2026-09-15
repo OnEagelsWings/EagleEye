@@ -1,0 +1,12 @@
+{
+  "assessments_per_second": 767.1742612513394,
+  "build": "390.0",
+  "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+  "elapsed_seconds": 1.303484815000047,
+  "evidence_promotions_created": 0,
+  "grants_created": 0,
+  "iterations": 1000,
+  "jobs_created": 0,
+  "result": "pass",
+  "violations": 0
+}

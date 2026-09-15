@@ -1,0 +1,64 @@
+{
+  "build": "393.0",
+  "classification_note": "All 18 deviations are historical version/package/launcher assertions from Builds 384-392 evaluated against current Build 393. No functional Phase-17 regression was observed.",
+  "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+  "expected_release_boundaries": 18,
+  "functional_regressions": 0,
+  "passed_unchanged": 224,
+  "phase17_files": {
+    "381": {
+      "expected_boundaries": 0,
+      "passed": 27
+    },
+    "382": {
+      "expected_boundaries": 0,
+      "passed": 30
+    },
+    "383": {
+      "expected_boundaries": 0,
+      "passed": 28
+    },
+    "384": {
+      "expected_boundaries": 2,
+      "passed": 7
+    },
+    "385": {
+      "expected_boundaries": 2,
+      "passed": 12
+    },
+    "386": {
+      "expected_boundaries": 2,
+      "passed": 14
+    },
+    "387": {
+      "expected_boundaries": 2,
+      "passed": 12
+    },
+    "388": {
+      "expected_boundaries": 2,
+      "passed": 10
+    },
+    "389": {
+      "expected_boundaries": 2,
+      "passed": 11
+    },
+    "390": {
+      "expected_boundaries": 2,
+      "passed": 14
+    },
+    "391": {
+      "expected_boundaries": 2,
+      "passed": 16
+    },
+    "392": {
+      "expected_boundaries": 2,
+      "passed": 20
+    },
+    "393": {
+      "expected_boundaries": 0,
+      "passed": 23
+    }
+  },
+  "result": "pass",
+  "tests_collected": 242
+}

@@ -1,0 +1,24 @@
+{
+  "build": "366.0",
+  "cases": 2600,
+  "category_pass": {
+    "ai_minimization": 260,
+    "case_isolation": 260,
+    "catalog_governance": 260,
+    "crawler_boundary": 260,
+    "gleif_receipt": 260,
+    "opsec_boundary": 260,
+    "release_boundary": 260,
+    "replay_truthfulness": 260,
+    "sec_receipt": 260,
+    "truthful_external": 260
+  },
+  "code_fingerprint": "252b92f45d5bd3d65c95991751e86b0bf2f99d0cbfac3314c1fdf370a5c79a73",
+  "external_validation_performed": false,
+  "integrated_corporate_replay_runs": 2,
+  "network_used_by_benchmark": false,
+  "result": "pass",
+  "truthful_scope": "Two governed deterministic corporate replay runs exercised the real crawler/object/parser/receipt path, followed by a 2,600-case invariant matrix. Replay is not external validation.",
+  "violation_details": [],
+  "violations": 0
+}

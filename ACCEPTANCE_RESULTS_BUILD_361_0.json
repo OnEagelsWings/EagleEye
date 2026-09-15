@@ -1,0 +1,55 @@
+{
+  "build": "361.0",
+  "checks": {
+    "ai": true,
+    "crawler": true,
+    "gate": true,
+    "opsec": true,
+    "osint": true,
+    "phase16": true,
+    "schema": true,
+    "truthfulness": true,
+    "version": true
+  },
+  "external_connections_opened": 0,
+  "gate": {
+    "build": "361.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_go_autonomy_tested": true,
+      "benchmark_1500_no_violations": true,
+      "live_osint_contract_tested": true,
+      "no_literal_true_gate": true,
+      "opsec_autonomous_defense_tested": true,
+      "phase16_targets_tested": true,
+      "schema_within_gate": true,
+      "test_evidence_current": true,
+      "version_coherent": true
+    },
+    "external_validation_complete": false,
+    "production_release_ready": false,
+    "truthful_note": "Build 361 establishes the Phase-16 pilot/external-validation baseline. No external service, live OSINT provider, pentest or professional pilot is claimed externally validated by this build."
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "version": {
+    "coherent": true,
+    "package_version": "361.0.0",
+    "runtime_build": "361.0",
+    "schema_version": "361.0"
+  }
+}

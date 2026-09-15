@@ -1,0 +1,27 @@
+{
+  "build": "385.0",
+  "checks": {
+    "arbitrary_url_execution_blocked": true,
+    "automatic_crawl_enqueue_blocked": true,
+    "automatic_scope_expansion_blocked": true,
+    "automatic_source_approval_blocked": true,
+    "capability_matrix_seeded": true,
+    "confirmed_wave_compiles_ready_source": true,
+    "credential_injection_blocked": true,
+    "execution_authority_still_false": true,
+    "historical_build384_receipt": true,
+    "network_execution_not_added": true,
+    "packet_nonexecuting": true,
+    "phase15_review_gate_preserved": true,
+    "preparation_creates_no_jobs": true,
+    "preparation_creates_no_network_requests": true,
+    "preparation_creates_pending_canonical_source": true,
+    "prepare_exact_confirmation_required": true,
+    "schema_within_phase17_gate": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "passed": 18,
+  "result": "pass",
+  "total": 18
+}

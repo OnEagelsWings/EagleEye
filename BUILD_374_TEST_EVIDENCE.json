@@ -1,0 +1,24 @@
+{
+  "build": "374.0",
+  "code_fingerprint": "6094a86f3d6eee21c492fe59452f08eb736f26e4e4129bfcd016eaffdd4353bf",
+  "external_validation_performed": false,
+  "probes": {
+    "ai": "pass",
+    "budgets": "pass",
+    "crawler": "pass",
+    "handoff": "pass",
+    "manual_crawl": "pass",
+    "navigation": "pass",
+    "opsec": "pass",
+    "pause_resume": "pass",
+    "state": "pass",
+    "truthfulness": "pass",
+    "web": "pass"
+  },
+  "production_release_ready": false,
+  "result": "pass",
+  "tests": {
+    "passed": 66,
+    "total": 66
+  }
+}

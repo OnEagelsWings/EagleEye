@@ -1,0 +1,89 @@
+{
+  "benchmark": {
+    "cases": 2400,
+    "violations": 0
+  },
+  "build": "365.0",
+  "external_network_used_by_acceptance": false,
+  "gate": {
+    "build": "365.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_improvement_tested": true,
+      "benchmark_2400_no_violations": true,
+      "crawler_improvement_tested": true,
+      "incident_console_tested": true,
+      "local_operations_live_validated": true,
+      "metrics_tested": true,
+      "no_literal_true_gate": true,
+      "operations_console_tested": true,
+      "opsec_improvement_tested": true,
+      "schema_within_gate": true,
+      "test_evidence_current": true,
+      "trace_isolation_tested": true,
+      "version_coherent": true,
+      "worker_health_tested": true
+    },
+    "external_multi_user_operations_validated": false,
+    "local_operations_live_validated": true,
+    "production_release_ready": false,
+    "truthful_note": "Build 365 live-validates local operational observability and containment against the real SQLite reference runtime. External team operations/load validation remains not_run and is not inferred from local evidence."
+  },
+  "local_operations_validation": {
+    "build": "365.0",
+    "checks": {
+      "ai_incident_hold_live": true,
+      "audit_chain_live": true,
+      "case_metrics_live": true,
+      "claimed_expected_case_job": true,
+      "critical_incident_live": true,
+      "opsec_case_containment_live": true,
+      "other_case_unchanged": true,
+      "readiness_truthful": true,
+      "trace_case_isolation_live": true,
+      "worker_lease_live": true
+    },
+    "code_fingerprint": "022bb3f80e892c5721d6f0dc76922f7776962bb547a946a0eaea4bfa431b435a",
+    "external_multi_user_operations_validated": false,
+    "external_network_used": false,
+    "externally_validated": false,
+    "local_sqlite_operations_live_validated": true,
+    "network_requests_executed": 0,
+    "queue_trace_incident_flow_live_validated": true,
+    "status": "pass",
+    "truthful_note": "Real local SQLite/job/audit runtime paths were exercised. No external network, remote client, load test or production environment was used."
+  },
+  "probes": {
+    "ai": true,
+    "benchmark": true,
+    "crawler": true,
+    "gate": true,
+    "incidents": true,
+    "local_live_operations": true,
+    "metrics": true,
+    "operations": true,
+    "opsec": true,
+    "production_false": true,
+    "schema": true,
+    "trace": true,
+    "truthful_external": true,
+    "version": true,
+    "workers": true
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  }
+}

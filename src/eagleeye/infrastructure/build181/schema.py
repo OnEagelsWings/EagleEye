@@ -1,0 +1,17 @@
+from __future__ import annotations
+from typing import Any
+SCHEMA_181=r'''
+CREATE TABLE IF NOT EXISTS workspace_source_profiles_181(source_id TEXT PRIMARY KEY,title TEXT NOT NULL,category TEXT NOT NULL,access_mode TEXT NOT NULL,base_url TEXT NOT NULL,docs_url TEXT NOT NULL,constraints_json TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS workspace_members_181(member_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,principal TEXT NOT NULL,role TEXT NOT NULL,status TEXT NOT NULL,added_by TEXT NOT NULL,created_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL,UNIQUE(case_id,principal));
+CREATE TABLE IF NOT EXISTS workspace_tasks_181(task_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,title TEXT NOT NULL,task_type TEXT NOT NULL,assignee TEXT,status TEXT NOT NULL,priority TEXT NOT NULL,due_at TEXT,evidence_refs_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS workspace_reviews_181(review_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,target_type TEXT NOT NULL,target_id TEXT NOT NULL,reviewer TEXT NOT NULL,decision TEXT NOT NULL,confidence REAL,note TEXT NOT NULL,created_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL,UNIQUE(target_type,target_id,reviewer));
+CREATE TABLE IF NOT EXISTS workspace_conflicts_181(conflict_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,target_type TEXT NOT NULL,target_id TEXT NOT NULL,status TEXT NOT NULL,decisions_json TEXT NOT NULL,resolution TEXT,resolved_by TEXT,created_at TEXT NOT NULL,resolved_at TEXT,payload_sha256 TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS detector_calibrations_181(calibration_id TEXT PRIMARY KEY,detector_name TEXT NOT NULL,detector_version TEXT NOT NULL,media_type TEXT NOT NULL,threshold REAL NOT NULL,weight REAL NOT NULL,false_positive_rate REAL,false_negative_rate REAL,benchmark_ref TEXT NOT NULL,status TEXT NOT NULL,approved_by TEXT NOT NULL,created_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL,UNIQUE(detector_name,detector_version,media_type));
+CREATE TABLE IF NOT EXISTS detector_runs_181(run_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,job_id TEXT NOT NULL,detector_name TEXT NOT NULL,detector_version TEXT NOT NULL,score REAL NOT NULL,threshold REAL NOT NULL,weight REAL NOT NULL,decision TEXT NOT NULL,details_json TEXT NOT NULL,created_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS authenticity_ensembles_181(ensemble_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,job_id TEXT NOT NULL,weighted_score REAL NOT NULL,agreement REAL NOT NULL,positive_detectors INTEGER NOT NULL,total_detectors INTEGER NOT NULL,status TEXT NOT NULL,limitations_json TEXT NOT NULL,created_at TEXT NOT NULL,payload_sha256 TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS workspace_events_181(event_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,event_type TEXT NOT NULL,details_json TEXT NOT NULL,created_at TEXT NOT NULL,previous_sha256 TEXT NOT NULL,event_sha256 TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_workspace_tasks_181 ON workspace_tasks_181(case_id,status,priority,due_at);
+CREATE INDEX IF NOT EXISTS idx_workspace_reviews_181 ON workspace_reviews_181(target_type,target_id,decision);
+'''
+def ensure_build181_schema(db:Any)->None:
+ db.conn.executescript(SCHEMA_181);db.conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('schema_version','181.0')");db.conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('application_build','181.0')");db.conn.commit()

@@ -1,0 +1,17 @@
+{
+  "ast_errors": [],
+  "build": "365.0",
+  "eval_exec_calls": [],
+  "new_build365_modules_direct_network_or_subprocess_imports": 0,
+  "python_files": 1541,
+  "python_lines": 173571,
+  "release_files": 1642,
+  "result": "pass",
+  "shell_true_calls": [],
+  "subprocess_import_files": 13,
+  "tls_disable_calls": [],
+  "tls_disable_pattern_counts": {
+    "ssl_unverified_context": 0,
+    "urllib_no_proxy_context": 0
+  }
+}

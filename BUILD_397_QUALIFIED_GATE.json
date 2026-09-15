@@ -1,0 +1,28 @@
+{
+  "build": "397.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "build397_acceptance": true,
+    "build397_benchmark": true,
+    "build397_tests": true,
+    "explicit_stop_decisions": true,
+    "no_active_state_auto_mutation": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go": true,
+    "no_auto_truth": true,
+    "no_direct_fetch": true,
+    "no_execution_authority": true,
+    "no_live_confirmation": true,
+    "no_truth_probability": true,
+    "phase17_predecessor_gate": true,
+    "precise_evidence_citations": true,
+    "review_required_recommendations": true,
+    "schema_integrity": true,
+    "source_independence_aware": true,
+    "support_counterevidence_separated": true,
+    "version_coherent": true
+  },
+  "phase17_builds_completed": 17,
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true
+}

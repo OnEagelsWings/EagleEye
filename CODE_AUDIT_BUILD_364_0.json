@@ -1,0 +1,16 @@
+{
+  "ast_errors": [],
+  "eval_exec_calls": 0,
+  "new_364_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build364/service.py": [],
+    "src/eagleeye/interfaces/web/app364.py": [],
+    "src/eagleeye/phase16/remote_team364.py": []
+  },
+  "proxyhandler_empty_matches": 2,
+  "python_files": 1532,
+  "python_lines": 173825,
+  "release_files": 1622,
+  "shell_true_calls": 0,
+  "subprocess_attribute_calls": 20,
+  "tls_disable_text_matches": 0
+}

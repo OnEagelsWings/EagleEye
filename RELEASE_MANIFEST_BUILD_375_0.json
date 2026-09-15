@@ -1,0 +1,71 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 24,
+    "result": "pass",
+    "total": 24
+  },
+  "benchmark": {
+    "cases": 4600,
+    "passed": 4600,
+    "violations": 0
+  },
+  "build": "375.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1636,
+    "python_lines": 184500,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "e751840137d66ae9f4114694d7452e34ad783615f0199b311d5b4fb1931598c9",
+  "continuous_crawler_program_370_380": true,
+  "crawler_increment": 375,
+  "external_ai_investigation_eval": "not_run",
+  "external_real_case_planning_eval": "not_run",
+  "local_ai_planning_validation": "pass",
+  "package": "375.0.0",
+  "phase": 16,
+  "phase_progress": "15/20",
+  "production_release_ready": false,
+  "regression_build374": {
+    "expected_boundary_failures": 3,
+    "passed": 63,
+    "result": "expected_release_boundary_only",
+    "total": 66
+  },
+  "result": "pass",
+  "schema": {
+    "ai_eval_new_tables": 0,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "passed": 63,
+    "total": 63
+  },
+  "truthful_note": "Synthetic/local AI crawl-planning qualification does not constitute external model evaluation, real-case planning accuracy or professional analyst validation.",
+  "wheel": {
+    "metadata_version": "375.0.0",
+    "name": "eagleeye_personosint_pro-375.0.0-py3-none-any.whl",
+    "runtime_build": "375.0",
+    "schema_version": "375.0",
+    "sha256": "8e3ff5f90a0d5533436698a05373dd9eca4258e53d9e5d964c9770b36befed27",
+    "size_bytes": 3835285,
+    "smoke_import": "pass"
+  }
+}

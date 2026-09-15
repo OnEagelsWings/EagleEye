@@ -1,0 +1,3 @@
+from eagleeye.application.build197.service import Build197AdaptiveWorkspaceService
+AdaptiveWorkspaceService=Build197AdaptiveWorkspaceService
+__all__=['AdaptiveWorkspaceService','Build197AdaptiveWorkspaceService']

@@ -1,0 +1,18 @@
+{
+  "build": "361.0",
+  "code_fingerprint": "b235a6bf23e171a66af22697a7ada614e7b609993421f75f463e6e5b65c101ce",
+  "probes": {
+    "ai": "pass",
+    "baseline": "pass",
+    "crawler": "pass",
+    "opsec": "pass",
+    "osint": "pass",
+    "schema": "pass",
+    "truthfulness": "pass",
+    "version": "pass",
+    "web": "pass"
+  },
+  "result": "pass",
+  "tests": 20,
+  "truthful_note": "20/20 Build-361 tests passed locally. This evidence does not claim external validation."
+}

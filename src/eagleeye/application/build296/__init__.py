@@ -1,0 +1,2 @@
+from .service import Build296OperationalStrengthFreezeService
+__all__=['Build296OperationalStrengthFreezeService']

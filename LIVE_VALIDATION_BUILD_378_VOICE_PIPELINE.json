@@ -1,0 +1,23 @@
+{
+  "build": "378.0",
+  "checks": {
+    "audio_not_persisted": true,
+    "exact_confirmation_delegated": true,
+    "external_network_unused": true,
+    "interaction_integrity": true,
+    "local_transcription": true,
+    "preview_allowed": true,
+    "voice_no_network_authority": true,
+    "voice_provenance_tag_present": true,
+    "workflow_tag_present": true,
+    "wrong_confirmation_blocked": true
+  },
+  "code_fingerprint": "957c8665a0d6ce40289114de14daf4598e9d59c212de2685871cee15328c7eb8",
+  "external_multi_analyst_voice_validation": "not_run",
+  "external_network_used": false,
+  "external_voice_crawler_network_validation": "not_run",
+  "external_voice_stt_validation": "not_run",
+  "local_voice_pipeline_validation": "pass",
+  "result": "pass",
+  "truthful_note": "Deterministic local voice/transcript-to-crawler queue validation only. No external STT service or crawler network request was performed."
+}

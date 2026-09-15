@@ -1,0 +1,3 @@
+from eagleeye.application.build180.service import Build180ContentAuthenticityService
+ContentAuthenticityService=Build180ContentAuthenticityService
+__all__=['ContentAuthenticityService','Build180ContentAuthenticityService']

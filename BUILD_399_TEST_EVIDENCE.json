@@ -1,0 +1,8 @@
+{
+  "build": "399.0",
+  "code_fingerprint": "57039f48ed9aa243eccff245cc9b587408f20af89c5411afb8b9b4d13f4fffba",
+  "result": "pass",
+  "scope": "integrated Build 399 soak/recovery framework tests",
+  "tests_passed": 14,
+  "tests_total": 14
+}

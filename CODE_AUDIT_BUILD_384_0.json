@@ -1,0 +1,10 @@
+{
+  "ast_errors": [],
+  "build": "384.0",
+  "code_fingerprint": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff",
+  "eval_exec_calls": [],
+  "python_files": 1714,
+  "python_lines": 193987,
+  "result": "pass",
+  "tls_disable_patterns": []
+}

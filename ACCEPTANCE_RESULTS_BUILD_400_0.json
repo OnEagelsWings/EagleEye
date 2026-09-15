@@ -1,0 +1,27 @@
+{
+  "build": "400.0",
+  "code_fingerprint": "b40f6082da337d5b9c97afc8d71e8a540af6acb7b55a699d04316d0e384cc104",
+  "result": "pass",
+  "checks": {
+    "19_predecessor_stages_pass": true,
+    "internal_phase17_complete": true,
+    "phase18_entry_ready": true,
+    "professional_pilot_preserved": true,
+    "human_review_recorded": true,
+    "hash_chain_valid": true,
+    "external_holdout_not_faked": true,
+    "external_soak_not_faked": true,
+    "production_not_released": true,
+    "real_model_holdout_blocker_visible": true,
+    "real_72h_soak_blocker_visible": true,
+    "independent_operational_qualification_visible": true,
+    "real_connector_validation_visible": true,
+    "dossier_review_blocker_visible": true,
+    "tor_e2e_blocker_visible": true,
+    "version_coherent": true,
+    "schema_integrity": true,
+    "predecessor_receipt": true
+  },
+  "passed": 18,
+  "total": 18
+}

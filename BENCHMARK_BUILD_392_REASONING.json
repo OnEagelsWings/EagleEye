@@ -1,0 +1,15 @@
+{
+  "build": "392.0",
+  "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+  "elapsed_seconds": 2.588219056000071,
+  "evidence_promotions_created": 0,
+  "grants_created": 0,
+  "iterations": 1000,
+  "jobs_created": 0,
+  "legacy_kernel_hypotheses_created": 0,
+  "plan_id": "plan392_c85edad4ece1383d86a7ba88",
+  "reasoning_cycles_per_second": 386.3660603540401,
+  "result": "pass",
+  "violations": 0,
+  "workspace_id": "workspace392_af407862cfe9bb481a7b4980"
+}

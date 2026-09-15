@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eagleeye-personosint-pro"
+version = "400.0.0"
+description = "Local, public-only, review-first PersonOSINT platform with a case-centered investigation workspace"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "SQLAlchemy>=2.0,<3",
+  "alembic>=1.14,<2",
+  "fastapi>=0.115,<1",
+  "starlette>=0.50,<0.51",
+  "uvicorn>=0.34,<1",
+  "cryptography>=46.0.4,<47",
+  "Pillow>=12.3.0,<13",
+  "opencv-python-headless>=4.10,<5",
+  "reportlab>=4,<5",
+  "argon2-cffi>=25.1,<26",
+  "python-multipart>=0.0.20,<1",
+  "PyMuPDF>=1.25,<2",
+  "pypdf>=5,<7",
+  "pdfplumber>=0.11,<1",
+  "pytesseract>=0.3.13,<1",
+]
+
+[project.scripts]
+eagleeye = "eagleeye.interfaces.cli.main:main"
+
+[project.optional-dependencies]
+data-platform = ["psycopg[binary]>=3.2,<4", "boto3>=1.40,<2"]
+collection = ["Scrapy>=2.17,<3", "playwright>=1.61,<2", "tldextract>=5.3,<6"]
+auth = ["webauthn>=2.5,<3", "limits>=5,<6"]
+voice-local = ["faster-whisper>=1.2,<2"]
+test = ["pytest>=9.0", "httpx>=0.28,<1", "hypothesis>=6.0", "import-linter>=2.0", "bandit>=1.8"]
+
+[tool.setuptools.packages.find]
+where = [".", "src"]
+include = ["eagleeye*", "eagleeye_pro*"]
+exclude = ["tests*", "archive*", "tools*"]
+
+[tool.setuptools.data-files]
+"alembic_104_1" = [
+  "alembic_104_1/env.py",
+  "alembic_104_1/script.py.mako"
+]
+"alembic_104_1/versions" = [
+  "alembic_104_1/versions/1041_core_recomposition.py",
+  "alembic_104_1/versions/1050_collection_engine.py"
+]
+
+[tool.setuptools.package-data]
+"eagleeye.interfaces.web" = ["assets/*.js"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+pythonpath = [".", "src"]
+testpaths = ["tests"]
+addopts = "-ra --strict-config --strict-markers"
+faulthandler_timeout = 120
+
+[tool.coverage.run]
+branch = true
+source = ["eagleeye", "eagleeye_pro"]

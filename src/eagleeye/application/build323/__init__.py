@@ -1,0 +1,2 @@
+from .service import Build323InvestigationSearchIndexService
+__all__=['Build323InvestigationSearchIndexService']

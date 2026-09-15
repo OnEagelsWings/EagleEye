@@ -1,0 +1,6 @@
+{
+  "build": "392.0",
+  "decision": "professional_pilot_only",
+  "production_release_ready": false,
+  "reason": "Build 392 case-reasoning and next-plan synthesis are internally qualified, but external connector validation, independent security/load qualification, distributed deployment qualification, and production operations remain outside this build."
+}

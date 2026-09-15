@@ -1,0 +1,37 @@
+{
+  "ast_errors": 0,
+  "build": "386.0",
+  "code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "direct_network_imports_new_386": 0,
+  "eval_exec_calls": 0,
+  "execution_authority": {
+    "active_unexpired_grants": 0,
+    "automatic_execution": false,
+    "automatic_scope_expansion": false,
+    "build": "386.0",
+    "capability_scoped_go": true,
+    "direct_network_authority": false,
+    "grant_ttl_max_minutes": 30,
+    "grants": 0,
+    "host_security_mutation": false,
+    "operations_preflight_binding": true,
+    "opsec_preflight_binding": true,
+    "packet_hash_binding": true,
+    "policy": "phase17.capability-scoped-go.v386",
+    "request_budget_binding": true,
+    "token_hash_only_persistence": true,
+    "workflow_generation_binding": true
+  },
+  "python_files": 1731,
+  "python_lines": 196477,
+  "result": "pass",
+  "schema": {
+    "build386_tables_present": true,
+    "indexes": 142,
+    "integrity_check": "ok",
+    "tables": 182,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

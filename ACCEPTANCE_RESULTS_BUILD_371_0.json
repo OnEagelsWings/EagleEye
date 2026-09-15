@@ -1,0 +1,49 @@
+{
+  "build": "371.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "activated_schema_counts": true,
+    "benchmark_current": true,
+    "common_name_penalty": true,
+    "conflict_veto": true,
+    "crawler_continuity": true,
+    "crawler_entity_provenance": true,
+    "independent_review": true,
+    "lead_zero_network": true,
+    "local_entity_crawler_validation": true,
+    "no_auto_identity": true,
+    "no_auto_merge": true,
+    "no_build371_specific_tables": true,
+    "no_system_mutation": true,
+    "opsec_provenance_validation": true,
+    "schema_gate": true,
+    "score_not_probability": true,
+    "source_entity_lead_queue": true,
+    "source_independence": true,
+    "test_evidence_current": true,
+    "truthful_release": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "2e05fb1b0cb767eca3efe8f86be938cf1cbdce86412c3fdb32cde8f4a8d5a16f",
+  "passed": 21,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "build371_specific_tables_added": 0,
+    "canonical_entity_ledger_activated": true,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "total": 21
+}

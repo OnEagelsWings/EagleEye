@@ -1,0 +1,17 @@
+{
+  "build": "379.0",
+  "code_fingerprint": "135bea48ae4a95fff1ea1ca43cba15f4db03c76bed36e0b52f9a2eb598e08e3e",
+  "failed": 0,
+  "passed": 52,
+  "probes": {
+    "case_isolation": "pass",
+    "opsec": "pass",
+    "pressure": "pass",
+    "queue": "pass",
+    "receipt": "pass",
+    "recovery": "pass",
+    "snapshot": "pass"
+  },
+  "result": "pass",
+  "tests": 52
+}

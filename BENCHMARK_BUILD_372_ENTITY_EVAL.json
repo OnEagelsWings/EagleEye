@@ -1,0 +1,53 @@
+{
+  "build": "372.0",
+  "cases": 4000,
+  "categories": {
+    "common_name_safety": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "conflict_veto": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "false_link_safety": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "holdout_gate": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "review_boundary": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "source_quality_boundary": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "source_quality_order": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    },
+    "truthful_release": {
+      "cases": 500,
+      "passed": 500,
+      "violations": 0
+    }
+  },
+  "code_fingerprint": "7d3ad9b25d75e0b33fe029d80f4065a7bcf803d7f3126670500e14bcc0c45513",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 4000,
+  "result": "pass",
+  "truthful_note": "Deterministic local invariant benchmark; not a real-world population accuracy or external load test.",
+  "violations": 0
+}
