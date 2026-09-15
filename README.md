@@ -26,6 +26,14 @@ chmod +x START_EAGLEEYE_PRO.sh
 
 The default local address is `http://127.0.0.1:8765`. If that port is occupied, EagleEye selects another free loopback port automatically.
 
+## Public testing — testers wanted
+
+We are actively looking for external testers for Build 400, especially on fresh Windows 10/11 systems and ordinary 8–16 GB RAM computers.
+
+Please follow [`TESTING.md`](TESTING.md) and report results in **GitHub issue #2: “Public beta test: EagleEye Build 400 — testers wanted.”** We are particularly interested in first-start installation, browser launch, case creation, restart behavior, AI/investigator usability, crawler/research workflow, and resource usage.
+
+Please test only with synthetic, demo, or clearly public data. Build 400 is not a production release and should not be used for confidential investigations or sensitive credentials.
+
 ## Diagnostics and tests
 
 After an editable install, diagnostics are available with:
