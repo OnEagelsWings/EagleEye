@@ -90,7 +90,6 @@ class TargetEnvironmentSoak399:
         if not start or not end or not receipt or not collector: raise ValueError('started_at, ended_at, execution_receipt and collector_id are required')
         dur=(_dt(end)-_dt(start)).total_seconds()
         if dur<0: raise ValueError('ended_at precedes started_at')
-        # Imported external evidence is allowed to be incomplete; qualification_status decides whether it passes.
         for key in ('native_windows','native_firefox','native_firefox_e2e','protected_firefox_profile'):
             if key not in env: raise ValueError(f'environment.{key} must be explicitly supplied')
         return env,samples,recoveries,start,end,receipt,collector,dur
@@ -183,8 +182,9 @@ class TargetEnvironmentSoak399:
             details.append({'session_id':s['session_id'],'checks':checks,'metrics':m})
         return {'build':BUILD,'plan_present':True,'plan_status':plan['status'],'required_hours':72,'required_samples':plan['min_samples'],'external_sessions':len(sessions),'qualified_external_sessions':qualified_ids,'external_72h_soak_qualified':bool(qualified_ids),'details':details,'production_qualification':False,'direct_network_fetch_in_core':False,'execution_authority':False,'automatic_go':False,'automatic_live_confirmation':False,'automatic_evidence_promotion':False}
     def verify_session(self,session_id):
-        s=dict(self.db.one('SELECT * FROM soak_session_399 WHERE session_id=?',(session_id,))); bad=[]
-        if not s:return {'valid':False,'violations':['missing_session']}
+        row=self.db.one('SELECT * FROM soak_session_399 WHERE session_id=?',(session_id,))
+        if not row:return {'valid':False,'violations':['missing_session']}
+        s=dict(row); bad=[]
         if s['record_hash']!=self._rowhash(s): bad.append('session_hash')
         for table in ('soak_sample_399','recovery_event_399','soak_review_399'):
             for r in self.db.all(f'SELECT * FROM {table} WHERE session_id=?',(session_id,)):
