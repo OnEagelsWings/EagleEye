@@ -1,0 +1,13 @@
+{
+  "build": "391.0",
+  "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "elapsed_seconds": 2.5385301860001164,
+  "evidence_promotions_created": 0,
+  "grants_created": 0,
+  "iterations": 1000,
+  "jobs_created": 0,
+  "legacy_kernel_hypotheses_created": 0,
+  "result": "pass",
+  "syntheses_per_second": 393.928740936372,
+  "violations": 0
+}

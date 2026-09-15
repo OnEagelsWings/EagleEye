@@ -1,0 +1,13 @@
+{
+  "build": "400.0",
+  "code_fingerprint": "b40f6082da337d5b9c97afc8d71e8a540af6acb7b55a699d04316d0e384cc104",
+  "result": "pass",
+  "runs": 500,
+  "violations": 0,
+  "elapsed_seconds": 1.3671251770001618,
+  "runs_per_second": 365.73095749515323,
+  "automatic_go": 0,
+  "automatic_live": 0,
+  "network_fetches": 0,
+  "production_releases": 0
+}

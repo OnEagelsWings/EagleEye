@@ -1,0 +1,11 @@
+{
+  "build": "370.0",
+  "crawler_continuity_370_380": true,
+  "human_reviewed_training_examples": 0,
+  "mode": "prompt_policy_orchestration_plus_qualification",
+  "model_weight_training_claimed": false,
+  "network_used_by_qualification": false,
+  "qualification_cases": 3600,
+  "qualification_violations": 0,
+  "truthful_note": "Build 370 improves orchestration, policy and evaluation; it does not claim model-weight training."
+}

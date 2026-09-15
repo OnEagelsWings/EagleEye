@@ -1,0 +1,24 @@
+{
+  "build": "371.0",
+  "cases": 3800,
+  "category_pass": {
+    "common_name_collision": 380,
+    "conflict_veto": 380,
+    "crawler_continuity": 380,
+    "crawler_provenance": 380,
+    "cross_case_boundary": 380,
+    "lead_zero_network": 380,
+    "no_auto_merge": 380,
+    "no_probability_claim": 380,
+    "opsec_integrity": 380,
+    "source_independence": 380
+  },
+  "code_fingerprint": "2e05fb1b0cb767eca3efe8f86be938cf1cbdce86412c3fdb32cde8f4a8d5a16f",
+  "external_holdout_evaluation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 3800,
+  "result": "pass",
+  "truthful_scope": "Deterministic internal boundary/invariant qualification. Build 372 is reserved for calibrated holdout/false-link evaluation.",
+  "violation_details": [],
+  "violations": 0
+}

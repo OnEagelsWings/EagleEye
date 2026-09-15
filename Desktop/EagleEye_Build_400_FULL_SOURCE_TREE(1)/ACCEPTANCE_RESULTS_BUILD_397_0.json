@@ -1,0 +1,26 @@
+{
+  "build": "397.0",
+  "checks": {
+    "citations": true,
+    "exact_review": true,
+    "hypothesis_assessment": true,
+    "integrity": true,
+    "no_execution": true,
+    "no_fetch": true,
+    "no_side_effects": true,
+    "no_truth": true,
+    "proposal_review_only": true,
+    "reviewed": true,
+    "robots_fail_closed": true,
+    "robots_multi_ua": true,
+    "robots_pdf": true,
+    "schema": true,
+    "stop_decision": true,
+    "support_counter": true,
+    "version": true
+  },
+  "checks_passed": 17,
+  "checks_total": 17,
+  "code_fingerprint": "cf2365f808e5abab6c693b15d13359c724b780b8bd3f77a6e7d7dc46c592e032",
+  "result": "pass"
+}

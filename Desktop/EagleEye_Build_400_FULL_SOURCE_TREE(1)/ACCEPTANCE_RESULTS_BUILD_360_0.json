@@ -1,0 +1,312 @@
+{
+  "benchmark": {
+    "cases": 2000,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "360.0",
+  "code_fingerprint": "1b4376b93e2300658ac2461646b39d46ca97d10e831a264565b0fff159117d14",
+  "controlled_local_pilot_candidate_ready": true,
+  "crawler": {
+    "ai_prioritized_bounded_crawl_subjobs": true,
+    "archive_seed_discovery": true,
+    "asset_exact_dedup": true,
+    "asset_local_embedding": true,
+    "asset_perceptual_hashing": true,
+    "asset_variant_candidate_links": true,
+    "build356_cross_modal_provenance": true,
+    "build357_research_wave_subjobs": true,
+    "build358_voice_directed_bounded_research": true,
+    "build359_case_scoped_rbac": true,
+    "build359_dead_letter_human_attention": true,
+    "build359_lead_only_lease_recovery": true,
+    "build359_role_gated_crawl_execution": true,
+    "build359_soak_recovery_qualification": true,
+    "build360_boundedness_qualified": true,
+    "build360_delta_frontier_provenance_qualified": true,
+    "build360_failure_recovery_qualified": true,
+    "build360_media_crawler_qualified": true,
+    "build360_rbac_quota_recovery_qualified": true,
+    "built_in_clearnet_transport": true,
+    "built_in_onion_transport": false,
+    "bytes_fetched": 0,
+    "canonical_url_frontier": true,
+    "conditional_fetch": true,
+    "connector_parser_policy": "phase15.connector-parser.v1",
+    "crash_safe_resume": true,
+    "crawler_improvement_build": 360,
+    "credentials_supported": false,
+    "cross_modal_fusion_provenance_v356": true,
+    "cross_source_identity_promotion": false,
+    "delta_sync": {
+      "automatic_identity_or_fact_promotion": false,
+      "changed": 0,
+      "conditional_headers": [
+        "If-None-Match",
+        "If-Modified-Since"
+      ],
+      "deduplicated": 0,
+      "exact_content_dedup": true,
+      "fetch_records": 0,
+      "new": 0,
+      "not_modified": 0,
+      "policy": "phase15.governed-crawler.v3.delta-sync"
+    },
+    "direct_onion_dns_forbidden": true,
+    "dossier_trace_chain": "wave->crawl_run->fetch->object_hash->parse/media/link->hypothesis->dossier",
+    "etag": true,
+    "exact_sha256_dedup": true,
+    "external_crawler_load_test": "not_run",
+    "forms_or_writes_supported": false,
+    "frontier": {
+      "archive_seed_discovery": true,
+      "automatic_cross_host_expansion": false,
+      "built_in_onion_transport": false,
+      "canonicalization": "conservative_same-host",
+      "max_frontier_items": 5000,
+      "pending_frontier_items": 0,
+      "persisted_frontiers": 0,
+      "policy": "phase15.governed-crawler.v4.frontier-resume",
+      "resume_capable_jobs": 0,
+      "sitemap_discovery": true
+    },
+    "go_gated_delegation": true,
+    "image_magic_verification": true,
+    "image_quarantine_handoff": true,
+    "last_modified": true,
+    "live_tor_gateway": "not_run",
+    "media_fetch_job_type": "media_image_fetch_v1",
+    "media_image_discovery": true,
+    "media_redirect_auto_follow": false,
+    "media_same_host_only": true,
+    "page_geo_metadata_is_scene_fact": false,
+    "pages_fetched": 0,
+    "pages_stored": 0,
+    "parser_sdk": {
+      "authenticated_live_connector_supported": false,
+      "dtd_entities_allowed": false,
+      "official_manifests": 3,
+      "parse_failed": 0,
+      "parse_runs": 0,
+      "parsed": 0,
+      "policy": "phase15.connector-parser.v1",
+      "quarantined_auto_parse": false,
+      "supported_media": [
+        "HTML",
+        "JSON",
+        "XML",
+        "text"
+      ]
+    },
+    "policy": "phase15.governed-crawler.v4.frontier-resume",
+    "runs": 0,
+    "same_host_source_neighborhood_leads": true,
+    "sitemap_discovery": true,
+    "source_neighborhood_auto_fetch": false,
+    "sources": 0,
+    "stop_on_opsec_dead_letter_or_no_delta": true,
+    "supervisor_network_execution": false,
+    "supervisor_reads_crawl_and_job_state": true,
+    "variant_links_require_human_review": true,
+    "visual_context_allowlist_broadening": false,
+    "visual_context_from_stored_html": true,
+    "visual_context_policy": "phase15.governed-crawler.v7.visual-context",
+    "voice_cannot_bypass_go": true,
+    "voice_cannot_bypass_opsec": true,
+    "voice_cannot_bypass_rbac": true,
+    "voice_cannot_expand_source_allowlist": true,
+    "voice_crawler_status_read_only": true,
+    "wave_terminal_evaluation_before_followup": true
+  },
+  "external_validation": {
+    "external_load_failure_test": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "external_pentest": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "external_red_team": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "live_local_stt_model": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_postgresql": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_reverse_image_provider": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_s3_minio": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_team_search_backend": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "live_tor_gateway": {
+      "blocking": false,
+      "status": "not_run"
+    },
+    "professional_pilot": {
+      "blocking": true,
+      "status": "not_run"
+    },
+    "remote_multi_user_deployment": {
+      "blocking": true,
+      "status": "not_validated"
+    }
+  },
+  "gate": {
+    "build": "360.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "benchmark_2000_no_violations": true,
+      "crawler_failure_tested": true,
+      "crawler_provenance_tested": true,
+      "dossier_tested": true,
+      "e2e_tested": true,
+      "image_tested": true,
+      "no_literal_true_gate": true,
+      "opsec_tested": true,
+      "rbac_tested": true,
+      "recovery_tested": true,
+      "schema_within_gate": true,
+      "test_evidence_current": true,
+      "truthfulness_tested": true,
+      "version_coherent": true,
+      "voice_tested": true
+    },
+    "controlled_pilot_candidate_ready": true,
+    "external_validation_complete": false,
+    "production_release_ready": false,
+    "truthful_note": "Build 360 completes internal Phase-15 qualification. Production remains blocked until independent external security/load validation and a professional pilot are actually completed."
+  },
+  "network_used_by_acceptance": false,
+  "probes": {
+    "crawler_failure": "pass",
+    "crawler_provenance": "pass",
+    "dossier": "pass",
+    "e2e": "pass",
+    "image": "pass",
+    "opsec": "pass",
+    "rbac": "pass",
+    "recovery": "pass",
+    "truthfulness": "pass",
+    "voice": "pass",
+    "web": "pass"
+  },
+  "production_release_ready": false,
+  "readiness": {
+    "blocking_gaps": [
+      "independent external pentest/red-team",
+      "external load/failure qualification",
+      "remote multi-user deployment validation",
+      "professional pilot with reviewed cases"
+    ],
+    "classification": "controlled_local_pilot_candidate",
+    "important_nonblocking_gaps": [
+      "live PostgreSQL/S3/team-search validation",
+      "live local STT model validation",
+      "live reverse-image provider validation",
+      "live Tor gateway validation"
+    ],
+    "internal_engineering_readiness_percent": 83,
+    "operative_production_readiness_score": 75,
+    "production_release_ready": false,
+    "rows": [
+      {
+        "area": "architecture_schema_packaging",
+        "basis": "Consolidated schema, deterministic packages, no per-build schema explosion.",
+        "max": 10,
+        "score": 9
+      },
+      {
+        "area": "evidence_ai_dossier",
+        "basis": "Evidence-first dossier, provenance, hypotheses/counterevidence and multi-wave supervisor.",
+        "max": 10,
+        "score": 9
+      },
+      {
+        "area": "crawler_data_acquisition",
+        "basis": "Bounded crawler, delta/frontier/resume/media/connectors; limited live external connector validation.",
+        "max": 10,
+        "score": 8
+      },
+      {
+        "area": "opsec_security",
+        "basis": "Per-search capsule and OPSEC-v2 internally qualified; external pentest/red-team outstanding.",
+        "max": 10,
+        "score": 9
+      },
+      {
+        "area": "image_intelligence",
+        "basis": "Secure ingest, metadata/OCR/similarity/geo hypotheses; no external reverse-image live validation.",
+        "max": 10,
+        "score": 8
+      },
+      {
+        "area": "voice_workspace",
+        "basis": "Push-to-talk contract and local TTS; local Whisper model not live-validated in build environment.",
+        "max": 10,
+        "score": 7
+      },
+      {
+        "area": "team_rbac_governance",
+        "basis": "Argon2id local team identity, case RBAC and four-eyes export; remote team deployment not validated.",
+        "max": 10,
+        "score": 9
+      },
+      {
+        "area": "data_platform_backends",
+        "basis": "SQLite/local CAS live; PostgreSQL/S3/team-search adapters contract-tested but not externally live-validated.",
+        "max": 10,
+        "score": 7
+      },
+      {
+        "area": "reliability_recovery",
+        "basis": "Persistent jobs, leases, retry/DLQ, crash resume, local soak/failure qualification.",
+        "max": 10,
+        "score": 9
+      },
+      {
+        "area": "external_validation_pilot",
+        "basis": "Independent pentest/load/pilot validation has not been performed in this build environment.",
+        "max": 10,
+        "score": 0
+      }
+    ],
+    "score_max": 100,
+    "truthful_summary": "Build 360 is internally qualified as a controlled local pilot candidate, not a production release. Internal benchmarks cannot substitute for independent external validation."
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "static_scan": {
+    "ast_errors": [],
+    "direct_network_imports_build360": [],
+    "eval_exec": [],
+    "shell_true": [],
+    "subprocess_imports_build360": []
+  }
+}

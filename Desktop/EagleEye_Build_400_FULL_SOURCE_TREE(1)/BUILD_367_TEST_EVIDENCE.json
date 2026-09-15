@@ -1,0 +1,21 @@
+{
+  "build": "367.0",
+  "result": "pass",
+  "tests_passed": 30,
+  "tests_total": 30,
+  "code_fingerprint": "bc97badb055b4a4ec17b10bfff6058e85ce4920c0b5fb7279c2ddd36bfce5eb0",
+  "probes": {
+    "catalog": "pass",
+    "usaspending": "pass",
+    "ted": "pass",
+    "ted_plan": "pass",
+    "review": "pass",
+    "confirmation": "pass",
+    "receipt": "pass",
+    "replay": "pass",
+    "ai": "pass",
+    "opsec": "pass",
+    "crawler": "pass"
+  },
+  "truthful_scope": "Build-367 deterministic tests exercise governed public-money source planning, review gates, crawler/parser/receipt replay, AI minimization, OPSEC boundaries and web authentication. They do not constitute external connector validation."
+}

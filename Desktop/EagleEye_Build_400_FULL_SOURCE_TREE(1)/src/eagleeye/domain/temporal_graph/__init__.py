@@ -1,0 +1,3 @@
+from eagleeye.application.build159.service import Build159TemporalPersonGraphService
+TemporalPersonGraphService=Build159TemporalPersonGraphService
+__all__=['TemporalPersonGraphService','Build159TemporalPersonGraphService']

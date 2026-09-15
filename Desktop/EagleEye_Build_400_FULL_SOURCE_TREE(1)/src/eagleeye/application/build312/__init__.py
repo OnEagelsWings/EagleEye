@@ -1,0 +1,2 @@
+from .service import Build312CorporatePersonRecordsService
+__all__=['Build312CorporatePersonRecordsService']

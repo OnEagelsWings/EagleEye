@@ -1,0 +1,11 @@
+{
+  "build": "370.0",
+  "expected_failures": [
+    "Build-369 version/schema/package assertion expects 369.0/369.0.0 while Build 370 correctly reports 370.0/370.0.0."
+  ],
+  "functional_regressions": 0,
+  "passed": 39,
+  "regression_target": "369.0",
+  "result": "expected_version_boundary_only",
+  "total": 40
+}

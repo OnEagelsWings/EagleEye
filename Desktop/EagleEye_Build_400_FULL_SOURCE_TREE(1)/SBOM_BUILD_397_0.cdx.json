@@ -1,0 +1,23 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [],
+  "metadata": {
+    "component": {
+      "name": "EagleEye",
+      "type": "application",
+      "version": "397.0.0"
+    },
+    "properties": [
+      {
+        "name": "eagleeye:build",
+        "value": "397.0"
+      },
+      {
+        "name": "eagleeye:code_fingerprint",
+        "value": "cf2365f808e5abab6c693b15d13359c724b780b8bd3f77a6e7d7dc46c592e032"
+      }
+    ]
+  },
+  "specVersion": "1.5",
+  "version": 1
+}

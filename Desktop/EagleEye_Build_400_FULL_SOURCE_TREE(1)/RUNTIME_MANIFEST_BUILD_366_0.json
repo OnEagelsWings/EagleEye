@@ -1,0 +1,46 @@
+{
+  "ai": {
+    "address_fields_excluded_from_routine_ai_context": true,
+    "corporate_receipt_aware": true,
+    "corporate_safe_org_context": true,
+    "direct_connector_network_authority": false,
+    "identity_auto_merge": false
+  },
+  "automatic_external_connections_on_boot": 0,
+  "build": "366.0",
+  "build_acceptance_ready": true,
+  "code_fingerprint": "252b92f45d5bd3d65c95991751e86b0bf2f99d0cbfac3314c1fdf370a5c79a73",
+  "corporate_live_data": {
+    "authenticated_live_connectors": false,
+    "derived_canonical_receipts": true,
+    "explicit_live_confirmation_required": true,
+    "gleif_external_validation": "not_run",
+    "human_source_review_required": true,
+    "live_public_connectors": [
+      "gleif_lei_api_v1",
+      "sec_edgar_submissions_v1"
+    ],
+    "person_name_live_lookup_supported": false,
+    "replay_counts_as_external_validation": false,
+    "sec_edgar_external_validation": "not_run"
+  },
+  "crawler_improvement_build": 366,
+  "opsec": {
+    "auth_connector_live_blocked": true,
+    "corporate_connector_allowlist": [
+      "gleif_lei_api_v1",
+      "sec_edgar_submissions_v1"
+    ],
+    "system_mutations": false
+  },
+  "package_version": "366.0.0",
+  "phase": "16",
+  "phase_builds_completed": 6,
+  "production_release_ready": false,
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1863680,
+    "tables": 141,
+    "triggers": 8
+  }
+}

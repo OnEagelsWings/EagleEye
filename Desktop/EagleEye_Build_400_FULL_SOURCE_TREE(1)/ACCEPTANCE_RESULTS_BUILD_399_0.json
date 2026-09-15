@@ -1,0 +1,31 @@
+{
+  "build": "399.0",
+  "checks": {
+    "289_samples": true,
+    "72h": true,
+    "external_requires_review": true,
+    "firefox_e2e_required": true,
+    "gate_logic_exercised": true,
+    "integrity": true,
+    "no_auto_evidence": true,
+    "no_auto_go": true,
+    "no_browser_launch": true,
+    "no_execution": true,
+    "no_network": true,
+    "profile_required": true,
+    "recovery_required": true,
+    "release_status_still_external_pending": true,
+    "schema": true,
+    "simulation_no_side_effects": true,
+    "simulation_not_external": true,
+    "version": true,
+    "windows_required": true
+  },
+  "checks_passed": 19,
+  "checks_total": 19,
+  "code_fingerprint": "57039f48ed9aa243eccff245cc9b587408f20af89c5411afb8b9b4d13f4fffba",
+  "external_72h_soak_qualified_in_release_evidence": false,
+  "live_72h_sessions_in_release_evidence": 0,
+  "note": "A synthetic in-memory gate fixture exercises qualification logic only; it is not counted as external evidence.",
+  "result": "pass"
+}

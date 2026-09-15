@@ -1,0 +1,16 @@
+{
+  "ast_errors": 0,
+  "build": "378.0",
+  "eval_exec_calls": 0,
+  "historical_subprocess_imports": 13,
+  "new_build378_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build378/service.py": [],
+    "src/eagleeye/interfaces/web/app378.py": [],
+    "src/eagleeye/phase16/voice_live_validation378.py": []
+  },
+  "python_files": 1664,
+  "python_lines": 188001,
+  "result": "pass",
+  "shell_true_patterns": 0,
+  "tls_disable_patterns": 0
+}

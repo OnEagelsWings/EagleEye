@@ -1,0 +1,25 @@
+{
+  "build": "391.0",
+  "checks": {
+    "candidate_claim_not_fact": true,
+    "claim_hash_valid": true,
+    "claim_reviewed": true,
+    "counterevidence_preserved": true,
+    "feed_layers": true,
+    "hypothesis_hash_valid": true,
+    "hypothesis_not_fact": true,
+    "kernel_notebook_bridge": true,
+    "legacy_probability_unused": true,
+    "no_direct_fetch": true,
+    "no_jobs_grants_promotions": true,
+    "no_truth_probability": true,
+    "predecessor_390": true,
+    "schema_integrity": true,
+    "snapshot_created": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "passed": 16,
+  "result": "pass",
+  "total": 16
+}

@@ -1,0 +1,43 @@
+{
+  "build": "376.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "absence_not_default_counterevidence": true,
+    "absence_not_nonexistence": true,
+    "ai_no_gap_execution": true,
+    "build_acceptance_ready": true,
+    "coverage_not_truth_probability": true,
+    "external_validation_not_forged": true,
+    "no_automatic_gap_closure": true,
+    "no_automatic_gap_crawl": true,
+    "no_direct_network_authority": true,
+    "no_literal_true_gate": true,
+    "no_new_tables": true,
+    "opsec_gap_monitor": true,
+    "production_false": true,
+    "schema_within_gate": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "b5f84a7b234123749da8a72d5733aeb1a407bb04c683436c017da35d3700fb53",
+  "external_network_used": false,
+  "passed": 15,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "dossier_vnext_new_tables": 0,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "total": 15
+}

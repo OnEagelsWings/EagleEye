@@ -1,0 +1,100 @@
+{
+  "acceptance": {
+    "passed": 17,
+    "result": "pass",
+    "total": 17
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "cases": 200,
+    "cases_per_second": 17.909,
+    "crawler_jobs_created": 0,
+    "network_requests": 0,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "386.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "build386_direct_network_imports": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1731,
+    "python_lines": 196477,
+    "result": "pass"
+  },
+  "code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "current_decision": "phase17_capability_scoped_go_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "386.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build386_acceptance": true,
+      "build386_benchmark": true,
+      "build386_tests": true,
+      "capability_scoped_go": true,
+      "no_auto_scope_expansion": true,
+      "no_automatic_execution": true,
+      "no_direct_network_authority": true,
+      "no_host_security_mutation": true,
+      "operations_preflight_binding": true,
+      "opsec_preflight_binding": true,
+      "packet_hash_binding": true,
+      "phase17_predecessor_gate": true,
+      "request_budget_binding": true,
+      "schema_integrity": true,
+      "token_hash_only": true,
+      "version_coherent": true,
+      "workflow_generation_binding": true
+    },
+    "phase17_builds_completed": 6,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 386 issues short-lived capability-scoped GO grants only after source review, workflow-budget, Operations and OPSEC preflight. It does not enqueue or execute external work."
+  },
+  "package_version": "386.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384,
+    385,
+    386
+  ],
+  "predecessor_build": "385.0",
+  "predecessor_code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundary_failures": 30,
+    "functional_regressions": 0,
+    "historical_passed": 792,
+    "historical_total": 822
+  },
+  "schema": {
+    "build386_tables_present": true,
+    "indexes": 142,
+    "integrity_check": "ok",
+    "tables": 182,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build386_passed": 16,
+    "build386_total": 16,
+    "phase17_expected_release_boundary_failures": 4,
+    "phase17_functional_regressions": 0,
+    "phase17_passed": 134,
+    "phase17_total": 138
+  },
+  "truthful_note": "Build 386 is the fully integrated capability-scoped GO authorization boundary on the Build-385 acquisition line. GO grants are short-lived and bind packet/source/workflow/budget/Operations/OPSEC state, but Build 386 itself creates no crawler jobs or external requests and does not claim general production readiness or external connector validation.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-386.0.0-py3-none-any.whl",
+    "sha256": "62aa4349196ee1bc582777cb5099f938ddc06d395896a04b877e960223a87aca",
+    "size_bytes": 3947748,
+    "smoke_import": "pass"
+  }
+}

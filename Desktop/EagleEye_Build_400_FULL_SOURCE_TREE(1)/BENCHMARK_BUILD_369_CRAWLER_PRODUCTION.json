@@ -1,0 +1,24 @@
+{
+  "build": "369.0",
+  "cases": 3200,
+  "category_pass": {
+    "ai_boundary": 320,
+    "backpressure": 320,
+    "darknet_gate": 320,
+    "delta_resume": 320,
+    "lease_policy": 320,
+    "opsec_boundary": 320,
+    "provider_gate": 320,
+    "schedule_gate": 320,
+    "source_health": 320,
+    "truthful_release": 320
+  },
+  "code_fingerprint": "949e629b42d2d42f343674151d6830f06be1b9ea5228177ee5471cbdcd90b6e3",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 3200,
+  "result": "pass",
+  "truthful_scope": "Deterministic Crawler Production policy/operations qualification only; no external soak/load traffic is generated.",
+  "violation_details": [],
+  "violations": 0
+}

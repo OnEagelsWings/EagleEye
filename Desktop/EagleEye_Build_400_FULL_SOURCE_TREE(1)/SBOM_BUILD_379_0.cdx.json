@@ -1,0 +1,121 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "pydantic",
+      "scope": "required",
+      "type": "library",
+      "version": ">=2.10,<3"
+    },
+    {
+      "name": "SQLAlchemy",
+      "scope": "required",
+      "type": "library",
+      "version": ">=2.0,<3"
+    },
+    {
+      "name": "alembic",
+      "scope": "required",
+      "type": "library",
+      "version": ">=1.14,<2"
+    },
+    {
+      "name": "fastapi",
+      "scope": "required",
+      "type": "library",
+      "version": ">=0.115,<1"
+    },
+    {
+      "name": "starlette",
+      "scope": "required",
+      "type": "library",
+      "version": ">=0.50,<0.51"
+    },
+    {
+      "name": "uvicorn",
+      "scope": "required",
+      "type": "library",
+      "version": ">=0.34,<1"
+    },
+    {
+      "name": "cryptography",
+      "scope": "required",
+      "type": "library",
+      "version": ">=46.0.4,<47"
+    },
+    {
+      "name": "Pillow",
+      "scope": "required",
+      "type": "library",
+      "version": ">=12.3.0,<13"
+    },
+    {
+      "name": "opencv-python-headless",
+      "scope": "required",
+      "type": "library",
+      "version": ">=4.10,<5"
+    },
+    {
+      "name": "reportlab",
+      "scope": "required",
+      "type": "library",
+      "version": ">=4,<5"
+    },
+    {
+      "name": "argon2-cffi",
+      "scope": "required",
+      "type": "library",
+      "version": ">=25.1,<26"
+    },
+    {
+      "name": "python-multipart",
+      "scope": "required",
+      "type": "library",
+      "version": ">=0.0.20,<1"
+    },
+    {
+      "name": "PyMuPDF",
+      "scope": "required",
+      "type": "library",
+      "version": ">=1.25,<2"
+    },
+    {
+      "name": "pypdf",
+      "scope": "required",
+      "type": "library",
+      "version": ">=5,<7"
+    },
+    {
+      "name": "pdfplumber",
+      "scope": "required",
+      "type": "library",
+      "version": ">=0.11,<1"
+    },
+    {
+      "name": "pytesseract",
+      "scope": "required",
+      "type": "library",
+      "version": ">=0.3.13,<1"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "379.0.0"
+    },
+    "properties": [
+      {
+        "name": "eagleeye:build",
+        "value": "379.0"
+      },
+      {
+        "name": "eagleeye:code_fingerprint",
+        "value": "135bea48ae4a95fff1ea1ca43cba15f4db03c76bed36e0b52f9a2eb598e08e3e"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:37900000-0000-4000-8000-000000000379",
+  "specVersion": "1.5",
+  "version": 1
+}

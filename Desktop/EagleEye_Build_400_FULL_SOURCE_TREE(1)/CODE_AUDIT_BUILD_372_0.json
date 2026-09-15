@@ -1,0 +1,32 @@
+{
+  "ast_errors": [],
+  "build": "372.0",
+  "eval_exec_calls": 0,
+  "files_importing_subprocess": 13,
+  "new_build372_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build372/service.py": [],
+    "src/eagleeye/interfaces/web/app372.py": [],
+    "src/eagleeye/phase16/entity_resolution_eval372.py": []
+  },
+  "python_files": 1606,
+  "python_lines": 181195,
+  "result": "pass",
+  "shell_true_calls": 0,
+  "subprocess_files": [
+    "src/eagleeye/interfaces/web/server.py",
+    "src/eagleeye/application/build218/service.py",
+    "src/eagleeye/application/build263/service.py",
+    "src/eagleeye/application/release/service.py",
+    "src/eagleeye/application/build174/service.py",
+    "src/eagleeye/application/build211/service.py",
+    "src/eagleeye/application/build209/service.py",
+    "src/eagleeye/application/security/service.py",
+    "src/eagleeye/application/build248/service.py",
+    "src/eagleeye/application/build180/service.py",
+    "eagleeye_pro/release_candidate/service.py",
+    "eagleeye_pro/collection_engine_105/service.py",
+    "eagleeye_pro/ui/pilot_desktop.py"
+  ],
+  "tls_disable_patterns": 0,
+  "truthful_note": "Historical compatibility code may import subprocess; Build-372 core modules add no direct HTTP/socket/subprocess client."
+}

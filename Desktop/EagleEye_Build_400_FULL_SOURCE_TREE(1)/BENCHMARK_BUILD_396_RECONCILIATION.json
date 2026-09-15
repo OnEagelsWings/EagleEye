@@ -1,0 +1,16 @@
+{
+  "build": "396.0",
+  "cases": 1000,
+  "code_fingerprint": "aa88d7235094ebda2b5d472c9ddc71210beb86b2697cb9bb185d68e42d73d46b",
+  "crawler_jobs_created": 0,
+  "elapsed_seconds": 0.069641,
+  "evidence_promotions_created": 0,
+  "go_grants_created": 0,
+  "impact_count": 0,
+  "network_requests_created": 0,
+  "result": "pass",
+  "scope": "local deterministic delta reconciliation of evidence-candidate signals only; no external execution inferred",
+  "signals_per_second": 14359.414,
+  "signals_reconciled": 1000,
+  "violations": 0
+}

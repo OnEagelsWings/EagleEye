@@ -1,0 +1,82 @@
+{
+  "blocking_gaps": [
+    "independent external pentest/red-team",
+    "external load/failure qualification",
+    "remote multi-user deployment validation",
+    "professional pilot with reviewed cases"
+  ],
+  "classification": "controlled_local_pilot_candidate",
+  "important_nonblocking_gaps": [
+    "live PostgreSQL/S3/team-search validation",
+    "live local STT model validation",
+    "live reverse-image provider validation",
+    "live Tor gateway validation"
+  ],
+  "internal_engineering_readiness_percent": 83,
+  "operative_production_readiness_score": 75,
+  "production_release_ready": false,
+  "rows": [
+    {
+      "area": "architecture_schema_packaging",
+      "basis": "Consolidated schema, deterministic packages, no per-build schema explosion.",
+      "max": 10,
+      "score": 9
+    },
+    {
+      "area": "evidence_ai_dossier",
+      "basis": "Evidence-first dossier, provenance, hypotheses/counterevidence and multi-wave supervisor.",
+      "max": 10,
+      "score": 9
+    },
+    {
+      "area": "crawler_data_acquisition",
+      "basis": "Bounded crawler, delta/frontier/resume/media/connectors; limited live external connector validation.",
+      "max": 10,
+      "score": 8
+    },
+    {
+      "area": "opsec_security",
+      "basis": "Per-search capsule and OPSEC-v2 internally qualified; external pentest/red-team outstanding.",
+      "max": 10,
+      "score": 9
+    },
+    {
+      "area": "image_intelligence",
+      "basis": "Secure ingest, metadata/OCR/similarity/geo hypotheses; no external reverse-image live validation.",
+      "max": 10,
+      "score": 8
+    },
+    {
+      "area": "voice_workspace",
+      "basis": "Push-to-talk contract and local TTS; local Whisper model not live-validated in build environment.",
+      "max": 10,
+      "score": 7
+    },
+    {
+      "area": "team_rbac_governance",
+      "basis": "Argon2id local team identity, case RBAC and four-eyes export; remote team deployment not validated.",
+      "max": 10,
+      "score": 9
+    },
+    {
+      "area": "data_platform_backends",
+      "basis": "SQLite/local CAS live; PostgreSQL/S3/team-search adapters contract-tested but not externally live-validated.",
+      "max": 10,
+      "score": 7
+    },
+    {
+      "area": "reliability_recovery",
+      "basis": "Persistent jobs, leases, retry/DLQ, crash resume, local soak/failure qualification.",
+      "max": 10,
+      "score": 9
+    },
+    {
+      "area": "external_validation_pilot",
+      "basis": "Independent pentest/load/pilot validation has not been performed in this build environment.",
+      "max": 10,
+      "score": 0
+    }
+  ],
+  "score_max": 100,
+  "truthful_summary": "Build 360 is internally qualified as a controlled local pilot candidate, not a production release. Internal benchmarks cannot substitute for independent external validation."
+}

@@ -1,0 +1,113 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "pydantic",
+      "type": "library",
+      "version": ">=2.10,<3"
+    },
+    {
+      "name": "SQLAlchemy",
+      "type": "library",
+      "version": ">=2.0,<3"
+    },
+    {
+      "name": "alembic",
+      "type": "library",
+      "version": ">=1.14,<2"
+    },
+    {
+      "name": "fastapi",
+      "type": "library",
+      "version": ">=0.115,<1"
+    },
+    {
+      "name": "starlette",
+      "type": "library",
+      "version": ">=0.50,<0.51"
+    },
+    {
+      "name": "uvicorn",
+      "type": "library",
+      "version": ">=0.34,<1"
+    },
+    {
+      "name": "cryptography",
+      "type": "library",
+      "version": ">=46.0.4,<47"
+    },
+    {
+      "name": "Pillow",
+      "type": "library",
+      "version": ">=12.3.0,<13"
+    },
+    {
+      "name": "opencv-python-headless",
+      "type": "library",
+      "version": ">=4.10,<5"
+    },
+    {
+      "name": "reportlab",
+      "type": "library",
+      "version": ">=4,<5"
+    },
+    {
+      "name": "argon2-cffi",
+      "type": "library",
+      "version": ">=25.1,<26"
+    },
+    {
+      "name": "python-multipart",
+      "type": "library",
+      "version": ">=0.0.20,<1"
+    },
+    {
+      "name": "PyMuPDF",
+      "type": "library",
+      "version": ">=1.25,<2"
+    },
+    {
+      "name": "pypdf",
+      "type": "library",
+      "version": ">=5,<7"
+    },
+    {
+      "name": "pdfplumber",
+      "type": "library",
+      "version": ">=0.11,<1"
+    },
+    {
+      "name": "pytesseract",
+      "type": "library",
+      "version": ">=0.3.13,<1"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "385.0.0"
+    },
+    "properties": [
+      {
+        "name": "eagleeye:build",
+        "value": "385.0"
+      },
+      {
+        "name": "eagleeye:code_fingerprint",
+        "value": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf"
+      },
+      {
+        "name": "eagleeye:predecessor_build384_fingerprint",
+        "value": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff"
+      },
+      {
+        "name": "eagleeye:base_build380_zip_sha256",
+        "value": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:38500000-0000-4000-8000-000000000385",
+  "specVersion": "1.5",
+  "version": 1
+}

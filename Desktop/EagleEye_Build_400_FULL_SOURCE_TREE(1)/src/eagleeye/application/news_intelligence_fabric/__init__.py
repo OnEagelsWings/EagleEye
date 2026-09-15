@@ -1,0 +1,2 @@
+from eagleeye.application.build205.service import Build205NewsIntelligenceFabricService
+__all__=['Build205NewsIntelligenceFabricService']

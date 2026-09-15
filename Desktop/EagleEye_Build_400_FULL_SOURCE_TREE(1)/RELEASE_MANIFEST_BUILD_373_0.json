@@ -1,0 +1,70 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 23,
+    "result": "pass",
+    "total": 23
+  },
+  "benchmark": {
+    "cases": 4200,
+    "passed": 4200,
+    "violations": 0
+  },
+  "build": "373.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1616,
+    "python_lines": 182856,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "4c060e2ba0d8755d1c7067bbac1e7897b55d57f31a01563015200616119e9690",
+  "external_graph_navigation_validation": "not_run",
+  "external_graph_ux_validation": "not_run",
+  "local_graph_workflow_validation": "pass",
+  "package": "373.0.0",
+  "phase": 16,
+  "phase_progress": "13/20",
+  "production_release_ready": false,
+  "regression_build372": {
+    "passed": 54,
+    "result": "expected_version_boundary_only",
+    "total": 55
+  },
+  "result": "pass",
+  "schema": {
+    "canonical_entity_ledger_activated": true,
+    "file_bytes": 1695744,
+    "graph_navigation_new_tables": 0,
+    "graph_projection_new_tables": 0,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "passed": 58,
+    "total": 58
+  },
+  "truthful_note": "Local graph projection/navigation qualification and deterministic benchmark do not constitute external professional analyst usability or external network validation.",
+  "wheel": {
+    "metadata_version": "373.0.0",
+    "name": "eagleeye_personosint_pro-373.0.0-py3-none-any.whl",
+    "runtime_build": "373.0",
+    "schema_version": "373.0",
+    "sha256": "f725f7a6656d31928b8d06ed15d0eeb695ec61b8994638ac7f16fcbfb9ce73b7",
+    "size_bytes": 3810946,
+    "smoke_import": "pass"
+  }
+}

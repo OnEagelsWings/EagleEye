@@ -1,0 +1,47 @@
+{
+  "benchmark": {
+    "cases": 2800,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "367.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec": 0,
+    "python_files": 1559,
+    "python_lines": 176385,
+    "shell_true": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "bc97badb055b4a4ec17b10bfff6058e85ce4920c0b5fb7279c2ddd36bfce5eb0",
+  "compileall": "pass",
+  "external_public_money_validation_complete": false,
+  "package_version": "367.0.0",
+  "phase": "16",
+  "phase_builds_completed": 7,
+  "production_release_ready": false,
+  "regression_build366": "25/26",
+  "release_tree_acceptance": "pass",
+  "release_tree_test": "30/30",
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1863680,
+    "tables": 141,
+    "triggers": 8
+  },
+  "schema_gate": "pass",
+  "ted_notice_externally_validated": false,
+  "tests": {
+    "passed": 30,
+    "total": 30
+  },
+  "truthful_note": "Build 367 qualifies exact-record public-money retrieval internally. No real USAspending/TED request was executed by qualification; replay/contract tests are not external validation.",
+  "usaspending_externally_validated": false,
+  "wheel": {
+    "name": "eagleeye_personosint_pro-367.0.0-py3-none-any.whl",
+    "sha256": "131d02d797adebaf167fd7c511b4892cfebe999b5e86ec8bfa8b8500140f2941",
+    "size_bytes": 3724118,
+    "smoke_test": "pass"
+  }
+}

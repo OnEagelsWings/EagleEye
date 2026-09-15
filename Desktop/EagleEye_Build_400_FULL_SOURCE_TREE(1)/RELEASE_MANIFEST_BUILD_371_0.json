@@ -1,0 +1,77 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 21,
+    "result": "pass",
+    "total": 21
+  },
+  "benchmark": {
+    "cases": 3800,
+    "passed": 3800,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "371.0",
+  "code_fingerprint": "2e05fb1b0cb767eca3efe8f86be938cf1cbdce86412c3fdb32cde8f4a8d5a16f",
+  "crawler_continuity": {
+    "from_build": 370,
+    "mandatory_each_build": true,
+    "roadmap": "CRAWLER_ROADMAP_BUILD_370_TO_380.md",
+    "through_build": 380
+  },
+  "crawler_increment": {
+    "automatic_merge": false,
+    "build": 371,
+    "entity_linked_crawl_provenance": true,
+    "lead_network_budget": 0,
+    "source_to_entity_lead_queue": true
+  },
+  "entity_resolution_v2": {
+    "automatic_identity_confirmation": false,
+    "automatic_merge": false,
+    "common_name_penalty": true,
+    "independent_human_review_required": true,
+    "score_is_probability": false,
+    "source_independence_weighting": true,
+    "strong_identifier_conflict_veto": true
+  },
+  "external_validation": {
+    "calibrated_entity_resolution_holdout": "not_run_scheduled_build372"
+  },
+  "local_validation": {
+    "crawler_entity_provenance": "pass",
+    "entity_lead_queue": "pass",
+    "review_packet": "pass"
+  },
+  "package_version": "371.0.0",
+  "phase": "16",
+  "phase_builds_completed": 11,
+  "production_release_ready": false,
+  "regression_build370": "44/45 expected version boundary only",
+  "result": "pass",
+  "schema": {
+    "active_entity_resolution_v2": {
+      "build371_specific_tables_added": 0,
+      "canonical_entity_ledger_activated": true,
+      "indexes": 133,
+      "logical_bytes": 2158592,
+      "tables": 165,
+      "triggers": 8
+    },
+    "baseline_lazy": {
+      "indexes": 128,
+      "tables": 141,
+      "triggers": 8
+    }
+  },
+  "tests": {
+    "passed": 48,
+    "total": 48
+  },
+  "truthful_note": "Internal deterministic Entity Resolution v2 and crawler-provenance qualification only. Build 372 remains the calibrated holdout/false-link evaluation stage; production release remains false.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-371.0.0-py3-none-any.whl",
+    "sha256": "3b7435668894c4ccf415db2773218ff84316b58163ae9c467fe36fc13a4adb0e",
+    "smoke_import": "pass"
+  }
+}

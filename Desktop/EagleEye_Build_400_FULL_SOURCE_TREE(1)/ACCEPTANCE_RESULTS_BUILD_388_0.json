@@ -1,0 +1,24 @@
+{
+  "build": "388.0",
+  "checks": {
+    "artifact_feedback": true,
+    "coverage_feedback": true,
+    "hash_chain": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go": true,
+    "no_auto_worker_claim": true,
+    "no_direct_fetch": true,
+    "no_scope_expansion": true,
+    "predecessor_387": true,
+    "queued_waits_for_worker": true,
+    "release_gate_inputs_present": true,
+    "schema_gate": true,
+    "session_bound_to_packet": true,
+    "terminal_result_observed": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+  "passed": 15,
+  "result": "pass",
+  "total": 15
+}

@@ -1,0 +1,8 @@
+{
+  "build": "400.0",
+  "code_fingerprint": "b40f6082da337d5b9c97afc8d71e8a540af6acb7b55a699d04316d0e384cc104",
+  "result": "pass",
+  "tests_passed": 11,
+  "tests_total": 11,
+  "violations": 0
+}

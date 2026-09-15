@@ -1,0 +1,2 @@
+from eagleeye.application.build18510.service import Build18510OperationalRedTeamService as OperationalRedTeam18510Service
+__all__=["OperationalRedTeam18510Service"]

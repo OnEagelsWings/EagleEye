@@ -1,0 +1,2 @@
+from eagleeye.application.build167.service import Build167CrimeThreatWorkflowService as CrimeThreatWorkflowService
+__all__=['CrimeThreatWorkflowService']

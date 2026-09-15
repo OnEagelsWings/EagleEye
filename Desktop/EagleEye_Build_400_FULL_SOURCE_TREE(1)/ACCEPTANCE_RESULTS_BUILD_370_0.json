@@ -1,0 +1,33 @@
+{
+  "build": "370.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "ai_boundary": true,
+    "benchmark_current": true,
+    "crawler_roadmap": true,
+    "gateway_default_manual": true,
+    "local_socks_contract": true,
+    "local_tor_http_fixture": true,
+    "loopback_only": true,
+    "no_control_port": true,
+    "no_newnym": true,
+    "no_tor_mutation": true,
+    "opsec_boundary": true,
+    "queue_separation": true,
+    "remote_dns": true,
+    "schema_counts": true,
+    "schema_gate": true,
+    "socks_auth_isolation": true,
+    "test_evidence_current": true,
+    "tor_backpressure": true,
+    "tor_lease_recovery": true,
+    "truthful_release": true,
+    "version_coherent": true,
+    "zero_boot_network": true
+  },
+  "code_fingerprint": "e941ab4e26aae092cd4d9147c04683c67f0281324fbaf808877ff884f1733d03",
+  "passed": 22,
+  "production_release_ready": false,
+  "result": "pass",
+  "total": 22
+}

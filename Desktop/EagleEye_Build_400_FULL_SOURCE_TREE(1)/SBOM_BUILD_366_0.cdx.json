@@ -1,0 +1,109 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "pydantic>=2.10,<3",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "SQLAlchemy>=2.0,<3",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "alembic>=1.14,<2",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "fastapi>=0.115,<1",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "starlette>=0.50,<0.51",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "uvicorn>=0.34,<1",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "cryptography>=46.0.4,<47",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "Pillow>=12.3.0,<13",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "opencv-python-headless>=4.10,<5",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "reportlab>=4,<5",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "argon2-cffi>=25.1,<26",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "python-multipart>=0.0.20,<1",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "PyMuPDF>=1.25,<2",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "pypdf>=5,<7",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "pdfplumber>=0.11,<1",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    },
+    {
+      "name": "pytesseract>=0.3.13,<1",
+      "type": "library",
+      "version": "declared-by-pyproject"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "366.0.0"
+    }
+  },
+  "properties": [
+    {
+      "name": "eagleeye.code_fingerprint",
+      "value": "252b92f45d5bd3d65c95991751e86b0bf2f99d0cbfac3314c1fdf370a5c79a73"
+    },
+    {
+      "name": "eagleeye.production_release_ready",
+      "value": "false"
+    },
+    {
+      "name": "eagleeye.external_corporate_validation",
+      "value": "not_run"
+    }
+  ],
+  "serialNumber": "urn:uuid:eagleeye-build-366",
+  "specVersion": "1.5",
+  "version": 1
+}

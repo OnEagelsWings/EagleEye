@@ -1,0 +1,128 @@
+{
+  "acceptance": {
+    "passed": 17,
+    "result": "pass",
+    "total": 17
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "automatic_evidence_promotions": 0,
+    "automatic_go_grants": 0,
+    "automatic_truth_acceptance": 0,
+    "build": "389.0",
+    "candidates_per_second": 11070.67,
+    "cases": 1000,
+    "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+    "elapsed_seconds": 0.0903,
+    "network_fetches_by_result_intake": 0,
+    "passed": 1000,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "389.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "389.0",
+    "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+    "eval_exec_calls": [],
+    "new_389_direct_network_imports": [],
+    "python_files": 1755,
+    "python_lines": 199160,
+    "result": "pass",
+    "schema": {
+      "build389_tables_present": true,
+      "indexes": 153,
+      "integrity_check": "ok",
+      "tables": 192,
+      "triggers": 8,
+      "views": 0,
+      "within_phase17_gate": true
+    }
+  },
+  "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+  "current_decision": "phase17_result_intake_evidence_normalization_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "389.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_candidate_feed": true,
+      "build389_acceptance": true,
+      "build389_benchmark": true,
+      "build389_tests": true,
+      "dedupe_without_source_collapse": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_identity_merge": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "normalization_active": true,
+      "phase17_predecessor_gate": true,
+      "provenance_preserved": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 9,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 389 normalizes terminal crawler artifacts into provenance-bound review candidates using the existing Build-350 parser layer. Exact logical duplicates are linked without collapsing independent-source observations. AI receives candidate-only context. Explicit PROMOTE EVIDENCE copies a candidate into Evidence Vault with needs_review status; it does not create a verified fact or automatic evidence acceptance."
+  },
+  "package_version": "389.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384,
+    385,
+    386,
+    387,
+    388,
+    389
+  ],
+  "predecessor_build": "388.0",
+  "predecessor_code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundary_failures": 10,
+    "functional_regressions": 0,
+    "historical_360_380_receipt": "RELEASE_MANIFEST_BUILD_388_0.json",
+    "phase17_passed": 68,
+    "phase17_total": 78
+  },
+  "schema": {
+    "build389_tables_present": true,
+    "indexes": 153,
+    "integrity_check": "ok",
+    "tables": 192,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build": "389.0",
+    "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+    "failed": 0,
+    "passed": 13,
+    "probes": {
+      "ai_feed": "pass",
+      "dedupe": "pass",
+      "no_network_side_effects": "pass",
+      "normalization": "pass",
+      "provenance_hash_binding": "pass",
+      "quarantine_boundary": "pass",
+      "vault_promotion_boundary": "pass",
+      "web_auth": "pass"
+    },
+    "result": "pass",
+    "tests": 13
+  },
+  "truthful_note": "Build 389 normalizes terminal research artifacts into provenance-bound review candidates using the existing parser layer. Exact duplicates are linked without erasing source independence. Explicit human promotion copies a candidate into Evidence Vault as needs_review; no verified fact, identity merge, external request, or automatic evidence acceptance is created by Build 389.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-389.0.0-py3-none-any.whl",
+    "sha256": "9a6f19858f1bf057ac5a8493714d9d047c081c790ce059b6cc08c2173c19b140",
+    "size_bytes": 3979576,
+    "smoke_import": "pass"
+  }
+}

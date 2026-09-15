@@ -1,0 +1,8 @@
+{
+  "build": "367.0",
+  "status": "not_run",
+  "network_used": false,
+  "usaspending": "not_run",
+  "ted_notice": "not_run",
+  "truthful_note": "No real USAspending or TED request was executed by the Build-367 qualification environment. Replay/contract tests do not count as external validation."
+}

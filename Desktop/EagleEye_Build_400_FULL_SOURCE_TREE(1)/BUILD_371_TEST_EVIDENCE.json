@@ -1,0 +1,19 @@
+{
+  "build": "371.0",
+  "code_fingerprint": "2e05fb1b0cb767eca3efe8f86be938cf1cbdce86412c3fdb32cde8f4a8d5a16f",
+  "network_used": false,
+  "passed": 48,
+  "probes": {
+    "ai": "pass",
+    "common_name": "pass",
+    "conflict_veto": "pass",
+    "crawler_provenance": "pass",
+    "entity_v2": "pass",
+    "lead_queue": "pass",
+    "opsec": "pass",
+    "review_link": "pass",
+    "source_independence": "pass"
+  },
+  "result": "pass",
+  "tests": 48
+}

@@ -1,0 +1,6 @@
+{
+  "build": "391.0",
+  "decision": "professional_pilot_only",
+  "production_release_ready": false,
+  "reason": "Build 391 analytical synthesis is internally qualified but does not promote external connector validation, production deployment qualification, or independent security/load validation."
+}

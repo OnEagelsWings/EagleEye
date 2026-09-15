@@ -1,0 +1,73 @@
+{
+  "build": "362.0",
+  "checks": {
+    "ai": true,
+    "benchmark": true,
+    "crawler": true,
+    "gate": true,
+    "migration": true,
+    "opsec": true,
+    "postgres_contract": true,
+    "rollback": true,
+    "schema": true,
+    "truthfulness": true,
+    "version": true
+  },
+  "external_connections_opened": 0,
+  "external_postgresql_validation": "not_run",
+  "gate": {
+    "build": "362.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_improvement_tested": true,
+      "benchmark_1800_no_violations": true,
+      "crawler_improvement_tested": true,
+      "migration_plan_tested": true,
+      "no_literal_true_gate": true,
+      "opsec_improvement_tested": true,
+      "postgres_contract_tested": true,
+      "rollback_drill_tested": true,
+      "schema_within_gate": true,
+      "test_evidence_current": true,
+      "version_coherent": true
+    },
+    "postgresql_externally_validated": false,
+    "production_release_ready": false,
+    "truthful_note": "Build 362 implements and internally qualifies the PostgreSQL team migration/rollback/concurrency harness. This build environment has no PostgreSQL server or psycopg driver, so live external PostgreSQL validation remains not_run unless an operator explicitly supplies a real DSN and runs the live harness."
+  },
+  "postgres": {
+    "automatic_external_connections": false,
+    "externally_validated": false,
+    "live_validation_status": "not_run",
+    "migration_plan": {
+      "row_count": 12,
+      "table_count": 135
+    },
+    "policy": "phase16.postgresql-team-profile.v362",
+    "postgres_driver_available": false,
+    "postgres_server_available_in_build_environment": false,
+    "sqlite_remains_default": true
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "version": {
+    "coherent": true,
+    "package_version": "362.0.0",
+    "runtime_build": "362.0",
+    "schema_version": "362.0"
+  }
+}

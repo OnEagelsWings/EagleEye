@@ -1,0 +1,34 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "fastapi",
+      "type": "library",
+      "version": "runtime"
+    },
+    {
+      "name": "sqlite3",
+      "type": "library",
+      "version": "python-stdlib"
+    },
+    {
+      "name": "boto3",
+      "type": "library",
+      "version": "optional-live-s3"
+    },
+    {
+      "name": "psycopg",
+      "type": "library",
+      "version": "optional-live-postgres-search"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "363.0.0"
+    }
+  },
+  "specVersion": "1.5",
+  "version": 1
+}

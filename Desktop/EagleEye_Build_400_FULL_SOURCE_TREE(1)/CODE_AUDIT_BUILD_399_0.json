@@ -1,0 +1,20 @@
+{
+  "ast_errors": 0,
+  "build": "399.0",
+  "code_fingerprint": "57039f48ed9aa243eccff245cc9b587408f20af89c5411afb8b9b4d13f4fffba",
+  "direct_network_imports_build399_core": [],
+  "eval_exec_calls": 0,
+  "python_files": 1836,
+  "python_lines": 210164,
+  "result": "pass",
+  "schema": {
+    "build399_tables_present": true,
+    "indexes": 193,
+    "integrity_check": "ok",
+    "tables": 252,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "shell_true_calls": 0
+}

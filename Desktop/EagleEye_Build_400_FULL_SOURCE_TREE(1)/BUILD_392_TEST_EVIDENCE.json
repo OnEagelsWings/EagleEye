@@ -1,0 +1,9 @@
+{
+  "build": "392.0",
+  "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+  "failed": 0,
+  "passed": 22,
+  "result": "pass",
+  "suite": "tests/test_build392_integrated.py",
+  "total": 22
+}

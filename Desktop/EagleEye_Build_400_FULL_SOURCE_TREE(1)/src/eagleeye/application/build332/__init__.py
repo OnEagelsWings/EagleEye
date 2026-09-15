@@ -1,0 +1,2 @@
+from .service import Build332DocumentIntelligenceV2Service
+__all__=['Build332DocumentIntelligenceV2Service']

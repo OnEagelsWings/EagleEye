@@ -1,0 +1,23 @@
+{
+  "build": "369.0",
+  "checks": {
+    "delta_conditional_fetch": true,
+    "expired_lease_recovery": true,
+    "frontier_resume": true,
+    "no_external_network": true,
+    "scheduler_enqueued": true,
+    "soak_snapshot_no_stale_leases": true,
+    "source_health_operational": true,
+    "worker_replay_succeeded": true
+  },
+  "code_fingerprint": "949e629b42d2d42f343674151d6830f06be1b9ea5228177ee5471cbdcd90b6e3",
+  "external_load_validation": "not_run",
+  "external_long_running_soak_validation": "not_run",
+  "local_delta_resume_validation": "pass",
+  "local_lease_recovery_validation": "pass",
+  "local_scheduler_worker_replay_validation": "pass",
+  "network_used": false,
+  "production_release_ready": false,
+  "status": "pass",
+  "truthful_note": "Local deterministic scheduler/worker/delta/resume/lease validation only. No external long-running soak or load validation is claimed."
+}

@@ -1,0 +1,28 @@
+{
+  "build": "377.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "ai_no_direct_network": true,
+    "build_acceptance_ready": true,
+    "crawler_increment": true,
+    "exact_dedup": true,
+    "external_validation_not_run": true,
+    "handoff_no_raw_bytes": true,
+    "image_agent_no_network": true,
+    "media_provenance": true,
+    "no_auto_reverse": true,
+    "no_face_identity": true,
+    "no_new_tables": true,
+    "no_scene_confirmation": true,
+    "opsec_boundary": true,
+    "pressure_control": true,
+    "production_false": true,
+    "schema_within_gate": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "34544786842cf7d7c09e29e6e20a346fcbf7c46869ef467667517872a2b5c411",
+  "passed": 17,
+  "production_release_ready": false,
+  "result": "pass",
+  "total": 17
+}

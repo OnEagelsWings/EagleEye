@@ -1,0 +1,14 @@
+{
+  "build": "389.0",
+  "expected_release_boundaries": 10,
+  "functional_regressions": 0,
+  "historical_360_380_receipt": {
+    "build": "388.0",
+    "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+    "production_release_ready": false,
+    "valid": true
+  },
+  "phase17_passed": 68,
+  "phase17_tests_total": 78,
+  "result": "pass"
+}

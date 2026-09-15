@@ -1,0 +1,16 @@
+{
+  "build": "363.0",
+  "cases": 2000,
+  "categories": {
+    "endpoint_policy": 500,
+    "local_store_search": 500,
+    "s3_contract": 500,
+    "team_search_contract": 500
+  },
+  "code_fingerprint": "e60a010c857e3e88412dca4109cfe244cdb444fd66332db9a661e528d6d2048a",
+  "external_s3_validation": "not_run",
+  "external_team_search_validation": "not_run",
+  "network_connections_opened": 0,
+  "result": "pass",
+  "violations": 0
+}

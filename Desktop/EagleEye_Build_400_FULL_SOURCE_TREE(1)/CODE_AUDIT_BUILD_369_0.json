@@ -1,0 +1,14 @@
+{
+  "ast_error_details": [],
+  "ast_errors": 0,
+  "build": "369.0",
+  "eval_exec": 0,
+  "historical_subprocess_calls": 20,
+  "new369_direct_http_socket_subprocess_imports": [],
+  "python_files": 1577,
+  "python_lines": 178394,
+  "result": "pass",
+  "shell_true": 0,
+  "tls_disable_patterns": 0,
+  "truthful_note": "Static scan of the clean Build-369 source release tree. Historical subprocess use is reported separately and was not introduced by Build 369."
+}

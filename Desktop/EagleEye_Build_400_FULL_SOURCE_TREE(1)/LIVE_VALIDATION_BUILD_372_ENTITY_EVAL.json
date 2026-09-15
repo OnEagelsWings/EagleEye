@@ -1,0 +1,129 @@
+{
+  "build": "372.0",
+  "checks": {
+    "conflict_escape_zero": true,
+    "crawler_lead_review_ready": true,
+    "false_link_rate_safe": true,
+    "holdout_20_scenarios": true,
+    "holdout_gate_passed": true,
+    "no_auto_merge": true,
+    "no_external_network": true,
+    "precision_ge_090": true,
+    "recall_ge_080": true,
+    "source_quality_monotonic": true,
+    "source_quality_packet": true
+  },
+  "classifications": {
+    "ambiguous_alias_only": "insufficient",
+    "ambiguous_birth_year_conflict": "insufficient",
+    "ambiguous_org_location_only": "weak_review_candidate",
+    "distinct_common_name_no_anchors": "insufficient",
+    "distinct_common_name_org_only": "insufficient",
+    "distinct_near_name_phone_conflict": "likely_distinct",
+    "distinct_same_location_only": "weak_review_candidate",
+    "distinct_same_name_email_conflict": "likely_distinct",
+    "distinct_same_name_external_conflict": "likely_distinct",
+    "distinct_same_name_phone_and_birth_conflict": "likely_distinct",
+    "distinct_same_org_email_conflict": "likely_distinct",
+    "distinct_shared_email_external_conflict": "likely_distinct",
+    "distinct_similar_name_no_anchors": "insufficient",
+    "same_exact_email": "possible_review_candidate",
+    "same_exact_external": "weak_review_candidate",
+    "same_exact_phone": "possible_review_candidate",
+    "same_external_low_name_similarity": "possible_review_candidate",
+    "same_multi_anchor": "strong_review_candidate",
+    "same_name_variant_email": "possible_review_candidate",
+    "same_transliteration_external": "possible_review_candidate"
+  },
+  "code_fingerprint": "7d3ad9b25d75e0b33fe029d80f4065a7bcf803d7f3126670500e14bcc0c45513",
+  "cohorts": {
+    "ambiguous_defer": {
+      "defer_rate": 1.0,
+      "false_link_rate": 0.0,
+      "records": 3,
+      "same_entity_candidate_recall": 0.0
+    },
+    "common_name_distinct": {
+      "defer_rate": 1.0,
+      "false_link_rate": 0.0,
+      "records": 2,
+      "same_entity_candidate_recall": 0.0
+    },
+    "mixed_evidence_distinct": {
+      "defer_rate": 0.0,
+      "false_link_rate": 0.0,
+      "records": 2,
+      "same_entity_candidate_recall": 0.0
+    },
+    "multi_source_same": {
+      "defer_rate": 0.0,
+      "false_link_rate": 0.0,
+      "records": 1,
+      "same_entity_candidate_recall": 1.0
+    },
+    "name_similarity_distinct": {
+      "defer_rate": 1.0,
+      "false_link_rate": 0.0,
+      "records": 1,
+      "same_entity_candidate_recall": 0.0
+    },
+    "name_variant_same": {
+      "defer_rate": 0.0,
+      "false_link_rate": 0.0,
+      "records": 3,
+      "same_entity_candidate_recall": 1.0
+    },
+    "strong_conflict_distinct": {
+      "defer_rate": 0.0,
+      "false_link_rate": 0.0,
+      "records": 4,
+      "same_entity_candidate_recall": 0.0
+    },
+    "strong_identifier_same": {
+      "defer_rate": 0.333333,
+      "false_link_rate": 0.0,
+      "records": 3,
+      "same_entity_candidate_recall": 0.666667
+    },
+    "weak_context_distinct": {
+      "defer_rate": 1.0,
+      "false_link_rate": 0.0,
+      "records": 1,
+      "same_entity_candidate_recall": 0.0
+    }
+  },
+  "crawler_source_quality_validation": "pass",
+  "external_real_world_holdout_validation": "not_run",
+  "metrics": {
+    "ambiguous_records": 3,
+    "binary_records": 17,
+    "common_name_distinct_cases": 2,
+    "common_name_false_link_rate": 0.0,
+    "defer_count": 8,
+    "defer_rate": 0.4,
+    "distinct_records": 10,
+    "false_distinct_count": 0,
+    "false_distinct_rate": 0.0,
+    "records": 20,
+    "review_positive_count": 6,
+    "review_positive_precision": 1.0,
+    "same_entity_candidate_recall": 0.857143,
+    "same_entity_records": 7,
+    "strong_identifier_conflict_cases": 6,
+    "strong_identifier_conflict_escape_count": 0,
+    "strong_identifier_conflict_escape_rate": 0.0,
+    "strong_review_count": 1,
+    "strong_review_false_link_rate": 0.0,
+    "unsafe_false_link_count": 0,
+    "unsafe_false_link_rate": 0.0,
+    "unsafe_false_link_wilson95": {
+      "high": 0.27754,
+      "low": 0.0
+    }
+  },
+  "no_external_network": true,
+  "real_person_data_used": false,
+  "result": "pass",
+  "synthetic_holdout_validation": "pass",
+  "truthful_note": "Deterministic synthetic holdout and static crawler transport only. This is not an external real-world false-link validation."
+}

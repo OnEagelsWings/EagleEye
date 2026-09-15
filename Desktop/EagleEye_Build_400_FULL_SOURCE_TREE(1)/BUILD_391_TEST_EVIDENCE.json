@@ -1,0 +1,17 @@
+{
+  "build": "391.0",
+  "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "probes": {
+    "candidate_claim_not_fact": "pass",
+    "counterevidence_preserved": "pass",
+    "hypothesis_not_fact": "pass",
+    "kernel_notebook_bridge": "pass",
+    "legacy_probability_path_unused": "pass",
+    "no_network_execution": "pass",
+    "tamper_detection": "pass"
+  },
+  "result": "pass",
+  "tests_failed": 0,
+  "tests_passed": 18,
+  "total": 18
+}

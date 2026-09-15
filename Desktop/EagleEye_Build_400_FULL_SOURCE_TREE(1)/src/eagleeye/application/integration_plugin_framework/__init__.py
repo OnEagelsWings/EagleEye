@@ -1,0 +1,3 @@
+from eagleeye.application.build183.service import Build183IntegrationPluginAIService
+IntegrationPluginFrameworkService=Build183IntegrationPluginAIService
+__all__=['Build183IntegrationPluginAIService','IntegrationPluginFrameworkService']

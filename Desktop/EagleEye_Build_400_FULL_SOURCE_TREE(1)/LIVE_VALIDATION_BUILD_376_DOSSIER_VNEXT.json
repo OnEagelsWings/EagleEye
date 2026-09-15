@@ -1,0 +1,15 @@
+{
+  "build": "376.0",
+  "checks": {
+    "absence_semantics": true,
+    "coverage_register": true,
+    "direct_network_authority": true,
+    "gap_without_auto_crawl": true
+  },
+  "code_fingerprint": "b5f84a7b234123749da8a72d5733aeb1a407bb04c683436c017da35d3700fb53",
+  "external_dossier_validation": "not_run",
+  "external_negative_evidence_validation": "not_run",
+  "external_network_used": false,
+  "local_dossier_vnext_validation": "pass",
+  "truthful_note": "Local deterministic validation only; no external network or professional analyst validation performed."
+}

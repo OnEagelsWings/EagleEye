@@ -1,0 +1,20 @@
+{
+  "build": "369.0",
+  "result": "pass",
+  "tests_passed": 40,
+  "tests_total": 40,
+  "code_fingerprint": "949e629b42d2d42f343674151d6830f06be1b9ea5228177ee5471cbdcd90b6e3",
+  "probes": {
+    "schedule": "pass",
+    "backpressure": "pass",
+    "health": "pass",
+    "delta": "pass",
+    "resume": "pass",
+    "lease": "pass",
+    "soak": "pass",
+    "ai": "pass",
+    "opsec": "pass"
+  },
+  "network_used": false,
+  "truthful_note": "Build-369 unit/integration qualification uses deterministic local transports; it does not constitute external soak/load validation."
+}

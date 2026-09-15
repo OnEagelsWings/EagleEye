@@ -1,0 +1,13 @@
+{
+  "ast_errors": [],
+  "build": "366.0",
+  "eval_exec_calls": [],
+  "new_build366_modules_direct_network_socket_or_subprocess_imports": [],
+  "python_files": 1550,
+  "python_lines": 175048,
+  "release_candidate_files": 1667,
+  "result": "pass",
+  "shell_true_calls": [],
+  "subprocess_import_files": 13,
+  "tls_disable_calls": []
+}

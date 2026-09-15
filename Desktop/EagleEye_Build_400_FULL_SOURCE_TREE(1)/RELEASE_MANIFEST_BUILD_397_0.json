@@ -1,0 +1,102 @@
+{
+  "acceptance": {
+    "passed": 17,
+    "result": "pass",
+    "total": 17
+  },
+  "benchmark": {
+    "assessments": 1000,
+    "assessments_per_second": 1742.836,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "397.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "direct_network_imports_new_397": 0,
+    "eval_exec_calls": 0,
+    "python_code_lines": 209259,
+    "python_files": 1819,
+    "result": "pass",
+    "shell_true_calls": 0
+  },
+  "code_fingerprint": "cf2365f808e5abab6c693b15d13359c724b780b8bd3f77a6e7d7dc46c592e032",
+  "external_qualification_validated": false,
+  "package_version": "397.0.0",
+  "phase17_builds_completed": 17,
+  "production_candidate": false,
+  "production_release_ready": false,
+  "professional_pilot_ready": true,
+  "qualified_gate": {
+    "build": "397.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build397_acceptance": true,
+      "build397_benchmark": true,
+      "build397_tests": true,
+      "explicit_stop_decisions": true,
+      "no_active_state_auto_mutation": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_live_confirmation": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "precise_evidence_citations": true,
+      "review_required_recommendations": true,
+      "schema_integrity": true,
+      "source_independence_aware": true,
+      "support_counterevidence_separated": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 17,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true
+  },
+  "regression": {
+    "build": "397.0",
+    "crawler": {
+      "expected_release_boundary_failures": 2,
+      "functional_regressions": 0,
+      "scope": "Builds 369-370",
+      "tests_passed": 83,
+      "tests_total": 85
+    },
+    "functional_regressions": 0,
+    "notes": [
+      "All recorded failures are historical version/schema/current-launcher release-boundary assertions against Build 397.0.",
+      "Crawler functional regression was re-run after robots.txt hardening."
+    ],
+    "phase15_16": {
+      "expected_release_boundary_failures": 30,
+      "functional_regressions": 0,
+      "scope": "Builds 360-380",
+      "tests_passed": 792,
+      "tests_total": 822
+    },
+    "phase17": {
+      "expected_release_boundary_failures": 23,
+      "functional_regressions": 0,
+      "scope": "Builds 381-397",
+      "tests_passed": 280,
+      "tests_total": 303
+    },
+    "result": "pass"
+  },
+  "schema": {
+    "indexes": 187,
+    "integrity_check": "ok",
+    "tables": 242,
+    "triggers": 8,
+    "views": 0
+  },
+  "weekly_status_integration": {
+    "ambiguous_robots_failure_fail_closed": true,
+    "broad_live_crawler_external_qualification": false,
+    "real_model_human_holdout_qualification": false,
+    "robots_multi_user_agent_group_fixed": true,
+    "robots_pdf_end_anchor_fixed": true
+  }
+}

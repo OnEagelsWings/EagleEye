@@ -1,0 +1,49 @@
+{
+  "acceptance": {
+    "passed": 16,
+    "result": "pass",
+    "total": 16
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "cases": 500,
+    "cases_per_second": 355.219,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "384.0",
+  "code_fingerprint": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff",
+  "current_decision": "phase17_integrated_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "package_version": "384.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384
+  ],
+  "production_release_ready": false,
+  "regression": {
+    "expected_release_boundary_failures": 30,
+    "functional_regressions": 0,
+    "historical_passed": 792,
+    "historical_total": 822
+  },
+  "schema": {
+    "indexes": 138,
+    "integrity_check": "ok",
+    "tables": 178,
+    "triggers": 8
+  },
+  "tests": {
+    "phase17_passed": 108,
+    "phase17_total": 108
+  },
+  "truthful_note": "Build 384 is an integrated Phase-17 planning/data-acquisition foundation on the verified Build-380 tree. General production readiness is not claimed.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-384.0.0-py3-none-any.whl",
+    "sha256": "ab6f466f6ef67bce6e3ab3bbbde0f0b2aa93bddb95df45052cf7b36913c73ef1",
+    "size_bytes": 3926219
+  }
+}

@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+from .contracts import AgentResult, AgentTask, GatewayKind
+
+
+class AgentPort(Protocol):
+    """Model/agent boundary. Implementations receive only the immutable task contract."""
+    def handle(self, task: AgentTask) -> AgentResult: ...
+
+
+class TaskRepositoryPort(Protocol):
+    def create_task(self, task: AgentTask) -> dict: ...
+    def get_task(self, task_id: str) -> AgentTask | None: ...
+    def append_result(self, result: AgentResult) -> dict: ...
+    def list_tasks(self, *, case_id: str | None = None, limit: int = 100) -> list[dict]: ...
+    def list_results(self, task_id: str) -> list[dict]: ...
+
+
+class GatewayPort(Protocol):
+    kind: GatewayKind
+    def execute(self, task: AgentTask) -> AgentResult: ...

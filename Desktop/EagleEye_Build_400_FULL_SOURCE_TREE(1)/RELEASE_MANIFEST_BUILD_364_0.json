@@ -1,0 +1,32 @@
+{
+  "benchmark": {
+    "cases": 2200,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "364.0",
+  "code_fingerprint": "8394537a2bf30b9c3e4a624303b210d0042b3c08198e0861e4a752493a80ecc1",
+  "compileall": "pass",
+  "cross_case_live_http_denial": 403,
+  "external_remote_clients_validated": false,
+  "loopback_tls_clients": 2,
+  "loopback_tls_live_validation": "pass",
+  "package_version": "364.0.0",
+  "phase": "16",
+  "production_release_ready": false,
+  "regression_build363": "18/20",
+  "remote_team_externally_validated": false,
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1863680,
+    "tables": 141,
+    "triggers": 8
+  },
+  "schema_gate": "pass",
+  "tests": {
+    "passed": 26,
+    "total": 26
+  },
+  "truthful_note": "Build 364 has real loopback TLS multi-client evidence, but external remote-network/client validation remains not_run."
+}

@@ -1,0 +1,41 @@
+{
+  "build": "386.0",
+  "code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "gate": {
+    "build": "386.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build386_acceptance": true,
+      "build386_benchmark": true,
+      "build386_tests": true,
+      "capability_scoped_go": true,
+      "no_auto_scope_expansion": true,
+      "no_automatic_execution": true,
+      "no_direct_network_authority": true,
+      "no_host_security_mutation": true,
+      "operations_preflight_binding": true,
+      "opsec_preflight_binding": true,
+      "packet_hash_binding": true,
+      "phase17_predecessor_gate": true,
+      "request_budget_binding": true,
+      "schema_integrity": true,
+      "token_hash_only": true,
+      "version_coherent": true,
+      "workflow_generation_binding": true
+    },
+    "phase17_builds_completed": 6,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 386 issues short-lived capability-scoped GO grants only after source review, workflow-budget, Operations and OPSEC preflight. It does not enqueue or execute external work."
+  },
+  "result": "pass",
+  "schema": {
+    "build386_tables_present": true,
+    "indexes": 142,
+    "integrity_check": "ok",
+    "tables": 182,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

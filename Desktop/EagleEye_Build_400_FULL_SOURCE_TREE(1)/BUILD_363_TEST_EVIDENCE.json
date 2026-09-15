@@ -1,0 +1,20 @@
+{
+  "build": "363.0",
+  "code_fingerprint": "e60a010c857e3e88412dca4109cfe244cdb444fd66332db9a661e528d6d2048a",
+  "probes": {
+    "ai": "pass",
+    "crawler": "pass",
+    "local_search": "pass",
+    "local_store": "pass",
+    "opsec": "pass",
+    "s3": "pass",
+    "team_search": "pass"
+  },
+  "result": "pass",
+  "tests_passed": 20,
+  "tests_total": 20,
+  "truthful_external": {
+    "s3_minio": false,
+    "team_search": false
+  }
+}

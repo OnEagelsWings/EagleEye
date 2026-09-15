@@ -1,0 +1,54 @@
+{
+  "build": "363.0",
+  "gate": {
+    "build": "363.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_improvement_tested": true,
+      "benchmark_2000_no_violations": true,
+      "crawler_improvement_tested": true,
+      "local_search_tested": true,
+      "local_store_tested": true,
+      "no_literal_true_gate": true,
+      "opsec_improvement_tested": true,
+      "s3_contract_tested": true,
+      "schema_within_gate": true,
+      "team_search_contract_tested": true,
+      "test_evidence_current": true,
+      "version_coherent": true
+    },
+    "production_release_ready": false,
+    "s3_minio_externally_validated": false,
+    "team_search_externally_validated": false,
+    "truthful_note": "Build 363 provides live-ready S3/MinIO and team-search harnesses while locally validating CAS and FTS5. No external S3/MinIO or team-search server is available in this build environment, so those external validations remain not_run unless an operator supplies real endpoints."
+  },
+  "network_used": false,
+  "probes": {
+    "ai": true,
+    "crawler": true,
+    "gate": true,
+    "local_search": true,
+    "local_store": true,
+    "opsec": true,
+    "schema": true,
+    "truthful_s3": true,
+    "truthful_team_search": true,
+    "version": true
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  }
+}

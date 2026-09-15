@@ -1,0 +1,109 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "pydantic>=2.10,<3",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "SQLAlchemy>=2.0,<3",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "alembic>=1.14,<2",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "fastapi>=0.115,<1",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "starlette>=0.50,<0.51",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "uvicorn>=0.34,<1",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "cryptography>=46.0.4,<47",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "Pillow>=12.3.0,<13",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "opencv-python-headless>=4.10,<5",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "reportlab>=4,<5",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "argon2-cffi>=25.1,<26",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "python-multipart>=0.0.20,<1",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "PyMuPDF>=1.25,<2",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "pypdf>=5,<7",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "pdfplumber>=0.11,<1",
+      "type": "library",
+      "version": "unspecified"
+    },
+    {
+      "name": "pytesseract>=0.3.13,<1",
+      "type": "library",
+      "version": "unspecified"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "367.0.0"
+    }
+  },
+  "properties": [
+    {
+      "name": "eagleeye.build",
+      "value": "367.0"
+    },
+    {
+      "name": "eagleeye.code_fingerprint",
+      "value": "bc97badb055b4a4ec17b10bfff6058e85ce4920c0b5fb7279c2ddd36bfce5eb0"
+    },
+    {
+      "name": "eagleeye.external_public_money_validation",
+      "value": "not_run"
+    }
+  ],
+  "serialNumber": "urn:uuid:eagleeye-build-367-0",
+  "specVersion": "1.5",
+  "version": 1
+}

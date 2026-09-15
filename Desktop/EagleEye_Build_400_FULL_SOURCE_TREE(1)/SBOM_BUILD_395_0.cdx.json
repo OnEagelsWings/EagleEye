@@ -1,0 +1,29 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "eagleeye-personosint-pro",
+      "type": "library",
+      "version": "395.0.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "EagleEye",
+      "type": "application",
+      "version": "395.0.0"
+    }
+  },
+  "properties": [
+    {
+      "name": "eagleeye:runtime-file-count",
+      "value": "2368"
+    },
+    {
+      "name": "eagleeye:code-fingerprint",
+      "value": "71ad7d5b523d511940862cad1d03c5739fc088f657ede77b0ed6decf0bef97a4"
+    }
+  ],
+  "specVersion": "1.5",
+  "version": 1
+}

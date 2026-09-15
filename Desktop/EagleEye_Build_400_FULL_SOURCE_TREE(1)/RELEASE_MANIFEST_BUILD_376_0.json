@@ -1,0 +1,84 @@
+{
+  "acceptance": {
+    "build_acceptance_ready": true,
+    "passed": 15,
+    "total": 15
+  },
+  "benchmark": {
+    "cases": 4800,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "376.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1645,
+    "python_lines": 185235,
+    "result": "pass",
+    "shell_true_calls": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "b5f84a7b234123749da8a72d5733aeb1a407bb04c683436c017da35d3700fb53",
+  "continuous_crawler_expansion_370_380": true,
+  "crawler_increment_build": 376,
+  "dossier_vnext": {
+    "absence_is_nonexistence": false,
+    "automatic_gap_crawl": false,
+    "bounded_absence_observations": true,
+    "coverage_is_truth_probability": false,
+    "research_gap_register": true,
+    "source_coverage": true,
+    "staleness_register": true
+  },
+  "external_validation": {
+    "negative_evidence": "not_run",
+    "professional_dossier": "not_run"
+  },
+  "package_version": "376.0.0",
+  "phase16_builds_completed": 16,
+  "production_release_ready": false,
+  "release_tree": {
+    "acceptance": "15/15 pass",
+    "build376_tests": "34/34 pass",
+    "compileall": "pass"
+  },
+  "schema": {
+    "dossier_vnext_new_tables": 0,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "tests": {
+    "build375_regression": {
+      "expected_release_boundary_failures": 1,
+      "functional_regressions": 0,
+      "passed": 62,
+      "total": 63
+    },
+    "build376": {
+      "passed": 34,
+      "total": 34
+    }
+  },
+  "truthful_note": "Build 376 is locally qualified and packaged as a review-first Dossier vNext increment. External professional dossier and negative-evidence validation remain not_run.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-376.0.0-py3-none-any.whl",
+    "package_version": "376.0.0",
+    "runtime_build": "376.0",
+    "schema_version": "376.0",
+    "sha256": "240167f371ad29a6df4a85049e447e545dc75e7837ef6c1f631ac79b7ac0e7bb",
+    "size_bytes": 3846539,
+    "smoke_import": "pass"
+  }
+}

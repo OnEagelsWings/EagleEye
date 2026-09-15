@@ -1,0 +1,16 @@
+{
+  "build": "398.0",
+  "bundled_holdout_cases": 60,
+  "code_fingerprint": "6eba48fe6b47ea6a6217ae7b23c238fb9e6540ea11dff72d76292736bd6abcfd",
+  "external_holdout_qualified": false,
+  "human_review_import_available": true,
+  "human_reviewed_cases": 0,
+  "human_reviews": 0,
+  "internal_baseline_type": "deterministic_reference_not_real_model",
+  "internal_deterministic_baseline_cases": 60,
+  "live_model_adapter_available": false,
+  "qualification_note": "Live model runs and blinded human reviews are intentionally pending and must be supplied later; no synthetic run is counted as external qualification.",
+  "real_model_cases": 0,
+  "real_model_runs": 0,
+  "result": "pending_external"
+}

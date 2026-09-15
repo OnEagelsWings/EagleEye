@@ -1,0 +1,106 @@
+{
+  "acceptance": {
+    "passed": 16,
+    "result": "pass",
+    "total": 16
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "build": "391.0",
+    "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+    "elapsed_seconds": 2.5385301860001164,
+    "evidence_promotions_created": 0,
+    "grants_created": 0,
+    "iterations": 1000,
+    "jobs_created": 0,
+    "legacy_kernel_hypotheses_created": 0,
+    "result": "pass",
+    "syntheses_per_second": 393.928740936372,
+    "violations": 0
+  },
+  "build": "391.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "391.0",
+    "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+    "eval_exec_calls": [],
+    "new_module_direct_network_imports": [],
+    "python_files": 1771,
+    "python_lines": 201075,
+    "result": "pass",
+    "schema": {
+      "build391_tables_present": true,
+      "indexes": 161,
+      "integrity_check": "ok",
+      "tables": 205,
+      "triggers": 8,
+      "views": 0,
+      "within_phase17_gate": true
+    }
+  },
+  "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "current_decision": "phase17_ai_investigation_synthesis_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "391.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build391_acceptance": true,
+      "build391_benchmark": true,
+      "build391_tests": true,
+      "candidate_claim_synthesis": true,
+      "counterevidence_preserved": true,
+      "hypothesis_proposals": true,
+      "kernel_notebook_bridge": true,
+      "legacy_probability_path_unused": true,
+      "no_auto_claim_acceptance": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 11,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 391 synthesizes finalized source-independent corroboration reviews into candidate claims, preserves counterevidence, supports review-only hypotheses and mirrors reviewed analytical objects into Investigation Kernel notebook entries. It does not declare facts, calculate truth probability, invoke the legacy kernel confidence path, promote evidence automatically, merge identities, or execute network research."
+  },
+  "package_version": "391.0.0",
+  "phase17_builds_integrated": 11,
+  "predecessor_build": "390.0",
+  "predecessor_code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundaries": 14,
+    "functional_regressions": 0,
+    "passed_unchanged": 98,
+    "result": "pass",
+    "tests_collected": 112
+  },
+  "schema": {
+    "build391_tables_present": true,
+    "indexes": 161,
+    "integrity_check": "ok",
+    "tables": 205,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "failed": 0,
+    "passed": 18,
+    "result": "pass",
+    "total": 18
+  },
+  "truthful_note": "Build 391 converts finalized Build-390 corroboration reviews into candidate claims, preserves counterevidence, supports review-only hypotheses, and mirrors reviewed analytical objects into Investigation Kernel notebook entries. It does not determine truth, assign truth probability, invoke the legacy numeric hypothesis-confidence path, promote evidence automatically, merge identities, or execute network research.",
+  "wheel": {
+    "filename": "eagleeye_personosint_pro-391.0.0-py3-none-any.whl",
+    "sha256": "d6d39273422024865a41dfddf388961896f7bb6e3c25885288ed810727b46690",
+    "smoke_import": "pass"
+  }
+}

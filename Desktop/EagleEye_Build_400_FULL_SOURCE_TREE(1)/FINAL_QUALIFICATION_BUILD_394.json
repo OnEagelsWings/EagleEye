@@ -1,0 +1,10 @@
+{
+  "build": "394.0",
+  "build_acceptance_ready": true,
+  "code_fingerprint": "3244ac06d483f99561cf9b02c06e99f4eb744f1fb2e8fb88d3289e78351f2deb",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "release_gate_checks_passed": 24,
+  "release_gate_checks_total": 24,
+  "result": "pass"
+}

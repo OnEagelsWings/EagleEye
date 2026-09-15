@@ -1,0 +1,16 @@
+{
+  "build": "380.0",
+  "code_fingerprint": "0b367f97f28d33687ddbff6fb05b8652962a5f23aff1039145845c2cae32970d",
+  "failed": 0,
+  "passed": 54,
+  "probes": {
+    "ai": "pass",
+    "crawler_slo": "pass",
+    "decision": "pass",
+    "matrix": "pass",
+    "opsec": "pass",
+    "telemetry": "pass"
+  },
+  "result": "pass",
+  "tests": 54
+}

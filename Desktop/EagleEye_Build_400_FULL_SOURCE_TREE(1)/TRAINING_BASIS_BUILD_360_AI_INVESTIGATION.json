@@ -1,0 +1,20 @@
+{
+  "build": "360.0",
+  "human_reviewed_training_examples": 0,
+  "mode": "prompt_policy_orchestration_plus_qualification",
+  "model_weight_training_claimed": false,
+  "network_used_by_qualification": false,
+  "qualification_cases": 2000,
+  "qualification_violations": 0,
+  "qualified_surfaces": [
+    "OPSEC boundary",
+    "crawler boundedness/recovery/provenance",
+    "AI dossier",
+    "image intelligence",
+    "voice confirmation",
+    "RBAC/cross-case",
+    "schema/version",
+    "truthful release"
+  ],
+  "truthful_note": "Build 360 extends qualification/evaluation only. It does not claim model-weight fine-tuning or a human-reviewed training corpus."
+}

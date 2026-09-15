@@ -1,0 +1,45 @@
+{
+  "ast_errors": [],
+  "build": "391.0",
+  "code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "eval_exec_calls": [],
+  "new_module_direct_network_imports": [],
+  "python_files": 1771,
+  "python_lines": 201075,
+  "release_gate": {
+    "build": "391.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build391_acceptance": true,
+      "build391_benchmark": true,
+      "build391_tests": true,
+      "candidate_claim_synthesis": true,
+      "counterevidence_preserved": true,
+      "hypothesis_proposals": true,
+      "kernel_notebook_bridge": true,
+      "legacy_probability_path_unused": true,
+      "no_auto_claim_acceptance": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 11,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 391 synthesizes finalized source-independent corroboration reviews into candidate claims, preserves counterevidence, supports review-only hypotheses and mirrors reviewed analytical objects into Investigation Kernel notebook entries. It does not declare facts, calculate truth probability, invoke the legacy kernel confidence path, promote evidence automatically, merge identities, or execute network research."
+  },
+  "result": "pass",
+  "schema": {
+    "build391_tables_present": true,
+    "indexes": 161,
+    "integrity_check": "ok",
+    "tables": 205,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  }
+}

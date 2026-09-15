@@ -1,0 +1,112 @@
+{
+  "build": "396.0",
+  "build_name": "EagleEye Intelligence Platform \u2013 Build 396.0 Case State Reconciliation & Incremental Re-analysis",
+  "capabilities": {
+    "automatic_active_state_mutation": false,
+    "automatic_evidence_promotion": false,
+    "automatic_go_issuance": false,
+    "conservative_exact_matching": true,
+    "controlled_reanalysis_branch": true,
+    "delta_only_signal_comparison": true,
+    "dependency_propagation": true,
+    "direct_network_fetch": false,
+    "execution_authority": false,
+    "explicit_reconciliation_baseline": true,
+    "review_required_reanalysis": true,
+    "stale_generation_protection": true,
+    "truth_probability": false,
+    "unmatched_evidence_preserved": true
+  },
+  "code_fingerprint": "aa88d7235094ebda2b5d472c9ddc71210beb86b2697cb9bb185d68e42d73d46b",
+  "current_decision": "phase17_case_state_reconciliation_professional_pilot_line",
+  "external_qualification_promoted": false,
+  "package_version": "396.0.0",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "qualification": {
+    "acceptance": {
+      "checks_passed": 28,
+      "checks_total": 28,
+      "result": "pass"
+    },
+    "benchmark": {
+      "result": "pass",
+      "signals_per_second": 14359.414,
+      "signals_reconciled": 1000,
+      "violations": 0
+    },
+    "code_audit": {
+      "ast_errors": 0,
+      "python_files": 1811,
+      "python_lines": 206843,
+      "result": "pass"
+    },
+    "gate_checks": {
+      "append_only_history": true,
+      "build396_acceptance": true,
+      "build396_benchmark": true,
+      "build396_tests": true,
+      "controlled_reanalysis_branch": true,
+      "delta_only_signal_comparison": true,
+      "dependency_propagation": true,
+      "explicit_baseline": true,
+      "incremental_reconciliation": true,
+      "no_active_state_auto_mutation": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_live_confirmation": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "review_required_reanalysis": true,
+      "schema_integrity": true,
+      "stale_generation_protection": true,
+      "unmatched_evidence_preserved": true,
+      "version_coherent": true
+    },
+    "gate_result": "pass",
+    "schema": {
+      "build396_tables_present": true,
+      "indexes": 184,
+      "integrity_check": "ok",
+      "tables": 238,
+      "triggers": 8,
+      "views": 0,
+      "within_phase17_gate": true
+    },
+    "tests": {
+      "build": "396.0",
+      "code_fingerprint": "aa88d7235094ebda2b5d472c9ddc71210beb86b2697cb9bb185d68e42d73d46b",
+      "failed": 0,
+      "passed": 15,
+      "result": "pass",
+      "tests": 15
+    }
+  },
+  "regression": {
+    "functional_regressions": 0,
+    "phase17_381_383": {
+      "failed": 0,
+      "passed": 85,
+      "total": 85
+    },
+    "phase17_384_396": {
+      "expected_release_boundaries": 22,
+      "failed": 22,
+      "functional_regressions": 0,
+      "passed": 183,
+      "total": 205
+    }
+  },
+  "runtime_manifest": {
+    "file_count": 2393,
+    "result": "pass"
+  },
+  "wheel": {
+    "filename": "eagleeye_personosint_pro-396.0.0-py3-none-any.whl",
+    "sha256": "c5a80300582a5e740933bbc7ae274e41e78abee57f1dc23e48a3ec06c829fddf",
+    "smoke_import": "pass"
+  }
+}

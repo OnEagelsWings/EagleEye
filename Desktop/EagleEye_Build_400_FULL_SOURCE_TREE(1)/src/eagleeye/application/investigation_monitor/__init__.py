@@ -1,0 +1,3 @@
+from eagleeye.application.build178.service import Build178InvestigationMonitorService
+InvestigationMonitorService=Build178InvestigationMonitorService
+__all__=['InvestigationMonitorService','Build178InvestigationMonitorService']

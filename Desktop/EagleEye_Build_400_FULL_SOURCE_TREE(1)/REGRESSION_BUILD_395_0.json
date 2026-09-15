@@ -1,0 +1,14 @@
+{
+  "build": "395.0",
+  "expected_release_boundary_failures": 21,
+  "functional_regressions": 0,
+  "notes": [
+    "21 failures are historical version/schema/current-launcher assertions from older builds against current Build 395.0.",
+    "Build 395 tests: 12/12 PASS.",
+    "Historical Build 360-380 qualification is inherited through the qualified Build 394 predecessor receipt and was not fully re-run in this delta build."
+  ],
+  "result": "pass",
+  "scope": "integrated Phase 17 builds 384-395",
+  "tests_passed_unchanged": 169,
+  "tests_total": 190
+}

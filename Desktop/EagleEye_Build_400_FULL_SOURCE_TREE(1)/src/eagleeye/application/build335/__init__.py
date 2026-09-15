@@ -1,0 +1,2 @@
+from .service import Build335TemporalEntityRelationshipIntelligenceService
+__all__=['Build335TemporalEntityRelationshipIntelligenceService']

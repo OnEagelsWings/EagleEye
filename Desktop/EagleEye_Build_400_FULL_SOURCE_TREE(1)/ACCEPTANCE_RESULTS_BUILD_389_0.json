@@ -1,0 +1,26 @@
+{
+  "build": "389.0",
+  "checks": {
+    "ai_feed_candidate_only": true,
+    "candidate_hash_valid": true,
+    "candidate_only": true,
+    "exact_promotion_confirmation": true,
+    "no_auto_evidence": true,
+    "no_auto_grants": true,
+    "no_auto_identity_merge": true,
+    "no_auto_jobs": true,
+    "no_direct_fetch": true,
+    "normalized_candidate": true,
+    "predecessor_388": true,
+    "promotion_not_truth_acceptance": true,
+    "raw_provenance_bound": true,
+    "schema_gate": true,
+    "source_observations_preserved": true,
+    "vault_needs_review": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+  "passed": 17,
+  "result": "pass",
+  "total": 17
+}

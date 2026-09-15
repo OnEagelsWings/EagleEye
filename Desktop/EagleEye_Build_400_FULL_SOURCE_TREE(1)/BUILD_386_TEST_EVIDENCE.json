@@ -1,0 +1,24 @@
+{
+  "build": "386.0",
+  "code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "result": "pass",
+  "tests": {
+    "build386_integrated": {
+      "passed": 16,
+      "total": 16
+    },
+    "historical_360_380": {
+      "expected_release_boundary_failures": 30,
+      "functional_regressions": 0,
+      "passed": 792,
+      "total": 822
+    },
+    "phase17_381_386": {
+      "expected_release_boundary_failures": 4,
+      "functional_regressions": 0,
+      "passed": 134,
+      "total": 138
+    }
+  },
+  "truthful_note": "All Build-386 tests pass. Phase-17 and historical failures are release/version/launcher boundary assertions only."
+}

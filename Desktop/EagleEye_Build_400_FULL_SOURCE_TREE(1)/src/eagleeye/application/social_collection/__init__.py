@@ -1,0 +1,2 @@
+from eagleeye.application.build162.service import Build162SocialMediaCollectionService as SocialMediaCollectionService
+__all__=['SocialMediaCollectionService']

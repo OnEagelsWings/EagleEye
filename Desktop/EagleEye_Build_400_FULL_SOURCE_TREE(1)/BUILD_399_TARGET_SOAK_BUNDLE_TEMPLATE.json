@@ -1,0 +1,51 @@
+{
+  "collector_id": "",
+  "ended_at": "",
+  "environment": {
+    "eagleeye_build": "399.0",
+    "firefox_profile_id": "",
+    "firefox_version": "",
+    "native_firefox": false,
+    "native_firefox_e2e": false,
+    "native_windows": false,
+    "protected_firefox_profile": false,
+    "target_host_pseudonym": "",
+    "windows_version": ""
+  },
+  "execution_receipt": "",
+  "instructions": {
+    "minimum_samples": 289,
+    "note": "Populate this bundle from the real target environment. Do not mark native_firefox_e2e true without actual native Firefox end-to-end evidence.",
+    "required_duration_seconds": 259200,
+    "required_recovery_types": [
+      "application_restart",
+      "firefox_restart"
+    ],
+    "sample_interval_seconds": 900
+  },
+  "recoveries": [
+    {
+      "after_state": "",
+      "before_state": "",
+      "details": {},
+      "evidence_ref": "",
+      "recovered_at": "",
+      "recovery_type": "application_restart",
+      "started_at": "",
+      "successful": false
+    },
+    {
+      "after_state": "",
+      "before_state": "",
+      "details": {},
+      "evidence_ref": "",
+      "recovered_at": "",
+      "recovery_type": "firefox_restart",
+      "started_at": "",
+      "successful": false
+    }
+  ],
+  "samples": [],
+  "schema": "phase17.target-soak-evidence-bundle.v399",
+  "started_at": ""
+}

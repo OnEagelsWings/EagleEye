@@ -1,0 +1,99 @@
+{
+  "build": "384.0",
+  "classification": "all observed failures are historical version/health/app/launcher boundary assertions caused by current Build 384 pointers",
+  "expected_release_boundary_failures": 30,
+  "functional_regressions": 0,
+  "historical_builds": "360-380",
+  "passed": 792,
+  "per_build": {
+    "360": {
+      "expected_boundary_failures": 2,
+      "passed": 19
+    },
+    "361": {
+      "expected_boundary_failures": 2,
+      "passed": 18
+    },
+    "362": {
+      "expected_boundary_failures": 2,
+      "passed": 18
+    },
+    "363": {
+      "expected_boundary_failures": 2,
+      "passed": 18
+    },
+    "364": {
+      "expected_boundary_failures": 2,
+      "passed": 24
+    },
+    "365": {
+      "expected_boundary_failures": 1,
+      "passed": 21
+    },
+    "366": {
+      "expected_boundary_failures": 1,
+      "passed": 25
+    },
+    "367": {
+      "expected_boundary_failures": 1,
+      "passed": 29
+    },
+    "368": {
+      "expected_boundary_failures": 1,
+      "passed": 34
+    },
+    "369": {
+      "expected_boundary_failures": 1,
+      "passed": 39
+    },
+    "370": {
+      "expected_boundary_failures": 1,
+      "passed": 44
+    },
+    "371": {
+      "expected_boundary_failures": 1,
+      "passed": 47
+    },
+    "372": {
+      "expected_boundary_failures": 1,
+      "passed": 54
+    },
+    "373": {
+      "expected_boundary_failures": 3,
+      "passed": 55
+    },
+    "374": {
+      "expected_boundary_failures": 3,
+      "passed": 63
+    },
+    "375": {
+      "expected_boundary_failures": 1,
+      "passed": 62
+    },
+    "376": {
+      "expected_boundary_failures": 1,
+      "passed": 33
+    },
+    "377": {
+      "expected_boundary_failures": 1,
+      "passed": 42
+    },
+    "378": {
+      "expected_boundary_failures": 1,
+      "passed": 43
+    },
+    "379": {
+      "expected_boundary_failures": 1,
+      "passed": 51
+    },
+    "380": {
+      "expected_boundary_failures": 1,
+      "passed": 53
+    }
+  },
+  "phase17_current_tests": {
+    "passed": 108,
+    "total": 108
+  },
+  "total": 822
+}

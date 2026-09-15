@@ -1,0 +1,29 @@
+{
+  "build": "387.0",
+  "checks": {
+    "dispatch_jobs_present": true,
+    "dispatch_record_hash": true,
+    "exact_live_required": true,
+    "executor_performs_no_fetch": true,
+    "grant_consumed": true,
+    "historical_build386_receipt": true,
+    "job_queued_unclaimed": true,
+    "no_host_security_mutation": true,
+    "no_worker_claim_by_executor": true,
+    "one_dispatch_per_grant": true,
+    "one_job_enqueued": true,
+    "post_reservation_revalidation": true,
+    "replay_blocked": true,
+    "schema_gate": true,
+    "scope_expansion_false": true,
+    "token_not_in_dispatch": true,
+    "version_coherent": true,
+    "workflow_budget_recheck": true,
+    "workflow_provenance": true,
+    "wrong_confirmation_no_job": true
+  },
+  "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "passed": 20,
+  "result": "pass",
+  "total": 20
+}

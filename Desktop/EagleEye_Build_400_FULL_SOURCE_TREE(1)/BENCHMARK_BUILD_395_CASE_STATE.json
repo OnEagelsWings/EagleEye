@@ -1,0 +1,14 @@
+{
+  "build": "395.0",
+  "code_fingerprint": "71ad7d5b523d511940862cad1d03c5739fc088f657ede77b0ed6decf0bef97a4",
+  "elapsed_seconds": 0.069506,
+  "evidence_promotions_created": 0,
+  "go_grants_created": 0,
+  "jobs_created": 0,
+  "network_requests_created": 0,
+  "operations": 1000,
+  "operations_per_second": 14387.256,
+  "result": "pass",
+  "violation_samples": [],
+  "violations": 0
+}

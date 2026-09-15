@@ -1,0 +1,65 @@
+{
+  "benchmark": {
+    "cases": 3000,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "368.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec": 0,
+    "python_files": 1568,
+    "python_lines": 177262,
+    "shell_true": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "ec4854fc2c9d602645681ccf4b1da9c393288a4bf2c7aa15ab2425fa55c33f42",
+  "compileall": "pass",
+  "external_reference_validation_complete": false,
+  "external_validation": {
+    "federal_register": "not_run",
+    "govinfo_package": "plan_only",
+    "internet_archive_metadata": "not_run",
+    "nara_catalog": "plan_only",
+    "ofac_sdn": "plan_only",
+    "unsc_consolidated": "plan_only"
+  },
+  "package_version": "368.0.0",
+  "phase": "16",
+  "phase_builds_completed": 8,
+  "production_release_ready": false,
+  "reference_connectors": {
+    "live_eligible": [
+      "federal_register_document_v1",
+      "internet_archive_metadata_v1"
+    ],
+    "plan_only": [
+      "ofac_sdn_xml_v1",
+      "unsc_consolidated_xml_v1",
+      "nara_catalog_v1",
+      "govinfo_package_v1"
+    ]
+  },
+  "regression_build367": "29/30",
+  "result": "pass",
+  "sanctions_external_validation_complete": false,
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1871872,
+    "tables": 141,
+    "triggers": 8
+  },
+  "schema_gate": "pass",
+  "tests": {
+    "passed": 35,
+    "total": 35
+  },
+  "truthful_note": "Build 368 internally qualifies exact Federal Register document and Internet Archive metadata-only retrieval. No real external Build-368 request was executed by qualification. OFAC/UNSC/NARA/GovInfo remain plan-only; replay/contract qualification is not external validation.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-368.0.0-py3-none-any.whl",
+    "sha256": "f787d3e8ecb67ee70df6a049a35c8f32cdb8aa9c3d1f8d8cbcfcf5d14cd66751",
+    "size_bytes": 3739436,
+    "smoke_test": "pass"
+  }
+}

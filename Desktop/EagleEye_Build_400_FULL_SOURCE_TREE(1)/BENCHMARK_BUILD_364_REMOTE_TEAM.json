@@ -1,0 +1,17 @@
+{
+  "build": "364.0",
+  "cases": 2200,
+  "categories": {
+    "ai_opsec_crawler": 400,
+    "cross_case_rbac": 400,
+    "inherited_storage_search": 200,
+    "tls_receipt_truthfulness": 200,
+    "transport_policy": 700,
+    "truthful_release": 300
+  },
+  "code_fingerprint": "8394537a2bf30b9c3e4a624303b210d0042b3c08198e0861e4a752493a80ecc1",
+  "network_used_by_benchmark": false,
+  "result": "pass",
+  "separate_live_transport_receipt": "LIVE_VALIDATION_BUILD_364_REMOTE_TEAM.json",
+  "violations": 0
+}

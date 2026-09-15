@@ -1,0 +1,67 @@
+{
+  "broad_live_research_ready": false,
+  "build": "400.0",
+  "code_audit": {
+    "ast_errors": 0,
+    "direct_network_imports_build400_core": 0,
+    "eval_exec_calls": 0,
+    "python_files": 1844,
+    "python_lines": 210555,
+    "runtime_tls_disable_calls": 0,
+    "shell_true_calls": 0
+  },
+  "code_fingerprint": "b40f6082da337d5b9c97afc8d71e8a540af6acb7b55a699d04316d0e384cc104",
+  "decision": "phase17_internal_complete_phase18_engineering_entry_ready_external_production_qualification_pending",
+  "external_72h_soak_qualified": false,
+  "external_holdout_qualified": false,
+  "governance": {
+    "automatic_evidence_promotion": false,
+    "automatic_go": false,
+    "automatic_live_confirmation": false,
+    "automatic_truth_acceptance": false,
+    "direct_network_fetch": false,
+    "execution_authority": false,
+    "production_release_authority": false
+  },
+  "open_external_qualification": [
+    "build398_real_model_human_holdout_pending",
+    "build399_real_72h_windows_firefox_soak_pending",
+    "independent_build379_operational_qualification_pending",
+    "real_connector_chain_validation_pending",
+    "external_long_running_crawler_load_pending",
+    "postgres_object_store_team_backend_pending",
+    "real_case_entity_resolution_holdout_pending",
+    "external_dossier_domain_review_pending",
+    "tor_onion_end_to_end_pending"
+  ],
+  "package_version": "400.0.0",
+  "phase17_builds_completed": 20,
+  "phase17_internal_complete": true,
+  "phase18_entry_ready": true,
+  "production_release_ready": false,
+  "professional_pilot_ready": true,
+  "regression": {
+    "builds_360_380": "792/822 PASS",
+    "functional_regressions": 0,
+    "historical_release_boundaries": 56,
+    "phase17_381_400": "327/353 PASS"
+  },
+  "schema": {
+    "indexes": 195,
+    "integrity_check": "ok",
+    "tables": 255,
+    "triggers": 8,
+    "views": 0
+  },
+  "tests": {
+    "acceptance": "18/18 PASS",
+    "benchmark": "500/500 PASS, 0 violations",
+    "build400": "11/11 PASS",
+    "full_current_tree": "1119/1175 PASS"
+  },
+  "wheel": {
+    "filename": "eagleeye_personosint_pro-400.0.0-py3-none-any.whl",
+    "sha256": "23f2d782506e5fe4ca89b9c5165bae2fd0d18cba78b58ae7bd850a3dab931833",
+    "smoke_import": "pass"
+  }
+}

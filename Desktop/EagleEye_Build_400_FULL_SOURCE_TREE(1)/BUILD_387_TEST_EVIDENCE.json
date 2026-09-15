@@ -1,0 +1,24 @@
+{
+  "build": "387.0",
+  "build387": {
+    "passed": 14,
+    "total": 14
+  },
+  "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "phase17_regression": {
+    "expected_release_boundary_failures": 4,
+    "functional_regressions": 0,
+    "passed": 139,
+    "total": 143
+  },
+  "predecessor_historical_regression_receipt": {
+    "build": "386.0",
+    "expected_release_boundary_failures": 30,
+    "functional_regressions": 0,
+    "historical_passed": 792,
+    "historical_total": 822,
+    "source": "RELEASE_MANIFEST_BUILD_386_0.json"
+  },
+  "result": "pass",
+  "truthful_note": "Build 387 delta regression is fully tested. Historical 360\u2013380 regression is inherited from the signed-in-package Build-386 qualification receipt rather than rerun in one monolithic session; current changes are additive plus version/launcher boundaries."
+}

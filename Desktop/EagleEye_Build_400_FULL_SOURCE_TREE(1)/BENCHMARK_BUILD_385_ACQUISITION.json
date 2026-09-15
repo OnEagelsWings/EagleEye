@@ -1,0 +1,13 @@
+{
+  "build": "385.0",
+  "cases": 1200,
+  "cases_per_second": 1794.023,
+  "code_fingerprint": "852fc27d8224571f4f29e20724cc62f6fbfa165bc640334d5379bbc79bd41fdf",
+  "crawler_jobs_created": 0,
+  "elapsed_seconds": 0.668888,
+  "network_requests": 0,
+  "packets_persisted": 1200,
+  "result": "pass",
+  "truthful_scope": "Local deterministic acquisition-packet compilation only; no external connector validation is inferred.",
+  "violations": 0
+}

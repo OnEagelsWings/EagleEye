@@ -1,0 +1,17 @@
+{
+  "build": "378.0",
+  "code_fingerprint": "957c8665a0d6ce40289114de14daf4598e9d59c212de2685871cee15328c7eb8",
+  "failed": 0,
+  "passed": 44,
+  "probes": {
+    "budget": "pass",
+    "delegate": "pass",
+    "edit": "pass",
+    "opsec": "pass",
+    "preview": "pass",
+    "provenance": "pass",
+    "stt": "pass"
+  },
+  "result": "pass",
+  "tests": 44
+}

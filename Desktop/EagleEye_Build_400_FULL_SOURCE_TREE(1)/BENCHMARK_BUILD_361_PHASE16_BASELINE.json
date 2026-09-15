@@ -1,0 +1,15 @@
+{
+  "build": "361.0",
+  "cases": 1500,
+  "categories": {
+    "ai_go_boundary": 375,
+    "baseline_truthfulness": 375,
+    "live_osint_contract": 375,
+    "opsec_defensive_boundary": 375
+  },
+  "code_fingerprint": "b235a6bf23e171a66af22697a7ada614e7b609993421f75f463e6e5b65c101ce",
+  "external_connections_opened": 0,
+  "result": "pass",
+  "violation_examples": [],
+  "violations": 0
+}

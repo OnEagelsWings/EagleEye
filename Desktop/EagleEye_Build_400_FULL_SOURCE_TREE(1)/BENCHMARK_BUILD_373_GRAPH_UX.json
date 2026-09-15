@@ -1,0 +1,48 @@
+{
+  "build": "373.0",
+  "cases": 4200,
+  "categories": {
+    "case_scope": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    },
+    "graph_projection": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    },
+    "navigation_budget": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    },
+    "navigation_source_gate": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    },
+    "review_boundary": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    },
+    "scope_expansion_denial": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    },
+    "truthful_release": {
+      "cases": 600,
+      "passed": 600,
+      "violations": 0
+    }
+  },
+  "code_fingerprint": "4c060e2ba0d8755d1c7067bbac1e7897b55d57f31a01563015200616119e9690",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 4200,
+  "result": "pass",
+  "truthful_note": "Deterministic local graph/navigation invariant benchmark. It is not a professional usability study or external network/load validation.",
+  "violations": 0
+}

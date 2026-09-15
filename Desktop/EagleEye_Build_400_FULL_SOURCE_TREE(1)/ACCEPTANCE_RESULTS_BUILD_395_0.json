@@ -1,0 +1,28 @@
+{
+  "build": "395.0",
+  "checks": {
+    "append_only_history": true,
+    "branch_does_not_adopt": true,
+    "branch_stage": true,
+    "controlled_adoption": true,
+    "diff_no_truth": true,
+    "immutable_evidence_history": true,
+    "no_auto_evidence": true,
+    "no_auto_go": true,
+    "no_auto_truth": true,
+    "no_execution_authority": true,
+    "no_live": true,
+    "no_network_fetch": true,
+    "no_truth_probability": true,
+    "origin_state": true,
+    "review_required": true,
+    "rollback_transition": true,
+    "schema_integrity": true,
+    "side_effect_free": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "71ad7d5b523d511940862cad1d03c5739fc088f657ede77b0ed6decf0bef97a4",
+  "passed": 19,
+  "result": "pass",
+  "total": 19
+}

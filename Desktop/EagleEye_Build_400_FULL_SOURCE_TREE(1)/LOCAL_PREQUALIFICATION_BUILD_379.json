@@ -1,0 +1,59 @@
+{
+  "build": "379.0",
+  "checks": {
+    "audit_chain_consistent": true,
+    "case_isolation": true,
+    "crawler_jobs_500": true,
+    "failure_containment_p95": true,
+    "failure_injections_50": true,
+    "lease_recovery_p95": true,
+    "no_auto_eviction": true,
+    "no_evidence_loss": true,
+    "no_stale_leases": true,
+    "no_unauthorized_network": true,
+    "object_store_pressure_gate": true,
+    "queue_dispatch_p95": true,
+    "recovery_ratio": true,
+    "workers_2": true
+  },
+  "code_fingerprint": "135bea48ae4a95fff1ea1ca43cba15f4db03c76bed36e0b52f9a2eb598e08e3e",
+  "evidence_artifacts": [
+    {
+      "name": "queue_dispatch_metrics",
+      "sha256": "0a4dad102628c1df88c5855a517ecb4e64db9c3f6912f272918a8c91cced0c96"
+    },
+    {
+      "name": "lease_recovery_metrics",
+      "sha256": "67d47a58ad03f1d282905a567f8b0ae5e2e73218e04f75499ef860014d99e561"
+    },
+    {
+      "name": "qualification_checks",
+      "sha256": "5743b81bc77697e06f8f4625cdfdc6c62b4947567966981675de8ac749a3845d"
+    }
+  ],
+  "external_qualification_validated": false,
+  "external_validation_performed": false,
+  "metrics": {
+    "accelerated_local_simulation": true,
+    "audit_chain_consistent": true,
+    "automatic_eviction_disabled": true,
+    "automatic_eviction_events": 0,
+    "crawler_jobs_created": 500,
+    "cross_case_leaks": 0,
+    "evidence_loss_events": 0,
+    "failure_injections": 50,
+    "object_store_hard_pressure_detected": true,
+    "p95_failure_containment_seconds": 0.000149,
+    "p95_lease_recovery_seconds": 0.000149,
+    "p95_queue_dispatch_seconds": 0.000462,
+    "qualification_equivalent_duration_seconds": 3600,
+    "recovery_ratio": 1.0,
+    "stale_leases_after_recovery": 0,
+    "unauthorized_network_escalations": 0,
+    "wall_clock_duration_seconds": 0.01611,
+    "workers": 2
+  },
+  "network_used": false,
+  "result": "pass",
+  "truthful_note": "Accelerated deterministic local prequalification. qualification_equivalent_duration_seconds is a synthetic coverage target, not wall-clock soak duration. No external validation or production readiness is claimed."
+}

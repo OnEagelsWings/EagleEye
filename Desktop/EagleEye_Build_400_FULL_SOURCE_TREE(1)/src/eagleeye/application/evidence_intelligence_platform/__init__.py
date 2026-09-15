@@ -1,0 +1,3 @@
+from eagleeye.application.build200.service import Build200EvidenceIntelligencePlatformService
+EvidenceIntelligencePlatformService=Build200EvidenceIntelligencePlatformService
+__all__=['Build200EvidenceIntelligencePlatformService','EvidenceIntelligencePlatformService']

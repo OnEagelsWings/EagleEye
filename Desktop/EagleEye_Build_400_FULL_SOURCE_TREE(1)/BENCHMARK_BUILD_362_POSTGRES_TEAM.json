@@ -1,0 +1,17 @@
+{
+  "build": "362.0",
+  "cases": 1800,
+  "categories": {
+    "ai_backend": 450,
+    "migration_planner": 450,
+    "opsec_crawler": 450,
+    "truthful_live_gate": 450
+  },
+  "code_fingerprint": "ab34757f324b991ba927b832577051e937ef229bdb7e6e71d026e99fcdc58be4",
+  "external_connections_opened": 0,
+  "external_postgresql_validation": "not_run",
+  "result": "pass",
+  "truthful_note": "This benchmark is local/internal. It does not substitute for a real PostgreSQL endpoint.",
+  "violation_examples": [],
+  "violations": 0
+}

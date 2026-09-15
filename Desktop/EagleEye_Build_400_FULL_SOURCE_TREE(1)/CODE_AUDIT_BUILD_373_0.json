@@ -1,0 +1,33 @@
+{
+  "ast_error_details": [],
+  "ast_errors": 0,
+  "build": "373.0",
+  "eval_exec_calls": 0,
+  "new_build373_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build373/service.py": [],
+    "src/eagleeye/interfaces/web/app373.py": [],
+    "src/eagleeye/phase16/analyst_graph373.py": []
+  },
+  "python_files": 1616,
+  "python_lines": 182856,
+  "result": "pass",
+  "shell_true_calls": 0,
+  "subprocess_import_files": 13,
+  "subprocess_import_paths": [
+    "eagleeye_pro/collection_engine_105/service.py",
+    "eagleeye_pro/release_candidate/service.py",
+    "eagleeye_pro/ui/pilot_desktop.py",
+    "src/eagleeye/application/build174/service.py",
+    "src/eagleeye/application/build180/service.py",
+    "src/eagleeye/application/build209/service.py",
+    "src/eagleeye/application/build211/service.py",
+    "src/eagleeye/application/build218/service.py",
+    "src/eagleeye/application/build248/service.py",
+    "src/eagleeye/application/build263/service.py",
+    "src/eagleeye/application/release/service.py",
+    "src/eagleeye/application/security/service.py",
+    "src/eagleeye/interfaces/web/server.py"
+  ],
+  "tls_disable_patterns": 0,
+  "truthful_note": "Historical subprocess imports are reported rather than hidden. Build-373 graph/service/web modules add no direct network, socket, TLS, urllib or subprocess client."
+}

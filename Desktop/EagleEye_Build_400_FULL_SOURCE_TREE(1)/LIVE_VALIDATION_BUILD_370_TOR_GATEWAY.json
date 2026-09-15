@@ -1,0 +1,16 @@
+{
+  "build": "370.0",
+  "code_fingerprint": "e941ab4e26aae092cd4d9147c04683c67f0281324fbaf808877ff884f1733d03",
+  "external_network_used": false,
+  "external_onion_validation": "not_run",
+  "local_onion_dns_used": false,
+  "local_socks_contract_validation": "pass",
+  "local_tor_crawler_replay_validation": "pass",
+  "local_tor_daemon_validation": "not_run",
+  "local_tor_transport_http_validation": "pass",
+  "loopback_socket_used": true,
+  "socks_domain_atyp": 3,
+  "status": "pass",
+  "target_host_exact": true,
+  "truthful_note": "The live check uses only a local SOCKS5 fixture plus deterministic crawler replay. It does not prove that a real Tor daemon or external onion service is available."
+}

@@ -1,0 +1,44 @@
+{
+  "build": "398.0",
+  "code_fingerprint": "6eba48fe6b47ea6a6217ae7b23c238fb9e6540ea11dff72d76292736bd6abcfd",
+  "decision": "model_holdout_framework_qualified_external_holdout_pending",
+  "external_holdout_qualified": false,
+  "external_pending": [
+    "real model holdout runs",
+    "blinded human review >=50 cases",
+    "independent reviewer qualification"
+  ],
+  "governance": {
+    "automatic_evidence_promotion": false,
+    "automatic_go": false,
+    "automatic_live_confirmation": false,
+    "direct_network_fetch": false,
+    "execution_authority": false,
+    "truth_probability_training": false
+  },
+  "human_reviewed_cases": 0,
+  "internal_baseline_frozen": true,
+  "internal_holdout_cases": 60,
+  "package_version": "398.0.0",
+  "phase17_builds_completed": 18,
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "real_model_runs": 0,
+  "regression": {
+    "expected_historical_boundaries": 24,
+    "functional_regressions": 0,
+    "phase15_16": "inherited from qualified Build397 fresh rerun: 792/822; 30 historical boundaries; 0 functional regressions",
+    "phase17_384_398": "205/229 PASS"
+  },
+  "schema": {
+    "indexes": 190,
+    "integrity_check": "ok",
+    "tables": 247,
+    "triggers": 8
+  },
+  "tests": {
+    "acceptance": "21/21 PASS",
+    "benchmark": "60/60 PASS, 0 violations",
+    "build398": "11/11 PASS"
+  }
+}

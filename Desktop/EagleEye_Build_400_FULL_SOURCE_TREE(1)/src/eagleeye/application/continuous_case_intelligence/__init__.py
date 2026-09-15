@@ -1,0 +1,2 @@
+from eagleeye.application.build195.service import Build195ContinuousCaseIntelligenceService as ContinuousCaseIntelligenceService
+__all__=['ContinuousCaseIntelligenceService']

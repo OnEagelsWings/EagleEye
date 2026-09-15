@@ -1,0 +1,24 @@
+{
+  "build": "370.0",
+  "cases": 3600,
+  "category_pass": {
+    "ai_boundary": 360,
+    "backpressure_lease": 360,
+    "crawler_continuity": 360,
+    "dns_isolation": 360,
+    "gateway_gate": 360,
+    "loopback_gate": 360,
+    "opsec_boundary": 360,
+    "socks_auth_isolation": 360,
+    "tor_queue_separation": 360,
+    "truthful_release": 360
+  },
+  "code_fingerprint": "e941ab4e26aae092cd4d9147c04683c67f0281324fbaf808877ff884f1733d03",
+  "external_validation_performed": false,
+  "network_used_by_benchmark": false,
+  "passed": 3600,
+  "result": "pass",
+  "truthful_scope": "Deterministic local Build-370 gateway/crawler boundary qualification only; no real Tor daemon or external onion service is contacted.",
+  "violation_details": [],
+  "violations": 0
+}

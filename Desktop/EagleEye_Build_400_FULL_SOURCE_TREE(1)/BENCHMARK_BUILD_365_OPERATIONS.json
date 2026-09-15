@@ -1,0 +1,22 @@
+{
+  "build": "365.0",
+  "cases": 2400,
+  "category_pass": {
+    "ai_operations_hold": 300,
+    "case_metrics": 300,
+    "crawler_operations": 300,
+    "incident_detection": 300,
+    "inherited_transport_boundary": 300,
+    "opsec_bounds": 300,
+    "trace_isolation": 300,
+    "truthful_release": 300
+  },
+  "code_fingerprint": "022bb3f80e892c5721d6f0dc76922f7776962bb547a946a0eaea4bfa431b435a",
+  "external_validation_performed": false,
+  "integrated_surface_executions": 8,
+  "network_used_by_benchmark": false,
+  "result": "pass",
+  "truthful_scope": "Eight integrated local runtime surfaces were executed, followed by a deterministic 2,400-case invariant matrix. This is not an external load, remote-team or production test.",
+  "violation_details": [],
+  "violations": 0
+}

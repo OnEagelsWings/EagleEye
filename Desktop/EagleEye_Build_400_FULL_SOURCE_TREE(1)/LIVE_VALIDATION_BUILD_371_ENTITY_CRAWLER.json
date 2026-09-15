@@ -1,0 +1,16 @@
+{
+  "automatic_merge": false,
+  "build": "371.0",
+  "code_fingerprint": "2e05fb1b0cb767eca3efe8f86be938cf1cbdce86412c3fdb32cde8f4a8d5a16f",
+  "entity_classification": "strong_review_candidate",
+  "external_entity_resolution_evaluation": "not_run",
+  "external_network_used_by_validation": false,
+  "local_crawl_provenance_validation": "pass",
+  "local_entity_crawler_validation": "pass",
+  "local_entity_lead_queue_validation": "pass",
+  "local_review_packet_validation": "pass",
+  "network_used_by_entity_lead_analysis": false,
+  "provenance_hash": "b8b36eeca524f32c395da81722a54ad3c9085d9eef40110a4fe5a35258bf0de0",
+  "status": "pass",
+  "truthful_note": "Local deterministic crawler replay and entity-review lead validation only. This is not an external or calibrated entity-resolution evaluation."
+}

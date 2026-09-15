@@ -1,0 +1,52 @@
+{
+  "build": "374.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "ai_tested": true,
+    "benchmark_4400_no_violations": true,
+    "budgets_tested": true,
+    "continuous_crawler_program": true,
+    "crawler_increment_374": true,
+    "external_handoff_not_claimed": true,
+    "external_workflow_not_claimed": true,
+    "handoff_tested": true,
+    "local_case_workflow_validation": true,
+    "manual_crawl_tested": true,
+    "navigation_tested": true,
+    "no_literal_true_gate": true,
+    "opsec_tested": true,
+    "pause_resume_tested": true,
+    "production_release_false": true,
+    "schema_within_gate": true,
+    "test_evidence_current": true,
+    "version_coherent": true,
+    "workflow_state_tested": true
+  },
+  "code_fingerprint": "6094a86f3d6eee21c492fe59452f08eb736f26e4e4129bfcd016eaffdd4353bf",
+  "passed": 19,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "case_workflow_new_tables": 0,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "total": 19,
+  "version": {
+    "coherent": true,
+    "package_version": "374.0.0",
+    "runtime_build": "374.0",
+    "schema_version": "374.0"
+  }
+}

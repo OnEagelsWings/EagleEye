@@ -1,0 +1,35 @@
+{
+  "build": "368.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "archive_content_download_disabled": true,
+    "automatic_external_connections_zero": true,
+    "benchmark_current": true,
+    "crawler_reference_receipt": true,
+    "four_plan_only_reference_connectors": true,
+    "fuzzy_sanctions_screening_disabled": true,
+    "govinfo_execution_disabled": true,
+    "nara_execution_disabled": true,
+    "ofac_unsc_execution_disabled": true,
+    "production_release_false": true,
+    "qualified_gate": true,
+    "replay_truthfulness": true,
+    "schema_counts": true,
+    "schema_gate": true,
+    "test_evidence_current": true,
+    "two_live_reference_connectors": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "ec4854fc2c9d602645681ccf4b1da9c393288a4bf2c7aa15ab2425fa55c33f42",
+  "passed": 17,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1871872,
+    "tables": 141,
+    "triggers": 8
+  },
+  "total": 17,
+  "truthful_note": "Internal deterministic acceptance only; no external reference-source validation is claimed."
+}

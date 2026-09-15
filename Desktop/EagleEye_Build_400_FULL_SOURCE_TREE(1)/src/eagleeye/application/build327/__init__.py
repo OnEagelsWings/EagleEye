@@ -1,0 +1,2 @@
+from .service import Build327GlobalCorporateDataPackService
+__all__=['Build327GlobalCorporateDataPackService']

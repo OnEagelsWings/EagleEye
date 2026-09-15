@@ -1,0 +1,57 @@
+{
+  "build": "375.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "automatic_ai_execution_false": true,
+    "backpressure_tested": true,
+    "benchmark_4600_no_violations": true,
+    "budget_escape_zero": true,
+    "budget_tested": true,
+    "continuous_crawler_program": true,
+    "crawler_increment_375": true,
+    "external_ai_eval_not_claimed": true,
+    "external_real_case_not_claimed": true,
+    "local_ai_planning_eval": true,
+    "no_literal_true_gate": true,
+    "opsec_tested": true,
+    "plan_tested": true,
+    "production_release_false": true,
+    "schema_within_gate": true,
+    "scope_expansion_escape_zero": true,
+    "source_tested": true,
+    "special_gate_escape_zero": true,
+    "special_tested": true,
+    "test_evidence_current": true,
+    "unsafe_allow_zero": true,
+    "version_coherent": true,
+    "workflow_state_escape_zero": true,
+    "workflow_tested": true
+  },
+  "code_fingerprint": "e751840137d66ae9f4114694d7452e34ad783615f0199b311d5b4fb1931598c9",
+  "passed": 24,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "ai_eval_new_tables": 0,
+    "file_bytes": 1695744,
+    "index": 133,
+    "integrity_check": "ok",
+    "logical_bytes": 2158592,
+    "table": 165,
+    "targets": {
+      "indexes_lt": 300,
+      "logical_bytes_lt": 5242880,
+      "tables_lt": 180
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  },
+  "total": 24,
+  "version": {
+    "coherent": true,
+    "package_version": "375.0.0",
+    "runtime_build": "375.0",
+    "schema_version": "375.0"
+  }
+}

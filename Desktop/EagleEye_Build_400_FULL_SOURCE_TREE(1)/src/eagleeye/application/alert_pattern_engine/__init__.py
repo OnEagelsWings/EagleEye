@@ -1,0 +1,3 @@
+from eagleeye.application.build179.service import Build179AlertPatternEngineService
+AlertPatternEngineService=Build179AlertPatternEngineService
+__all__=['AlertPatternEngineService','Build179AlertPatternEngineService']

@@ -1,0 +1,2 @@
+from .service import Build389ResultIntakeEvidenceNormalizationService
+__all__ = ["Build389ResultIntakeEvidenceNormalizationService"]

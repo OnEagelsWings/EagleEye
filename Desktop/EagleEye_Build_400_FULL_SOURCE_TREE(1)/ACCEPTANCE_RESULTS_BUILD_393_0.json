@@ -1,0 +1,29 @@
+{
+  "build": "393.0",
+  "checks": {
+    "counter_argument_mode": true,
+    "dialogue_session_active": true,
+    "falsification_mode": true,
+    "feed_boundaries": true,
+    "human_revision_review_required": true,
+    "kernel_notebook_bridge": true,
+    "no_auto_claim_hypothesis_plan_revision": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go": true,
+    "no_direct_fetch": true,
+    "no_truth_probability": true,
+    "no_upstream_side_effects": true,
+    "plan_red_team": true,
+    "predecessor_392": true,
+    "proposal_integrity": true,
+    "proposal_reviewed_manual_only": true,
+    "schema_integrity": true,
+    "turn_integrity": true,
+    "version_coherent": true,
+    "weakest_assumption_mode": true
+  },
+  "code_fingerprint": "1efec7590559861a0896f5d172407ce5f4adac2160da54c898ab2be86ba768ed",
+  "passed": 20,
+  "result": "pass",
+  "total": 20
+}

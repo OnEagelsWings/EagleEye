@@ -1,0 +1,2 @@
+from eagleeye.application.build194.service import Build194MultimodalVerificationLabService as MultimodalVerificationLabService
+__all__=["MultimodalVerificationLabService"]

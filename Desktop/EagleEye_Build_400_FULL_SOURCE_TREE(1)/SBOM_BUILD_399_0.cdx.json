@@ -1,0 +1,82 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "Pillow",
+      "type": "library"
+    },
+    {
+      "name": "PyMuPDF",
+      "type": "library"
+    },
+    {
+      "name": "SQLAlchemy",
+      "type": "library"
+    },
+    {
+      "name": "alembic",
+      "type": "library"
+    },
+    {
+      "name": "alembic_104_1",
+      "type": "library"
+    },
+    {
+      "name": "argon2-cffi",
+      "type": "library"
+    },
+    {
+      "name": "cryptography",
+      "type": "library"
+    },
+    {
+      "name": "fastapi",
+      "type": "library"
+    },
+    {
+      "name": "opencv-python-headless",
+      "type": "library"
+    },
+    {
+      "name": "pdfplumber",
+      "type": "library"
+    },
+    {
+      "name": "pydantic",
+      "type": "library"
+    },
+    {
+      "name": "pypdf",
+      "type": "library"
+    },
+    {
+      "name": "pytesseract",
+      "type": "library"
+    },
+    {
+      "name": "python-multipart",
+      "type": "library"
+    },
+    {
+      "name": "reportlab",
+      "type": "library"
+    },
+    {
+      "name": "starlette",
+      "type": "library"
+    },
+    {
+      "name": "uvicorn",
+      "type": "library"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "eagleeye-personosint-pro",
+      "type": "application",
+      "version": "399.0.0"
+    }
+  },
+  "specVersion": "1.5",
+  "version": 1
+}

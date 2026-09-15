@@ -1,0 +1,21 @@
+{
+  "build": "364.0",
+  "code_fingerprint": "8394537a2bf30b9c3e4a624303b210d0042b3c08198e0861e4a752493a80ecc1",
+  "loopback_tls_receipt": true,
+  "probes": {
+    "ai": "pass",
+    "crawler": "pass",
+    "cross_case": "pass",
+    "opsec": "pass",
+    "remote_team": "pass",
+    "session_anomaly": "pass",
+    "tls": "pass"
+  },
+  "result": "pass",
+  "tests_passed": 26,
+  "tests_total": 26,
+  "truthful_external": {
+    "external_remote_clients": false,
+    "remote_team": false
+  }
+}

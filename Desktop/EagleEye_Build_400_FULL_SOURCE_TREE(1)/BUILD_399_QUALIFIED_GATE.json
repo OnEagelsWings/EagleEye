@@ -1,0 +1,28 @@
+{
+  "build": "399.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "72h_requirement": true,
+    "build399_acceptance": true,
+    "build399_benchmark": true,
+    "build399_tests": true,
+    "native_firefox_e2e_required": true,
+    "native_windows_required": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go": true,
+    "no_browser_launch_authority": true,
+    "no_direct_fetch": true,
+    "no_execution_authority": true,
+    "no_fake_external_qualification": true,
+    "phase17_predecessor_gate": true,
+    "protected_profile_required": true,
+    "recovery_requirements": true,
+    "schema_integrity": true,
+    "simulation_cannot_qualify": true,
+    "version_coherent": true
+  },
+  "external_72h_soak_qualified": false,
+  "phase17_builds_completed": 19,
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true
+}

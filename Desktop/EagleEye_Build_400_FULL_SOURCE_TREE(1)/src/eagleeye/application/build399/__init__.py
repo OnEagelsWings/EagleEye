@@ -1,0 +1,2 @@
+from .service import Build399TargetEnvironmentQualificationService
+__all__=['Build399TargetEnvironmentQualificationService']

@@ -1,0 +1,18 @@
+{
+  "ast_errors": 0,
+  "build": "376.0",
+  "code_fingerprint": "b5f84a7b234123749da8a72d5733aeb1a407bb04c683436c017da35d3700fb53",
+  "eval_exec_calls": 0,
+  "historical_subprocess_or_os_system_files": 13,
+  "independent_pentest": false,
+  "new_build376_direct_network_or_subprocess_imports": {
+    "src/eagleeye/application/build376/service.py": [],
+    "src/eagleeye/interfaces/web/app376.py": [],
+    "src/eagleeye/phase16/dossier_vnext376.py": []
+  },
+  "python_files": 1645,
+  "python_lines": 185235,
+  "result": "pass",
+  "shell_true_calls": 0,
+  "tls_disable_patterns": 0
+}

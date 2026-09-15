@@ -1,0 +1,11 @@
+{
+  "ast_errors": [],
+  "build": "396.0",
+  "build396_direct_network_imports": [],
+  "eval_exec_calls": [],
+  "python_files": 1811,
+  "python_lines": 206843,
+  "result": "pass",
+  "runtime_tls_disable_patterns": [],
+  "shell_true_calls": []
+}

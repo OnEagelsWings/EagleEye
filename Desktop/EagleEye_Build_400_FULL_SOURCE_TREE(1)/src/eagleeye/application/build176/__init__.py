@@ -1,0 +1,2 @@
+from .service import Build176MultilingualContentIntelligenceService
+__all__=['Build176MultilingualContentIntelligenceService']

@@ -1,0 +1,21 @@
+{
+  "build": "378.0",
+  "cases": 5200,
+  "categories": {
+    "budget_limit": 520,
+    "explicit_sources": 520,
+    "no_direct_network": 520,
+    "no_provider_bypass": 520,
+    "no_tor_bypass": 520,
+    "opsec_boundary": 520,
+    "preview": 520,
+    "reconfirmation": 520,
+    "truthful_release": 520,
+    "workflow_delegate": 520
+  },
+  "code_fingerprint": "957c8665a0d6ce40289114de14daf4598e9d59c212de2685871cee15328c7eb8",
+  "external_validation_performed": false,
+  "network_used": false,
+  "result": "pass",
+  "violations": 0
+}

@@ -1,0 +1,21 @@
+{
+  "build": "377.0",
+  "checks": {
+    "exact_dedup": true,
+    "external_network_used_false": true,
+    "handoff_network_budget_zero": true,
+    "identity_not_confirmed": true,
+    "local_ingest": true,
+    "same_media_on_duplicate": true,
+    "scene_not_confirmed": true,
+    "storage_pressure_visible": true
+  },
+  "code_fingerprint": "34544786842cf7d7c09e29e6e20a346fcbf7c46869ef467667517872a2b5c411",
+  "external_image_analyst_validation": "not_run",
+  "external_image_source_validation": "not_run",
+  "external_network_used": false,
+  "external_reverse_image_provider_validation": "not_run",
+  "local_image_pipeline_validation": "pass",
+  "result": "pass",
+  "truthful_note": "Deterministic local image/media pipeline validation only; no external provider or internet image validation was performed."
+}

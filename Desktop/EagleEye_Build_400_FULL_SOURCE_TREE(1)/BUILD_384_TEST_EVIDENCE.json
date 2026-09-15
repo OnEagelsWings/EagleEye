@@ -1,0 +1,12 @@
+{
+  "automatic_identity_merge": false,
+  "automatic_scope_expansion": false,
+  "build": "384.0",
+  "code_fingerprint": "971bd7ef83743dce321ecdf453af5ef244d08c0b57b8a99aaed4a2865e5456ff",
+  "host_security_mutation": false,
+  "network_execution_added": false,
+  "passed": 108,
+  "result": "pass",
+  "suite": "phase17_381_384_integrated",
+  "total": 108
+}

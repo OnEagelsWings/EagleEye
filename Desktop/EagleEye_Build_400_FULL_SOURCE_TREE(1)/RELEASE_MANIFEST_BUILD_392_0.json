@@ -1,0 +1,143 @@
+{
+  "acceptance": {
+    "passed": 18,
+    "result": "pass",
+    "total": 18
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "build": "392.0",
+    "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+    "elapsed_seconds": 2.588219056000071,
+    "evidence_promotions_created": 0,
+    "grants_created": 0,
+    "iterations": 1000,
+    "jobs_created": 0,
+    "legacy_kernel_hypotheses_created": 0,
+    "plan_id": "plan392_c85edad4ece1383d86a7ba88",
+    "reasoning_cycles_per_second": 386.3660603540401,
+    "result": "pass",
+    "violations": 0,
+    "workspace_id": "workspace392_af407862cfe9bb481a7b4980"
+  },
+  "build": "392.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "392.0",
+    "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+    "eval_exec_calls": [],
+    "new_module_direct_network_imports": [],
+    "python_files": 1779,
+    "python_lines": 202346,
+    "release_gate": {
+      "build": "392.0",
+      "build_acceptance_ready": true,
+      "checks": {
+        "argument_graph": true,
+        "build392_acceptance": true,
+        "build392_benchmark": true,
+        "build392_tests": true,
+        "case_reasoning_workspace": true,
+        "epistemic_layers_preserved": true,
+        "human_plan_review_required": true,
+        "kernel_notebook_plan_bridge": true,
+        "next_plan_proposals": true,
+        "no_auto_evidence_promotion": true,
+        "no_auto_go": true,
+        "no_auto_truth_acceptance": true,
+        "no_direct_fetch": true,
+        "no_execution_authority": true,
+        "no_truth_probability": true,
+        "phase17_predecessor_gate": true,
+        "research_gap_reasoning": true,
+        "schema_integrity": true,
+        "version_coherent": true
+      },
+      "phase17_builds_completed": 12,
+      "production_release_ready": false,
+      "professional_pilot_line_preserved": true,
+      "truthful_note": "Build 392 creates a deterministic case reasoning workspace over reviewed Phase-17 claims, counterevidence, hypotheses and research gaps. It can propose and human-review a next-investigation plan and mirror an approved plan into the Investigation Kernel notebook. It does not assign truth probability, grant GO, execute research, promote evidence, merge identities, or create network requests."
+    },
+    "result": "pass",
+    "schema": {
+      "build392_tables_present": true,
+      "indexes": 166,
+      "integrity_check": "ok",
+      "tables": 212,
+      "triggers": 8,
+      "views": 0,
+      "within_phase17_gate": true
+    }
+  },
+  "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+  "current_decision": "phase17_case_reasoning_workspace_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "392.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "argument_graph": true,
+      "build392_acceptance": true,
+      "build392_benchmark": true,
+      "build392_tests": true,
+      "case_reasoning_workspace": true,
+      "epistemic_layers_preserved": true,
+      "human_plan_review_required": true,
+      "kernel_notebook_plan_bridge": true,
+      "next_plan_proposals": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_go": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "no_execution_authority": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "research_gap_reasoning": true,
+      "schema_integrity": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 12,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 392 creates a deterministic case reasoning workspace over reviewed Phase-17 claims, counterevidence, hypotheses and research gaps. It can propose and human-review a next-investigation plan and mirror an approved plan into the Investigation Kernel notebook. It does not assign truth probability, grant GO, execute research, promote evidence, merge identities, or create network requests."
+  },
+  "package_version": "392.0.0",
+  "phase17_builds_integrated": 12,
+  "predecessor_build": "391.0",
+  "predecessor_code_fingerprint": "57569429c29daf7e76adb15e7149467627d0377769462567526dd8230370438e",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundaries": 16,
+    "functional_regressions": 0,
+    "passed_unchanged": 117,
+    "result": "pass",
+    "tests_collected": 133
+  },
+  "schema": {
+    "build392_tables_present": true,
+    "indexes": 166,
+    "integrity_check": "ok",
+    "tables": 212,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build": "392.0",
+    "code_fingerprint": "f4064005d8fda288c0b2f5716fb6b0c9f3acef6f1025e3d57082c73c1266f752",
+    "failed": 0,
+    "passed": 22,
+    "result": "pass",
+    "suite": "tests/test_build392_integrated.py",
+    "total": 22
+  },
+  "truthful_note": "Build 392 creates deterministic case reasoning workspaces over reviewed Phase-17 analytical objects, preserves counterevidence and research gaps, proposes a human-reviewable next-investigation plan, and may mirror an approved plan into the Investigation Kernel notebook. It does not determine truth, assign probability/confidence, issue GO/LIVE authority, enqueue research jobs, promote evidence automatically, merge identities, or execute network research.",
+  "wheel": {
+    "filename": "eagleeye_personosint_pro-392.0.0-py3-none-any.whl",
+    "sha256": "7af9834903643d9e865c259e133c94fb91cabd4e39c7a0e9a3b918d4af4cf31a",
+    "smoke_import": "pass"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "benchmark": {
+    "cases": 3200,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "369.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": 0,
+    "eval_exec": 0,
+    "python_files": 1577,
+    "python_lines": 178394,
+    "shell_true": 0,
+    "tls_disable_patterns": 0
+  },
+  "code_fingerprint": "949e629b42d2d42f343674151d6830f06be1b9ea5228177ee5471cbdcd90b6e3",
+  "compileall": "pass",
+  "crawler_production": {
+    "automatic_external_connections_on_boot": 0,
+    "background_workers_started_on_boot": 0,
+    "backpressure": true,
+    "crawler_only_expired_lease_recovery": true,
+    "darknet_recurring_scheduler": false,
+    "delta_conditional_fetch": true,
+    "frontier_checkpoint_resume": true,
+    "lease_heartbeat": true,
+    "provider_connector_live_gates_preserved": true,
+    "robots_404_410_normal_absence": true,
+    "scheduler": "operator_orchestrated",
+    "source_health_circuit_breaker": true
+  },
+  "external_validation": {
+    "load": "not_run",
+    "long_running_soak": "not_run"
+  },
+  "local_crawler_production_validation": {
+    "delta_resume": "pass",
+    "lease_recovery": "pass",
+    "network_used": false,
+    "scheduler_worker_replay": "pass",
+    "status": "pass"
+  },
+  "package_version": "369.0.0",
+  "phase": "16",
+  "phase_builds_completed": 9,
+  "production_release_ready": false,
+  "regression_build368": "34/35",
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1871872,
+    "tables": 141,
+    "triggers": 8
+  },
+  "schema_gate": "pass",
+  "tests": {
+    "passed": 40,
+    "total": 40
+  },
+  "truthful_note": "Build 369 internally qualifies Crawler Production scheduling/backpressure/source-health/delta/resume/lease behavior using deterministic local replay. External long-running soak/load validation remains not_run and production_release_ready=false.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-369.0.0-py3-none-any.whl",
+    "sha256": "a6e2ab516d4c51acf03598cbebc03de63197d738c260cba9266b0b072d9378c1",
+    "size_bytes": 3755415,
+    "smoke_test": "pass"
+  }
+}

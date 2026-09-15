@@ -1,0 +1,2 @@
+from .service import Build205NewsIntelligenceFabricService
+__all__=['Build205NewsIntelligenceFabricService']

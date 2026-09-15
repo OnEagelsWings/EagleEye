@@ -1,0 +1,19 @@
+{
+  "build": "374.0",
+  "checks": {
+    "automatic_scope_expansion": false,
+    "configured_active": true,
+    "crawl_workflow_tagged": true,
+    "external_network_used": false,
+    "handoff_accepted": true,
+    "handoff_pending": true,
+    "pause_suspended_queue": true,
+    "resume_requeued": true
+  },
+  "code_fingerprint": "6094a86f3d6eee21c492fe59452f08eb736f26e4e4129bfcd016eaffdd4353bf",
+  "externally_validated": false,
+  "local_case_workflow_validation": "pass",
+  "network_used": false,
+  "status": "pass",
+  "truthful_note": "Local deterministic ledger/workflow validation only; no external multi-analyst or network workflow validation performed."
+}

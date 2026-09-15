@@ -1,0 +1,104 @@
+{
+  "acceptance": {
+    "passed": 20,
+    "result": "pass",
+    "total": 20
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "cases": 100,
+    "cases_per_second": 4.104,
+    "dispatches": 100,
+    "network_fetches_executed_by_executor": 0,
+    "result": "pass",
+    "violations": 0,
+    "worker_attempts": 0
+  },
+  "build": "387.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_error_details": [],
+    "ast_errors": 0,
+    "build": "387.0",
+    "build387_direct_network_imports": 0,
+    "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+    "eval_exec_calls": 0,
+    "python_files": 1739,
+    "python_lines": 197515,
+    "result": "pass"
+  },
+  "code_fingerprint": "848bf97601f758cb3d1ef95efc5a379c3b444b3f010c46bcccc2db6576cafafc",
+  "current_decision": "phase17_controlled_executor_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "387.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "atomic_dispatch": true,
+      "build387_acceptance": true,
+      "build387_benchmark": true,
+      "build387_tests": true,
+      "executor_no_direct_fetch": true,
+      "executor_no_worker_claim": true,
+      "no_auto_scope_expansion": true,
+      "no_host_security_mutation": true,
+      "one_time_grant_consumption": true,
+      "phase16_connector_gate_reuse": true,
+      "phase17_predecessor_gate": true,
+      "post_reservation_revalidation": true,
+      "schema_integrity": true,
+      "version_coherent": true,
+      "workflow_budget_recheck": true
+    },
+    "phase17_builds_completed": 7,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 387 consumes an explicit Build-386 GO grant exactly once and enqueues already-reviewed read-only Phase-16 connector jobs only after exact LIVE confirmation and last-moment revalidation. The executor itself performs no network fetch and does not claim a worker lease."
+  },
+  "package_version": "387.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384,
+    385,
+    386,
+    387
+  ],
+  "predecessor_build": "386.0",
+  "predecessor_code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundary_failures": 30,
+    "functional_regressions": 0,
+    "historical_passed": 792,
+    "historical_total": 822,
+    "receipt_source": "RELEASE_MANIFEST_BUILD_386_0.json"
+  },
+  "schema": {
+    "build387_tables_present": true,
+    "indexes": 144,
+    "integrity_check": "ok",
+    "tables": 183,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build387_passed": 14,
+    "build387_total": 14,
+    "phase17_expected_release_boundary_failures": 4,
+    "phase17_functional_regressions": 0,
+    "phase17_passed": 139,
+    "phase17_total": 143
+  },
+  "truthful_note": "Build 387 is the fully integrated controlled enqueue boundary on the Build-386 capability-scoped GO line. A valid grant plus exact LIVE confirmation can enqueue existing reviewed Phase-16 connector work exactly once, with transactional rollback and workflow/OPSEC revalidation. The executor itself performs no network fetch or worker claim and does not claim general production readiness.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-387.0.0-py3-none-any.whl",
+    "sha256": "b4307bc9c64b5db55801b1d432ed3b6d7059d0a5fc655035f75951a46f798407",
+    "size_bytes": 3957628,
+    "smoke_import": "pass"
+  }
+}

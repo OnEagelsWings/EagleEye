@@ -1,0 +1,22 @@
+{
+  "build": "396.0",
+  "build396": {
+    "failed": 0,
+    "passed": 15,
+    "total": 15
+  },
+  "classification": "All 22 failures are historical version/schema/current-launcher assertions in Builds 384\u2013395; no functional regression observed.",
+  "phase17_381_383": {
+    "failed": 0,
+    "passed": 85,
+    "total": 85
+  },
+  "phase17_384_396": {
+    "expected_release_boundaries": 22,
+    "failed": 22,
+    "functional_regressions": 0,
+    "passed": 183,
+    "total": 205
+  },
+  "result": "pass"
+}

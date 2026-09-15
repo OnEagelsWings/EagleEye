@@ -1,0 +1,39 @@
+{
+  "build": "369.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "backpressure_enabled": true,
+    "benchmark_3200_current": true,
+    "darknet_recurring_disabled": true,
+    "delta_enabled": true,
+    "delta_resume_pass": true,
+    "lease_recovery_crawler_only": true,
+    "lease_recovery_pass": true,
+    "local_validation_current": true,
+    "production_release_false": true,
+    "provider_live_gates_preserved": true,
+    "qualified_gate": true,
+    "resume_enabled": true,
+    "scheduler_explicit_only": true,
+    "scheduler_worker_replay_pass": true,
+    "schema_counts": true,
+    "schema_gate": true,
+    "source_health_circuit_enabled": true,
+    "test_evidence_current": true,
+    "version_coherent": true
+  },
+  "code_fingerprint": "949e629b42d2d42f343674151d6830f06be1b9ea5228177ee5471cbdcd90b6e3",
+  "external_load_validation": "not_run",
+  "external_long_running_soak_validation": "not_run",
+  "passed": 19,
+  "production_release_ready": false,
+  "result": "pass",
+  "schema": {
+    "indexes": 128,
+    "logical_bytes": 1871872,
+    "tables": 141,
+    "triggers": 8
+  },
+  "total": 19,
+  "truthful_note": "Internal deterministic Crawler Production acceptance only; no external long-running soak/load validation is claimed."
+}

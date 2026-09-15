@@ -1,0 +1,118 @@
+{
+  "acceptance": {
+    "passed": 14,
+    "result": "pass",
+    "total": 14
+  },
+  "base_build": "380.0",
+  "base_build_zip_sha256": "10a72150c89f3cb3991daedc496e000bad44da13c245d81cb557719c67d72e72",
+  "benchmark": {
+    "assessments_per_second": 767.1742612513394,
+    "build": "390.0",
+    "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+    "elapsed_seconds": 1.303484815000047,
+    "evidence_promotions_created": 0,
+    "grants_created": 0,
+    "iterations": 1000,
+    "jobs_created": 0,
+    "result": "pass",
+    "violations": 0
+  },
+  "build": "390.0",
+  "build_acceptance_ready": true,
+  "code_audit": {
+    "ast_errors": [],
+    "build": "390.0",
+    "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+    "eval_exec_calls": [],
+    "new_module_direct_network_imports": [],
+    "python_files": 1763,
+    "python_lines": 200107,
+    "result": "pass",
+    "schema": {
+      "build390_tables_present": true,
+      "indexes": 157,
+      "integrity_check": "ok",
+      "tables": 197,
+      "triggers": 8,
+      "views": 0,
+      "within_phase17_gate": true
+    }
+  },
+  "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+  "current_decision": "phase17_evidence_review_corroboration_professional_pilot_line",
+  "external_connector_validation_promoted": false,
+  "gate": {
+    "build": "390.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "build390_acceptance": true,
+      "build390_benchmark": true,
+      "build390_tests": true,
+      "duplicate_aware": true,
+      "mirror_aware": true,
+      "no_auto_evidence_promotion": true,
+      "no_auto_identity_merge": true,
+      "no_auto_truth_acceptance": true,
+      "no_direct_fetch": true,
+      "no_truth_probability": true,
+      "phase17_predecessor_gate": true,
+      "schema_integrity": true,
+      "source_independence_profiles": true,
+      "unknown_origin_fail_closed": true,
+      "version_coherent": true
+    },
+    "phase17_builds_completed": 10,
+    "production_release_ready": false,
+    "professional_pilot_line_preserved": true,
+    "truthful_note": "Build 390 groups analyst-assigned candidate stances by reviewed/provisional source-independence origin. Raw hit counts, exact duplicates, mirrors and unresolved origins do not become extra independent support. Assessment states describe corroboration structure only; they never determine truth, assign truth probability, promote evidence automatically or merge identities."
+  },
+  "package_version": "390.0.0",
+  "phase17_builds_integrated": [
+    381,
+    382,
+    383,
+    384,
+    385,
+    386,
+    387,
+    388,
+    389,
+    390
+  ],
+  "predecessor_build": "389.0",
+  "predecessor_code_fingerprint": "9ac538b23d55c7246585a11191cbd7072ef23521cc9bd34bb370bbb987fd9cd4",
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true,
+  "regression": {
+    "expected_release_boundary_failures": 12,
+    "functional_regressions": 0,
+    "historical_360_380_receipt": "RELEASE_MANIFEST_BUILD_389_0.json",
+    "phase17_passed": 181,
+    "phase17_total": 193
+  },
+  "schema": {
+    "build390_tables_present": true,
+    "indexes": 157,
+    "integrity_check": "ok",
+    "tables": 197,
+    "triggers": 8,
+    "views": 0,
+    "within_phase17_gate": true
+  },
+  "tests": {
+    "build": "390.0",
+    "code_fingerprint": "3b10b596a0b294b54e705098554fd1181955c1915d84aec5d8365274ec49fc4d",
+    "failed": 0,
+    "passed": 16,
+    "result": "pass",
+    "tests": 16
+  },
+  "truthful_note": "Build 390 performs review-only source-independence-aware corroboration over Build-389 candidates. Exact duplicates, mirrors and unresolved origins do not add independent support. Analyst-assigned stance and explicit origin review remain separate from truth determination. No truth probability, automatic evidence promotion, identity merge, GO grant, job enqueue or direct network fetch is created by Build 390.",
+  "wheel": {
+    "name": "eagleeye_personosint_pro-390.0.0-py3-none-any.whl",
+    "sha256": "0bdf2d720186fa2ef19e6cdf05fab9a5855a5a7a060d14fabeb79848feeb301c",
+    "size_bytes": 3991164,
+    "smoke_import": "pass"
+  }
+}

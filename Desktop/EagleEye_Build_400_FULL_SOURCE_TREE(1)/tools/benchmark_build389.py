@@ -1,0 +1,24 @@
+from __future__ import annotations
+import json,tempfile,time
+from pathlib import Path
+from eagleeye_pro.core.app_context import AppContext
+from eagleeye_pro.phase17.jurisdiction_intelligence384 import CONFIRM_WAVES
+from eagleeye_pro.phase17.acquisition_orchestrator385 import CONFIRM_PREPARE
+from eagleeye_pro.phase17.execution_authority386 import CONFIRM_GO
+from eagleeye_pro.phase17.controlled_executor387 import CONFIRM_EXECUTE
+from eagleeye_pro.phase17.research_wave_execution388 import CONFIRM_START,CONFIRM_ATTACH
+ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/'BENCHMARK_BUILD_389_RESULT_INTAKE.json'; PW='Benchmark389-Orbit!'
+def main()->int:
+    records=1000; violations=0
+    with tempfile.TemporaryDirectory(prefix='eagleeye389-bench-') as td:
+        with AppContext(base_dir=Path(td),actor='bench389') as c:
+            a=c.team_identity_359.create_initial_admin(username='bench389',display_name='Bench 389',password=PW); ident={**a,'session_id':'bench389-session'}; cid=c.build380.team_create_case(identity=ident,title='Bench389',client='internal',purpose='authorized benchmark',legal_basis='public_data')['case_id']
+            c.build382.set_source_scope(case_id=cid,source_id='gleif.lei',state='approved',reviewer='bench389',confirmation='APPROVE SOURCE'); waves=c.build384.plan_research_waves(case_id=cid,mission='corporate verification',jurisdictions=('global',),source_classes=('corporate',),wave_confirmation=CONFIRM_WAVES); packet=c.build385.compile_acquisition_packet(case_id=cid,wave_plan_id=waves['wave_plan_id'],identifiers={'gleif.lei':'5493001KJTIIGC8Y1R12'},actor='bench389'); prep=c.build385.prepare_acquisition_packet(case_id=cid,packet_id=packet['packet_id'],identity=ident,confirmation=CONFIRM_PREPARE); sid=next(x['canonical_source_id'] for x in prep['outcomes'] if x.get('canonical_source_id')); c.crawler_engine_349.review_source(sid,decision='approve_read_only',rationale='bench389',reviewer='bench389'); c.case_workflow_374.configure(case_id=cid,identity=ident,source_budgets={sid:20},case_request_budget=20,max_active_crawls=2,confirmation='WORKFLOW'); grant=c.build386.issue_execution_grant(case_id=cid,packet_id=packet['packet_id'],identity=ident,confirmation=CONFIRM_GO,source_ids=['gleif.lei']); dispatch=c.build387.execute_grant(case_id=cid,grant_id=grant['grant_id'],grant_token=grant['grant_token'],identity=ident,confirmation=CONFIRM_EXECUTE); sess=c.build388.start_wave_session(case_id=cid,wave_plan_id=waves['wave_plan_id'],packet_id=packet['packet_id'],identity=ident,confirmation=CONFIRM_START); c.build388.attach_wave_dispatch(case_id=cid,session_id=sess['session_id'],dispatch_id=dispatch['dispatch_id'],identity=ident,confirmation=CONFIRM_ATTACH); worker='bench-worker-389'; job=c.build348.claim_job(worker_id=worker)
+            data=[]
+            for i in range(records):
+                lei=f'{i:020d}'[-20:]; data.append({'id':lei,'attributes':{'lei':lei,'entity':{'legalName':{'name':f'Benchmark Entity {i}'},'status':'ACTIVE'}}})
+            c.build348.ingest_artifact(case_id=cid,content=json.dumps({'data':data}),media_type='application/json',search_run_id=job['search_run_id'],source_id=sid,security_state='review_pending',provenance={'url':'https://example.invalid/bench389.json'}); c.build348.complete_job(job['job_id'],{'pages_fetched':1,'pages_stored':1,'errors':0},worker_id=worker); c.build388.reconcile_wave_session(case_id=cid,session_id=sess['session_id'],identity=ident)
+            jobs_before=int((c.db.one('SELECT COUNT(*) n FROM phase15_jobs') or {})['n']); grants_before=int((c.db.one('SELECT COUNT(*) n FROM execution_grant_386') or {})['n']); t0=time.perf_counter(); out=c.build389.normalize_wave_results(case_id=cid,session_id=sess['session_id'],identity=ident); elapsed=time.perf_counter()-t0
+            count=int((c.db.one('SELECT COUNT(*) n FROM evidence_candidate_389 WHERE case_id=?',(cid,)) or {})['n']); violations += int(out['candidate_count']!=records)+int(count!=records)+int(int((c.db.one('SELECT COUNT(*) n FROM phase15_jobs') or {})['n'])!=jobs_before)+int(int((c.db.one('SELECT COUNT(*) n FROM execution_grant_386') or {})['n'])!=grants_before)+int(any(x.get('truth_assigned') for x in out['candidates'])); fp=c.build389.code_fingerprint()
+    result={'build':'389.0','code_fingerprint':fp,'cases':records,'passed':records if violations==0 else max(0,records-violations),'violations':violations,'elapsed_seconds':round(elapsed,4),'candidates_per_second':round(records/elapsed,2) if elapsed else 0,'network_fetches_by_result_intake':0,'automatic_go_grants':0,'automatic_evidence_promotions':0,'automatic_truth_acceptance':0,'result':'pass' if violations==0 else 'fail'}; OUT.write_text(json.dumps(result,indent=2,sort_keys=True),encoding='utf-8'); print(json.dumps(result,indent=2,sort_keys=True)); return 0 if violations==0 else 1
+if __name__=='__main__': raise SystemExit(main())

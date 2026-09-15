@@ -1,0 +1,26 @@
+{
+  "build": "386.0",
+  "checks": {
+    "exact_go_required": true,
+    "grant_creates_no_jobs": true,
+    "grant_creates_no_network": true,
+    "grant_verifies": true,
+    "historical_build385_receipt": true,
+    "live_confirmation_still_required": true,
+    "no_automatic_execution": true,
+    "no_scope_expansion": true,
+    "operations_binding": true,
+    "opsec_binding": true,
+    "preflight_allowed": true,
+    "preflight_no_jobs_or_network": true,
+    "request_budget_binding": true,
+    "schema_gate": true,
+    "token_hash_only": true,
+    "version_coherent": true,
+    "workflow_generation_binding": true
+  },
+  "code_fingerprint": "e5f0470cee51ec5562d10ac2c339260a807e45bd33f1d31e4a53e1d5872871c4",
+  "passed": 17,
+  "result": "pass",
+  "total": 17
+}

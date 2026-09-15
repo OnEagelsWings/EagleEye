@@ -1,0 +1,26 @@
+{
+  "build": "398.0",
+  "build_acceptance_ready": true,
+  "checks": {
+    "build398_acceptance": true,
+    "build398_benchmark": true,
+    "build398_tests": true,
+    "external_model_required": true,
+    "frozen_suite_supported": true,
+    "human_review_required": true,
+    "minimum_50_case_framework": true,
+    "no_auto_evidence_promotion": true,
+    "no_auto_go": true,
+    "no_direct_fetch": true,
+    "no_execution_authority": true,
+    "no_fake_external_qualification": true,
+    "no_truth_probability_training": true,
+    "phase17_predecessor_gate": true,
+    "schema_integrity": true,
+    "version_coherent": true
+  },
+  "external_holdout_qualified": false,
+  "phase17_builds_completed": 18,
+  "production_release_ready": false,
+  "professional_pilot_line_preserved": true
+}

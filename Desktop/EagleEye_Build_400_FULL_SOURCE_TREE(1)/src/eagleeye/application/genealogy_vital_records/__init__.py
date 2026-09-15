@@ -1,0 +1,2 @@
+from eagleeye.application.build1855.service import Build1855GenealogyVitalRecordsService as GenealogyVitalRecordsService
+__all__=["GenealogyVitalRecordsService"]

@@ -1,0 +1,76 @@
+{
+  "benchmark": {
+    "cases": 2200,
+    "violations": 0
+  },
+  "build": "364.0",
+  "external_network_used": false,
+  "gate": {
+    "build": "364.0",
+    "build_acceptance_ready": true,
+    "checks": {
+      "ai_improvement_tested": true,
+      "benchmark_2200_no_violations": true,
+      "crawler_improvement_tested": true,
+      "cross_case_isolation_tested": true,
+      "loopback_tls_live_validated": true,
+      "no_literal_true_gate": true,
+      "opsec_improvement_tested": true,
+      "remote_team_contract_tested": true,
+      "schema_within_gate": true,
+      "session_anomaly_tested": true,
+      "test_evidence_current": true,
+      "tls_profile_tested": true,
+      "version_coherent": true
+    },
+    "external_remote_clients_validated": false,
+    "production_release_ready": false,
+    "remote_team_externally_validated": false,
+    "truthful_note": "Build 364 validates remote-team security contracts and direct-TLS configuration locally. External remote clients and a deployed network environment are not available here, so external remote-team validation remains not_run unless separately executed."
+  },
+  "live_transport": {
+    "build": "364.0",
+    "cases": 2,
+    "clients": 2,
+    "cross_case_denial_http_status": 403,
+    "external_remote_clients_validated": false,
+    "externally_validated": false,
+    "proxy_headers_trusted": false,
+    "status": "pass",
+    "tls_handshake_verified_against_generated_ca": true,
+    "transport": "real_loopback_tls",
+    "truthful_note": "Real TLS transport and two independent authenticated clients were validated on loopback. This is not external remote-network validation.",
+    "users": 2
+  },
+  "network_used_by_acceptance": "real_loopback_tls_receipt_reused",
+  "probes": {
+    "ai": true,
+    "benchmark": true,
+    "crawler": true,
+    "cross_case_live_denial": true,
+    "gate": true,
+    "loopback_tls_live": true,
+    "opsec": true,
+    "remote_contract": true,
+    "schema": true,
+    "session_anomaly": true,
+    "truthful_external": true,
+    "version": true
+  },
+  "result": "pass",
+  "schema": {
+    "file_bytes": 1695744,
+    "index": 128,
+    "integrity_check": "ok",
+    "logical_bytes": 1863680,
+    "table": 141,
+    "targets": {
+      "file_bytes_lt": 5242880,
+      "indexes_lt": 300,
+      "tables_lt": 150
+    },
+    "trigger": 8,
+    "view": 0,
+    "within_gate": true
+  }
+}

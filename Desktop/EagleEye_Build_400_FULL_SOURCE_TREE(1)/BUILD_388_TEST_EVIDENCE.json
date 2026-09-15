@@ -1,0 +1,15 @@
+{
+  "build": "388.0",
+  "build388_tests": {
+    "passed": 12,
+    "total": 12
+  },
+  "code_fingerprint": "94005dc560c4f8237240dc2fc15f0a0e759afb58848691e63c169f04f893a617",
+  "phase17_regression": {
+    "expected_release_boundaries": 8,
+    "functional_regressions": 0,
+    "passed": 57,
+    "total": 65
+  },
+  "result": "pass"
+}
