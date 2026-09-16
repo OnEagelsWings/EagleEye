@@ -27,7 +27,24 @@ class SecurityQualificationGate401:
             "phase18_requires_accepting_disposition": not latest or not latest.get("phase18_entry_ready") or disposition == "accept_internal_phase17",
             "production_release_stays_false": self.build400.phase17_status(case_id).get("production_release_ready") is False,
         }
-        return {"build": BUILD,"policy": POLICY_ID,"checks": checks,"security_gate_pass": all(checks.values()),"fail_closed": True,"read_only": True,"production_release_ready": False,"feedback_cycle": {"builds": [401, 402, 403, 404, 405], "publish_after_build": 405}}
+        return {
+            "build": BUILD,
+            "policy": POLICY_ID,
+            "checks": checks,
+            "security_gate_pass": all(checks.values()),
+            "fail_closed": True,
+            "read_only": True,
+            "production_release_ready": False,
+            "feedback_cycle": {"builds": [401, 402, 403, 404, 405], "publish_after_build": 405},
+        }
 
     def status(self) -> dict:
-        return {"build": BUILD,"policy": POLICY_ID,"read_only": True,"fail_closed": True,"github_feedback_integrated": True,"five_build_feedback_cycle": True,"production_release_ready": False}
+        return {
+            "build": BUILD,
+            "policy": POLICY_ID,
+            "read_only": True,
+            "fail_closed": True,
+            "github_feedback_integrated": True,
+            "five_build_feedback_cycle": True,
+            "production_release_ready": False,
+        }
