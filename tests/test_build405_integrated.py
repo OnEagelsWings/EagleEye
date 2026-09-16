@@ -1,8 +1,11 @@
 from __future__ import annotations
 import pytest
 from eagleeye_pro.core.app_context import AppContext
+from eagleeye_pro.phase18.bootstrap405 import install_phase18_405
 
-def ctx(tmp_path): return AppContext(base_dir=tmp_path)
+def ctx(tmp_path):
+    c=AppContext(base_dir=tmp_path)
+    return install_phase18_405(c)
 
 def test_version_and_gate(tmp_path):
     with ctx(tmp_path) as c:
