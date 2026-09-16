@@ -13,12 +13,7 @@ from eagleeye.application.build405.service import Build405SourceRegistryV2Servic
 
 
 def install_phase18_405(ctx):
-    """Install Builds 401-405 on an existing Build-400 AppContext for feedback-branch execution.
-
-    This is intentionally a compatibility bootstrap for public review. It does not
-    alter execution authority and should eventually be replaced by canonical
-    ServiceRegistry registrations after review.
-    """
+    """Install Builds 401-405 on an existing Build-400 AppContext for feedback-branch execution."""
     if getattr(ctx, 'build405', None) is not None:
         return ctx
     ctx.security_gate_401 = SecurityQualificationGate401(
@@ -54,7 +49,9 @@ def install_phase18_405(ctx):
         install_dir=ctx.install_dir, actor=ctx.actor,
     )
     ctx.source_registry_v2_405 = SourceRegistryV2405(
-        ctx.db, ctx.audit, runtime384=ctx.phase17_runtime_384, actor=ctx.actor,
+        ctx.db, ctx.audit, runtime384=ctx.phase17_runtime_384,
+        governance=ctx.team_governance_359, identity359=ctx.team_identity_359,
+        actor=ctx.actor,
     )
     ctx.build405 = Build405SourceRegistryV2Service(
         ctx.db, ctx.audit, build404=ctx.build404, registry405=ctx.source_registry_v2_405,
