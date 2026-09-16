@@ -13,14 +13,20 @@ from eagleeye.application.build405.service import Build405SourceRegistryV2Servic
 
 
 def install_phase18_405(ctx):
-    """Install Builds 401-405 on an existing Build-400 AppContext for feedback-branch execution."""
-    if getattr(ctx, 'build405', None) is not None:
-        return ctx
+    """Compatibility bootstrap for contexts predating canonical Phase-18 registration.
+
+    Current canonical contexts already expose Build 401-405 through ServiceRegistry;
+    in that case this is a no-op. Public review branches based on older AppContext
+    revisions receive the same services before app401 accesses them.
+    """
+    try:
+        if getattr(ctx, 'build405', None) is not None:
+            return ctx
+    except Exception:
+        pass
     ctx.security_gate_401 = SecurityQualificationGate401(
-        holdout398=ctx.model_holdout_398,
-        soak399=ctx.target_soak_399,
-        acceptance400=ctx.phase17_final_acceptance_400,
-        build400=ctx.build400,
+        holdout398=ctx.model_holdout_398, soak399=ctx.target_soak_399,
+        acceptance400=ctx.phase17_final_acceptance_400, build400=ctx.build400,
     )
     ctx.build401 = Build401SecurityQualificationHardeningService(
         ctx.db, ctx.audit, build400=ctx.build400, gate401=ctx.security_gate_401,
@@ -42,7 +48,8 @@ def install_phase18_405(ctx):
         install_dir=ctx.install_dir, actor=ctx.actor,
     )
     ctx.ai_review_gate_404 = AIReviewGate404(
-        ctx.db, ctx.audit, build403=ctx.build403, actor=ctx.actor,
+        ctx.db, ctx.audit, build403=ctx.build403, governance=ctx.team_governance_359,
+        install_dir=ctx.install_dir, actor=ctx.actor,
     )
     ctx.build404 = Build404AIReviewGateService(
         ctx.db, ctx.audit, build403=ctx.build403, gate404=ctx.ai_review_gate_404,
