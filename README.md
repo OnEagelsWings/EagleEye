@@ -1,16 +1,32 @@
 # EagleEye — Build 400
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 400 is published here for **testing and evaluation**, not as a general production-ready release.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 400 is published here for **public testing and evaluation**, not as a general production-ready release.
 
-## Quick start on Windows
+## External testers wanted
 
-1. Install **Python 3.11 or newer**.
-2. Clone or download this repository.
-3. Double-click **`START_EAGLEEYE_PRO.bat`**.
+We are actively looking for independent testers on Windows, Linux and macOS. A useful test can be as simple as: clone the repository, start EagleEye, create a demo case, restart the application, and report what worked or failed.
 
-On the first start EagleEye creates a local `.venv`, installs missing runtime dependencies from `pyproject.toml`, starts its loopback-only web server and opens the workspace in Firefox when available (otherwise the default browser).
+**Repository:** https://github.com/OnEagelsWings/EagleEye  
+**Testing guide:** [TESTING.md](TESTING.md)  
+**Public beta feedback:** https://github.com/OnEagelsWings/EagleEye/issues/2
 
-You can also start it manually:
+Please test only with synthetic, demo, or clearly public data. Do **not** use confidential investigations, credentials, secrets, or sensitive personal information.
+
+## Fastest Windows test
+
+Requirements: **Python 3.11 or newer**.
+
+```powershell
+git clone https://github.com/OnEagelsWings/EagleEye.git
+cd EagleEye
+START_EAGLEEYE_PRO.bat
+```
+
+Alternatively, download the repository as ZIP, extract it, and double-click `START_EAGLEEYE_PRO.bat`.
+
+On first start EagleEye creates a local `.venv`, installs missing runtime dependencies from `pyproject.toml`, starts its loopback-only web server and opens the workspace in Firefox when available (otherwise the default browser).
+
+Manual Windows start:
 
 ```powershell
 py -3 -m pip install -e .
@@ -20,19 +36,24 @@ py -3 EAGLEEYE_PRO_400_0.py
 ## Linux / macOS
 
 ```bash
+git clone https://github.com/OnEagelsWings/EagleEye.git
+cd EagleEye
 chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 ```
 
 The default local address is `http://127.0.0.1:8765`. If that port is occupied, EagleEye selects another free loopback port automatically.
 
-## Public testing — testers wanted
+## Five-minute smoke test
 
-We are actively looking for external testers for Build 400, especially on fresh Windows 10/11 systems and ordinary 8–16 GB RAM computers.
+1. Start EagleEye on a clean machine or Python environment.
+2. Confirm that the browser workspace opens.
+3. Open `/health` on the displayed local address and verify `ok: true` and build `400.0`.
+4. Create a test/demo case and navigate through the case/evidence workspace.
+5. Close EagleEye completely and start it again.
+6. Report PASS/FAIL and any error message in [the public beta issue](https://github.com/OnEagelsWings/EagleEye/issues/2) or open a separate issue for a reproducible defect.
 
-Please follow [`TESTING.md`](TESTING.md) and report results in **GitHub issue #2: “Public beta test: EagleEye Build 400 — testers wanted.”** We are particularly interested in first-start installation, browser launch, case creation, restart behavior, AI/investigator usability, crawler/research workflow, and resource usage.
-
-Please test only with synthetic, demo, or clearly public data. Build 400 is not a production release and should not be used for confidential investigations or sensitive credentials.
+Especially useful are tests on fresh Windows 10/11 systems, Python 3.11/3.12/3.13, ordinary 8–16 GB RAM computers, systems without Firefox, and systems where port 8765 is already occupied.
 
 ## Diagnostics and tests
 
@@ -54,6 +75,12 @@ The canonical Build-400 integration suite is:
 ```bash
 pytest -q tests/test_build400_integrated.py
 ```
+
+## What feedback helps most
+
+Please include operating system, Python version, RAM, install method, whether first start succeeded, whether the browser opened, whether `/health` passed, whether case creation and restart worked, and exact reproduction steps for failures. Screenshots and logs are welcome after removing credentials, tokens, usernames, private paths and case data.
+
+See [TESTING.md](TESTING.md) for the complete test procedure and report template.
 
 ## Security and release scope
 
