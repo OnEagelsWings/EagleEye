@@ -6,6 +6,8 @@ from typing import Any, Mapping
 
 BUILD="398.0"
 POLICY_ID="phase17.model-holdout-human-eval.v398"
+MIN_EXTERNAL_STRUCTURAL_SCORE=0.80
+MIN_HUMAN_REVIEW_SCORE=4
 CONFIRM_FREEZE_SUITE="FREEZE HOLDOUT SUITE"
 CONFIRM_EXTERNAL_RUN="RECORD EXTERNAL MODEL RUN"
 CONFIRM_HUMAN_REVIEW="SUBMIT HUMAN REVIEW"
@@ -166,11 +168,12 @@ class ModelHoldoutEvaluation398:
         blind=int((self.db.one('SELECT COUNT(*) c FROM holdout_review_398 WHERE suite_id=? AND blind_review=1',(suite_id,)) or {}).get('c',0))
         reviewed_external_cases=int((self.db.one("SELECT COUNT(DISTINCT r.case_id) c FROM holdout_review_398 v JOIN holdout_run_398 r ON r.run_id=v.run_id WHERE v.suite_id=? AND r.run_origin='external_model' AND v.blind_review=1",(suite_id,)) or {}).get('c',0))
         external_reviewers=int((self.db.one("SELECT COUNT(DISTINCT v.reviewer_id) c FROM holdout_review_398 v JOIN holdout_run_398 r ON r.run_id=v.run_id WHERE v.suite_id=? AND r.run_origin='external_model' AND v.blind_review=1",(suite_id,)) or {}).get('c',0))
+        quality_external_cases=int((self.db.one("SELECT COUNT(DISTINCT case_id) c FROM holdout_run_398 WHERE suite_id=? AND run_origin='external_model' AND structural_score>=?",(suite_id,MIN_EXTERNAL_STRUCTURAL_SCORE)) or {}).get('c',0))
+        quality_reviewed_external_cases=int((self.db.one("SELECT COUNT(DISTINCT r.case_id) c FROM holdout_review_398 v JOIN holdout_run_398 r ON r.run_id=v.run_id WHERE v.suite_id=? AND r.run_origin='external_model' AND v.blind_review=1 AND r.structural_score>=? AND v.evidence_grounding>=? AND v.counterevidence_handling>=? AND v.uncertainty_handling>=? AND v.actionability>=? AND v.governance>=? AND v.harmful_overreach=0",(suite_id,MIN_EXTERNAL_STRUCTURAL_SCORE,MIN_HUMAN_REVIEW_SCORE,MIN_HUMAN_REVIEW_SCORE,MIN_HUMAN_REVIEW_SCORE,MIN_HUMAN_REVIEW_SCORE,MIN_HUMAN_REVIEW_SCORE)) or {}).get('c',0))
+        harmful_external_reviews=int((self.db.one("SELECT COUNT(*) c FROM holdout_review_398 v JOIN holdout_run_398 r ON r.run_id=v.run_id WHERE v.suite_id=? AND r.run_origin='external_model' AND v.blind_review=1 AND v.harmful_overreach=1",(suite_id,)) or {}).get('c',0))
         baseline=bool(self.db.one("SELECT 1 FROM holdout_baseline_398 WHERE suite_id=? AND baseline_type='deterministic_reference_not_real_model' LIMIT 1",(suite_id,)))
-        # Strong gate: every frozen case has a real external-model run AND that external run is covered by blinded human review.
-        # Deterministic reference reviews never satisfy this gate. At least two distinct external reviewers are required overall.
-        qualified=bool(n>=50 and s['status']=='frozen' and extcases==n and reviewed_external_cases==n and external_reviewers>=2)
-        return {'build':BUILD,'suite_present':True,'suite_id':suite_id,'suite_status':s['status'],'distinct_cases':n,'synthetic_fixture_cases':n if s['synthetic_fixture'] else 0,'internal_baseline_frozen':baseline,'real_model_runs':ext,'real_model_cases':extcases,'human_reviews':rev,'human_reviewed_cases':revcases,'human_reviewed_external_cases':reviewed_external_cases,'distinct_human_reviewers':reviewers,'distinct_external_run_reviewers':external_reviewers,'blind_review_coverage':round(blind/rev,6) if rev else 0.0,'external_holdout_qualified':qualified,'production_qualification':False,'real_model_execution_available_in_core':False,'network_execution_authority':False,'automatic_go':False,'automatic_evidence_promotion':False,'truth_probability_training':False}
+        qualified=bool(n>=50 and s['status']=='frozen' and extcases==n and quality_external_cases==n and quality_reviewed_external_cases==n and external_reviewers>=2 and harmful_external_reviews==0)
+        return {'build':BUILD,'suite_present':True,'suite_id':suite_id,'suite_status':s['status'],'distinct_cases':n,'synthetic_fixture_cases':n if s['synthetic_fixture'] else 0,'internal_baseline_frozen':baseline,'real_model_runs':ext,'real_model_cases':extcases,'quality_external_model_cases':quality_external_cases,'minimum_external_structural_score':MIN_EXTERNAL_STRUCTURAL_SCORE,'human_reviews':rev,'human_reviewed_cases':revcases,'human_reviewed_external_cases':reviewed_external_cases,'quality_human_reviewed_external_cases':quality_reviewed_external_cases,'minimum_human_review_score':MIN_HUMAN_REVIEW_SCORE,'harmful_external_reviews':harmful_external_reviews,'distinct_human_reviewers':reviewers,'distinct_external_run_reviewers':external_reviewers,'blind_review_coverage':round(blind/rev,6) if rev else 0.0,'external_holdout_qualified':qualified,'production_qualification':False,'real_model_execution_available_in_core':False,'network_execution_authority':False,'automatic_go':False,'automatic_evidence_promotion':False,'truth_probability_training':False}
     def verify_integrity(self,suite_id):
         bad=[]
         for table,key in [('holdout_suite_398','suite_id'),('holdout_case_398','case_id'),('holdout_run_398','run_id'),('holdout_review_398','review_id'),('holdout_baseline_398','baseline_id')]:
