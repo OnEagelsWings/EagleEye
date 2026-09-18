@@ -1,0 +1,12 @@
+{
+  "build": "420.0",
+  "package": "420.0.0",
+  "phase": 18,
+  "phase18_builds_completed": 20,
+  "phase18_complete": true,
+  "feature": "Phase 18 Qualification",
+  "deep_regression_required": true,
+  "codex_review_required": true,
+  "github_ci_required": true,
+  "production_release_ready": false
+}
