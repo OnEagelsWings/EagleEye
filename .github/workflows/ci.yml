@@ -19,5 +19,7 @@ jobs:
         run: python -m pip install -e '.[test]'
       - name: Import smoke test
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye_pro.version import BUILD; print(BUILD)"
-      - name: Build 416 integrated tests
-        run: pytest -q tests/test_build416_integrated.py
+      - name: Build 417 integrated tests
+        run: pytest -q tests/test_build417_integrated.py
+      - name: Build 416 regression
+        run: pytest -q tests/test_build416_integrated.py -k 'not version_and_gate and not app_and_launcher'
