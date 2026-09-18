@@ -10,7 +10,14 @@ class Build418EvidenceHypothesisMatrixService:
   if v is None: raise AttributeError(n)
   return v
  def version_status(self):
-  vt=(self.install_dir/'eagleeye_pro/version.py').read_text(); pt=(self.install_dir/'pyproject.toml').read_text(); pick=lambda p,t:(re.search(p,t,re.M).group(1) if re.search(p,t,re.M) else 'unknown'); runtime=pick(r'^BUILD\\s*=\\s*["\\\']([^"\\\']+)',vt); schema=pick(r'^SCHEMA_VERSION\\s*=\\s*["\\\']([^"\\\']+)',vt); package=pick(r'^version\\s*=\\s*["\\\']([^"\\\']+)',pt); return {'runtime_build':runtime,'schema_version':schema,'package_version':package,'coherent':runtime==schema==self.BUILD and package==self.PACKAGE}
+  from eagleeye_pro.version import BUILD as runtime, SCHEMA_VERSION as schema
+  try:
+   from importlib.metadata import version as package_version
+   package=package_version('eagleeye-personosint-pro')
+  except Exception:
+   pt=(self.install_dir/'pyproject.toml').read_text() if (self.install_dir/'pyproject.toml').exists() else ''
+   m=re.search(r'^version\\s*=\\s*["\\\']([^"\\\']+)',pt,re.M); package=m.group(1) if m else 'unknown'
+  return {'runtime_build':runtime,'schema_version':schema,'package_version':package,'coherent':runtime==schema==self.BUILD and package==self.PACKAGE}
  def matrix_status(self):
   s=self.matrix418.status(); checks={'version_coherent':self.version_status()['coherent'],'integrity':s['integrity_valid'],'continuity_guarded':s['continuity_guarded'],'conflict_and_gap_detection':s['conflict_detection'] and s['coverage_gap_detection'],'human_review':s['human_review_required'],'no_forbidden_authority':not any(s[k] for k in ('direct_network_authority','automatic_go_issuance','automatic_evidence_promotion','autonomous_scope_expansion','truth_determined'))}; return {'build':self.BUILD,'checks':checks,'matrix_gate_pass':all(checks.values()),'production_release_ready':False}
  def link_evidence(self,**kw): return self.matrix418.link(**kw)
