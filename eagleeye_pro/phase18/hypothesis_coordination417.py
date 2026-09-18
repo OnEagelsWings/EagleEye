@@ -33,7 +33,8 @@ class HypothesisCoordination417:
     def create(self,*,session_id,statement,identity:Mapping[str,Any]|None=None,alternative_to=''):
         self.continuity416.validate(session_id=session_id,identity=identity)
         s=self.multi415.session(session_id); self._auth(identity,s['case_id'],session_id)
-        statement=' '.join(str(statement).split())
+        if not isinstance(statement,str) or not statement.strip(): raise ValueError('hypothesis statement required')
+        statement=' '.join(statement.split())
         if len(statement)<3: raise ValueError('hypothesis statement required')
         if alternative_to:
             parent=self.get(alternative_to)
@@ -46,8 +47,11 @@ class HypothesisCoordination417:
     def add_item(self,*,hypothesis_id,item_type,reference='',note='',identity:Mapping[str,Any]|None=None):
         h=self.get(hypothesis_id); self.continuity416.validate(session_id=h['session_id'],identity=identity); self._auth(identity,h['case_id'],hypothesis_id)
         if item_type not in {'support','counterevidence','uncertainty','open_question'}: raise ValueError('invalid hypothesis item type')
-        if not str(reference).strip() and not str(note).strip(): raise ValueError('reference or note required')
-        iid='hitem417_'+secrets.token_hex(10); r={'item_id':iid,'hypothesis_id':hypothesis_id,'case_id':h['case_id'],'item_type':item_type,'reference':str(reference).strip(),'note':str(note).strip(),'created_by':str((identity or {}).get('user_id') or (identity or {}).get('username') or self.actor),'created_at':_now()}; r['record_hash']=self._rh(r)
+        if reference is not None and not isinstance(reference,str): raise ValueError('reference must be a string')
+        if note is not None and not isinstance(note,str): raise ValueError('note must be a string')
+        reference=(reference or '').strip(); note=(note or '').strip()
+        if not reference and not note: raise ValueError('reference or note required')
+        iid='hitem417_'+secrets.token_hex(10); r={'item_id':iid,'hypothesis_id':hypothesis_id,'case_id':h['case_id'],'item_type':item_type,'reference':reference,'note':note,'created_by':str((identity or {}).get('user_id') or (identity or {}).get('username') or self.actor),'created_at':_now()}; r['record_hash']=self._rh(r)
         self.db.execute('INSERT INTO hypothesis_item_417 VALUES(?,?,?,?,?,?,?,?,?)',tuple(r.values())); self.audit.log('hypothesis_item_added_417','hypothesis_item_417',iid,h['case_id'],{'hypothesis_id':hypothesis_id,'item_type':item_type,'evidence_promoted':False}); return dict(r)
     def set_human_state(self,*,hypothesis_id,state,identity:Mapping[str,Any]|None=None):
         h=self.get(hypothesis_id); self.continuity416.validate(session_id=h['session_id'],identity=identity); self._auth(identity,h['case_id'],hypothesis_id)
