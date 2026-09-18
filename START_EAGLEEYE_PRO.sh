@@ -3,8 +3,8 @@ set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
-"$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)' || {
-  echo "EagleEye requires Python 3.11 or newer." >&2
+"$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,12) else 1)' || {
+  echo "EagleEye requires Python 3.12 or newer." >&2
   exit 1
 }
 

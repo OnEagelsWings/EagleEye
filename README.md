@@ -14,7 +14,7 @@ Please test only with synthetic, demo, or clearly public data. Do **not** use co
 
 ## Fastest Windows test
 
-Requirements: **Python 3.11 or newer**.
+Requirements: **Python 3.12 or newer**.
 
 ```powershell
 git clone https://github.com/OnEagelsWings/EagleEye.git
@@ -53,7 +53,7 @@ The default local address is `http://127.0.0.1:8765`. If that port is occupied, 
 5. Close EagleEye completely and start it again.
 6. Report PASS/FAIL and any error message in [the public beta issue](https://github.com/OnEagelsWings/EagleEye/issues/2) or open a separate issue for a reproducible defect.
 
-Especially useful are tests on fresh Windows 10/11 systems, Python 3.11/3.12/3.13, ordinary 8–16 GB RAM computers, systems without Firefox, and systems where port 8765 is already occupied.
+Especially useful are tests on fresh Windows 10/11 systems, Python 3.12/3.13, ordinary 8–16 GB RAM computers, systems without Firefox, and systems where port 8765 is already occupied.
 
 ## Diagnostics and tests
 

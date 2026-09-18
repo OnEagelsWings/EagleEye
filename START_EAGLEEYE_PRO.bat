@@ -10,10 +10,10 @@ if %errorlevel%==0 (
     set "PYTHON=python"
 )
 
-%PYTHON% -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)"
+%PYTHON% -c "import sys; raise SystemExit(0 if sys.version_info >= (3,12) else 1)"
 if errorlevel 1 (
     echo.
-    echo EagleEye requires Python 3.11 or newer.
+    echo EagleEye requires Python 3.12 or newer.
     echo Install Python and then run this file again.
     echo.
     pause

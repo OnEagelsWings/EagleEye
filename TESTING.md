@@ -14,7 +14,7 @@ Please record:
 - Python version
 - install method: Git clone or downloaded ZIP
 
-Python 3.11 or newer is required.
+Python 3.12 or newer is required.
 
 ## 2. First-start test
 
@@ -107,7 +107,7 @@ Before posting logs or screenshots, remove credentials, API tokens, cookies, ide
 We especially need independent confirmation of:
 
 - fresh Windows 10/11 first-start setup
-- Python 3.11 / 3.12 / 3.13 compatibility
+- Python 3.12 / 3.13 compatibility
 - launch behavior when Firefox is unavailable
 - behavior when port 8765 is already occupied
 - clean restart after first-run initialization
