@@ -17,8 +17,8 @@ class Phase18Qualification420:
  def _rh(self,r): return _sha({k:r[k] for k in r if k!='record_hash'})
  def _auth(self,identity,case_id):
   if not identity: raise PermissionError('active identity required')
-  roles={str(x).lower() for x in (identity.get('roles') or [])}; role=str(identity.get('role') or '').lower()
-  if not ({'admin','administrator','owner'} & roles or role in {'admin','administrator','owner'}): raise PermissionError('system administrator required for global qualification')
+  roles={str(x).lower() for x in (identity.get('roles') or [])}; role=str(identity.get('role') or '').lower(); global_role=str(identity.get('global_role') or '').lower()
+  if not ({'admin','administrator','owner','system_administrator'} & roles or role in {'admin','administrator','owner','system_administrator'} or global_role in {'admin','administrator','owner','system_administrator'}): raise PermissionError('system administrator required for global qualification')
  def qualify(self,*,identity,case_id=''):
   self._auth(identity,case_id); checks={}; details={}
   for name,svc in self.services.items():
