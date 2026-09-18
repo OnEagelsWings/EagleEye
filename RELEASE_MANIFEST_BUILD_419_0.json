@@ -1,0 +1,10 @@
+{
+  "build": "419.0",
+  "package": "419.0.0",
+  "phase": 18,
+  "phase18_builds_completed": 19,
+  "feature": "Investigation Synthesis & Argumentation",
+  "human_review_required": true,
+  "truth_determined": false,
+  "production_release_ready": false
+}
