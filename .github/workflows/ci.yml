@@ -19,5 +19,5 @@ jobs:
         run: python -m pip install -e '.[test]'
       - name: Import smoke test
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye_pro.version import BUILD; print(BUILD)"
-      - name: Build 400 integrated tests
-        run: pytest -q tests/test_build400_integrated.py
+      - name: Build 416 integrated tests
+        run: pytest -q tests/test_build416_integrated.py

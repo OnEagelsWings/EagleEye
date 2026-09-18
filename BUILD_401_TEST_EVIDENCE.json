@@ -1,0 +1,33 @@
+{
+  "build": "401.0",
+  "phase": 18,
+  "code_fingerprint": "4c2c3334150c542da13480bcbfd2e2d08eb5c6477a07138704107eb01965571d",
+  "generated_at": "2026-09-15T20:25:25+00:00",
+  "production_release_ready": false,
+  "network_execution_on_boot": false,
+  "feedback_cycle": {
+    "range": "401-405",
+    "publish_to_github_after": "405.0",
+    "adaptive_feedback_integration": true
+  },
+  "result": "pass",
+  "tests": {
+    "build401_integrated": {
+      "passed": 7,
+      "failed": 0
+    },
+    "adjacent_build398_400_regression": {
+      "passed": 32,
+      "failed": 0,
+      "deselected": 4,
+      "reason": "historical build-version/launcher assertions intentionally not applicable after version bump"
+    },
+    "runtime_health": {
+      "ok": true,
+      "build": "401.0",
+      "security_qualification_gate": true,
+      "production_release_ready": false,
+      "network_execution_on_boot": false
+    }
+  }
+}

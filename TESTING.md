@@ -1,8 +1,8 @@
-# EagleEye Build 400 — Testing Guide
+# EagleEye Build 416 — Testing Guide
 
-This guide is for external testers evaluating EagleEye Build 400 on fresh systems.
+This guide is for external testers evaluating EagleEye Build 416 on fresh systems.
 
-> Build 400 is a testing/evaluation baseline, not a production release. Use only synthetic, demo, or clearly public test data. Do not use confidential investigations, credentials, secrets, or sensitive personal information.
+> Build 416 is a testing/evaluation baseline, not a production release. Use only synthetic, demo, or clearly public test data. Do not use confidential investigations, credentials, secrets, or sensitive personal information.
 
 ## 1. Environment
 
@@ -42,7 +42,7 @@ Open `/health` on the displayed local EagleEye address. Expected minimum values:
 ```json
 {
   "ok": true,
-  "build": "400.0",
+  "build": "416.0",
   "network_execution_on_boot": false,
   "production_release_ready": false
 }
@@ -70,7 +70,7 @@ For testers comfortable with Python:
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build400_integrated.py
+pytest -q tests/test_build416_integrated.py
 ```
 
 Expected maintainer baseline: `11 passed`.

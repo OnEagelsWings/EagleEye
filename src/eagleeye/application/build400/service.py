@@ -31,7 +31,7 @@ class Build400Phase17FinalAcceptanceService:
     def historical_build399_receipt(self):
         r=_read(self.install_dir/'RELEASE_MANIFEST_BUILD_399_0.json');valid=bool(r.get('build')=='399.0' and r.get('production_release_ready') is False and int((r.get('regression') or {}).get('functional_regressions',-1))==0);return {'build':'399.0','valid':valid,'code_fingerprint':r.get('code_fingerprint','')}
     def phase17_status(self,case_id=''):
-        o=dict(self.build399.phase17_status(case_id));st=self.acceptance400.status();latest=self.acceptance400.latest(case_id);o.update(st);o.update({'build':self.BUILD,'phase17_builds_completed':20,'phase17_internal_acceptance':bool(latest and latest['internal_acceptance'] and latest.get('review') and latest['review']['disposition']=='accept_internal_phase17'),'phase18_entry_ready':bool(latest and latest['phase18_entry_ready'] and latest.get('review')),'production_release_ready':False});return o
+        o=dict(self.build399.phase17_status(case_id));st=self.acceptance400.status();latest=self.acceptance400.latest(case_id);o.update(st);o.update({'build':self.BUILD,'phase17_builds_completed':20,'phase17_internal_acceptance':bool(latest and latest['internal_acceptance'] and latest.get('review') and latest['review']['disposition']=='accept_internal_phase17'),'phase18_entry_ready':bool(latest and latest['phase18_entry_ready'] and latest.get('review') and latest['review'].get('disposition')=='accept_internal_phase17'),'production_release_ready':False});return o
     def run_phase17_acceptance(self,**k):return self.acceptance400.run_acceptance(**k)
     def review_phase17_acceptance(self,**k):return self.acceptance400.review(**k)
     def phase17_acceptance(self,run_id):return self.acceptance400.acceptance(run_id)

@@ -1,0 +1,24 @@
+{
+  "build": "401.0",
+  "phase": 18,
+  "code_fingerprint": "4c2c3334150c542da13480bcbfd2e2d08eb5c6477a07138704107eb01965571d",
+  "generated_at": "2026-09-15T20:25:25+00:00",
+  "production_release_ready": false,
+  "network_execution_on_boot": false,
+  "feedback_cycle": {
+    "range": "401-405",
+    "publish_to_github_after": "405.0",
+    "adaptive_feedback_integration": true
+  },
+  "classification": "phase18_internal_security_hardening_candidate",
+  "github_feedback_findings_integrated": 6,
+  "known_external_qualification_gaps": [
+    "real_model_human_holdout",
+    "real_72h_windows_firefox_soak",
+    "independent_external_security_validation",
+    "professional_pilot"
+  ],
+  "next_build": "402.0",
+  "next_public_feedback_build": "405.0",
+  "decision": "continue_phase18_not_production_release"
+}

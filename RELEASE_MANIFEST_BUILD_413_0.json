@@ -1,0 +1,35 @@
+{
+  "build": "413.0",
+  "package_version": "413.0.0",
+  "name": "Investigation Planner",
+  "phase": 18,
+  "phase18_builds_completed": 13,
+  "code_fingerprint": "8471df9ac16751c2e396d0fdf8c32fbb7a0d4ccb184ed6a31b5c77ca402ae794",
+  "tests": {
+    "build413": "12/12 PASS",
+    "compileall": "PASS"
+  },
+  "security": {
+    "case_scoped_authorization": true,
+    "network_execution": false,
+    "execution_authority": false,
+    "automatic_go": false,
+    "automatic_stop": false,
+    "truth_determined": false,
+    "automatic_evidence_promotion": false,
+    "autonomous_scope_expansion": false
+  },
+  "production_release_ready": false,
+  "files": [
+    "eagleeye_pro/phase18/investigation_planner413.py",
+    "src/eagleeye/application/build413/service.py",
+    "src/eagleeye/interfaces/web/app413.py",
+    "eagleeye_pro/core/app_context.py",
+    "eagleeye_pro/phase18/connector_fabric407.py",
+    "eagleeye_pro/phase18/federated_search408.py",
+    "src/eagleeye/interfaces/web/server.py",
+    "eagleeye_pro/version.py",
+    "pyproject.toml",
+    "tests/test_build413_integrated.py"
+  ]
+}

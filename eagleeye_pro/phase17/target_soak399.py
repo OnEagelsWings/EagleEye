@@ -37,6 +37,10 @@ class TargetEnvironmentSoak399:
     """
     def __init__(self,db:Any,audit:Any,*,governance:Any=None,actor:str='local-analyst'):
         self.db=db; self.audit=audit; self.governance=governance; self.actor=actor; self._init_schema()
+    def _authorize_qualification(self, identity:Mapping[str,Any], object_type:str, object_id:str):
+        if self.governance is None: raise PermissionError('qualification governance unavailable')
+        self.governance.authorize(dict(identity),case_id='',capability='dossier.review',object_type=object_type,object_id=object_id)
+
     def _init_schema(self):
         self.db.conn.executescript('''
         CREATE TABLE IF NOT EXISTS soak_plan_399(
@@ -95,6 +99,7 @@ class TargetEnvironmentSoak399:
             if key not in env: raise ValueError(f'environment.{key} must be explicitly supplied')
         return env,samples,recoveries,start,end,receipt,collector,dur
     def import_external_bundle(self,*,plan_id,bundle:Mapping[str,Any],identity:Mapping[str,Any],confirmation:str):
+        self._authorize_qualification(identity,'target_soak_import_399',plan_id)
         if confirmation!=CONFIRM_IMPORT_EXTERNAL: raise PermissionError(f'exact confirmation required: {CONFIRM_IMPORT_EXTERNAL}')
         p=self.plan(plan_id)
         if p['status']!='frozen': raise ValueError('soak plan must be frozen before external evidence import')
@@ -134,6 +139,7 @@ class TargetEnvironmentSoak399:
         if not r: raise KeyError('soak session not found')
         d=dict(r); d['environment']=_j(d.pop('environment_json'),{}); return d
     def review_external_session(self,*,session_id,identity:Mapping[str,Any],disposition:str,native_windows_verified:bool,native_firefox_e2e_verified:bool,recovery_verified:bool,notes:str,confirmation:str):
+        self._authorize_qualification(identity,'target_soak_review_399',session_id)
         if confirmation!=CONFIRM_REVIEW: raise PermissionError(f'exact confirmation required: {CONFIRM_REVIEW}')
         s=self.session(session_id)
         if s['run_origin']!='external_target_environment': raise ValueError('only an external target-environment session can receive qualification review')
@@ -183,8 +189,9 @@ class TargetEnvironmentSoak399:
             details.append({'session_id':s['session_id'],'checks':checks,'metrics':m})
         return {'build':BUILD,'plan_present':True,'plan_status':plan['status'],'required_hours':72,'required_samples':plan['min_samples'],'external_sessions':len(sessions),'qualified_external_sessions':qualified_ids,'external_72h_soak_qualified':bool(qualified_ids),'details':details,'production_qualification':False,'direct_network_fetch_in_core':False,'execution_authority':False,'automatic_go':False,'automatic_live_confirmation':False,'automatic_evidence_promotion':False}
     def verify_session(self,session_id):
-        s=dict(self.db.one('SELECT * FROM soak_session_399 WHERE session_id=?',(session_id,))); bad=[]
-        if not s:return {'valid':False,'violations':['missing_session']}
+        row=self.db.one('SELECT * FROM soak_session_399 WHERE session_id=?',(session_id,))
+        if not row:return {'valid':False,'violations':['missing_session']}
+        s=dict(row); bad=[]
         if s['record_hash']!=self._rowhash(s): bad.append('session_hash')
         for table in ('soak_sample_399','recovery_event_399','soak_review_399'):
             for r in self.db.all(f'SELECT * FROM {table} WHERE session_id=?',(session_id,)):

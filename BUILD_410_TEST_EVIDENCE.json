@@ -1,0 +1,11 @@
+{
+  "build": "410.0",
+  "build410_tests": "8/8 PASS",
+  "affected_regressions": "25/25 PASS",
+  "cycle_regressions": "33/33 PASS with 8 historical version/launcher assertions deselected",
+  "actual_launcher_start": "PASS",
+  "health_build": "410.0",
+  "feedback_qualification_gate_pass": true,
+  "production_release_ready": false,
+  "code_fingerprint": "50e6380091d9930b3274aff1125a36a551535f23faa2938a3baa7cee9ef37533"
+}

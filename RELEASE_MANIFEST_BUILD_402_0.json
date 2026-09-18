@@ -1,0 +1,16 @@
+{
+  "build": "402.0",
+  "phase": 18,
+  "name": "Authorization Matrix Audit",
+  "code_fingerprint": "791042ca9805c827262068fcbd52917813789926257794da66605cbc613145b5",
+  "new_components": [
+    "authorization_matrix_402",
+    "build402",
+    "app402"
+  ],
+  "tests": [
+    "tests/test_build402_integrated.py"
+  ],
+  "feedback_cycle_publish_after": "405.0",
+  "production_release_ready": false
+}

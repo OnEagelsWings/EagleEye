@@ -74,7 +74,7 @@ def test_deterministic_reviews_cannot_satisfy_external_gate(tmp_path):
 
 def test_external_gate_requires_each_case_and_two_reviewers(tmp_path):
     with ctx(tmp_path) as c:
-        a=admin(c); s=make_suite(c,a); reviewer2={'user_id':'independent-reviewer-2'}; scores={k:5 for k in ('evidence_grounding','counterevidence_handling','uncertainty_handling','actionability','governance')}
+        a=admin(c); s=make_suite(c,a); reviewer2={**c.team_identity_359.create_user(identity=a,username='reviewer398b',display_name='Independent Reviewer 398',global_role='system_administrator',password='Quartz-Independent-Reviewer-398-X9!'), 'session_id':'r398b'}; scores={k:5 for k in ('evidence_grounding','counterevidence_handling','uncertainty_handling','actionability','governance')}
         cases=[r['case_id'] for r in c.db.all('SELECT case_id FROM holdout_case_398 WHERE suite_id=? ORDER BY case_id',(s['suite_id'],))]
         for i,cid in enumerate(cases):
             case=c.model_holdout_398._case(s['suite_id'],cid); out=c.model_holdout_398.deterministic_reference_output(case)

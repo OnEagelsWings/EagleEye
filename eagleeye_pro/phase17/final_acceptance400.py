@@ -69,7 +69,8 @@ class Phase17FinalAcceptance400:
         '''); self.db.conn.commit()
     def _rowhash(self,d): return _sha({k:v for k,v in d.items() if k not in {'record_hash'}})
     def _auth(self,identity:Mapping[str,Any],case_id:str):
-        if case_id:self.governance.authorize(dict(identity),case_id=case_id,capability='case.read',object_type='phase17_final_acceptance_v400',object_id=case_id)
+        # Final acceptance is a governance mutation even when it is global rather than case-scoped.
+        self.governance.authorize(dict(identity),case_id=case_id or '',capability='dossier.review',object_type='phase17_final_acceptance_v400',object_id=case_id or 'global')
     def _table_present(self,name): return bool(self.db.one("SELECT 1 x FROM sqlite_master WHERE type='table' AND name=?",(name,)))
     def _manifest_ok(self,b:int,ref:str):
         if b<=383:

@@ -1,12 +1,12 @@
 ---
 name: External test report
-about: Report a Build 400 test from an independent machine
+about: Report a Build 416 test from an independent machine
 title: "[External Test] "
 labels: ""
 assignees: ""
 ---
 
-Thank you for testing EagleEye Build 400. Please use only synthetic, demo, or clearly public data and remove credentials, tokens, private paths and sensitive material from logs/screenshots.
+Thank you for testing EagleEye Build 416. Please use only synthetic, demo, or clearly public data and remove credentials, tokens, private paths and sensitive material from logs/screenshots.
 
 ## Environment
 

@@ -1,0 +1,25 @@
+{
+  "build": "401.0",
+  "phase": 18,
+  "code_fingerprint": "4c2c3334150c542da13480bcbfd2e2d08eb5c6477a07138704107eb01965571d",
+  "generated_at": "2026-09-15T20:25:25+00:00",
+  "production_release_ready": false,
+  "network_execution_on_boot": false,
+  "feedback_cycle": {
+    "range": "401-405",
+    "publish_to_github_after": "405.0",
+    "adaptive_feedback_integration": true
+  },
+  "result": "pass",
+  "checks": {
+    "governance_compliance_hard_holdout_gate": true,
+    "quality_filtered_reviewer_diversity": true,
+    "harmful_overreach_veto": true,
+    "structured_missing_soak_session": true,
+    "global_final_acceptance_authorized": true,
+    "phase18_requires_accepting_human_disposition": true,
+    "security_gate_read_only": true,
+    "server_start_health_ok": true,
+    "production_not_falsely_released": true
+  }
+}

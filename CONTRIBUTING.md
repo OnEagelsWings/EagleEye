@@ -4,7 +4,7 @@ Thank you for helping test or improve EagleEye.
 
 ## Current status
 
-Build 400 is a public testing/evaluation baseline. It is not presented as production-ready software. Please use only synthetic, demo, or clearly public information when testing.
+Build 416 is a public testing/evaluation baseline. It is not presented as production-ready software. Please use only synthetic, demo, or clearly public information when testing.
 
 ## The fastest useful contribution
 
@@ -44,10 +44,10 @@ Pull requests are welcome for clear, reviewable fixes. Please:
 - do not silently broaden network access, autonomous execution authority, credential handling, or access-control permissions
 - run the relevant test suite before submitting
 
-For Build 400 the canonical integration test is:
+For Build 416 the canonical integration test is:
 
 ```bash
-pytest -q tests/test_build400_integrated.py
+pytest -q tests/test_build416_integrated.py
 ```
 
 ## Security-sensitive findings
