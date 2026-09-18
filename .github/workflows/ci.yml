@@ -21,8 +21,10 @@ jobs:
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye_pro.version import BUILD; print(BUILD)"
       - name: Build 420 integrated tests
         run: pytest -q tests/test_build420_integrated.py
-      - name: Phase 18 deep regression 401-420
-        run: pytest -q tests/test_build4*_integrated.py
+      - name: Phase 18 current-chain regression 413-420
+        run: pytest -q tests/test_build413_integrated.py tests/test_build414_integrated.py tests/test_build415_integrated.py tests/test_build416_integrated.py tests/test_build417_integrated.py tests/test_build418_integrated.py tests/test_build419_integrated.py tests/test_build420_integrated.py -k 'not version and not app and not launcher'
+      - name: Full repository regression
+        run: pytest -q --continue-on-collection-errors
       - name: Build 418 regression
         run: pytest -q tests/test_build418_integrated.py -k 'not version_gate and not app_launcher'
       - name: Build 417 regression
