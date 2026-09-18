@@ -24,3 +24,12 @@ def test_app_launcher(tmp_path):
   h=TestClient(app).get('/health').json(); assert h['build']=='419.0' and h['synthesis_gate_pass']; assert '/api/build419/multi-agent/sessions/{session_id}/syntheses' in {r.path for r in app.routes}
  finally: app.state.context.close()
  assert 'app419 import create_workspace_app419' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+
+def test_source_integrity_blocks_synthesis(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  a=admin(c); s,h,alt=seed(c,a); c.db.execute("UPDATE hypothesis_417 SET statement='tampered' WHERE hypothesis_id=?",(h['hypothesis_id'],))
+  import pytest
+  with pytest.raises(PermissionError): c.build419.synthesize(session_id=s['session_id'],identity=a)
+def test_synthesis_preserves_evidence_records(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  a=admin(c); s,h,alt=seed(c,a); c.build417.add_hypothesis_item(hypothesis_id=h['hypothesis_id'],item_type='counterevidence',reference='claim:counter',note='challenge',identity=a); x=c.build419.synthesize(session_id=s['session_id'],identity=a); row=next(y for y in x['summary']['competing_hypotheses'] if y['hypothesis_id']==h['hypothesis_id']); assert row['counterevidence_count']>=1 and row['hypothesis_items'] and row['evidence_links']
