@@ -1,0 +1,11 @@
+{
+  "build": "418.0",
+  "package": "418.0.0",
+  "phase": 18,
+  "phase18_builds_completed": 18,
+  "feature": "Evidence-Hypothesis Reasoning Matrix",
+  "human_review_required": true,
+  "truth_determined": false,
+  "automatic_evidence_promotion": false,
+  "production_release_ready": false
+}
