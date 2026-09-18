@@ -19,8 +19,10 @@ jobs:
         run: python -m pip install -e '.[test]'
       - name: Import smoke test
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye_pro.version import BUILD; print(BUILD)"
-      - name: Build 419 integrated tests
-        run: pytest -q tests/test_build419_integrated.py
+      - name: Build 420 integrated tests
+        run: pytest -q tests/test_build420_integrated.py
+      - name: Phase 18 deep regression 401-420
+        run: pytest -q tests/test_build4*_integrated.py
       - name: Build 418 regression
         run: pytest -q tests/test_build418_integrated.py -k 'not version_gate and not app_launcher'
       - name: Build 417 regression
