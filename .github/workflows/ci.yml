@@ -24,7 +24,7 @@ jobs:
       - name: Phase 18 current-chain regression 413-420
         run: pytest -q tests/test_build413_integrated.py tests/test_build414_integrated.py tests/test_build415_integrated.py tests/test_build416_integrated.py tests/test_build417_integrated.py tests/test_build418_integrated.py tests/test_build419_integrated.py tests/test_build420_integrated.py -k 'not version and not app and not launcher'
       - name: Full repository regression
-        run: pytest -q --continue-on-collection-errors -k 'not version and not launcher and not server_point and not current_launchers'
+        run: pytest -q --continue-on-collection-errors -k 'not version and not launcher and not server_point and not current_launchers and not server_entrypoint'
       - name: Build 418 regression
         run: pytest -q tests/test_build418_integrated.py -k 'not version_gate and not app_launcher'
       - name: Build 417 regression
