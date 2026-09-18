@@ -21,13 +21,16 @@ class InvestigationSynthesis419:
   if not identity: raise PermissionError('active case identity required')
   self.governance.authorize(dict(identity),case_id=case_id,capability='research.run',object_type='investigation_synthesis_419',object_id=obj or case_id)
  def synthesize(self,*,session_id,title='Investigation synthesis',identity:Mapping[str,Any]|None=None):
-  continuity=self.continuity416.validate(session_id=session_id,identity=identity); matrix=self.matrix418.matrix(session_id=session_id,identity=identity)
+  continuity=self.continuity416.validate(session_id=session_id,identity=identity)
+  hi=self.hypothesis417.verify_integrity(); mi=self.matrix418.verify_integrity()
+  if not hi['valid'] or not mi['valid']: raise PermissionError('source ledger integrity violation')
+  matrix=self.matrix418.matrix(session_id=session_id,identity=identity)
   if not matrix['hypotheses']: raise ValueError('at least one hypothesis required')
   case_id=matrix['hypotheses'][0]['hypothesis']['case_id']; self._auth(identity,case_id,session_id)
   if not isinstance(title,str) or not title.strip(): raise ValueError('title required')
   competing=[]; unresolved=[]
   for row in matrix['hypotheses']:
-   h=row['hypothesis']; c=row['coverage']; competing.append({'hypothesis_id':h['hypothesis_id'],'statement':h['statement'],'human_state':h['state'],'support_count':c['supports'],'counterevidence_count':c['contradicts'],'uncertain_count':c['uncertain'],'analytical_note':'insufficient_counterevidence_review' if c['contradicts']==0 else 'support_and_counterevidence_present'})
+   h=row['hypothesis']; c=row['coverage']; items=[dict(x) for x in self.db.all('SELECT * FROM hypothesis_item_417 WHERE hypothesis_id=? ORDER BY created_at,item_id',(h['hypothesis_id'],))]; links=[{k:v for k,v in x.items() if k!='record_hash'} for x in row['links']]; safe_items=[{k:v for k,v in x.items() if k!='record_hash'} for x in items]; counter_count=c['contradicts']+sum(x['item_type']=='counterevidence' for x in items); competing.append({'hypothesis_id':h['hypothesis_id'],'statement':h['statement'],'human_state':h['state'],'support_count':c['supports']+sum(x['item_type']=='support' for x in items),'counterevidence_count':counter_count,'uncertain_count':c['uncertain']+sum(x['item_type']=='uncertainty' for x in items),'hypothesis_items':safe_items,'evidence_links':links,'analytical_note':'insufficient_counterevidence_review' if counter_count==0 else 'support_and_counterevidence_present'})
   unresolved.extend(matrix['gaps']); unresolved.extend({'evidence_ref':x['evidence_ref'],'reason':x['reason']} for x in matrix['conflicts'])
   summary={'competing_hypotheses':competing,'unresolved':unresolved,'matrix_conflicts':len(matrix['conflicts']),'matrix_gaps':len(matrix['gaps']),'continuity_valid':bool(continuity),'assessment':'human_review_required','truth_determined':False,'recommended_next_step':'review unresolved gaps and conflicts before human conclusion' if unresolved else 'human comparative review'}
   sid='syn419_'+secrets.token_hex(10); r={'synthesis_id':sid,'session_id':session_id,'case_id':case_id,'title':title.strip(),'summary_json':_canon(summary),'created_by':str((identity or {}).get('user_id') or (identity or {}).get('username') or self.actor),'created_at':_now()}; r['record_hash']=self._rh(r); self.db.execute('INSERT INTO investigation_synthesis_419 VALUES(?,?,?,?,?,?,?,?)',tuple(r.values())); self.audit.log('investigation_synthesis_created_419','investigation_synthesis_419',sid,case_id,{'session_id':session_id,'truth_determined':False}); return {**r,'summary':summary}
