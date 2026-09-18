@@ -1,15 +1,20 @@
 from __future__ import annotations
 from fastapi import HTTPException, Request
 from .app416 import create_workspace_app416
-def create_workspace_app417(*,base_dir=None,db_path=None):
- app=create_workspace_app416(base_dir=base_dir,db_path=db_path); ctx=app.state.context; auth=app.state.auth_context
- app.title='EagleEye Build 417.0'
- for r in app.routes:
-  if getattr(r,'path',None)=='/health':
-   old=r.endpoint
-   def health(old=old):
-    h=dict(old()); s=ctx.build417.hypothesis_status(); h.update({'build':'417.0','phase':18,'phase18_builds_completed':17,'hypothesis_counterevidence_coordination':True,'hypothesis_gate_pass':s['hypothesis_gate_pass'],'production_release_ready':False}); return h
-   r.endpoint=health
+def create_workspace_app417(*,base_dir=None):
+ app=create_workspace_app416(base_dir=base_dir); ctx=app.state.context; team=ctx.team_identity_359; _=ctx.build417
+ from .app379 import COOKIE
+ app.title='EagleEye Build 417.0'; app.version='417.0'
+ old=next((r.endpoint for r in app.router.routes if getattr(r,'path',None)=='/health' and 'GET' in set(getattr(r,'methods',set()) or set())),None)
+ app.router.routes[:]=[r for r in app.router.routes if not (getattr(r,'path',None)=='/health' and 'GET' in set(getattr(r,'methods',set()) or set()))]
+ def auth(req):
+  import hashlib
+  fp=hashlib.sha256('|'.join((req.headers.get('user-agent',''),req.headers.get('accept-language',''),req.client.host if req.client else '')).encode()).hexdigest(); x=team.validate_session(req.cookies.get(COOKIE,''),client_fingerprint=fp,touch=True)
+  if not x: raise HTTPException(401,'Anmeldung erforderlich oder Sitzung abgelaufen')
+  return x
+ @app.get('/health')
+ def health():
+  h=dict(old() if callable(old) else {'ok':True}); s=ctx.build417.hypothesis_status(); h.update({'build':'417.0','phase':18,'phase18_builds_completed':17,'hypothesis_counterevidence_coordination':True,'hypothesis_gate_pass':s['hypothesis_gate_pass'],'production_release_ready':False}); return h
  @app.get('/api/build417/hypotheses/status')
  def status417(request:Request): auth(request); return ctx.build417.hypothesis_status()
  @app.post('/api/build417/multi-agent/sessions/{session_id}/hypotheses')
