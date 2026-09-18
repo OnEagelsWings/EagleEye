@@ -11,7 +11,10 @@ class Build419InvestigationSynthesisService:
   return v
  def version_status(self):
   try:p=package_version('eagleeye-personosint-pro')
-  except Exception:p=self.PACKAGE
+  except Exception:
+   import re
+   from pathlib import Path
+   pt=Path(self.install_dir)/'pyproject.toml'; txt=pt.read_text() if pt.exists() else ''; m=re.search(r'^version\\s*=\\s*["\\\']([^"\\\']+)',txt,re.M); p=m.group(1) if m else 'unknown'
   return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD and p==self.PACKAGE}
  def synthesis_status(self):
   s=self.synthesis419.status(); checks={'version_coherent':self.version_status()['coherent'],'integrity':s['integrity_valid'],'matrix_grounded':s['matrix_grounded'],'counterevidence_visible':s['counterevidence_visible'],'human_review':s['human_review_required'],'no_forbidden_authority':not any(s[k] for k in ('direct_network_authority','automatic_go_issuance','automatic_evidence_promotion','autonomous_scope_expansion','truth_determined'))}; return {'build':self.BUILD,'checks':checks,'synthesis_gate_pass':all(checks.values()),'production_release_ready':False}
