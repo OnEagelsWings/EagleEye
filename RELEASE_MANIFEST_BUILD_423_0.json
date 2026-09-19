@@ -1,0 +1,1 @@
+{"build":"423.0","phase":19,"name":"Content Fingerprinting & Deduplication","production_release_ready":false,"network_authority":false,"acceptance":["canonical SHA-256 content identity","exact duplicate reuse","near-duplicate linkage","source observations preserved","tamper detection"]}
