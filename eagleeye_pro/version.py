@@ -1,3 +1,3 @@
-BUILD = "421.0"
-SCHEMA_VERSION = "421.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 421.0 Acquisition Source Registry"
+BUILD = "422.0"
+SCHEMA_VERSION = "422.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 422.0 Acquisition Event & Provenance Contract"
