@@ -77,5 +77,11 @@ class RetrievalQualityCoverage409:
     def compare(self,search_ids):
         rows=[{'search_id':sid,**self.assess(sid)} for sid in search_ids]
         return {'build':BUILD,'assessments':rows,'best_effort_only':True,'truth_ranking':False,'network_execution':False}
+    def verify_integrity(self):
+        s=self.status()
+        forbidden=('truth_determined','execution_authority','automatic_evidence_promotion','network_execution','automatic_go')
+        violations=[k for k in forbidden if s.get(k) is True]
+        return {'build': BUILD, 'valid': not violations, 'violations': violations, 'contract':'static_capability_integrity'}
+
     def status(self):
         return {'build':BUILD,'policy':POLICY_ID,'retrieval_quality':True,'coverage_gap_detection':True,'source_diversity_metrics':True,'adapter_diversity_metrics':True,'provenance_diversity_metrics':True,'host_concentration_metric':True,'truth_determined':False,'execution_authority':False,'automatic_evidence_promotion':False,'network_execution':False}

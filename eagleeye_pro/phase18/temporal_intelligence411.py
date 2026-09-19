@@ -165,6 +165,12 @@ class TemporalIntelligence411:
             'network_execution': False,
         }
 
+    def verify_integrity(self):
+        s=self.status()
+        forbidden=('truth_determined','execution_authority','automatic_evidence_promotion','network_execution','automatic_go')
+        violations=[k for k in forbidden if s.get(k) is True]
+        return {'build': BUILD, 'valid': not violations, 'violations': violations, 'contract':'static_capability_integrity'}
+
     def status(self):
         return {
             'build': BUILD, 'policy': POLICY_ID, 'temporal_intelligence': True,
