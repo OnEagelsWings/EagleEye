@@ -1,0 +1,1 @@
+{"build":"421.0","phase":19,"name":"Acquisition Source Registry","production_release_ready":false,"network_authority":false,"acceptance":["version coherence","source contract persistence","source type/capability filtering","onion boundary validation","tamper detection","Build 420 regression"]}
