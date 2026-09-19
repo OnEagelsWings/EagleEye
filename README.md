@@ -1,3 +1,11 @@
+# EagleEye — External 15-Minute Test
+
+**New testers:** start with [QUICK_TEST.md](QUICK_TEST.md). On Windows run `RUN_EXTERNAL_TEST.bat`; on Linux/macOS run `RUN_EXTERNAL_TEST.sh`. The test uses only bundled synthetic material and the helper sends no telemetry.
+
+The immediate validation target is simple: can a new user reach a first evidence-backed investigation workflow and verify persistence in 15 minutes or less?
+
+---
+
 # EagleEye — Build 416
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 416 is published here for **public testing and evaluation**, not as a general production-ready release.
