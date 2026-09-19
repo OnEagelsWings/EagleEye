@@ -1,0 +1,51 @@
+{
+  "benchmark_id": "EE-15MIN-DEMO-1",
+  "synthetic": true,
+  "notice": "All names, organisations, URLs and events in this file are fictional. Do not research them on the public internet.",
+  "case": {
+    "name": "EE-15MIN-DEMO",
+    "question": "Which supplied claim is better supported by the provided evidence, and what remains uncertain?"
+  },
+  "entities": [
+    {"id": "P-01", "type": "person", "name": "Mara Linden", "synthetic": true},
+    {"id": "O-01", "type": "organisation", "name": "Northbridge Civic Lab", "synthetic": true}
+  ],
+  "evidence": [
+    {
+      "id": "E-01",
+      "source": "Synthetic registry extract",
+      "captured_at": "2026-09-01T10:00:00Z",
+      "content": "Mara Linden is listed as project coordinator for Northbridge Civic Lab.",
+      "provenance": "Bundled EagleEye external-test fixture"
+    },
+    {
+      "id": "E-02",
+      "source": "Synthetic archived bulletin",
+      "captured_at": "2026-09-02T11:30:00Z",
+      "content": "The bulletin describes Mara Linden as an external adviser, not an employee.",
+      "provenance": "Bundled EagleEye external-test fixture"
+    },
+    {
+      "id": "E-03",
+      "source": "Synthetic event programme",
+      "captured_at": "2026-09-03T08:15:00Z",
+      "content": "Mara Linden appears on a panel labelled Northbridge Civic Lab — Project Coordination.",
+      "provenance": "Bundled EagleEye external-test fixture"
+    }
+  ],
+  "claims": [
+    {
+      "id": "C-01",
+      "text": "Mara Linden performed a project-coordination role for Northbridge Civic Lab.",
+      "support": ["E-01", "E-03"],
+      "contradiction_or_caveat": ["E-02"]
+    },
+    {
+      "id": "C-02",
+      "text": "Mara Linden was a salaried employee of Northbridge Civic Lab.",
+      "support": [],
+      "contradiction_or_caveat": ["E-02"],
+      "note": "The supplied material does not establish employment status."
+    }
+  ]
+}
