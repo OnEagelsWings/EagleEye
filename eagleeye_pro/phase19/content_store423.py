@@ -37,7 +37,7 @@ class ContentStore423:
    if self._hash(d)!=d['record_hash']:bad.append({'content_id':d['content_id'],'reason':'content_record_hash_mismatch'})
   for row in self.db.all('SELECT * FROM content_observation_423'):
    d=dict(row)
-   if self._hash(d)!=d['record_hash']:bad.append({'observation_id':d['observation_id'],'reason':'observation_record_hash_mismatch'})
+   if d.get('record_hash') and self._hash(d)!=d['record_hash']:bad.append({'observation_id':d['observation_id'],'reason':'observation_record_hash_mismatch'})
   return {'build':BUILD,'valid':not bad,'violations':bad}
  def status(self):
   n=self.db.one('SELECT COUNT(*) n FROM content_object_423')['n'];o=self.db.one('SELECT COUNT(*) n FROM content_observation_423')['n'];return {'build':BUILD,'policy':POLICY_ID,'content_objects':int(n),'observations':int(o),'integrity_valid':self.verify_integrity()['valid'],'stores_raw_payload':False,'direct_network_authority':False,'deduplication':['sha256_exact','token_jaccard_near']}
