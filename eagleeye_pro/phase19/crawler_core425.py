@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime,timezone
 from urllib.parse import urlparse
-import hashlib,json,secrets
+import hashlib,ipaddress,json,secrets
 BUILD='425.0';POLICY_ID='phase19.ai-crawler-core.v425'
 def _now():return datetime.now(timezone.utc).isoformat(timespec='seconds')
 def _canon(v):return json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
@@ -16,7 +16,14 @@ class CrawlerCore425:
   if not case_id or not objective:raise ValueError('case_id and objective required')
   src=self.registry421.get(source_id);u=urlparse(str(target))
   if u.scheme not in {'http','https'} or not u.netloc:raise ValueError('public http(s) target required')
-  if u.hostname and u.hostname.endswith('.onion'):raise ValueError('onion targets require the isolated Tor worker planned for Build 435')
+  host=(u.hostname or '').lower()
+  if host.endswith('.onion'):raise ValueError('onion targets require the isolated Tor worker planned for Build 435')
+  if host in {'localhost','localhost.localdomain'}:raise ValueError('local/private targets are not allowed')
+  try:
+   ip=ipaddress.ip_address(host)
+   if not ip.is_global:raise ValueError('local/private targets are not allowed')
+  except ValueError as e:
+   if str(e)=='local/private targets are not allowed':raise
   advice=self.health424.acquisition_advice(source_id)
   if advice['decision']=='avoid':raise ValueError('source currently unavailable')
   state='deferred' if advice['decision']=='defer' else 'planned';actor=str(identity.get('user_id') or identity.get('username') or self.actor)
@@ -24,10 +31,15 @@ class CrawlerCore425:
  def accept_retrieval(self,*,identity,task_id,status,content=None,media_type='text/plain',content_sha256=None,provenance=None,usage=None):
   task=self.get(task_id)
   if task['state'] not in {'planned','deferred'}:raise ValueError('task not ingestible')
-  ev=self.events422.record(identity=identity,case_id=task['case_id'],source_id=task['source_id'],target=task['target'],method='http',status=status,content_sha256=content_sha256,media_type=media_type,provenance={**(provenance or {}),'crawl_task_id':task_id,'objective':task['objective']},usage=usage or {})
+  raw=(content.encode('utf-8') if isinstance(content,str) else bytes(content)) if content is not None else None
+  actual_digest=hashlib.sha256(raw).hexdigest() if raw is not None else ''
+  supplied=str(content_sha256 or '').lower().strip()
+  if supplied and actual_digest and supplied!=actual_digest:raise ValueError('content_sha256 does not match retrieved content')
+  digest=actual_digest or supplied;size=len(raw) if raw is not None else 0
+  ev=self.events422.record(identity=identity,case_id=task['case_id'],source_id=task['source_id'],target=task['target'],method='http',status=status,content_sha256=digest,media_type=media_type,bytes_count=size,provenance={**(provenance or {}),'crawl_task_id':task_id,'objective':task['objective']},usage=usage or {})
   result={'task_id':task_id,'event_id':ev['event_id'],'content':None}
   if content is not None and status=='retrieved':result['content']=self.content423.ingest(identity=identity,event_id=ev['event_id'],content=content,media_type=media_type,metadata={'crawl_task_id':task_id})
-  self.db.execute('UPDATE crawl_task_425 SET state=? WHERE task_id=?',('completed' if status=='retrieved' else 'failed',task_id));return result
+  new_state='completed' if status=='retrieved' else 'failed';updated=dict(task);updated['state']=new_state;new_hash=self._row_hash(updated);self.db.execute('UPDATE crawl_task_425 SET state=?,record_hash=? WHERE task_id=?',(new_state,new_hash,task_id));return result
  def get(self,task_id):
   r=self.db.one('SELECT * FROM crawl_task_425 WHERE task_id=?',(task_id,))
   if not r:raise KeyError('crawl task not found')
