@@ -10,7 +10,11 @@ def _sha(v):return hashlib.sha256(_canon(v).encode()).hexdigest()
 class AcquisitionEvents422:
  def __init__(self,db,audit,*,registry421,actor='local-analyst'):self.db=db;self.audit=audit;self.registry421=registry421;self.actor=actor;self._init_schema()
  def _init_schema(self):
-  self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS acquisition_event_422(event_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,method TEXT NOT NULL,status TEXT NOT NULL,retrieved_at TEXT NOT NULL,content_sha256 TEXT NOT NULL,media_type TEXT NOT NULL,bytes_count INTEGER NOT NULL,source_snapshot_json TEXT NOT NULL,parent_event_id TEXT NOT NULL,provenance_json TEXT NOT NULL,usage_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_ae422_case ON acquisition_event_422(case_id,retrieved_at);CREATE INDEX IF NOT EXISTS idx_ae422_source ON acquisition_event_422(source_id,retrieved_at);""");self.db.conn.commit()
+  self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS acquisition_event_422(event_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,method TEXT NOT NULL,status TEXT NOT NULL,retrieved_at TEXT NOT NULL,content_sha256 TEXT NOT NULL,media_type TEXT NOT NULL,bytes_count INTEGER NOT NULL,source_snapshot_json TEXT NOT NULL,parent_event_id TEXT NOT NULL,provenance_json TEXT NOT NULL,usage_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_ae422_case ON acquisition_event_422(case_id,retrieved_at);CREATE INDEX IF NOT EXISTS idx_ae422_source ON acquisition_event_422(source_id,retrieved_at);""")
+  cols={r['name'] for r in self.db.all('PRAGMA table_info(acquisition_event_422)')}
+  if 'source_snapshot_json' not in cols:self.db.execute("ALTER TABLE acquisition_event_422 ADD COLUMN source_snapshot_json TEXT NOT NULL DEFAULT '{}'")
+  if 'parent_event_id' not in cols:self.db.execute("ALTER TABLE acquisition_event_422 ADD COLUMN parent_event_id TEXT NOT NULL DEFAULT ''")
+  self.db.conn.commit()
  def _hash(self,r):return _sha({k:r[k] for k in r if k!='record_hash'})
  def record(self,*,identity,case_id,source_id,target,method,status='retrieved',content_sha256='',media_type='',bytes_count=0,provenance=None,usage=None,retrieved_at='',parent_event_id=''):
   if not identity:raise PermissionError('active identity required')
