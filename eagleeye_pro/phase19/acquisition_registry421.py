@@ -33,6 +33,10 @@ class AcquisitionSourceRegistry421:
   if not caps:raise ValueError('at least one capability required')
   sid='src421_'+secrets.token_hex(10); r={'source_id':sid,'name':name,'source_type':st,'access_mode':am,'base_url':base,'capabilities_json':_canon(caps),'coverage_json':_canon(coverage or {}),'terms_url':terms,'license_note':str(license_note or '').strip(),'enabled':1,'created_by':actor,'created_at':_now()}; r['record_hash']=self._record_hash(r)
   self.db.execute('INSERT INTO acquisition_source_421 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values())); self.audit.log('acquisition_source_registered_421','acquisition_source_421',sid,'',{'source_type':st,'access_mode':am,'capabilities':caps}); return {**r,'capabilities':caps,'coverage':coverage or {}}
+ def get(self,source_id):
+  row=self.db.one('SELECT * FROM acquisition_source_421 WHERE source_id=?',(str(source_id),))
+  if not row:raise KeyError('source not found')
+  d=dict(row);d['capabilities']=json.loads(d.pop('capabilities_json'));d['coverage']=json.loads(d.pop('coverage_json'));return d
  def list_sources(self,*,source_type='',capability='',enabled_only=True):
   sql='SELECT * FROM acquisition_source_421'; args=[]; where=[]
   if source_type:where.append('source_type=?');args.append(str(source_type).lower())
