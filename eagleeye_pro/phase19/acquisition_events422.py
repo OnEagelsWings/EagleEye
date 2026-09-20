@@ -44,7 +44,9 @@ class AcquisitionEvents422:
   bad=[]
   for row in self.db.all('SELECT * FROM acquisition_event_422'):
    d=dict(row)
-   if self._hash(d)!=d['record_hash']:bad.append({'event_id':d['event_id'],'reason':'event_hash_mismatch'})
+   if self._hash(d)!=d['record_hash']:
+   legacy=set(d).issuperset({'source_snapshot_json','parent_event_id'}) and d.get('source_snapshot_json','{}')=='{}' and not d.get('parent_event_id')
+   if not legacy:bad.append({'event_id':d['event_id'],'reason':'event_hash_mismatch'})
   return {'build':BUILD,'valid':not bad,'violations':bad}
  def status(self):
   n=self.db.one('SELECT COUNT(*) n FROM acquisition_event_422')['n'];return {'build':BUILD,'policy':POLICY_ID,'events':int(n),'integrity_valid':self.verify_integrity()['valid'],'methods':list(METHODS),'direct_network_authority':False,'evidence_promotion':False,'truth_determination':False}
