@@ -10,6 +10,11 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 # Debian/Ubuntu may ship Python without the OS venv/ensurepip component.
 # Detect that before leaving a partial .venv behind.
+if [ -d ".venv" ] && [ ! -x ".venv/bin/python" ]; then
+  echo "Removing incomplete EagleEye virtual environment from an earlier failed start..." >&2
+  rm -rf .venv
+fi
+
 if [ ! -x ".venv/bin/python" ]; then
   if ! "$PYTHON_BIN" -m venv --help >/dev/null 2>&1; then
     echo "EagleEye cannot create a Python virtual environment with: $PYTHON_BIN" >&2
