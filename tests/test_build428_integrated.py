@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-428','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-428','roles':['analyst']}
 def test_archive_capture_timeline(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build421.register_source(identity=ident(),name='Public Archive',source_type='archive',base_url='https://archive.example.org',capabilities=['historical_web'])
