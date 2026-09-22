@@ -11,4 +11,4 @@ class Build424SourceHealthService:
  def source_health(self,source_id):return self.health424.latest(source_id)
  def acquisition_advice(self,source_id):return self.health424.acquisition_advice(source_id)
  def source_health_status(self):
-  s=self.health424.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':4,'production_release_ready':False}
+  s=self.health424.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':4,'production_release_ready':False}
