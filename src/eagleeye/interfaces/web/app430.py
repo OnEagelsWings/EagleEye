@@ -10,16 +10,23 @@ def create_workspace_app430(*,base_dir=None):
   fp=hashlib.sha256('|'.join((req.headers.get('user-agent',''),req.headers.get('accept-language',''),req.client.host if req.client else '')).encode()).hexdigest();x=team.validate_session(req.cookies.get(COOKIE,''),client_fingerprint=fp,touch=True)
   if not x:raise HTTPException(401,'Anmeldung erforderlich oder Sitzung abgelaufen')
   return x
+ def case_auth(req,case_id,capability='case.read'):
+  identity=auth(req)
+  try:ctx.team_governance_359.authorize(identity,case_id=str(case_id),capability=capability,object_type='phase19',object_id=str(case_id))
+  except PermissionError as e:raise HTTPException(403,str(e))
+  return identity
  @app.get('/health')
  def health():
   h=dict(old() if callable(old) else {'ok':True});s=ctx.build430.extraction_status();h.update({'build':'430.0','phase':19,'phase19_builds_completed':10,'news_entity_event_extraction':True,'checkpoint_430':True,'extraction_integrity':s['integrity_valid'],'production_release_ready':False});return h
  @app.get('/api/build430/news/status')
  def status430(request:Request):auth(request);return ctx.build430.extraction_status()
  @app.get('/api/build430/cases/{case_id}/news-extractions')
- def extracts430(case_id:str,request:Request):auth(request);return ctx.build430.case_news_extractions(case_id)
+ def extracts430(case_id:str,request:Request):case_auth(request,case_id,'case.read');return ctx.build430.case_news_extractions(case_id)
  @app.post('/api/build430/news/{news_item_id}/extract')
  async def extract430(news_item_id:str,request:Request):
-  identity=auth(request)
+  row=ctx.db.one('SELECT case_id FROM news_item_429 WHERE news_item_id=?',(news_item_id,))
+  if not row:raise HTTPException(404,'news item not found')
+  identity=case_auth(request,row['case_id'],'research.run')
   try:
    b=await request.json();return ctx.build430.record_news_extraction(identity=identity,news_item_id=news_item_id,extractor=b['extractor'],extractor_version=b['extractor_version'],entities=b.get('entities'),events=b.get('events'),claims=b.get('claims'))
   except (ValueError,KeyError,TypeError) as e:raise HTTPException(400,str(e))
