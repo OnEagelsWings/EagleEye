@@ -13,6 +13,10 @@ def test_registry_tor_is_descriptor_only_and_validates_boundary(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   x=c.build421.register_source(identity=ident(c),name='Public Onion Fixture',source_type='tor_onion',base_url='http://exampleexample.onion',capabilities=['public_pages']);assert x['source_type']=='tor_onion';s=c.build421.acquisition_status();assert not s['direct_network_authority'] and not s['access_control_bypass']
   with pytest.raises(ValueError):c.build421.register_source(identity=ident(c),name='Bad',source_type='website',base_url='http://exampleexample.onion',capabilities=['pages'])
+def test_registry_rejects_fabricated_admin_identity(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  real=ident(c);fake={**real,'user_id':'fabricated-user','global_role':'system_administrator'}
+  with pytest.raises(PermissionError):c.build421.register_source(identity=fake,name='Forged',source_type='website',base_url='https://example.org',capabilities=['pages'])
 def test_registry_tamper_detection(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   x=c.build421.register_source(identity=ident(c),name='Fixture',source_type='dataset',capabilities=['records']);c.db.execute("UPDATE acquisition_source_421 SET name='tampered' WHERE source_id=?",(x['source_id'],));assert not c.acquisition_source_registry_421.verify_integrity()['valid']
