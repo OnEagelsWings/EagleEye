@@ -18,7 +18,11 @@ class ContentStore423:
  def ingest(self,*,identity,event_id,content,media_type='text/plain',metadata=None,near_threshold=.88):
   if not identity:raise PermissionError('active identity required')
   if not 0.0<=float(near_threshold)<=1.0:raise ValueError('near_threshold must be between 0 and 1')
-  actor=str(identity.get('user_id') or identity.get('username') or self.actor);ev=self.events422.get(event_id);raw=content.encode('utf-8') if isinstance(content,str) else bytes(content);digest=_sha_bytes(raw);actual_media=str(media_type or 'application/octet-stream');\n  if ev.get('content_sha256') and ev['content_sha256']!=digest:raise ValueError('content digest does not match acquisition event')\n  if int(ev.get('bytes_count') or 0) and int(ev['bytes_count'])!=len(raw):raise ValueError('content byte count does not match acquisition event')\n  if ev.get('media_type') and str(ev['media_type'])!=actual_media:raise ValueError('content media type does not match acquisition event')\n  existing=self.db.one('SELECT * FROM content_object_423 WHERE sha256=?',(digest,));kind='unique';related='';sim=1.0 if existing else 0.0
+  actor=str(identity.get('user_id') or identity.get('username') or self.actor);ev=self.events422.get(event_id);raw=content.encode('utf-8') if isinstance(content,str) else bytes(content);digest=_sha_bytes(raw);actual_media=str(media_type or 'application/octet-stream');
+  if ev.get('content_sha256') and ev['content_sha256']!=digest:raise ValueError('content digest does not match acquisition event')
+  if int(ev.get('bytes_count') or 0) and int(ev['bytes_count'])!=len(raw):raise ValueError('content byte count does not match acquisition event')
+  if ev.get('media_type') and str(ev['media_type'])!=actual_media:raise ValueError('content media type does not match acquisition event')
+  existing=self.db.one('SELECT * FROM content_object_423 WHERE sha256=?',(digest,));kind='unique';related='';sim=1.0 if existing else 0.0
   if existing:obj=dict(existing);kind='exact';cid=obj['content_id'];related=cid
   else:
    text=raw.decode('utf-8',errors='replace') if str(media_type).startswith('text/') else '';toks=_tokens(text);best=(0.0,'')
