@@ -14,8 +14,11 @@ class AcquisitionSourceRegistry421:
   self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS acquisition_source_421(source_id TEXT PRIMARY KEY,name TEXT NOT NULL,source_type TEXT NOT NULL,access_mode TEXT NOT NULL,base_url TEXT NOT NULL,capabilities_json TEXT NOT NULL,coverage_json TEXT NOT NULL,terms_url TEXT NOT NULL,license_note TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL); CREATE INDEX IF NOT EXISTS idx_as421_type ON acquisition_source_421(source_type,enabled);"""); self.db.conn.commit()
  def _record_hash(self,r): return _sha({k:r[k] for k in r if k!='record_hash'})
  def _identity(self,identity):
-  if not identity: raise PermissionError('active identity required')
-  return str(identity.get('user_id') or identity.get('username') or self.actor)
+  if not isinstance(identity,dict) or not identity.get('username') or not identity.get('user_id'):raise PermissionError('canonical active identity required')
+  try:user=self.governance.identity.public_user(identity['username'])
+  except (KeyError,ValueError):raise PermissionError('canonical active identity required')
+  if not user.get('active') or str(user.get('user_id'))!=str(identity.get('user_id')):raise PermissionError('canonical active identity required')
+  return {**user,'session_id':str(identity.get('session_id') or 'service421')}
  def _validate_url(self,url,*,onion=False):
   u=str(url or '').strip()
   if not u:return ''
@@ -25,7 +28,7 @@ class AcquisitionSourceRegistry421:
   if not onion and p.hostname.lower().endswith('.onion'):raise ValueError('.onion sources must use source_type=tor_onion')
   return u
  def register(self,*,identity,name,source_type,access_mode='public',base_url='',capabilities=(),coverage=None,terms_url='',license_note=''):
-  actor=self._identity(identity); self.governance.identity.require_global(identity,'source.manage'); name=str(name or '').strip(); st=str(source_type or '').strip().lower(); am=str(access_mode or '').strip().lower()
+  ident=self._identity(identity); self.governance.identity.require_global(ident,'source.manage'); actor=str(ident['username']); name=str(name or '').strip(); st=str(source_type or '').strip().lower(); am=str(access_mode or '').strip().lower()
   if not name:raise ValueError('name required')
   if st not in SOURCE_TYPES:raise ValueError('unsupported source_type')
   if am not in ACCESS_MODES:raise ValueError('unsupported access_mode')
