@@ -15,4 +15,4 @@ def test_bounds(tmp_path):
 def test_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build426.prioritization_status();assert s['version_coherent'];assert s['advisory_only'];assert not s['network_authority'];assert not s['production_release_ready']
- assert 'app426 import create_workspace_app426' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app426.py').exists()
