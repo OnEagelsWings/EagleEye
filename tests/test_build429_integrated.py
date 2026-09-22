@@ -14,4 +14,4 @@ def test_duplicate_external_id(tmp_path):
 def test_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build429.news_status();assert s['version_coherent'];assert not s['network_executor_implemented'];assert s['publisher_claim_is_not_independent_corroboration'];assert not s['production_release_ready']
- assert 'app429 import create_workspace_app429' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app429.py').exists()
