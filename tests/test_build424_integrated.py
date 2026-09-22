@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-424','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-424','roles':['analyst']}
 def source(c):
  return c.build421.register_source(identity=ident(),name='Source 424',source_type='news',base_url='https://example.org',capabilities=['articles'])
 def test_health_and_advice(tmp_path):
