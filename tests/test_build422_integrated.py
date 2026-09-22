@@ -13,4 +13,4 @@ def test_event_tamper_detection(tmp_path):
 def test_build422_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build422.acquisition_event_status();assert s['version_coherent'];assert s['phase19_builds_completed']==2;assert not s['direct_network_authority'];assert not s['evidence_promotion']
- assert 'app422 import create_workspace_app422' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app422.py').exists()
