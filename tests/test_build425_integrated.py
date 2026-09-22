@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-425','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-425','roles':['analyst']}
 def src(c):
  return c.build421.register_source(identity=ident(),name='Public source',source_type='website',base_url='https://example.org',capabilities=['pages'])
 def test_end_to_end_acquisition_chain(tmp_path):
