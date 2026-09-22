@@ -17,6 +17,7 @@ def test_migrated_observation_hash_is_backfilled(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   r=c.build423.ingest_content(identity=ident(c),event_id=event(c,'legacy')['event_id'],content='legacy observation');observation_id=r['observation_id'];c.db.execute("UPDATE content_observation_423 SET record_hash='' WHERE observation_id=?",(observation_id,))
  with AppContext(base_dir=tmp_path) as c:
+  _=c.content_store_423
   row=c.db.one('SELECT record_hash FROM content_observation_423 WHERE observation_id=?',(observation_id,));assert row and row['record_hash'];assert c.content_store_423.verify_integrity()['valid']
 def test_integrity_and_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
