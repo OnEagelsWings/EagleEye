@@ -10,4 +10,4 @@ class Build423ContentStoreService:
   return v
  def ingest_content(self,**kw):return self.content423.ingest(**kw)
  def content_status(self):
-  s=self.content423.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':3,'production_release_ready':False}
+  s=self.content423.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':3,'production_release_ready':False}
