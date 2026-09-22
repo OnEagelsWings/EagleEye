@@ -25,7 +25,7 @@ class AcquisitionSourceRegistry421:
   if not onion and p.hostname.lower().endswith('.onion'):raise ValueError('.onion sources must use source_type=tor_onion')
   return u
  def register(self,*,identity,name,source_type,access_mode='public',base_url='',capabilities=(),coverage=None,terms_url='',license_note=''):
-  actor=self._identity(identity); name=str(name or '').strip(); st=str(source_type or '').strip().lower(); am=str(access_mode or '').strip().lower()
+  actor=self._identity(identity); self.governance.identity.require_global(identity,'source.manage'); name=str(name or '').strip(); st=str(source_type or '').strip().lower(); am=str(access_mode or '').strip().lower()
   if not name:raise ValueError('name required')
   if st not in SOURCE_TYPES:raise ValueError('unsupported source_type')
   if am not in ACCESS_MODES:raise ValueError('unsupported access_mode')
