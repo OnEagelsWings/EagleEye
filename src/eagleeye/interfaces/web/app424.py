@@ -10,6 +10,11 @@ def create_workspace_app424(*,base_dir=None):
   fp=hashlib.sha256('|'.join((req.headers.get('user-agent',''),req.headers.get('accept-language',''),req.client.host if req.client else '')).encode()).hexdigest();x=team.validate_session(req.cookies.get(COOKIE,''),client_fingerprint=fp,touch=True)
   if not x:raise HTTPException(401,'Anmeldung erforderlich oder Sitzung abgelaufen')
   return x
+ def case_auth(req,case_id,capability='case.read'):
+  identity=auth(req)
+  try:ctx.team_governance_359.authorize(identity,case_id=str(case_id),capability=capability,object_type='phase19',object_id=str(case_id))
+  except PermissionError as e:raise HTTPException(403,str(e))
+  return identity
  @app.get('/health')
  def health():
   h=dict(old() if callable(old) else {'ok':True});s=ctx.build424.source_health_status();h.update({'build':'424.0','phase':19,'phase19_builds_completed':4,'source_health':True,'source_health_integrity':s['integrity_valid'],'production_release_ready':False});return h
@@ -21,6 +26,7 @@ def create_workspace_app424(*,base_dir=None):
  async def record424(source_id:str,request:Request):
   identity=auth(request)
   try:
+   ctx.team_identity_359.require_global(identity,'source.manage')
    b=await request.json()
    if not isinstance(b,dict):raise ValueError('JSON object required')
    return ctx.build424.record_source_health(identity=identity,source_id=source_id,state=b.get('state','unknown'),http_status=b.get('http_status'),latency_ms=b.get('latency_ms'),quota_remaining=b.get('quota_remaining'),quota_limit=b.get('quota_limit'),retry_after_seconds=b.get('retry_after_seconds'),freshness_at=b.get('freshness_at'),error_class=b.get('error_class',''),metadata=b.get('metadata') or {},observed_at=b.get('observed_at'))
