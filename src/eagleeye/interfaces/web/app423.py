@@ -10,6 +10,11 @@ def create_workspace_app423(*,base_dir=None):
   fp=hashlib.sha256('|'.join((req.headers.get('user-agent',''),req.headers.get('accept-language',''),req.client.host if req.client else '')).encode()).hexdigest();x=team.validate_session(req.cookies.get(COOKIE,''),client_fingerprint=fp,touch=True)
   if not x:raise HTTPException(401,'Anmeldung erforderlich oder Sitzung abgelaufen')
   return x
+ def case_auth(req,case_id,capability='case.read'):
+  identity=auth(req)
+  try:ctx.team_governance_359.authorize(identity,case_id=str(case_id),capability=capability,object_type='phase19',object_id=str(case_id))
+  except PermissionError as e:raise HTTPException(403,str(e))
+  return identity
  @app.get('/health')
  def health():
   h=dict(old() if callable(old) else {'ok':True});s=ctx.build423.content_status();h.update({'build':'423.0','phase':19,'phase19_builds_completed':3,'content_fingerprinting':True,'content_integrity':s['integrity_valid'],'production_release_ready':False});return h
@@ -17,7 +22,9 @@ def create_workspace_app423(*,base_dir=None):
  def status423(request:Request):auth(request);return ctx.build423.content_status()
  @app.post('/api/build423/acquisition-events/{event_id}/content')
  async def ingest423(event_id:str,request:Request):
-  identity=auth(request)
+  row=ctx.db.one('SELECT case_id FROM acquisition_event_422 WHERE event_id=?',(event_id,))
+  if not row:raise HTTPException(404,'acquisition event not found')
+  identity=case_auth(request,row['case_id'],'research.run')
   try:
    b=await request.json()
    if not isinstance(b,dict):raise ValueError('JSON object required')
