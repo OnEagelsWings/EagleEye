@@ -15,7 +15,7 @@ class Build421AcquisitionSourceRegistryService:
   try:p=package_version('eagleeye-personosint-pro')
   except Exception:
    pt=self.install_dir/'pyproject.toml';txt=pt.read_text() if pt.exists() else '';m=re.search(r'^version\s*=\s*["\']([^"\']+)',txt,re.M);p=m.group(1) if m else 'unknown'
-  return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD and p==self.PACKAGE}
+  return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]) and p!='unknown' and int(str(p).split('.')[0])>=int(self.PACKAGE.split('.')[0])}
  def register_source(self,**kw):return self.registry421.register(**kw)
  def sources(self,**kw):return self.registry421.list_sources(**kw)
  def acquisition_status(self):
