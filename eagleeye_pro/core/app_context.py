@@ -480,6 +480,8 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('build424', lambda r: r.construct('eagleeye.application.build424.service:Build424SourceHealthService', r.get('db'), r.get('audit'), build423=r.get('build423'), health424=r.get('source_health_424'), actor=owner.actor), import_path='eagleeye.application.build424.service:Build424SourceHealthService', status='active', group='phase19')
     registry.register('crawler_core_425', lambda r: r.construct('eagleeye_pro.phase19.crawler_core425:CrawlerCore425', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), health424=r.get('source_health_424'), actor=owner.actor), import_path='eagleeye_pro.phase19.crawler_core425:CrawlerCore425', status='active', group='phase19_data')
     registry.register('build425', lambda r: r.construct('eagleeye.application.build425.service:Build425CrawlerCoreService', r.get('db'), r.get('audit'), build424=r.get('build424'), crawler425=r.get('crawler_core_425'), actor=owner.actor), import_path='eagleeye.application.build425.service:Build425CrawlerCoreService', status='active', group='phase19')
+    registry.register('crawl_priority_426', lambda r: r.construct('eagleeye_pro.phase19.crawl_prioritization426:CrawlPrioritization426', r.get('db'), r.get('audit'), crawler425=r.get('crawler_core_425'), health424=r.get('source_health_424'), actor=owner.actor), import_path='eagleeye_pro.phase19.crawl_prioritization426:CrawlPrioritization426', status='active', group='phase19_data')
+    registry.register('build426', lambda r: r.construct('eagleeye.application.build426.service:Build426CrawlPrioritizationService', r.get('db'), r.get('audit'), build425=r.get('build425'), priority426=r.get('crawl_priority_426'), actor=owner.actor), import_path='eagleeye.application.build426.service:Build426CrawlPrioritizationService', status='active', group='phase19')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1198,6 +1200,8 @@ class AppContext:
         'build424',
         'crawler_core_425',
         'build425',
+        'crawl_priority_426',
+        'build426',
         'command_bus'
     )
 
