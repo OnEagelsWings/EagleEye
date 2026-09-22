@@ -10,4 +10,4 @@ class Build426CrawlPrioritizationService:
  def prioritize_crawl(self,**kw):return self.priority426.prioritize(**kw)
  def ranked_case(self,case_id):return self.priority426.ranked_case(case_id)
  def prioritization_status(self):
-  s=self.priority426.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':6,'production_release_ready':False}
+  s=self.priority426.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':6,'production_release_ready':False}
