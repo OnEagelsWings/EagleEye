@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-423','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-423','roles':['analyst']}
 def event(c,target):
  s=c.build421.register_source(identity=ident(),name='News '+target,source_type='news',base_url='https://example.org',capabilities=['articles']);return c.build422.record_event(identity=ident(),case_id='case423',source_id=s['source_id'],target=target,method='http')
 def test_exact_dedup(tmp_path):
