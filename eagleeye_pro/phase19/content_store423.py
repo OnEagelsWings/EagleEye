@@ -13,6 +13,8 @@ class ContentStore423:
   self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS content_object_423(content_id TEXT PRIMARY KEY,sha256 TEXT NOT NULL UNIQUE,media_type TEXT NOT NULL,bytes_count INTEGER NOT NULL,text_fingerprint TEXT NOT NULL,token_json TEXT NOT NULL,metadata_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE TABLE IF NOT EXISTS content_observation_423(observation_id TEXT PRIMARY KEY,content_id TEXT NOT NULL,event_id TEXT NOT NULL,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,duplicate_kind TEXT NOT NULL,similarity REAL NOT NULL,related_content_id TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL,FOREIGN KEY(content_id) REFERENCES content_object_423(content_id));CREATE INDEX IF NOT EXISTS idx_co423_case ON content_observation_423(case_id,content_id);CREATE INDEX IF NOT EXISTS idx_co423_event ON content_observation_423(event_id);""")
   cols={r['name'] for r in self.db.all('PRAGMA table_info(content_observation_423)')}
   if 'record_hash' not in cols:self.db.execute("ALTER TABLE content_observation_423 ADD COLUMN record_hash TEXT NOT NULL DEFAULT ''")
+  for row in self.db.all("SELECT * FROM content_observation_423 WHERE record_hash='' OR record_hash IS NULL"):
+   d=dict(row);self.db.execute('UPDATE content_observation_423 SET record_hash=? WHERE observation_id=?',(self._hash(d),d['observation_id']))
   self.db.conn.commit()
  def _hash(self,r):return _sha_bytes(_canon({k:r[k] for k in r if k!='record_hash'}).encode())
  def ingest(self,*,identity,event_id,content,media_type='text/plain',metadata=None,near_threshold=.88):
