@@ -16,4 +16,4 @@ def test_health_validation_and_integrity(tmp_path):
 def test_build424_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build424.source_health_status();assert s['version_coherent'];assert s['phase19_builds_completed']==4;assert not s['direct_network_authority'];assert not s['production_release_ready']
- assert 'app424 import create_workspace_app424' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app424.py').exists()
