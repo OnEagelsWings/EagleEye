@@ -484,6 +484,8 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('build426', lambda r: r.construct('eagleeye.application.build426.service:Build426CrawlPrioritizationService', r.get('db'), r.get('audit'), build425=r.get('build425'), priority426=r.get('crawl_priority_426'), actor=owner.actor), import_path='eagleeye.application.build426.service:Build426CrawlPrioritizationService', status='active', group='phase19')
     registry.register('change_detection_427', lambda r: r.construct('eagleeye_pro.phase19.change_detection427:ChangeDetection427', r.get('db'), r.get('audit'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), crawler425=r.get('crawler_core_425'), actor=owner.actor), import_path='eagleeye_pro.phase19.change_detection427:ChangeDetection427', status='active', group='phase19_data')
     registry.register('build427', lambda r: r.construct('eagleeye.application.build427.service:Build427IncrementalChangeService', r.get('db'), r.get('audit'), build426=r.get('build426'), change427=r.get('change_detection_427'), actor=owner.actor), import_path='eagleeye.application.build427.service:Build427IncrementalChangeService', status='active', group='phase19')
+    registry.register('archive_history_428', lambda r: r.construct('eagleeye_pro.phase19.archive_history428:ArchiveHistory428', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), change427=r.get('change_detection_427'), actor=owner.actor), import_path='eagleeye_pro.phase19.archive_history428:ArchiveHistory428', status='active', group='phase19_data')
+    registry.register('build428', lambda r: r.construct('eagleeye.application.build428.service:Build428ArchiveHistoryService', r.get('db'), r.get('audit'), build427=r.get('build427'), archive428=r.get('archive_history_428'), actor=owner.actor), import_path='eagleeye.application.build428.service:Build428ArchiveHistoryService', status='active', group='phase19')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1206,6 +1208,8 @@ class AppContext:
         'build426',
         'change_detection_427',
         'build427',
+        'archive_history_428',
+        'build428',
         'command_bus'
     )
 
