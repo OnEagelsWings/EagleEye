@@ -12,6 +12,12 @@ def test_exact_dedup(tmp_path):
 def test_near_duplicate(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   c.build423.ingest_content(identity=ident(c),event_id=event(c,'a')['event_id'],content='alpha beta gamma delta epsilon');b=c.build423.ingest_content(identity=ident(c),event_id=event(c,'b')['event_id'],content='alpha beta gamma delta epsilon zeta',near_threshold=.8);assert b['duplicate_kind']=='near';assert b['related_content_id']
+def test_migrated_observation_hash_is_backfilled(tmp_path):
+ observation_id=''
+ with AppContext(base_dir=tmp_path) as c:
+  r=c.build423.ingest_content(identity=ident(c),event_id=event(c,'legacy')['event_id'],content='legacy observation');observation_id=r['observation_id'];c.db.execute("UPDATE content_observation_423 SET record_hash='' WHERE observation_id=?",(observation_id,))
+ with AppContext(base_dir=tmp_path) as c:
+  row=c.db.one('SELECT record_hash FROM content_observation_423 WHERE observation_id=?',(observation_id,));assert row and row['record_hash'];assert c.content_store_423.verify_integrity()['valid']
 def test_integrity_and_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   x=c.build423.ingest_content(identity=ident(c),event_id=event(c,'x')['event_id'],content='evidence fixture');c.db.execute("UPDATE content_object_423 SET media_type='x' WHERE content_id=?",(x['content_id'],));assert not c.content_store_423.verify_integrity()['valid'];s=c.build423.content_status();assert s['version_coherent'];assert not s['stores_raw_payload'];assert not s['direct_network_authority']
