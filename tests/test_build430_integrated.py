@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-430','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-430','roles':['analyst']}
 def news(c):
  s=c.build421.register_source(identity=ident(),name='News',source_type='news',base_url='https://news.example.org',capabilities=['rss']);t=c.build425.create_crawl_task(identity=ident(),case_id='case430',source_id=s['source_id'],target='https://news.example.org/a',objective='news');r=c.build425.accept_retrieval(identity=ident(),task_id=t['task_id'],status='retrieved',content='Alice met Example Org in Berlin.');return c.build429.ingest_news_item(identity=ident(),case_id='case430',source_id=s['source_id'],event_id=r['event_id'],content_id=r['content']['content_id'],canonical_url='https://news.example.org/a',title='Meeting',published_at='2026-09-20T10:00:00Z',external_id='1')
 def test_extraction(tmp_path):
