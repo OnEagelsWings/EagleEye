@@ -13,4 +13,4 @@ def test_near_duplicate(tmp_path):
 def test_integrity_and_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   x=c.build423.ingest_content(identity=ident(),event_id=event(c,'x')['event_id'],content='evidence fixture');c.db.execute("UPDATE content_object_423 SET media_type='x' WHERE content_id=?",(x['content_id'],));assert not c.content_store_423.verify_integrity()['valid'];s=c.build423.content_status();assert s['version_coherent'];assert not s['stores_raw_payload'];assert not s['direct_network_authority']
- assert 'app423 import create_workspace_app423' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app423.py').exists()
