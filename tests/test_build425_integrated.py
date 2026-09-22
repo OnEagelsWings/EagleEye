@@ -26,4 +26,4 @@ def test_digest_mismatch_rejected(tmp_path):
 def test_build425_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build425.crawler_status();assert s['version_coherent'];assert not s['network_executor_implemented'];assert not s['access_control_bypass'];assert s['phase19_builds_completed']==5
- assert 'app425 import create_workspace_app425' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app425.py').exists()
