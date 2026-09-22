@@ -10,6 +10,11 @@ def create_workspace_app425(*,base_dir=None):
   fp=hashlib.sha256('|'.join((req.headers.get('user-agent',''),req.headers.get('accept-language',''),req.client.host if req.client else '')).encode()).hexdigest();x=team.validate_session(req.cookies.get(COOKIE,''),client_fingerprint=fp,touch=True)
   if not x:raise HTTPException(401,'Anmeldung erforderlich oder Sitzung abgelaufen')
   return x
+ def case_auth(req,case_id,capability='case.read'):
+  identity=auth(req)
+  try:ctx.team_governance_359.authorize(identity,case_id=str(case_id),capability=capability,object_type='phase19',object_id=str(case_id))
+  except PermissionError as e:raise HTTPException(403,str(e))
+  return identity
  @app.get('/health')
  def health():
   h=dict(old() if callable(old) else {'ok':True});s=ctx.build425.crawler_status();h.update({'build':'425.0','phase':19,'phase19_builds_completed':5,'crawler_core':True,'crawler_integrity':s['integrity_valid'],'crawler_network_executor':False,'production_release_ready':False});return h
@@ -19,7 +24,7 @@ def create_workspace_app425(*,base_dir=None):
  async def task425(request:Request):
   identity=auth(request)
   try:
-   b=await request.json();return ctx.build425.create_crawl_task(identity=identity,case_id=b['case_id'],source_id=b['source_id'],target=b['target'],objective=b['objective'],scope=b.get('scope'),budget=b.get('budget'))
+   b=await request.json();identity=case_auth(request,b['case_id'],'crawler.run');return ctx.build425.create_crawl_task(identity=identity,case_id=b['case_id'],source_id=b['source_id'],target=b['target'],objective=b['objective'],scope=b.get('scope'),budget=b.get('budget'))
   except (ValueError,KeyError,TypeError) as e:raise HTTPException(400,str(e))
  return app
 create_app=create_workspace_app425
