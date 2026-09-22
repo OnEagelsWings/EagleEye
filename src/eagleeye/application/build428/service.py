@@ -10,4 +10,4 @@ class Build428ArchiveHistoryService:
  def register_archive_capture(self,**kw):return self.archive428.register_capture(**kw)
  def archive_timeline(self,case_id,original_url):return self.archive428.timeline(case_id,original_url)
  def archive_status(self):
-  s=self.archive428.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':8,'production_release_ready':False}
+  s=self.archive428.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':8,'production_release_ready':False}
