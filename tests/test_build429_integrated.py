@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-429','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-429','roles':['analyst']}
 def test_news_ingestion(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build421.register_source(identity=ident(),name='News Feed',source_type='news',base_url='https://news.example.org',capabilities=['rss','articles']);t=c.build425.create_crawl_task(identity=ident(),case_id='case429',source_id=s['source_id'],target='https://news.example.org/a',objective='collect public news');r=c.build425.accept_retrieval(identity=ident(),task_id=t['task_id'],status='retrieved',content='article body')
