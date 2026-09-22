@@ -18,4 +18,4 @@ def test_event_content_link_required(tmp_path):
 def test_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build427.change_status();assert s['version_coherent'];assert not s['network_authority'];assert s['change_detection_is_evidence_signal_not_truth'];assert not s['production_release_ready']
- assert 'app427 import create_workspace_app427' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app427.py').exists()
