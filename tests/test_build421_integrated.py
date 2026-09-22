@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-421','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-421','roles':['analyst']}
 def test_registry_real_source_contract_and_filters(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   x=c.build421.register_source(identity=ident(),name='Example News',source_type='news',base_url='https://example.org',capabilities=['articles','search'],coverage={'regions':['global']},terms_url='https://example.org/terms')
