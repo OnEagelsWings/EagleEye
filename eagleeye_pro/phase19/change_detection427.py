@@ -21,7 +21,7 @@ class ChangeDetection427:
   if obj['text_fingerprint'] and hashlib.sha256(norm.lower().encode()).hexdigest()!=obj['text_fingerprint']:raise ValueError('snapshot text does not match referenced content')
   sid='snap427_'+secrets.token_hex(10)
   r={'snapshot_id':sid,'case_id':ev['case_id'],'source_id':ev['source_id'],'target':ev['target'],'event_id':event_id,'content_id':content_id,'content_sha256':obj['sha256'],'text_normalized':norm,'captured_at':ev['retrieved_at'],'created_by':actor,'created_at':_now()};r['record_hash']=self._rh(r)
-  prev=self.db.one('SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? ORDER BY captured_at DESC,created_at DESC LIMIT 1',(ev['case_id'],ev['source_id'],ev['target']))
+  prev=self.db.one("SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? AND (datetime(captured_at)<datetime(?) OR (datetime(captured_at)=datetime(?) AND event_id<?)) ORDER BY datetime(captured_at) DESC,event_id DESC,created_at DESC LIMIT 1",(ev['case_id'],ev['source_id'],ev['target'],ev['retrieved_at'],ev['retrieved_at'],event_id))
   self.db.execute('INSERT INTO source_snapshot_427 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()))
   change=None
   if prev:
