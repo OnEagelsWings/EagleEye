@@ -1,7 +1,7 @@
 from pathlib import Path
 from eagleeye_pro.core.app_context import AppContext
 ROOT=Path(__file__).resolve().parents[1]
-def ident():return {'user_id':'analyst-426','roles':['analyst']}
+def ident():return {'username':'analyst','global_role':'system_administrator','user_id':'analyst-426','roles':['analyst']}
 def task(c):
  s=c.build421.register_source(identity=ident(),name='Source',source_type='website',base_url='https://example.org',capabilities=['pages']);c.build424.record_source_health(identity=ident(),source_id=s['source_id'],state='healthy');return c.build425.create_crawl_task(identity=ident(),case_id='case426',source_id=s['source_id'],target='https://example.org/report',objective='collect report')
 def test_priority_and_budget(tmp_path):
