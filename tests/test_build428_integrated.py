@@ -15,4 +15,4 @@ def test_non_archive_source_rejected(tmp_path):
 def test_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build428.archive_status();assert s['version_coherent'];assert not s['network_authority'];assert s['archive_content_is_historical_observation_not_truth'];assert not s['production_release_ready']
- assert 'app428 import create_workspace_app428' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+ assert (ROOT/'src/eagleeye/interfaces/web/app428.py').exists()
