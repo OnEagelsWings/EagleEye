@@ -78,7 +78,7 @@ The canonical Build-434 integration suite is:
 pytest -q tests/test_build434_integrated.py
 ```
 
-For a **case-specific Build-434 test inside the running application**, use [BUILD_434_CASE_TEST.md](BUILD_434_CASE_TEST.md). It includes a one-step authenticated self-test that creates synthetic organization subjects and provenance-bound source claims in the case you choose, then verifies case/event/content linkage and integrity.
+For a **case-specific Build-434 test inside the running application**, use [BUILD_434_CASE_TEST.md](BUILD_434_CASE_TEST.md). It includes a one-step authenticated self-test that imports a synthetic public registry record into the case you choose, creates a provenance-bound organization observation, and verifies identifier lookup, case/event/content linkage and integrity.
 
 ## What feedback helps most
 
