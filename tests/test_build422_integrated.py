@@ -9,6 +9,12 @@ def test_event_provenance_chain(tmp_path):
   s=c.build421.register_source(identity=ident(c),name='Public News Fixture',source_type='news',base_url='https://example.org',capabilities=['articles'])
   e=c.build422.record_event(identity=ident(c),case_id='case-422',source_id=s['source_id'],target='https://example.org/a',method='http',content_sha256='a'*64,media_type='text/html',bytes_count=123,provenance={'final_url':'https://example.org/a'},usage={'terms_checked':True})
   assert e['source_id']==s['source_id'];assert e['provenance']['final_url'].endswith('/a');assert c.acquisition_events_422.verify_integrity()['valid']
+def test_event_order_uses_actual_instant_across_offsets(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  i=ident(c);s=c.build421.register_source(identity=i,name='Offset Source',source_type='news',base_url='https://example.org',capabilities=['articles'])
+  early=c.build422.record_event(identity=i,case_id='offset-case',source_id=s['source_id'],target='early',method='http',retrieved_at='2026-01-01T01:00:00+02:00')
+  late=c.build422.record_event(identity=i,case_id='offset-case',source_id=s['source_id'],target='late',method='http',retrieved_at='2025-12-31T23:30:00+00:00')
+  rows=c.build422.case_events('offset-case');assert [r['event_id'] for r in rows]==[early['event_id'],late['event_id']]
 def test_event_tamper_detection(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build421.register_source(identity=ident(c),name='Dataset',source_type='dataset',capabilities=['records']);e=c.build422.record_event(identity=ident(c),case_id='c',source_id=s['source_id'],target='fixture',method='dataset',status='observed');c.db.execute("UPDATE acquisition_event_422 SET target='tampered' WHERE event_id=?",(e['event_id'],));assert not c.acquisition_events_422.verify_integrity()['valid']
