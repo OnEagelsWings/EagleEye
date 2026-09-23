@@ -7,12 +7,18 @@ def _now():return datetime.now(timezone.utc).isoformat(timespec='seconds')
 def _canon(v):return json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
 def _hash(v):return hashlib.sha256(_canon(v).encode()).hexdigest()
 def _iso(v):
- try:return datetime.fromisoformat(str(v).replace('Z','+00:00')).isoformat()
+ try:
+  d=datetime.fromisoformat(str(v).replace('Z','+00:00'));d=d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d.astimezone(timezone.utc);return d.isoformat(timespec='seconds')
  except Exception:raise ValueError('capture time must be ISO-8601')
 class ArchiveHistory428:
  def __init__(self,db,audit,*,registry421,events422,content423,change427,actor='local-analyst'):self.db=db;self.audit=audit;self.registry421=registry421;self.events422=events422;self.content423=content423;self.change427=change427;self.actor=actor;self._init_schema()
  def _init_schema(self):
-  self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS archive_capture_428(archive_capture_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,original_url TEXT NOT NULL,archive_url TEXT NOT NULL,captured_at TEXT NOT NULL,retrieved_event_id TEXT NOT NULL,content_id TEXT NOT NULL,archive_provider TEXT NOT NULL,metadata_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_ac428_original_time ON archive_capture_428(case_id,original_url,captured_at);""");self.db.conn.commit()
+  self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS archive_capture_428(archive_capture_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,original_url TEXT NOT NULL,archive_url TEXT NOT NULL,captured_at TEXT NOT NULL,retrieved_event_id TEXT NOT NULL,content_id TEXT NOT NULL,archive_provider TEXT NOT NULL,metadata_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_ac428_original_time ON archive_capture_428(case_id,original_url,captured_at);""")
+  for row in self.db.all('SELECT * FROM archive_capture_428'):
+   d=dict(row);canon=_iso(d['captured_at'])
+   if canon!=d['captured_at']:
+    d['captured_at']=canon;d['record_hash']=self._rh(d);self.db.execute('UPDATE archive_capture_428 SET captured_at=?,record_hash=? WHERE archive_capture_id=?',(canon,d['record_hash'],d['archive_capture_id']))
+  self.db.conn.commit()
  def _rh(self,r):return _hash({k:r[k] for k in r if k!='record_hash'})
  def register_capture(self,*,identity,case_id,source_id,original_url,archive_url,captured_at,retrieved_event_id,content_id,archive_provider='',metadata=None):
   if not identity:raise PermissionError('active identity required')
@@ -28,7 +34,7 @@ class ArchiveHistory428:
   if not obs:raise ValueError('content is not linked to archive acquisition event')
   actor=str(identity.get('user_id') or identity.get('username') or self.actor);r={'archive_capture_id':'arc428_'+secrets.token_hex(10),'case_id':case_id,'source_id':source_id,'original_url':str(original_url),'archive_url':str(archive_url),'captured_at':_iso(captured_at),'retrieved_event_id':retrieved_event_id,'content_id':content_id,'archive_provider':str(archive_provider or src['name']),'metadata_json':_canon(metadata or {}),'created_by':actor,'created_at':_now()};r['record_hash']=self._rh(r);self.db.execute('INSERT INTO archive_capture_428 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('archive_capture_registered_428','archive_capture_428',r['archive_capture_id'],case_id,{'original_url':original_url,'captured_at':r['captured_at']});return {**r,'metadata':metadata or {}}
  def timeline(self,case_id,original_url):
-  return [dict(r) for r in self.db.all('SELECT * FROM archive_capture_428 WHERE case_id=? AND original_url=? ORDER BY captured_at,created_at',(case_id,original_url))]
+  return [dict(r) for r in self.db.all('SELECT * FROM archive_capture_428 WHERE case_id=? AND original_url=? ORDER BY julianday(captured_at),created_at',(case_id,original_url))]
  def compare_to_live(self,*,identity,archive_capture_id,live_event_id,live_content_id,live_text,archive_text):
   a=self.db.one('SELECT * FROM archive_capture_428 WHERE archive_capture_id=?',(archive_capture_id,))
   if not a:raise KeyError('archive capture not found')
