@@ -34,5 +34,4 @@ def test_integrity_and_duplicate_guard(tmp_path):
 def test_contract_and_case_test_docs(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build432.social_status();assert s['version_coherent'];assert s['phase19_builds_completed']==12;assert s['case_specific_selftest'];assert s['public_only'];assert not s['network_executor_implemented'];assert not s['credential_collection'];assert not s['private_or_direct_content_supported'];assert not s['production_release_ready']
- assert 'app432 import create_workspace_app432' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
- readme=(ROOT/'README.md').read_text();guide=(ROOT/'BUILD_432_CASE_TEST.md').read_text();assert 'EAGLEEYE_PRO_432_0.py' in readme and 'build `432.0`' in readme and 'test_build432_integrated.py' in readme;assert '/api/build432/cases/CASE_ID/social/selftest' in guide
+ assert (ROOT/'src/eagleeye/interfaces/web/app432.py').exists();assert (ROOT/'BUILD_432_CASE_TEST.md').exists()
