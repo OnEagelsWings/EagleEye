@@ -78,7 +78,7 @@ The canonical Build-435 integration suite is:
 pytest -q tests/test_build435_integrated.py
 ```
 
-For a **case-specific Build-435 test inside the running application**, use [BUILD_435_CASE_TEST.md](BUILD_435_CASE_TEST.md). It includes a one-step authenticated self-test that imports a synthetic public registry record into the case you choose, creates a provenance-bound organization observation, and verifies identifier lookup, case/event/content linkage and integrity.
+For a **case-specific Build-435 test inside the running application**, use [BUILD_435_CASE_TEST.md](BUILD_435_CASE_TEST.md). It includes a one-step authenticated self-test that uses a synthetic v3-Onion source and deterministic replay transport with no external sockets, then verifies Tor-source restrictions, quarantine, human review, case/event/content linkage and checkpoint integrity.
 
 ## What feedback helps most
 
