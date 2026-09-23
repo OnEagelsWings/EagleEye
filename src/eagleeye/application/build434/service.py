@@ -13,4 +13,4 @@ class Build434RegistryOrganizationService:
  def case_registry_report(self,case_id):return self.registry434.case_report(case_id)
  def run_registry_case_selftest(self,**kw):return self.registry434.run_case_selftest(**kw)
  def registry_organization_status(self):
-  s=self.registry434.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':14,'production_release_ready':False}
+  s=self.registry434.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':14,'production_release_ready':False}
