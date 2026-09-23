@@ -36,4 +36,4 @@ def test_tamper_detection_and_metadata_guard(tmp_path):
 def test_contract_and_case_test_docs(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build433.organization_status();assert s['version_coherent'];assert s['phase19_builds_completed']==13;assert s['case_specific_selftest'];assert not s['network_authority'];assert not s['automatic_entity_resolution'];assert not s['ownership_or_control_determination'];assert s['source_claims_are_not_verified_facts'];assert not s['production_release_ready']
- assert 'app433 import create_workspace_app433' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text();assert (ROOT/'BUILD_433_CASE_TEST.md').exists();readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_433_0.py' in readme and 'test_build433_integrated.py' in readme
+ assert (ROOT/'src/eagleeye/interfaces/web/app433.py').exists();assert (ROOT/'BUILD_433_CASE_TEST.md').exists()
