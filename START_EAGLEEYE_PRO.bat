@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 431
+title EagleEye Build 432
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -36,7 +36,7 @@ if errorlevel 1 (
     if errorlevel 1 goto :failed
 )
 
-%VENV_PY% EAGLEEYE_PRO_431_0.py
+%VENV_PY% EAGLEEYE_PRO_432_0.py
 if errorlevel 1 goto :failed
 exit /b 0
 
