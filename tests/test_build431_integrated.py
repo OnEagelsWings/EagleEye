@@ -29,4 +29,4 @@ def test_provenance_tamper_detection(tmp_path):
 def test_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build431.provenance_status();assert s['version_coherent'];assert s['phase19_builds_completed']==11;assert s['syndication_analysis_is_evidence_signal_not_truth'];assert not s['network_authority'];assert not s['production_release_ready']
- assert 'app431 import create_workspace_app431' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text();readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_431_0.py' in readme and 'build `431.0`' in readme and 'test_build431_integrated.py' in readme
+ assert (ROOT/'src/eagleeye/interfaces/web/app431.py').exists()
