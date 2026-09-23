@@ -30,14 +30,17 @@ class Build435IsolatedTorWorkerService:
   if not self._live_process_lock.acquire(blocking=False):raise RuntimeError('isolated Tor live worker is busy')
   try:
    creds=self.tor435.tor370.isolation_credentials(task_id);ctx=multiprocessing.get_context('spawn');out=ctx.Queue(maxsize=1);p=ctx.Process(target=_live_fetch_process,args=(out,{'socks_host':cfg['socks_host'],'socks_port':cfg['socks_port']},{'username':creds['username'],'password':creds['password']},task['target'],int(task['timeout_seconds']),int(task['max_bytes'])),daemon=True)
-   p.start();deadline=max(1,int(task['timeout_seconds']));p.join(deadline)
+   p.start();deadline=max(1,int(task['timeout_seconds']))
+   try:result=out.get(timeout=deadline)
+   except queue.Empty:
+    if p.is_alive():
+     p.terminate();p.join(2)
+     if p.is_alive():p.kill();p.join(2)
+    self.tor435._record_failure(ident,self.tor435.get(task_id),'WallClockDeadlineExceeded' if p.is_alive() or p.exitcode is None else 'WorkerExitedWithoutResult');raise RuntimeError('Tor research retrieval exceeded absolute wall-clock deadline or worker exited without a result')
+   p.join(2)
    if p.is_alive():
     p.terminate();p.join(2)
     if p.is_alive():p.kill();p.join(2)
-    self.tor435._record_failure(ident,self.tor435.get(task_id),'WallClockDeadlineExceeded');raise RuntimeError('Tor research retrieval exceeded absolute wall-clock deadline')
-   try:result=out.get(timeout=1)
-   except queue.Empty:
-    self.tor435._record_failure(ident,self.tor435.get(task_id),'WorkerExitedWithoutResult');raise RuntimeError('Tor research worker exited without a result')
    if not result.get('ok'):
     self.tor435._record_failure(ident,self.tor435.get(task_id),str(result.get('error') or 'LiveWorkerFailure'));raise RuntimeError('Tor research retrieval failed: '+str(result.get('error') or 'LiveWorkerFailure'))
    from eagleeye.crawler.engine import FetchResponse
