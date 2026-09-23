@@ -25,6 +25,7 @@ def _public_url(v):
   if 'globally routable' in str(e):raise
  return u
 def _safe_metadata(v):
+ if v is not None and not isinstance(v,dict):raise ValueError('metadata must be a JSON object')
  def walk(x):
   if isinstance(x,dict):
    out={}
@@ -40,6 +41,7 @@ def _safe_metadata(v):
  if len(_canon(out).encode('utf-8'))>65536:raise ValueError('metadata too large')
  return out
 def _metrics(v):
+ if v is not None and not isinstance(v,dict):raise ValueError('metrics must be a JSON object')
  out={}
  for k,val in (v or {}).items():
   key=str(k).strip().lower()
