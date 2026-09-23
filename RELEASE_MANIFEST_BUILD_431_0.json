@@ -1,0 +1,1 @@
+{"build":"431.0","phase":19,"name":"News Provenance & Syndication Analysis","production_release_ready":false,"acceptance":["exact-content non-independence groups","acquisition-lineage groups","same-source and same-host source-family signals","high claim-overlap candidate signal","integrity-hashed analysis runs","no truth promotion","no network authority"]}
