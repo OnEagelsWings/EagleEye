@@ -26,7 +26,9 @@ class Build435IsolatedTorWorkerService:
   if task['state']!='planned':raise ValueError('Tor research task is not executable')
   if str(approval_ref or '').strip()!=task['approval_ref']:raise PermissionError('stored human approval_ref must be repeated exactly')
   if str(confirmation or '').strip().upper()!='TOR435_LIVE':raise PermissionError('explicit TOR435_LIVE confirmation required')
-  self.tor435._source_target(task['source_id'],task['target']);cfg=self.tor435.tor370.config()
+  src,_=self.tor435._source_target(task['source_id'],task['target'])
+  if bool((src.get('coverage') or {}).get('fixture_only')):raise PermissionError('synthetic fixture sources cannot be used for live Tor execution')
+  cfg=self.tor435.tor370.config()
   if not cfg.get('enabled'):raise PermissionError('controlled Tor gateway is disabled')
   if not self._live_process_lock.acquire(blocking=False):raise RuntimeError('isolated Tor live worker is busy')
   try:
