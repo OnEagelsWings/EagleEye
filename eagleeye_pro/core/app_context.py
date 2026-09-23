@@ -492,6 +492,8 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('build430', lambda r: r.construct('eagleeye.application.build430.service:Build430NewsExtractionService', r.get('db'), r.get('audit'), build429=r.get('build429'), extraction430=r.get('news_extraction_430'), actor=owner.actor), import_path='eagleeye.application.build430.service:Build430NewsExtractionService', status='active', group='phase19')
     registry.register('news_provenance_431', lambda r: r.construct('eagleeye_pro.phase19.news_provenance431:NewsProvenance431', r.get('db'), r.get('audit'), news429=r.get('news_connectors_429'), events422=r.get('acquisition_events_422'), actor=owner.actor), import_path='eagleeye_pro.phase19.news_provenance431:NewsProvenance431', status='active', group='phase19_ai')
     registry.register('build431', lambda r: r.construct('eagleeye.application.build431.service:Build431NewsProvenanceService', r.get('db'), r.get('audit'), build430=r.get('build430'), provenance431=r.get('news_provenance_431'), actor=owner.actor), import_path='eagleeye.application.build431.service:Build431NewsProvenanceService', status='active', group='phase19')
+    registry.register('social_public_432', lambda r: r.construct('eagleeye_pro.phase19.social_public432:SocialPublicAdapters432', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), actor=owner.actor), import_path='eagleeye_pro.phase19.social_public432:SocialPublicAdapters432', status='active', group='phase19_data')
+    registry.register('build432', lambda r: r.construct('eagleeye.application.build432.service:Build432SocialPublicAdaptersService', r.get('db'), r.get('audit'), build431=r.get('build431'), social432=r.get('social_public_432'), actor=owner.actor), import_path='eagleeye.application.build432.service:Build432SocialPublicAdaptersService', status='active', group='phase19')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1222,6 +1224,8 @@ class AppContext:
         'build430',
         'news_provenance_431',
         'build431',
+        'social_public_432',
+        'build432',
         'command_bus'
     )
 
