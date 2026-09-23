@@ -500,6 +500,8 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('build434', lambda r: r.construct('eagleeye.application.build434.service:Build434RegistryOrganizationService', r.get('db'), r.get('audit'), build433=r.get('build433'), registry434=r.get('registry_organization_434'), actor=owner.actor), import_path='eagleeye.application.build434.service:Build434RegistryOrganizationService', status='active', group='phase19')
     registry.register('tor_research_435', lambda r: r.construct('eagleeye_pro.phase19.tor_research435:IsolatedTorResearchWorker435', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), tor370=r.get('tor_gateway_370'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase19.tor_research435:IsolatedTorResearchWorker435', status='active', group='phase19_security')
     registry.register('build435', lambda r: r.construct('eagleeye.application.build435.service:Build435IsolatedTorWorkerService', r.get('db'), r.get('audit'), build434=r.get('build434'), tor435=r.get('tor_research_435'), actor=owner.actor), import_path='eagleeye.application.build435.service:Build435IsolatedTorWorkerService', status='active', group='phase19')
+    registry.register('surface_onion_436', lambda r: r.construct('eagleeye_pro.phase19.surface_onion436:SurfaceOnionCorrelation436', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), tor435=r.get('tor_research_435'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase19.surface_onion436:SurfaceOnionCorrelation436', status='active', group='phase19_analysis')
+    registry.register('build436', lambda r: r.construct('eagleeye.application.build436.service:Build436SurfaceOnionService', r.get('db'), r.get('audit'), build435=r.get('build435'), correlation436=r.get('surface_onion_436'), actor=owner.actor), import_path='eagleeye.application.build436.service:Build436SurfaceOnionService', status='active', group='phase19')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1238,6 +1240,8 @@ class AppContext:
         'build434',
         'tor_research_435',
         'build435',
+        'surface_onion_436',
+        'build436',
         'command_bus'
     )
 
