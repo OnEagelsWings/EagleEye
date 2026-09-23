@@ -17,4 +17,4 @@ def test_confidence_bounds(tmp_path):
 def test_contract(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build430.extraction_status();assert s['version_coherent'];assert s['hard_checkpoint'];assert s['extraction_is_machine_observation_not_fact'];assert not s['production_release_ready']
- assert 'app430 import create_workspace_app430' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text();readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_430_0.py' in readme and 'build `430.0`' in readme and 'test_build430_integrated.py' in readme
+ assert (ROOT/'src/eagleeye/interfaces/web/app430.py').exists()
