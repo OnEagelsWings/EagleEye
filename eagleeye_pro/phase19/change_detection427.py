@@ -11,6 +11,12 @@ class ChangeDetection427:
  def _init_schema(self):
   self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS source_snapshot_427(snapshot_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,event_id TEXT NOT NULL,content_id TEXT NOT NULL,content_sha256 TEXT NOT NULL,text_normalized TEXT NOT NULL,captured_at TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_ss427_target ON source_snapshot_427(case_id,source_id,target,captured_at);CREATE TABLE IF NOT EXISTS content_change_427(change_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,previous_snapshot_id TEXT NOT NULL,current_snapshot_id TEXT NOT NULL,change_kind TEXT NOT NULL,similarity REAL NOT NULL,added_json TEXT NOT NULL,removed_json TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);""");self.db.conn.commit()
  def _rh(self,r):return _hash({k:r[k] for k in r if k!='record_hash'})
+ def _record_change(self,previous,current):
+  a=previous['text_normalized'];b=current['text_normalized'];ratio=difflib.SequenceMatcher(None,a,b).ratio();kind='unchanged' if previous['content_sha256']==current['content_sha256'] else ('minor' if ratio>=.95 else 'changed')
+  diff=list(difflib.ndiff(a.split(),b.split()));added=[v[2:] for v in diff if v.startswith('+ ')][:100];removed=[v[2:] for v in diff if v.startswith('- ')][:100]
+  ch={'change_id':'chg427_'+secrets.token_hex(10),'case_id':current['case_id'],'source_id':current['source_id'],'target':current['target'],'previous_snapshot_id':previous['snapshot_id'],'current_snapshot_id':current['snapshot_id'],'change_kind':kind,'similarity':float(ratio),'added_json':_canon(added),'removed_json':_canon(removed),'created_at':_now()};ch['record_hash']=self._rh(ch)
+  self.db.execute('INSERT INTO content_change_427 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',tuple(ch.values()))
+  return {**ch,'added':added,'removed':removed}
  def capture(self,*,identity,event_id,content_id,text):
   if not identity:raise PermissionError('active identity required')
   ev=self.events422.get(event_id);obj=self.db.one('SELECT * FROM content_object_423 WHERE content_id=?',(content_id,))
@@ -22,13 +28,15 @@ class ChangeDetection427:
   sid='snap427_'+secrets.token_hex(10)
   r={'snapshot_id':sid,'case_id':ev['case_id'],'source_id':ev['source_id'],'target':ev['target'],'event_id':event_id,'content_id':content_id,'content_sha256':obj['sha256'],'text_normalized':norm,'captured_at':ev['retrieved_at'],'created_by':actor,'created_at':_now()};r['record_hash']=self._rh(r)
   prev=self.db.one("SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? AND datetime(captured_at)<=datetime(?) ORDER BY datetime(captured_at) DESC,rowid DESC LIMIT 1",(ev['case_id'],ev['source_id'],ev['target'],ev['retrieved_at']))
+  successor=self.db.one("SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? AND datetime(captured_at)>datetime(?) ORDER BY datetime(captured_at) ASC,rowid ASC LIMIT 1",(ev['case_id'],ev['source_id'],ev['target'],ev['retrieved_at']))
   self.db.execute('INSERT INTO source_snapshot_427 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()))
-  change=None
-  if prev:
-   a=prev['text_normalized'];b=norm;ratio=difflib.SequenceMatcher(None,a,b).ratio();kind='unchanged' if prev['content_sha256']==r['content_sha256'] else ('minor' if ratio>=.95 else 'changed')
-   diff=list(difflib.ndiff(a.split(),b.split()));added=[x[2:] for x in diff if x.startswith('+ ')][:100];removed=[x[2:] for x in diff if x.startswith('- ')][:100]
-   ch={'change_id':'chg427_'+secrets.token_hex(10),'case_id':r['case_id'],'source_id':r['source_id'],'target':r['target'],'previous_snapshot_id':prev['snapshot_id'],'current_snapshot_id':sid,'change_kind':kind,'similarity':float(ratio),'added_json':_canon(added),'removed_json':_canon(removed),'created_at':_now()};ch['record_hash']=self._rh(ch);self.db.execute('INSERT INTO content_change_427 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',tuple(ch.values()));change={**ch,'added':added,'removed':removed}
-  self.audit.log('source_snapshot_captured_427','acquisition_event_422',event_id,ev['case_id'],{'snapshot_id':sid,'change_kind':change['change_kind'] if change else 'baseline'});return {'snapshot':r,'change':change}
+  change=self._record_change(dict(prev),r) if prev else None
+  successor_change=None
+  if successor:
+   successor=dict(successor)
+   self.db.execute('DELETE FROM content_change_427 WHERE current_snapshot_id=?',(successor['snapshot_id'],))
+   successor_change=self._record_change(r,successor)
+  self.audit.log('source_snapshot_captured_427','acquisition_event_422',event_id,ev['case_id'],{'snapshot_id':sid,'change_kind':change['change_kind'] if change else 'baseline','successor_relinked':bool(successor_change)});return {'snapshot':r,'change':change,'successor_change':successor_change}
  def history(self,case_id,source_id,target):
   return [dict(r) for r in self.db.all('SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? ORDER BY captured_at,created_at',(case_id,source_id,target))]
  def changes(self,case_id):
