@@ -78,6 +78,8 @@ The canonical Build-432 integration suite is:
 pytest -q tests/test_build432_integrated.py
 ```
 
+For a **case-specific Build-432 test inside the running application**, use [BUILD_432_CASE_TEST.md](BUILD_432_CASE_TEST.md). It includes a one-step authenticated self-test that binds a synthetic public-social fixture to the case you choose and verifies case/event/content linkage and integrity.
+
 ## What feedback helps most
 
 Please include operating system, Python version, RAM, install method, whether first start succeeded, whether the browser opened, whether `/health` passed, whether case creation and restart worked, and exact reproduction steps for failures. Screenshots and logs are welcome after removing credentials, tokens, usernames, private paths and case data.
