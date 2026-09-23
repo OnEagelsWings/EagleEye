@@ -85,12 +85,25 @@ class SocialPublicAdapters432:
    raise
   self.audit.log('social_public_observation_recorded_432','social_observation_432',r['observation_id'],case_id,{'adapter':adapter,'platform':platform,'object_type':object_type,'test_fixture':bool(test_fixture)});return {**r,'metrics':m,'metadata':meta,'test_fixture':bool(test_fixture)}
  def ingest_fixture(self,*,identity,case_id,source_id,adapter,canonical_url,text,external_object_id,platform='',object_type='post',account_id='',account_handle='',published_at='',language='',metrics=None,metadata=None):
+  if not identity:raise PermissionError('active identity required')
+  adapter=str(adapter or '').strip().lower();object_type=str(object_type or '').strip().lower();ext=str(external_object_id or '').strip();src=self.registry421.get(source_id)
+  if src['source_type']!='social':raise ValueError('source_id must identify a social source')
+  if adapter not in ADAPTERS:raise ValueError('unsupported social adapter')
+  if object_type not in OBJECT_TYPES:raise ValueError('unsupported social object_type')
+  if not ext:raise ValueError('external_object_id required')
+  url=_public_url(canonical_url);m=_metrics(metrics);meta=_safe_metadata(metadata)
+  expected={'mastodon_public':'mastodon','bluesky_public':'bluesky'}.get(adapter,'');platform=str(platform or expected or 'generic').strip().lower()
+  if expected and platform!=expected:raise ValueError('platform does not match adapter')
+  if self.db.one('SELECT 1 FROM social_observation_432 WHERE source_id=? AND adapter=? AND object_type=? AND external_object_id=?',(source_id,adapter,object_type,ext)):raise ValueError('duplicate social object for this source/adapter')
+  if published_at:
+   try:_iso_utc(published_at)
+   except Exception:raise ValueError('published_at must be ISO-8601')
   raw=str(text or '').encode('utf-8')
   if not raw:raise ValueError('fixture text required')
   digest=hashlib.sha256(raw).hexdigest()
-  event=self.events422.record(identity=identity,case_id=case_id,source_id=source_id,target=canonical_url,method='manual_import',status='retrieved',content_sha256=digest,media_type='text/plain',bytes_count=len(raw),provenance={'build':'432.0','adapter':adapter,'test_fixture':True,'canonical_url':canonical_url},usage={'public_only':True,'synthetic_test_fixture':True})
+  event=self.events422.record(identity=identity,case_id=case_id,source_id=source_id,target=url,method='manual_import',status='retrieved',content_sha256=digest,media_type='text/plain',bytes_count=len(raw),provenance={'build':'432.0','adapter':adapter,'test_fixture':True,'canonical_url':url},usage={'public_only':True,'synthetic_test_fixture':True})
   content=self.content423.ingest(identity=identity,event_id=event['event_id'],content=raw,media_type='text/plain',metadata={'build432_test_fixture':True,'adapter':adapter})
-  item=self.record(identity=identity,case_id=case_id,source_id=source_id,event_id=event['event_id'],content_id=content['content_id'],adapter=adapter,canonical_url=canonical_url,external_object_id=external_object_id,platform=platform,object_type=object_type,account_id=account_id,account_handle=account_handle,published_at=published_at or event['retrieved_at'],visibility='public',language=language,metrics=metrics,metadata={**(metadata or {}),'synthetic_test_fixture':True},test_fixture=True)
+  item=self.record(identity=identity,case_id=case_id,source_id=source_id,event_id=event['event_id'],content_id=content['content_id'],adapter=adapter,canonical_url=url,external_object_id=ext,platform=platform,object_type=object_type,account_id=account_id,account_handle=account_handle,published_at=published_at or event['retrieved_at'],visibility='public',language=language,metrics=m,metadata={**meta,'synthetic_test_fixture':True},test_fixture=True)
   return {'event':event,'content':content,'observation':item}
  def case_items(self,case_id,*,platform='',adapter='',include_fixtures=True):
   sql='SELECT * FROM social_observation_432 WHERE case_id=?';args=[str(case_id)]
