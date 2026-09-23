@@ -38,6 +38,14 @@ class IsolatedTorResearchWorker435:
   base=_onion_url(src['base_url']);clean=_onion_url(target)
   if urlsplit(base).hostname.casefold()!=urlsplit(clean).hostname.casefold():raise PermissionError('target must remain on the exact reviewed onion host')
   return src,clean
+ def _ensure_selftest_source(self):
+  sid='src421_fixture_tor435';onion='a'*56+'.onion';base='http://'+onion+'/'
+  try:
+   src=self.registry421.get(sid)
+   if src['source_type']!='tor_onion' or src['access_mode']!='tor_public' or src['base_url']!=base or not bool((src.get('coverage') or {}).get('fixture_only')):raise RuntimeError('reserved Build 435 fixture source has unexpected configuration')
+   return src
+  except KeyError:
+   caps=['case_fixture','public_pages'];coverage={'fixture_only':True,'live_execution_forbidden':True};r={'source_id':sid,'name':'Build 435 Synthetic Onion Fixture','source_type':'tor_onion','access_mode':'tor_public','base_url':base,'capabilities_json':_canon(caps),'coverage_json':_canon(coverage),'terms_url':'','license_note':'Trusted internal synthetic v3-onion fixture; deterministic replay only.','enabled':1,'created_by':'system:build435_fixture','created_at':_now()};r['record_hash']=self.registry421._record_hash(r);self.db.execute('INSERT INTO acquisition_source_421 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('tor435_fixture_source_seeded','acquisition_source_421',sid,'',{'fixture_only':True,'network_execution':False});return self.registry421.get(sid)
  def get(self,task_id):
   row=self.db.one('SELECT * FROM tor_research_task_435 WHERE task_id=?',(str(task_id),))
   if not row:raise KeyError('Tor research task not found')
@@ -78,6 +86,8 @@ class IsolatedTorResearchWorker435:
   task=self.get(task_id);self._authorize(identity,task['case_id'],task_id)
   if str(approval_ref or '').strip()!=task['approval_ref']:raise PermissionError('stored human approval_ref must be repeated exactly')
   if str(confirmation or '').strip().upper()!='TOR435_LIVE':raise PermissionError('explicit TOR435_LIVE confirmation required')
+  src,_=self._source_target(task['source_id'],task['target'])
+  if bool((src.get('coverage') or {}).get('fixture_only')):raise PermissionError('synthetic fixture sources cannot be used for live Tor execution')
   cfg=self.tor370.status()
   if not cfg.get('gateway_enabled'):raise PermissionError('controlled Tor gateway is disabled')
   if not self._live_lock.acquire(blocking=False):raise RuntimeError('isolated Tor live worker is busy')
@@ -107,8 +117,7 @@ class IsolatedTorResearchWorker435:
   from eagleeye.crawler.engine import FetchResponse
   case_id=str(case_id or '').strip()
   if not case_id:raise ValueError('case_id required')
-  onion='a'*56+'.onion';base='http://'+onion+'/';source=next((s for s in self.registry421.list_sources(source_type='tor_onion') if s.get('base_url')==base),None)
-  if not source:source=self.registry421.register(identity=identity,name='Build 435 Synthetic Onion Fixture',source_type='tor_onion',access_mode='tor_public',base_url=base,capabilities=['public_pages','case_fixture'],coverage={'fixture_only':True},license_note='Synthetic v3 onion fixture; deterministic replay only.')
+  onion='a'*56+'.onion';base='http://'+onion+'/';source=self._ensure_selftest_source()
   token=secrets.token_hex(5);target=base+'public/'+token;task=self.create_task(identity=identity,case_id=case_id,source_id=source['source_id'],target=target,objective='Build 435 deterministic isolated-Tor case test',approval_ref='SELFTEST-'+token,max_bytes=100000,timeout_seconds=5)
   body=('Synthetic public onion page '+token).encode();transport=StaticTorReplayTransport370({target:FetchResponse(target,200,{'content-type':'text/plain'},body,2)});result=self.execute_replay(identity=identity,task_id=task['task_id'],transport=transport);reviewed=self.review(identity=identity,task_id=task['task_id'],decision='accept_for_analysis',note='Build 435 self-test review')
   ev=self.events422.get(result['event']['event_id']);checks={'case_bound':reviewed['case_id']==case_id,'source_is_tor_onion':source['source_type']=='tor_onion' and source['access_mode']=='tor_public','event_quarantined':ev['status']=='quarantined','content_bound':reviewed['content_id']==result['content']['content_id'],'deterministic_replay_no_network':reviewed['execution_mode']=='deterministic_replay' and reviewed['isolation_fingerprint']=='replay-no-network','human_review_recorded':reviewed['state']=='reviewed' and reviewed['review_decision']=='accept_for_analysis','truth_not_promoted':True,'integrity_valid':self.verify_integrity()['valid'],'checkpoint_ready':self.checkpoint()['checkpoint_ready']}
