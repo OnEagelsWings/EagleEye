@@ -1,0 +1,1 @@
+{"build":"427.0","phase":19,"name":"Incremental Crawling & Change Detection","production_release_ready":false,"network_authority":false,"acceptance":["source snapshots","event-content linkage","exact unchanged detection","normalized text change detection","bounded added/removed summaries","tamper detection","no truth determination"]}

@@ -1,0 +1,55 @@
+from __future__ import annotations
+from datetime import datetime,timezone
+import hashlib,json,secrets
+BUILD='422.0';POLICY_ID='phase19.acquisition-event-provenance.v422'
+METHODS=('http','api','rss','search','dataset','archive','social_api','registry','tor_public','manual_import')
+STATUSES=('observed','retrieved','failed','blocked','quarantined')
+def _now():return datetime.now(timezone.utc).isoformat(timespec='seconds')
+def _iso_utc(value):
+ d=datetime.fromisoformat(str(value).replace('Z','+00:00'));d=d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d.astimezone(timezone.utc);return d.isoformat(timespec='seconds')
+def _canon(v):return json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
+def _sha(v):return hashlib.sha256(_canon(v).encode()).hexdigest()
+class AcquisitionEvents422:
+ def __init__(self,db,audit,*,registry421,actor='local-analyst'):self.db=db;self.audit=audit;self.registry421=registry421;self.actor=actor;self._init_schema()
+ def _init_schema(self):
+  self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS acquisition_event_422(event_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,method TEXT NOT NULL,status TEXT NOT NULL,retrieved_at TEXT NOT NULL,content_sha256 TEXT NOT NULL,media_type TEXT NOT NULL,bytes_count INTEGER NOT NULL,source_snapshot_json TEXT NOT NULL,parent_event_id TEXT NOT NULL,provenance_json TEXT NOT NULL,usage_json TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_ae422_case ON acquisition_event_422(case_id,retrieved_at);CREATE INDEX IF NOT EXISTS idx_ae422_source ON acquisition_event_422(source_id,retrieved_at);""")
+  cols={r['name'] for r in self.db.all('PRAGMA table_info(acquisition_event_422)')};migrated=False
+  if 'source_snapshot_json' not in cols:self.db.execute("ALTER TABLE acquisition_event_422 ADD COLUMN source_snapshot_json TEXT NOT NULL DEFAULT '{}'");migrated=True
+  if 'parent_event_id' not in cols:self.db.execute("ALTER TABLE acquisition_event_422 ADD COLUMN parent_event_id TEXT NOT NULL DEFAULT ''");migrated=True
+  if migrated:
+   for row in self.db.all('SELECT * FROM acquisition_event_422'):
+    d=dict(row);d['record_hash']=self._hash(d);self.db.execute('UPDATE acquisition_event_422 SET record_hash=? WHERE event_id=?',(d['record_hash'],d['event_id']))
+  self.db.conn.commit()
+ def _hash(self,r):return _sha({k:r[k] for k in r if k!='record_hash'})
+ def record(self,*,identity,case_id,source_id,target,method,status='retrieved',content_sha256='',media_type='',bytes_count=0,provenance=None,usage=None,retrieved_at='',parent_event_id=''):
+  if not identity:raise PermissionError('active identity required')
+  actor=str(identity.get('user_id') or identity.get('username') or self.actor);case_id=str(case_id or '').strip();source_id=str(source_id or '').strip();target=str(target or '').strip();method=str(method or '').strip().lower();status=str(status or '').strip().lower()
+  if not case_id:raise ValueError('case_id required')
+  if not target:raise ValueError('target required')
+  if method not in METHODS:raise ValueError('unsupported acquisition method')
+  if status not in STATUSES:raise ValueError('unsupported acquisition status')
+  try:src=self.registry421.get(source_id)
+  except KeyError:raise ValueError('unknown source_id')
+  if parent_event_id:
+   parent=self.get(parent_event_id)
+   if parent['case_id']!=case_id:raise ValueError('parent event must belong to same case')
+  digest=str(content_sha256 or '').lower().strip()
+  if digest and (len(digest)!=64 or any(c not in '0123456789abcdef' for c in digest)):raise ValueError('content_sha256 must be a SHA-256 hex digest')
+  try:ts=_iso_utc(retrieved_at or _now())
+  except Exception:raise ValueError('retrieved_at must be ISO-8601')
+  eid='acq422_'+secrets.token_hex(10);snapshot={k:src.get(k) for k in ('source_id','name','source_type','access_mode','base_url','terms_url','license_note','record_hash')};r={'event_id':eid,'case_id':case_id,'source_id':source_id,'target':target,'method':method,'status':status,'retrieved_at':ts,'content_sha256':digest,'media_type':str(media_type or ''),'bytes_count':max(0,int(bytes_count or 0)),'source_snapshot_json':_canon(snapshot),'parent_event_id':str(parent_event_id or ''),'provenance_json':_canon(provenance or {}),'usage_json':_canon(usage or {}),'created_by':actor,'created_at':_now()};r['record_hash']=self._hash(r)
+  cols='event_id,case_id,source_id,target,method,status,retrieved_at,content_sha256,media_type,bytes_count,source_snapshot_json,parent_event_id,provenance_json,usage_json,created_by,created_at,record_hash'
+  self.db.execute(f'INSERT INTO acquisition_event_422({cols}) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('acquisition_event_recorded_422','acquisition_event_422',eid,case_id,{'source_id':source_id,'method':method,'status':status,'content_sha256':digest});return self.get(eid)
+ def get(self,event_id):
+  row=self.db.one('SELECT * FROM acquisition_event_422 WHERE event_id=?',(event_id,))
+  if not row:raise KeyError(event_id)
+  d=dict(row);d['source_snapshot']=json.loads(d.pop('source_snapshot_json'));d['provenance']=json.loads(d.pop('provenance_json'));d['usage']=json.loads(d.pop('usage_json'));return d
+ def list_case(self,case_id):return [self.get(r['event_id']) for r in self.db.all('SELECT event_id FROM acquisition_event_422 WHERE case_id=? ORDER BY julianday(retrieved_at),event_id',(case_id,))]
+ def verify_integrity(self):
+  bad=[]
+  for row in self.db.all('SELECT * FROM acquisition_event_422'):
+   d=dict(row)
+   if self._hash(d)!=d['record_hash']:bad.append({'event_id':d['event_id'],'reason':'event_hash_mismatch'})
+  return {'build':BUILD,'valid':not bad,'violations':bad}
+ def status(self):
+  n=self.db.one('SELECT COUNT(*) n FROM acquisition_event_422')['n'];return {'build':BUILD,'policy':POLICY_ID,'events':int(n),'integrity_valid':self.verify_integrity()['valid'],'methods':list(METHODS),'direct_network_authority':False,'evidence_promotion':False,'truth_determination':False}

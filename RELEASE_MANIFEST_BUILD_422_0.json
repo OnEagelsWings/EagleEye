@@ -1,0 +1,1 @@
+{"build":"422.0","phase":19,"name":"Acquisition Event & Provenance Contract","production_release_ready":false,"network_authority":false,"acceptance":["source-to-event provenance","case-scoped event ledger","content hash validation","tamper detection","runtime integration"]}

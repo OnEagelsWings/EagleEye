@@ -1,0 +1,1 @@
+{"build":"424.0","phase":19,"name":"Source Health, Rate Limits & Freshness","production_release_ready":false,"network_authority":false,"acceptance":["source availability ledger","latency and quota state","retry-after guidance","freshness metadata","tamper detection","bounded acquisition advice"]}

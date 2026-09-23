@@ -1,0 +1,1 @@
+{"build":"429.0","phase":19,"name":"News Connector Layer","production_release_ready":false,"network_executor_implemented":false,"acceptance":["RSS/Atom/API/dataset/manual normalization","event-content-source linkage","canonical news metadata","external-id deduplication","integrity hashes","publisher claims not automatic corroboration"]}

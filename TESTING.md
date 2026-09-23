@@ -1,8 +1,8 @@
-# EagleEye Build 416 — Testing Guide
+# EagleEye Build 423 — Testing Guide
 
-This guide is for external testers evaluating EagleEye Build 416 on fresh systems.
+This guide is for external testers evaluating EagleEye Build 423 on fresh systems.
 
-> Build 416 is a testing/evaluation baseline, not a production release. Use only synthetic, demo, or clearly public test data. Do not use confidential investigations, credentials, secrets, or sensitive personal information.
+> Build 423 is a testing/evaluation baseline, not a production release. Use only synthetic, demo, or clearly public test data. Do not use confidential investigations, credentials, secrets, or sensitive personal information.
 
 ## 1. Environment
 
@@ -14,7 +14,7 @@ Please record:
 - Python version
 - install method: Git clone or downloaded ZIP
 
-Python 3.12 or newer is required.
+Python 3.12 or newer is required. On Debian/Ubuntu, Python may be installed without the OS venv/ensurepip component. Before first start, install `python3-venv` (or the matching versioned package such as `python3.14-venv`) if `python3 -m ensurepip --version` is unavailable.
 
 ## 2. First-start test
 
@@ -27,6 +27,15 @@ Python 3.12 or newer is required.
 5. Confirm that the EagleEye browser workspace opens.
 
 ### Linux / macOS
+
+On Debian/Ubuntu, if Python reports that `ensurepip` is unavailable, install the virtual-environment package first:
+
+```bash
+sudo apt install python3-venv
+# or, when required by the distribution: sudo apt install python3.14-venv
+```
+
+The launcher now checks this prerequisite before creating `.venv`; if venv creation itself fails, an incomplete `.venv` is removed automatically.
 
 ```bash
 chmod +x START_EAGLEEYE_PRO.sh
@@ -42,7 +51,7 @@ Open `/health` on the displayed local EagleEye address. Expected minimum values:
 ```json
 {
   "ok": true,
-  "build": "416.0",
+  "build": "423.0",
   "network_execution_on_boot": false,
   "production_release_ready": false
 }
@@ -70,7 +79,7 @@ For testers comfortable with Python:
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build416_integrated.py
+pytest -q tests/test_build423_integrated.py
 ```
 
 Expected maintainer baseline: `11 passed`.

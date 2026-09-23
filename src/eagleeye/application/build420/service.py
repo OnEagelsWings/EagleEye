@@ -15,7 +15,7 @@ class Build420Phase18QualificationService:
   try:p=package_version('eagleeye-personosint-pro')
   except Exception:
    pt=self.install_dir/'pyproject.toml'; txt=pt.read_text() if pt.exists() else ''; m=re.search(r'^version\\s*=\\s*["\\\']([^"\\\']+)',txt,re.M); p=m.group(1) if m else 'unknown'
-  return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD and p==self.PACKAGE}
+  return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]) and p!='unknown' and int(str(p).split('.')[0])>=int(self.PACKAGE.split('.')[0])}
  def qualification_status(self):
   s=self.qualification420.status(); last=self.db.one('SELECT qualification_id,result,created_at FROM phase18_qualification_run_420 ORDER BY rowid DESC LIMIT 1'); last=dict(last) if last else None; component_integrity={};
   for name,svc in self.qualification420.services.items():

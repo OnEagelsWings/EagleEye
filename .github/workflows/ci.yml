@@ -19,12 +19,16 @@ jobs:
         run: python -m pip install -e '.[test]'
       - name: Import smoke test
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye_pro.version import BUILD; print(BUILD)"
-      - name: Build 420 integrated tests
-        run: pytest -q tests/test_build420_integrated.py
-      - name: Phase 18 current-chain regression 413-420
-        run: pytest -q tests/test_build413_integrated.py tests/test_build414_integrated.py tests/test_build415_integrated.py tests/test_build416_integrated.py tests/test_build417_integrated.py tests/test_build418_integrated.py tests/test_build419_integrated.py tests/test_build420_integrated.py -k 'not version and not app and not launcher'
+      - name: Build 430 integrated tests
+        run: pytest -q tests/test_build430_integrated.py
+      - name: Phase 19 full checkpoint regression 421-430
+        run: pytest -q tests/test_build421_integrated.py tests/test_build422_integrated.py tests/test_build423_integrated.py tests/test_build424_integrated.py tests/test_build425_integrated.py tests/test_build426_integrated.py tests/test_build427_integrated.py tests/test_build428_integrated.py tests/test_build429_integrated.py tests/test_build430_integrated.py
+      - name: Phase 18/19 current-chain regression 413-430
+        run: pytest -q tests/test_build413_integrated.py tests/test_build414_integrated.py tests/test_build415_integrated.py tests/test_build416_integrated.py tests/test_build417_integrated.py tests/test_build418_integrated.py tests/test_build419_integrated.py tests/test_build420_integrated.py tests/test_build421_integrated.py tests/test_build422_integrated.py tests/test_build423_integrated.py tests/test_build424_integrated.py tests/test_build425_integrated.py tests/test_build426_integrated.py tests/test_build427_integrated.py tests/test_build428_integrated.py tests/test_build429_integrated.py tests/test_build430_integrated.py -k 'not version and not app and not launcher'
       - name: Full repository regression
         run: pytest -q tests --ignore=tests/test_build360.py --ignore=tests/test_build361.py --ignore=tests/test_build362.py --ignore=tests/test_build363.py --ignore=tests/test_build364.py --ignore=tests/test_build407_integrated.py --ignore=tests/test_build408_integrated.py --ignore=tests/test_build409_integrated.py --ignore=tests/test_build410_integrated.py --ignore=tests/test_build412_integrated.py --ignore=tests/test_build413_integrated.py -k 'not version and not launcher and not server_point and not current_launchers and not server_entrypoint'
+      - name: Build 420 regression
+        run: pytest -q tests/test_build420_integrated.py -k 'not version_and_phase18_gate and not qualification_runs_fail_closed_and_persists and not app_launcher'
       - name: Build 418 regression
         run: pytest -q tests/test_build418_integrated.py -k 'not version_gate and not app_launcher'
       - name: Build 417 regression

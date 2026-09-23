@@ -1,0 +1,1 @@
+{"build":"425.0","phase":19,"name":"AI Investigation Crawler Core","production_release_ready":false,"network_executor":false,"acceptance":["case-scoped crawl tasks","source-health gating","acquisition-event handoff","content fingerprint handoff","public HTTP(S) boundary","no access-control bypass","no autonomous scope expansion","421-425 checkpoint required"]}

@@ -1,0 +1,1 @@
+{"build":"430.0","phase":19,"name":"News Entity/Event Extraction","hard_checkpoint":true,"production_release_ready":false,"acceptance":["provenance-bound entity extraction","event extraction","claim extraction","extractor versioning","confidence bounds","claims default uncorroborated","machine observation not fact","checkpoint regression required"]}
