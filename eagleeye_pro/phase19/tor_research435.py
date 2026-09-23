@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime,timezone
 from urllib.parse import urlsplit,urlunsplit
-import hashlib,json,secrets
+import hashlib,json,secrets,threading
 from eagleeye.crawler.engine import VALID_ONION
 BUILD='435.0';POLICY_ID='phase19.isolated-tor-research-worker.v435'
 STATES=('planned','running','quarantined_for_review','failed','blocked','reviewed','rejected')
@@ -20,7 +20,7 @@ def _onion_url(v):
  netloc=host if p.port is None else f'{host}:{p.port}'
  return urlunsplit((p.scheme.lower(),netloc,p.path or '/',p.query,''))
 class IsolatedTorResearchWorker435:
- def __init__(self,db,audit,*,registry421,events422,content423,tor370,governance,actor='local-analyst'):self.db=db;self.audit=audit;self.registry421=registry421;self.events422=events422;self.content423=content423;self.tor370=tor370;self.governance=governance;self.actor=actor;self._init_schema()
+ def __init__(self,db,audit,*,registry421,events422,content423,tor370,governance,actor='local-analyst'):self.db=db;self.audit=audit;self.registry421=registry421;self.events422=events422;self.content423=content423;self.tor370=tor370;self.governance=governance;self.actor=actor;self._live_lock=threading.Lock();self._init_schema()
  def _init_schema(self):
   self.db.conn.executescript("""CREATE TABLE IF NOT EXISTS tor_research_task_435(task_id TEXT PRIMARY KEY,case_id TEXT NOT NULL,source_id TEXT NOT NULL,target TEXT NOT NULL,objective TEXT NOT NULL,approval_ref TEXT NOT NULL,state TEXT NOT NULL,max_bytes INTEGER NOT NULL,timeout_seconds INTEGER NOT NULL,execution_mode TEXT NOT NULL,event_id TEXT NOT NULL,content_id TEXT NOT NULL,http_status INTEGER NOT NULL,media_type TEXT NOT NULL,response_sha256 TEXT NOT NULL,isolation_fingerprint TEXT NOT NULL,created_by TEXT NOT NULL,created_at TEXT NOT NULL,completed_at TEXT NOT NULL,reviewed_by TEXT NOT NULL,reviewed_at TEXT NOT NULL,review_decision TEXT NOT NULL,review_note TEXT NOT NULL,record_hash TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_tr435_case ON tor_research_task_435(case_id,state,created_at);CREATE INDEX IF NOT EXISTS idx_tr435_source ON tor_research_task_435(source_id,created_at);""");self.db.conn.commit()
  def _rh(self,r):return _hash({k:r[k] for k in r if k!='record_hash'})
@@ -80,8 +80,11 @@ class IsolatedTorResearchWorker435:
   if str(confirmation or '').strip().upper()!='TOR435_LIVE':raise PermissionError('explicit TOR435_LIVE confirmation required')
   cfg=self.tor370.status()
   if not cfg.get('gateway_enabled'):raise PermissionError('controlled Tor gateway is disabled')
-  isolation=self.tor370.isolation_credentials(task_id)['fingerprint'];transport=self.tor370.make_transport(search_run_id=task_id)
-  return self._execute(identity=identity,task_id=task_id,transport=transport,mode='live_tor_read_only',isolation_fingerprint=isolation)
+  if not self._live_lock.acquire(blocking=False):raise RuntimeError('isolated Tor live worker is busy')
+  try:
+   isolation=self.tor370.isolation_credentials(task_id)['fingerprint'];transport=self.tor370.make_transport(search_run_id=task_id)
+   return self._execute(identity=identity,task_id=task_id,transport=transport,mode='live_tor_read_only',isolation_fingerprint=isolation)
+  finally:self._live_lock.release()
  def execute_replay(self,*,identity,task_id,transport):
   return self._execute(identity=identity,task_id=task_id,transport=transport,mode='deterministic_replay',isolation_fingerprint='replay-no-network')
  def review(self,*,identity,task_id,decision,note=''):
@@ -117,4 +120,4 @@ class IsolatedTorResearchWorker435:
    if self._rh(d)!=d['record_hash']:bad.append({'task_id':d['task_id'],'reason':'record_hash_mismatch'})
   return {'build':BUILD,'valid':not bad,'violations':bad}
  def status(self):
-  n=self.db.one('SELECT COUNT(*) n FROM tor_research_task_435')['n'];return {'build':BUILD,'policy':POLICY_ID,'tasks':int(n),'states':list(STATES),'safe_media_types':sorted(SAFE_MEDIA),'integrity_valid':self.verify_integrity()['valid'],'isolated_tor_worker':True,'live_network_via_controlled_tor_gateway_only':True,'live_execution_requires_approval_ref_and_confirmation':True,'read_only_get_only':True,'public_v3_onion_only':True,'destination_credentials_supported':False,'forms_or_uploads_supported':False,'access_control_bypass_supported':False,'autonomous_scope_expansion':False,'quarantine_before_review':True,'evidence_promotion':False,'truth_determination':False,'hard_checkpoint':True,'production_release_ready':False}
+  n=self.db.one('SELECT COUNT(*) n FROM tor_research_task_435')['n'];return {'build':BUILD,'policy':POLICY_ID,'tasks':int(n),'states':list(STATES),'safe_media_types':sorted(SAFE_MEDIA),'integrity_valid':self.verify_integrity()['valid'],'isolated_tor_worker':True,'live_network_via_controlled_tor_gateway_only':True,'live_execution_requires_approval_ref_and_confirmation':True,'read_only_get_only':True,'public_v3_onion_only':True,'destination_credentials_supported':False,'forms_or_uploads_supported':False,'access_control_bypass_supported':False,'autonomous_scope_expansion':False,'quarantine_before_review':True,'evidence_promotion':False,'truth_determination':False,'hard_checkpoint':True,'max_concurrent_live_tasks':1,'production_release_ready':False}
