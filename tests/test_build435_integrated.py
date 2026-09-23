@@ -41,6 +41,16 @@ def test_live_execution_requires_repeated_approval_and_exact_confirmation(tmp_pa
   with pytest.raises(PermissionError):c.build435.execute_tor_research_live(identity=i,task_id=t['task_id'],approval_ref='WRONG',confirmation='TOR435_LIVE')
   with pytest.raises(PermissionError):c.build435.execute_tor_research_live(identity=i,task_id=t['task_id'],approval_ref='HUMAN-435',confirmation='GO')
   with pytest.raises(PermissionError):c.build435.execute_tor_research_live(identity=i,task_id=t['task_id'],approval_ref='HUMAN-435',confirmation='TOR435_LIVE')
+def test_live_worker_is_single_lane_and_web_offloads_blocking_io(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  i=ident(c);cid=case(c,'Live lane')['case_id'];s=source(c);t=c.build435.create_tor_research_task(identity=i,case_id=cid,source_id=s['source_id'],target=BASE+'live-lane',objective='lane test',approval_ref='LANE-435')
+  c.build370.configure_tor_gateway(identity=i,confirmation='ENABLE_TOR',enabled=True,socks_host='127.0.0.1',socks_port=9)
+  assert c.tor_research_435._live_lock.acquire(blocking=False)
+  try:
+   with pytest.raises(RuntimeError):c.build435.execute_tor_research_live(identity=i,task_id=t['task_id'],approval_ref='LANE-435',confirmation='TOR435_LIVE')
+  finally:c.tor_research_435._live_lock.release()
+  assert c.build435.tor_worker_status()['max_concurrent_live_tasks']==1
+ app=(ROOT/'src/eagleeye/interfaces/web/app435.py').read_text();assert 'run_in_threadpool' in app and 'await run_in_threadpool' in app
 def test_case_isolation_and_tamper_detection(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);ca=case(c,'A')['case_id'];cb=case(c,'B')['case_id'];s=source(c);ta=c.build435.create_tor_research_task(identity=i,case_id=ca,source_id=s['source_id'],target=BASE+'a',objective='a',approval_ref='A');tb=c.build435.create_tor_research_task(identity=i,case_id=cb,source_id=s['source_id'],target=BASE+'b',objective='b',approval_ref='B')
