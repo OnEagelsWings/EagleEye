@@ -1,6 +1,6 @@
-# EagleEye — Build 431
+# EagleEye — Build 432
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 431 is published here for **public testing and evaluation**, not as a general production-ready release.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 432 is published here for **public testing and evaluation**, not as a general production-ready release.
 
 ## External testers wanted
 
@@ -30,7 +30,7 @@ Manual Windows start:
 
 ```powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_431_0.py
+py -3 EAGLEEYE_PRO_432_0.py
 ```
 
 ## Linux / macOS
@@ -50,7 +50,7 @@ The default local address is `http://127.0.0.1:8765`. If that port is occupied, 
 
 1. Start EagleEye on a clean machine or Python environment.
 2. Confirm that the browser workspace opens.
-3. Open `/health` on the displayed local address and verify `ok: true` and build `431.0`.
+3. Open `/health` on the displayed local address and verify `ok: true` and build `432.0`.
 4. Create a test/demo case and navigate through the case/evidence workspace.
 5. Close EagleEye completely and start it again.
 6. Report PASS/FAIL and any error message in [the public beta issue](https://github.com/OnEagelsWings/EagleEye/issues/2) or open a separate issue for a reproducible defect.
@@ -72,10 +72,10 @@ python -m pip install -e '.[test]'
 pytest
 ```
 
-The canonical Build-431 integration suite is:
+The canonical Build-432 integration suite is:
 
 ```bash
-pytest -q tests/test_build431_integrated.py
+pytest -q tests/test_build432_integrated.py
 ```
 
 ## What feedback helps most
@@ -89,6 +89,6 @@ See [TESTING.md](TESTING.md) for the complete test procedure and report template
 - The default server binds only to loopback (`127.0.0.1`).
 - No automatic external research/network execution is started on boot.
 - Case evidence, runtime databases, credentials, `.env` files, keys, certificates and logs are excluded from version control.
-- Build 431 is a Phase-19 engineering checkpoint; broad live-research/general production readiness is **not** claimed.
+- Build 432 is a Phase-19 engineering checkpoint; broad live-research/general production readiness is **not** claimed.
 
-See `README_BUILD_431_0.md`, the Build-431 manifest and regression artifacts for the engineering qualification record.
+See `README_BUILD_432_0.md`, the Build-432 manifest and regression artifacts for the engineering qualification record.
