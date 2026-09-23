@@ -1,5 +1,5 @@
 from pathlib import Path
-import pytest
+import pytest,runpy
 from eagleeye_pro.core.app_context import AppContext
 from eagleeye.phase16.tor_gateway370 import StaticTorReplayTransport370
 from eagleeye.crawler.engine import FetchResponse
@@ -51,6 +51,26 @@ def test_live_worker_is_single_lane_and_web_offloads_blocking_io(tmp_path):
   finally:c.tor_research_435._live_lock.release()
   assert c.build435.tor_worker_status()['max_concurrent_live_tasks']==1
  app=(ROOT/'src/eagleeye/interfaces/web/app435.py').read_text();assert 'run_in_threadpool' in app and 'await run_in_threadpool' in app
+def test_spawn_launcher_does_not_construct_workspace(monkeypatch):
+ import eagleeye.interfaces.web.app435 as app435
+ calls=[]
+ monkeypatch.setattr(app435,'create_workspace_app435',lambda *a,**k:calls.append((a,k)))
+ ns=runpy.run_path(str(ROOT/'EAGLEEYE_PRO_435_0.py'),run_name='__mp_main__')
+ assert calls==[];assert ns['app'] is None
+
+def test_case_researcher_can_run_first_selftest_without_source_manage(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  admin=ident(c);cid=case(c,'Researcher selftest')['case_id']
+  c.team_governance_359.create_user(identity=admin,username='researcher435',display_name='Case Tester',global_role='read_only',password='Pine!Quartz!Orbit!2026')
+  c.team_governance_359.assign_case_role(identity=admin,case_id=cid,username='researcher435',case_role='investigator',notes='Build 435 fixture permission regression')
+  researcher=c.team_identity_359.public_user('researcher435')
+  with pytest.raises(PermissionError):c.build421.register_source(identity=researcher,name='Denied source',source_type='website',base_url='https://example.org',capabilities=['pages'])
+  r=c.build435.run_tor_case_selftest(identity=researcher,case_id=cid);assert r['result']=='PASS';assert all(r['checks'].values())
+  fixture=c.acquisition_source_registry_421.get('src421_fixture_tor435');assert fixture['coverage']['fixture_only'] is True
+  t=c.build435.create_tor_research_task(identity=researcher,case_id=cid,source_id=fixture['source_id'],target=fixture['base_url']+'live-forbidden',objective='must never execute live',approval_ref='NO-LIVE-FIXTURE')
+  c.build370.configure_tor_gateway(identity=admin,confirmation='ENABLE_TOR',enabled=True,socks_host='127.0.0.1',socks_port=9)
+  with pytest.raises(PermissionError):c.build435.execute_tor_research_live(identity=researcher,task_id=t['task_id'],approval_ref='NO-LIVE-FIXTURE',confirmation='TOR435_LIVE')
+
 def test_case_isolation_and_tamper_detection(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);ca=case(c,'A')['case_id'];cb=case(c,'B')['case_id'];s=source(c);ta=c.build435.create_tor_research_task(identity=i,case_id=ca,source_id=s['source_id'],target=BASE+'a',objective='a',approval_ref='A');tb=c.build435.create_tor_research_task(identity=i,case_id=cb,source_id=s['source_id'],target=BASE+'b',objective='b',approval_ref='B')
