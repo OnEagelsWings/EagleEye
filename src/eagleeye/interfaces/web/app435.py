@@ -1,5 +1,6 @@
 from __future__ import annotations
 from fastapi import HTTPException,Request
+from starlette.concurrency import run_in_threadpool
 from .app379 import COOKIE
 from .app434 import create_workspace_app434
 def create_workspace_app435(*,base_dir=None):
@@ -43,7 +44,7 @@ def create_workspace_app435(*,base_dir=None):
    if task['case_id']!=case_id:raise KeyError('Tor task not found in case')
    b=await request.json()
    if not isinstance(b,dict):raise ValueError('JSON object required')
-   return ctx.build435.execute_tor_research_live(identity=identity,task_id=task_id,approval_ref=b['approval_ref'],confirmation=b['confirmation'])
+   return await run_in_threadpool(ctx.build435.execute_tor_research_live,identity=identity,task_id=task_id,approval_ref=b['approval_ref'],confirmation=b['confirmation'])
   except KeyError as e:raise HTTPException(404,str(e))
   except PermissionError as e:raise HTTPException(403,str(e))
   except RuntimeError as e:raise HTTPException(502,str(e))
