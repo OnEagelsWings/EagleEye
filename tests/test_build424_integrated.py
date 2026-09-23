@@ -9,6 +9,14 @@ def source(c):
 def test_health_and_advice(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=source(c);c.build424.record_source_health(identity=ident(c),source_id=s['source_id'],state='rate_limited',http_status=429,latency_ms=250,quota_remaining=0,quota_limit=100,retry_after_seconds=60);a=c.build424.acquisition_advice(s['source_id']);assert a['decision']=='defer';assert a['retry_after_seconds']==60
+def test_health_timestamp_validation_and_actual_order(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  s=source(c);i=ident(c)
+  try:c.build424.record_source_health(identity=i,source_id=s['source_id'],state='unavailable',observed_at='not-a-date');assert False
+  except ValueError:pass
+  c.build424.record_source_health(identity=i,source_id=s['source_id'],state='unavailable',observed_at='2026-01-01T01:00:00+02:00')
+  c.build424.record_source_health(identity=i,source_id=s['source_id'],state='healthy',observed_at='2025-12-31T23:30:00+00:00')
+  assert c.build424.source_health(s['source_id'])['state']=='healthy'
 def test_health_validation_and_integrity(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=source(c)
