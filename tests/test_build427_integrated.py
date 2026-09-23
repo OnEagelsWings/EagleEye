@@ -12,6 +12,11 @@ def test_change_detection(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s,t=setup(c);a=ingest(c,t,'alpha beta gamma');x=c.build427.capture_snapshot(identity=ident(c),event_id=a['event_id'],content_id=a['content']['content_id'],text='alpha beta gamma');assert x['change'] is None
   t2=c.build425.create_crawl_task(identity=ident(c),case_id='case427',source_id=s['source_id'],target='https://example.org/report',objective='track report');b=ingest(c,t2,'alpha beta gamma delta');y=c.build427.capture_snapshot(identity=ident(c),event_id=b['event_id'],content_id=b['content']['content_id'],text='alpha beta gamma delta');assert y['change']['change_kind'] in {'minor','changed'};assert 'delta' in y['change']['added'];assert c.change_detection_427.verify_integrity()['valid']
+def test_equal_timestamp_uses_existing_snapshot_as_previous(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  i=ident(c);s=c.build421.register_source(identity=i,name='Equal Time',source_type='website',base_url='https://example.org',capabilities=['pages'])
+  e1=c.build422.record_event(identity=i,case_id='same-time',source_id=s['source_id'],target='https://example.org/report',method='http',retrieved_at='2026-03-01T12:00:00Z');c1=c.build423.ingest_content(identity=i,event_id=e1['event_id'],content='version one');a=c.build427.capture_snapshot(identity=i,event_id=e1['event_id'],content_id=c1['content_id'],text='version one');assert a['change'] is None
+  e2=c.build422.record_event(identity=i,case_id='same-time',source_id=s['source_id'],target='https://example.org/report',method='http',retrieved_at='2026-03-01T12:00:00Z');c2=c.build423.ingest_content(identity=i,event_id=e2['event_id'],content='version two');b=c.build427.capture_snapshot(identity=i,event_id=e2['event_id'],content_id=c2['content_id'],text='version two');assert b['change'] is not None;assert b['change']['previous_snapshot_id']==a['snapshot']['snapshot_id']
 def test_out_of_order_historical_capture_never_links_future_as_previous(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);s=c.build421.register_source(identity=i,name='Chronology',source_type='website',base_url='https://example.org',capabilities=['pages'])
