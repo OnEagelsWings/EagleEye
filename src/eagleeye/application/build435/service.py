@@ -6,10 +6,11 @@ def _live_fetch_process(out,cfg,creds,target,timeout_seconds,max_bytes):
  try:
   from eagleeye.phase16.tor_gateway370 import Socks5TorReadOnlyTransport370
   t=Socks5TorReadOnlyTransport370(socks_host=cfg['socks_host'],socks_port=int(cfg['socks_port']),isolation_username=creds['username'],isolation_password=creds['password'])
+  out.put({'kind':'ready'})
   r=t.fetch(target,method='GET',headers={},timeout_seconds=int(timeout_seconds),max_bytes=int(max_bytes))
-  out.put({'ok':True,'url':r.url,'status':int(r.status),'headers':dict(r.headers),'body':bytes(r.body),'elapsed_ms':int(r.elapsed_ms)})
+  out.put({'kind':'result','ok':True,'url':r.url,'status':int(r.status),'headers':dict(r.headers),'body':bytes(r.body),'elapsed_ms':int(r.elapsed_ms)})
  except BaseException as exc:
-  out.put({'ok':False,'error':type(exc).__name__})
+  out.put({'kind':'result','ok':False,'error':type(exc).__name__})
 
 class Build435IsolatedTorWorkerService:
  BUILD='435.0'
@@ -29,14 +30,23 @@ class Build435IsolatedTorWorkerService:
   if not cfg.get('enabled'):raise PermissionError('controlled Tor gateway is disabled')
   if not self._live_process_lock.acquire(blocking=False):raise RuntimeError('isolated Tor live worker is busy')
   try:
-   creds=self.tor435.tor370.isolation_credentials(task_id);ctx=multiprocessing.get_context('spawn');out=ctx.Queue(maxsize=1);p=ctx.Process(target=_live_fetch_process,args=(out,{'socks_host':cfg['socks_host'],'socks_port':cfg['socks_port']},{'username':creds['username'],'password':creds['password']},task['target'],int(task['timeout_seconds']),int(task['max_bytes'])),daemon=True)
-   p.start();deadline=max(1,int(task['timeout_seconds']))
+   creds=self.tor435.tor370.isolation_credentials(task_id);ctx=multiprocessing.get_context('spawn');out=ctx.Queue(maxsize=2);p=ctx.Process(target=_live_fetch_process,args=(out,{'socks_host':cfg['socks_host'],'socks_port':cfg['socks_port']},{'username':creds['username'],'password':creds['password']},task['target'],int(task['timeout_seconds']),int(task['max_bytes'])),daemon=True)
+   p.start();startup_deadline=15
+   try:first=out.get(timeout=startup_deadline)
+   except queue.Empty:
+    if p.is_alive():p.terminate();p.join(2)
+    if p.is_alive():p.kill();p.join(2)
+    self.tor435._record_failure(ident,self.tor435.get(task_id),'WorkerStartupDeadlineExceeded');raise RuntimeError('isolated Tor worker failed to become ready within startup deadline')
+   if first.get('kind')!='ready':
+    if p.is_alive():p.terminate();p.join(2)
+    if p.is_alive():p.kill();p.join(2)
+    self.tor435._record_failure(ident,self.tor435.get(task_id),str(first.get('error') or 'WorkerStartupFailure'));raise RuntimeError('isolated Tor worker failed during startup: '+str(first.get('error') or 'WorkerStartupFailure'))
+   deadline=max(1,int(task['timeout_seconds']))
    try:result=out.get(timeout=deadline)
    except queue.Empty:
-    if p.is_alive():
-     p.terminate();p.join(2)
-     if p.is_alive():p.kill();p.join(2)
-    self.tor435._record_failure(ident,self.tor435.get(task_id),'WallClockDeadlineExceeded' if p.is_alive() or p.exitcode is None else 'WorkerExitedWithoutResult');raise RuntimeError('Tor research retrieval exceeded absolute wall-clock deadline or worker exited without a result')
+    if p.is_alive():p.terminate();p.join(2)
+    if p.is_alive():p.kill();p.join(2)
+    self.tor435._record_failure(ident,self.tor435.get(task_id),'WallClockDeadlineExceeded');raise RuntimeError('Tor research retrieval exceeded absolute wall-clock deadline')
    p.join(2)
    if p.is_alive():
     p.terminate();p.join(2)
@@ -55,4 +65,4 @@ class Build435IsolatedTorWorkerService:
  def checkpoint_435(self):
   base=self.tor435.checkpoint();registry=self.build434.registry_organization_status();checks={**base['checks'],'registry_organization_integrity':bool(registry['integrity_valid']),'registry_organization_chain_coherent':bool(registry['version_coherent'])};return {**base,'checks':checks,'checkpoint_ready':all(checks.values()),'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':15,'production_release_ready':False}
  def tor_worker_status(self):
-  s=self.tor435.status();cp=self.checkpoint_435();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':15,'checkpoint_ready':cp['checkpoint_ready'],'live_wall_clock_deadline_process':True,'production_release_ready':False}
+  s=self.tor435.status();cp=self.checkpoint_435();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':15,'checkpoint_ready':cp['checkpoint_ready'],'live_wall_clock_deadline_process':True,'spawn_launcher_bootstrap_guard':True,'worker_ready_handshake':True,'production_release_ready':False}
