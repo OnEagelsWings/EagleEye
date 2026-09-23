@@ -4,6 +4,7 @@ import hashlib,json,secrets
 BUILD='434.0';POLICY_ID='phase19.registry-organization-integration.v434'
 REGISTRY_KINDS=('company_registry','association_registry','charity_registry','ngo_registry','government_registry','lei_registry','generic_registry')
 SOURCE_TYPES=('registry','government','ngo','api','dataset')
+RELATION_TYPES=('parent','subsidiary','affiliate','partner','member','funder','grantee','trade_name','predecessor','successor')
 def _now():return datetime.now(timezone.utc).isoformat(timespec='seconds')
 def _canon(v):return json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
 def _hash(v):return hashlib.sha256(_canon(v).encode()).hexdigest()
@@ -35,6 +36,10 @@ class RegistryOrganizationIntegration434:
   org_type=_clean(data.get('organization_type') or 'unknown',80).lower();jurisdiction=_clean(data.get('jurisdiction'),200);record_status=_clean(data.get('registration_status') or data.get('status') or 'unknown',100).lower()
   aliases=data.get('aliases') or [];identifiers=data.get('identifiers') or [];people=data.get('people') or []
   if not isinstance(aliases,list) or not isinstance(identifiers,list) or not isinstance(people,list):raise ValueError('aliases, identifiers and people must be lists')
+  for ident in identifiers:
+   if not isinstance(ident,dict) or not _clean(ident.get('type'),80) or not _clean(ident.get('value'),300):raise ValueError('identifier entries require type and value')
+  for person in people:
+   if not isinstance(person,dict) or not _clean(person.get('name'),300) or not _clean(person.get('role'),200):raise ValueError('people entries require name and role')
   attrs={k:data.get(k) for k in ('legal_name','organization_type','jurisdiction','registration_status','address','website','founded_at','dissolved_at','purpose','legal_form') if data.get(k) not in (None,'')}
   attrs['legal_name']=legal_name
   if org_type:attrs['organization_type']=org_type
@@ -47,9 +52,11 @@ class RegistryOrganizationIntegration434:
    if not isinstance(rel,dict):raise ValueError('relation entries must be objects')
    target=str(rel.get('target_subject_id') or '').strip();typ=str(rel.get('relation_type') or '').strip().lower()
    if not target or not typ:raise ValueError('relation target_subject_id and relation_type required')
+   if typ not in RELATION_TYPES:raise ValueError('unsupported organization relation type')
    target_sub=self.organization433._subject(target)
    if target_sub['case_id']!=case_id:raise ValueError('relation target belongs to another case')
    checked_relations.append({'target_subject_id':target,'relation_type':typ,'source_span':_clean(rel.get('source_span'),1000)})
+  auto_created_subject=not bool(str(subject_id or '').strip())
   if subject_id:
    sub=self.organization433._subject(subject_id)
    if sub['case_id']!=case_id:raise ValueError('organization subject belongs to another case')
@@ -59,7 +66,7 @@ class RegistryOrganizationIntegration434:
   relation_ids=[]
   for rel in checked_relations:
    rr=self.organization433.record_relation(identity=identity,case_id=case_id,source_subject_id=subject_id,target_subject_id=rel['target_subject_id'],relation_type=rel['relation_type'],source_id=source_id,event_id=event_id,content_id=content_id,source_span=rel['source_span'],test_fixture=test_fixture);relation_ids.append(rr['relation_id'])
-  normalized={'legal_name':legal_name,'organization_type':org_type,'jurisdiction':jurisdiction,'record_status':record_status,'aliases':aliases,'identifiers':identifiers,'people':people,'attributes':attrs,'observation_id':observation['observation_id'],'auto_created_subject':not bool(str(subject_id or '').strip() and False),'automatic_entity_resolution':False,'source_claims_are_not_verified_facts':True}
+  normalized={'legal_name':legal_name,'organization_type':org_type,'jurisdiction':jurisdiction,'record_status':record_status,'aliases':aliases,'identifiers':identifiers,'people':people,'attributes':attrs,'observation_id':observation['observation_id'],'auto_created_subject':auto_created_subject,'automatic_entity_resolution':False,'source_claims_are_not_verified_facts':True}
   actor=str(identity.get('user_id') or identity.get('username') or self.actor);r={'integration_id':'regorg434_'+secrets.token_hex(10),'case_id':case_id,'subject_id':subject_id,'source_id':source_id,'event_id':event_id,'content_id':content_id,'registry_kind':kind,'registry_name':name,'record_key':key,'jurisdiction':jurisdiction,'record_status':record_status,'normalized_json':_canon(normalized),'relation_ids_json':_canon(relation_ids),'test_fixture':1 if test_fixture else 0,'created_by':actor,'created_at':_now()};r['record_hash']=self._rh(r);self.db.execute('INSERT INTO registry_organization_record_434 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('registry_organization_imported_434','registry_organization_record_434',r['integration_id'],case_id,{'subject_id':subject_id,'registry_kind':kind,'record_key':key,'relations':len(relation_ids),'test_fixture':bool(test_fixture)});return {**r,'normalized':normalized,'relation_ids':relation_ids,'test_fixture':bool(test_fixture),'observation':observation}
  def case_records(self,case_id):
   return [self._decode(r) for r in self.db.all('SELECT * FROM registry_organization_record_434 WHERE case_id=? ORDER BY created_at,integration_id',(str(case_id),))]
