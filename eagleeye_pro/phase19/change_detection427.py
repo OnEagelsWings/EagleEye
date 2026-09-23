@@ -38,7 +38,7 @@ class ChangeDetection427:
    successor_change=self._record_change(r,successor)
   self.audit.log('source_snapshot_captured_427','acquisition_event_422',event_id,ev['case_id'],{'snapshot_id':sid,'change_kind':change['change_kind'] if change else 'baseline','successor_relinked':bool(successor_change)});return {'snapshot':r,'change':change,'successor_change':successor_change}
  def history(self,case_id,source_id,target):
-  return [dict(r) for r in self.db.all('SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? ORDER BY captured_at,created_at',(case_id,source_id,target))]
+  return [dict(r) for r in self.db.all('SELECT * FROM source_snapshot_427 WHERE case_id=? AND source_id=? AND target=? ORDER BY julianday(captured_at),rowid',(case_id,source_id,target))]
  def changes(self,case_id):
   return [dict(r) for r in self.db.all('SELECT * FROM content_change_427 WHERE case_id=? ORDER BY created_at DESC',(case_id,))]
  def verify_integrity(self):
