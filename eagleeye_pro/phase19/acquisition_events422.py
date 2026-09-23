@@ -5,6 +5,8 @@ BUILD='422.0';POLICY_ID='phase19.acquisition-event-provenance.v422'
 METHODS=('http','api','rss','search','dataset','archive','social_api','registry','tor_public','manual_import')
 STATUSES=('observed','retrieved','failed','blocked','quarantined')
 def _now():return datetime.now(timezone.utc).isoformat(timespec='seconds')
+def _iso_utc(value):
+ d=datetime.fromisoformat(str(value).replace('Z','+00:00'));d=d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d.astimezone(timezone.utc);return d.isoformat(timespec='seconds')
 def _canon(v):return json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
 def _sha(v):return hashlib.sha256(_canon(v).encode()).hexdigest()
 class AcquisitionEvents422:
@@ -33,8 +35,7 @@ class AcquisitionEvents422:
    if parent['case_id']!=case_id:raise ValueError('parent event must belong to same case')
   digest=str(content_sha256 or '').lower().strip()
   if digest and (len(digest)!=64 or any(c not in '0123456789abcdef' for c in digest)):raise ValueError('content_sha256 must be a SHA-256 hex digest')
-  ts=retrieved_at or _now()
-  try:datetime.fromisoformat(ts.replace('Z','+00:00'))
+  try:ts=_iso_utc(retrieved_at or _now())
   except Exception:raise ValueError('retrieved_at must be ISO-8601')
   eid='acq422_'+secrets.token_hex(10);snapshot={k:src.get(k) for k in ('source_id','name','source_type','access_mode','base_url','terms_url','license_note','record_hash')};r={'event_id':eid,'case_id':case_id,'source_id':source_id,'target':target,'method':method,'status':status,'retrieved_at':ts,'content_sha256':digest,'media_type':str(media_type or ''),'bytes_count':max(0,int(bytes_count or 0)),'source_snapshot_json':_canon(snapshot),'parent_event_id':str(parent_event_id or ''),'provenance_json':_canon(provenance or {}),'usage_json':_canon(usage or {}),'created_by':actor,'created_at':_now()};r['record_hash']=self._hash(r)
   cols='event_id,case_id,source_id,target,method,status,retrieved_at,content_sha256,media_type,bytes_count,source_snapshot_json,parent_event_id,provenance_json,usage_json,created_by,created_at,record_hash'
@@ -43,7 +44,7 @@ class AcquisitionEvents422:
   row=self.db.one('SELECT * FROM acquisition_event_422 WHERE event_id=?',(event_id,))
   if not row:raise KeyError(event_id)
   d=dict(row);d['source_snapshot']=json.loads(d.pop('source_snapshot_json'));d['provenance']=json.loads(d.pop('provenance_json'));d['usage']=json.loads(d.pop('usage_json'));return d
- def list_case(self,case_id):return [self.get(r['event_id']) for r in self.db.all('SELECT event_id FROM acquisition_event_422 WHERE case_id=? ORDER BY retrieved_at,event_id',(case_id,))]
+ def list_case(self,case_id):return [self.get(r['event_id']) for r in self.db.all('SELECT event_id FROM acquisition_event_422 WHERE case_id=? ORDER BY julianday(retrieved_at),event_id',(case_id,))]
  def verify_integrity(self):
   bad=[]
   for row in self.db.all('SELECT * FROM acquisition_event_422'):
