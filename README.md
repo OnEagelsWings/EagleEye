@@ -78,7 +78,7 @@ The canonical Build-433 integration suite is:
 pytest -q tests/test_build433_integrated.py
 ```
 
-For a **case-specific Build-433 test inside the running application**, use [BUILD_433_CASE_TEST.md](BUILD_433_CASE_TEST.md). It includes a one-step authenticated self-test that binds a synthetic public-social fixture to the case you choose and verifies case/event/content linkage and integrity.
+For a **case-specific Build-433 test inside the running application**, use [BUILD_433_CASE_TEST.md](BUILD_433_CASE_TEST.md). It includes a one-step authenticated self-test that creates synthetic organization subjects and provenance-bound source claims in the case you choose, then verifies case/event/content linkage and integrity.
 
 ## What feedback helps most
 
