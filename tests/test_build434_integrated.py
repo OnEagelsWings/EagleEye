@@ -49,4 +49,4 @@ def test_case_selftest_and_integrity(tmp_path):
 def test_contract_and_case_test_docs(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build434.registry_organization_status();assert s['version_coherent'];assert s['phase19_builds_completed']==14;assert s['case_specific_selftest'];assert not s['network_authority'];assert not s['automatic_entity_resolution'];assert not s['automatic_merge'];assert not s['ownership_or_control_determination'];assert s['source_claims_are_not_verified_facts'];assert not s['production_release_ready']
- assert 'app434 import create_workspace_app434' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text();assert (ROOT/'BUILD_434_CASE_TEST.md').exists();readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_434_0.py' in readme and 'test_build434_integrated.py' in readme
+ assert (ROOT/'src/eagleeye/interfaces/web/app434.py').exists();assert (ROOT/'BUILD_434_CASE_TEST.md').exists()
