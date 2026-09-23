@@ -3,6 +3,8 @@ from datetime import datetime,timezone
 import hashlib,json,secrets
 BUILD='424.0';POLICY_ID='phase19.source-health.v424'
 def _now():return datetime.now(timezone.utc).isoformat(timespec='seconds')
+def _iso_utc(value):
+ d=datetime.fromisoformat(str(value).replace('Z','+00:00'));d=d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d.astimezone(timezone.utc);return d.isoformat(timespec='seconds')
 def _canon(v):return json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
 def _hash(v):return hashlib.sha256(_canon(v).encode()).hexdigest()
 class SourceHealth424:
@@ -17,9 +19,15 @@ class SourceHealth424:
   for name,v in [('latency_ms',latency_ms),('quota_remaining',quota_remaining),('quota_limit',quota_limit),('retry_after_seconds',retry_after_seconds)]:
    if v is not None and int(v)<0:raise ValueError(name+' must be >= 0')
   if quota_remaining is not None and quota_limit is not None and int(quota_remaining)>int(quota_limit):raise ValueError('quota_remaining exceeds quota_limit')
-  actor=str(identity.get('user_id') or identity.get('username') or self.actor);r={'health_event_id':'sh424_'+secrets.token_hex(10),'source_id':source_id,'observed_at':observed_at or _now(),'state':state,'http_status':http_status,'latency_ms':latency_ms,'quota_remaining':quota_remaining,'quota_limit':quota_limit,'retry_after_seconds':retry_after_seconds,'freshness_at':freshness_at,'error_class':str(error_class or ''),'metadata_json':_canon(metadata or {}),'created_by':actor,'created_at':_now()};r['record_hash']=self._row_hash(r);self.db.execute('INSERT INTO source_health_event_424 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('source_health_recorded_424','acquisition_source_421',source_id,None,{'health_event_id':r['health_event_id'],'state':state});return r
+  try:observed=_iso_utc(observed_at or _now())
+  except Exception:raise ValueError('observed_at must be ISO-8601')
+  if freshness_at:
+   try:freshness_at=_iso_utc(freshness_at)
+   except Exception:raise ValueError('freshness_at must be ISO-8601')
+  if http_status is not None and not 100<=int(http_status)<=599:raise ValueError('http_status must be between 100 and 599')
+  actor=str(identity.get('user_id') or identity.get('username') or self.actor);r={'health_event_id':'sh424_'+secrets.token_hex(10),'source_id':source_id,'observed_at':observed,'state':state,'http_status':http_status,'latency_ms':latency_ms,'quota_remaining':quota_remaining,'quota_limit':quota_limit,'retry_after_seconds':retry_after_seconds,'freshness_at':freshness_at,'error_class':str(error_class or ''),'metadata_json':_canon(metadata or {}),'created_by':actor,'created_at':_now()};r['record_hash']=self._row_hash(r);self.db.execute('INSERT INTO source_health_event_424 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('source_health_recorded_424','acquisition_source_421',source_id,None,{'health_event_id':r['health_event_id'],'state':state});return r
  def latest(self,source_id):
-  self.registry421.get(source_id);r=self.db.one('SELECT * FROM source_health_event_424 WHERE source_id=? ORDER BY observed_at DESC,created_at DESC LIMIT 1',(source_id,));return dict(r) if r else None
+  self.registry421.get(source_id);r=self.db.one('SELECT * FROM source_health_event_424 WHERE source_id=? ORDER BY julianday(observed_at) DESC,created_at DESC LIMIT 1',(source_id,));return dict(r) if r else None
  def acquisition_advice(self,source_id):
   r=self.latest(source_id)
   if not r:return {'source_id':source_id,'decision':'unknown','reason':'no_health_observation','retry_after_seconds':None}
