@@ -15,6 +15,13 @@ def create_workspace_app436(*,base_dir=None):
   try:ctx.team_governance_359.authorize(identity,case_id=str(case_id),capability=capability,object_type='phase19',object_id=str(case_id))
   except PermissionError as e:raise HTTPException(403,str(e))
   return identity
+ def same_origin(req):
+  site=str(req.headers.get('sec-fetch-site') or '').strip().lower()
+  if site and site not in {'same-origin','none'}:raise HTTPException(403,'Cross-origin mutation blocked')
+  origin=str(req.headers.get('origin') or '').strip().rstrip('/')
+  if origin:
+   expected=(str(req.url.scheme)+'://'+str(req.headers.get('host') or '')).rstrip('/')
+   if origin!=expected:raise HTTPException(403,'Cross-origin mutation blocked')
  @app.get('/health')
  def health():
   h=dict(old() if callable(old) else {'ok':True});s=ctx.build436.surface_onion_status();h.update({'build':'436.0','phase':19,'phase19_builds_completed':16,'surface_onion_correlation':True,'opsec_gate':True,'correlation_integrity':s['integrity_valid'],'production_release_ready':False});return h
@@ -26,7 +33,7 @@ def create_workspace_app436(*,base_dir=None):
  def report436(case_id:str,request:Request):case_auth(request,case_id,'case.read');return ctx.build436.case_surface_onion_report(case_id)
  @app.post('/api/build436/cases/{case_id}/surface-onion/analyze')
  async def analyze436(case_id:str,request:Request):
-  identity=case_auth(request,case_id,'research.run')
+  same_origin(request);identity=case_auth(request,case_id,'research.run')
   try:
    b=await request.json()
    if not isinstance(b,dict):b={}
@@ -35,7 +42,7 @@ def create_workspace_app436(*,base_dir=None):
   except (ValueError,KeyError,TypeError) as e:raise HTTPException(400,str(e))
  @app.post('/api/build436/cases/{case_id}/surface-onion/selftest')
  def selftest436(case_id:str,request:Request):
-  identity=case_auth(request,case_id,'research.run')
+  same_origin(request);identity=case_auth(request,case_id,'research.run')
   try:return ctx.build436.run_surface_onion_case_selftest(identity=identity,case_id=case_id)
   except PermissionError as e:raise HTTPException(403,str(e))
   except (ValueError,KeyError,TypeError) as e:raise HTTPException(400,str(e))
