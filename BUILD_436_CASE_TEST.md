@@ -21,7 +21,8 @@ Geprüft werden:
 - exakte Content-Korrelation;
 - `candidate_only: true`;
 - keine automatische Identitätsfeststellung;
-- OPSEC-Vertrag ohne Blocker;
+- OPSEC-Vertrag ohne Blocker und `analysis_review_allowed: true`;
+- `operational_followup_allowed: false` auch bei sauberem OPSEC-Vertrag;
 - keine Netzwerkaktivität und kein Cross-Surface-Kontakt;
 - Integrität.
 
