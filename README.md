@@ -78,7 +78,7 @@ The canonical Build-436 integration suite is:
 pytest -q tests/test_build436_integrated.py
 ```
 
-For a **case-specific Build-436 test inside the running application**, use [BUILD_436_CASE_TEST.md](BUILD_436_CASE_TEST.md). It includes a one-step authenticated self-test that uses a synthetic v3-Onion source and deterministic replay transport with no external sockets, then verifies Tor-source restrictions, quarantine, human review, case/event/content linkage and checkpoint integrity.
+For a **case-specific Build-436 test inside the running application**, use [BUILD_436_CASE_TEST.md](BUILD_436_CASE_TEST.md). It includes a one-step authenticated self-test that combines a deterministic, reviewed synthetic Onion fixture with a synthetic surface record, then verifies exact/lexical content correlation, OPSEC gating, case isolation and that no network execution or cross-surface contact occurs.
 
 ## What feedback helps most
 
