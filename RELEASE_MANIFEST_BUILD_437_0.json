@@ -1,0 +1,22 @@
+{
+  "build":"437.0",
+  "phase":19,
+  "name":"Cross-source Entity Resolution",
+  "production_release_ready":false,
+  "hard_checkpoint":false,
+  "acceptance":[
+    "Phase-19 News/Social/Organization provenance bindings",
+    "canonical entity-resolution ledger reuse",
+    "evidence-weighted transparent candidate scoring",
+    "strong identifier conflict veto support",
+    "score explicitly not an identity probability",
+    "no automatic identity confirmation",
+    "no destructive merge",
+    "independent human review for same-entity links",
+    "Build-436 content correlation remains context-only",
+    "case-specific deterministic selftest",
+    "no network execution"
+  ],
+  "next_build":"438.0",
+  "next_hard_checkpoint":"440.0"
+}
