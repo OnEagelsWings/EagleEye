@@ -78,7 +78,7 @@ The canonical Build-437 integration suite is:
 pytest -q tests/test_build437_integrated.py
 ```
 
-For a **case-specific Build-437 test inside the running application**, use [BUILD_437_CASE_TEST.md](BUILD_437_CASE_TEST.md). It includes a one-step authenticated self-test that combines a deterministic, reviewed synthetic Onion fixture with a synthetic surface record, then verifies exact/lexical content correlation, OPSEC gating, case isolation and that no network execution or cross-surface contact occurs.
+For a **case-specific Build-437 test inside the running application**, use [BUILD_437_CASE_TEST.md](BUILD_437_CASE_TEST.md). It includes a one-step authenticated self-test that creates two provenance-bound organization candidates from independent public-source families, verifies strong cross-source resolution signals, and confirms that identity remains review-gated and non-destructive.
 
 ## What feedback helps most
 
