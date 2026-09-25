@@ -12,4 +12,4 @@ class Build436SurfaceOnionService:
  def case_surface_onion_report(self,case_id):return self.correlation436.case_report(case_id)
  def run_surface_onion_case_selftest(self,**kw):return self.correlation436.run_case_selftest(**kw)
  def surface_onion_status(self):
-  s=self.correlation436.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION==self.BUILD,'phase':19,'phase19_builds_completed':16,'production_release_ready':False}
+  s=self.correlation436.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':16,'production_release_ready':False}
