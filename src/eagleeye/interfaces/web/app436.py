@@ -39,12 +39,14 @@ def create_workspace_app436(*,base_dir=None):
    if not isinstance(b,dict):b={}
    return ctx.build436.analyze_surface_onion(identity=identity,case_id=case_id,min_jaccard=b.get('min_jaccard',.75))
   except PermissionError as e:raise HTTPException(403,str(e))
+  except RuntimeError as e:raise HTTPException(409,'Correlation integrity preflight failed: '+str(e))
   except (ValueError,KeyError,TypeError) as e:raise HTTPException(400,str(e))
  @app.post('/api/build436/cases/{case_id}/surface-onion/selftest')
  def selftest436(case_id:str,request:Request):
   same_origin(request);identity=case_auth(request,case_id,'research.run')
   try:return ctx.build436.run_surface_onion_case_selftest(identity=identity,case_id=case_id)
   except PermissionError as e:raise HTTPException(403,str(e))
+  except RuntimeError as e:raise HTTPException(409,'Correlation integrity preflight failed: '+str(e))
   except (ValueError,KeyError,TypeError) as e:raise HTTPException(400,str(e))
  return app
 create_app=create_workspace_app436
