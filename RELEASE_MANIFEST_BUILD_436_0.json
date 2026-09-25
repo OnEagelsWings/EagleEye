@@ -19,7 +19,8 @@
     "strict same-origin mutation boundary",
     "atomic Build-435 terminal review",
     "concurrency-safe synthetic fixture seeding",
-    "spawn-safe current launcher"
+    "spawn-safe current launcher",
+    "relevant provenance integrity fail-closed"
   ],
   "next_build": "437.0",
   "next_hard_checkpoint": "440.0",
@@ -27,5 +28,6 @@
     "Build 435 same-origin mutation protection",
     "Build 435 atomic terminal review",
     "Build 435 fixture seeding race protection"
-  ]
+  ],
+  "correlation_scope": "reviewed Build-435 onion material versus public clearnet/surface observations already stored in the same case"
 }
