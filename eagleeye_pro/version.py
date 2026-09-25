@@ -1,3 +1,3 @@
-BUILD = "436.0"
-SCHEMA_VERSION = "436.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 436.0 Surface ↔ Onion Correlation & OPSEC"
+BUILD = "437.0"
+SCHEMA_VERSION = "437.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 437.0 Cross-source Entity Resolution"
