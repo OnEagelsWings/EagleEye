@@ -1,0 +1,24 @@
+{
+  "build":"438.0",
+  "phase":19,
+  "name":"Temporal / Relationship Fusion",
+  "production_release_ready":false,
+  "hard_checkpoint":false,
+  "acceptance":[
+    "reviewed same-entity links fused non-destructively",
+    "original source and entity records retained",
+    "provenance-bound cross-source timeline",
+    "collection time distinguished from asserted event time",
+    "machine-extracted news events remain candidates",
+    "temporal disagreements surfaced for review",
+    "explicit source relationship assertions only",
+    "unresolved relationship endpoints remain candidates",
+    "text co-occurrence does not create relationships",
+    "no automatic identity confirmation",
+    "no relationship or causality inference",
+    "no Build-438 network execution",
+    "case-specific deterministic selftest"
+  ],
+  "next_build":"439.0",
+  "next_hard_checkpoint":"440.0"
+}
