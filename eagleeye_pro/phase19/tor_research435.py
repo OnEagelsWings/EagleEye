@@ -40,12 +40,12 @@ class IsolatedTorResearchWorker435:
   return src,clean
  def _ensure_selftest_source(self):
   sid='src421_fixture_tor435';onion='a'*56+'.onion';base='http://'+onion+'/'
-  try:
-   src=self.registry421.get(sid)
+  with self.db.transaction(immediate=True):
+   try:src=self.registry421.get(sid)
+   except KeyError:
+    caps=['case_fixture','public_pages'];coverage={'fixture_only':True,'live_execution_forbidden':True};r={'source_id':sid,'name':'Build 435 Synthetic Onion Fixture','source_type':'tor_onion','access_mode':'tor_public','base_url':base,'capabilities_json':_canon(caps),'coverage_json':_canon(coverage),'terms_url':'','license_note':'Trusted internal synthetic v3-onion fixture; deterministic replay only.','enabled':1,'created_by':'system:build435_fixture','created_at':_now()};r['record_hash']=self.registry421._record_hash(r);self.db.execute('INSERT OR IGNORE INTO acquisition_source_421 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));src=self.registry421.get(sid);self.audit.log('tor435_fixture_source_seeded','acquisition_source_421',sid,'',{'fixture_only':True,'network_execution':False})
    if src['source_type']!='tor_onion' or src['access_mode']!='tor_public' or src['base_url']!=base or not bool((src.get('coverage') or {}).get('fixture_only')):raise RuntimeError('reserved Build 435 fixture source has unexpected configuration')
    return src
-  except KeyError:
-   caps=['case_fixture','public_pages'];coverage={'fixture_only':True,'live_execution_forbidden':True};r={'source_id':sid,'name':'Build 435 Synthetic Onion Fixture','source_type':'tor_onion','access_mode':'tor_public','base_url':base,'capabilities_json':_canon(caps),'coverage_json':_canon(coverage),'terms_url':'','license_note':'Trusted internal synthetic v3-onion fixture; deterministic replay only.','enabled':1,'created_by':'system:build435_fixture','created_at':_now()};r['record_hash']=self.registry421._record_hash(r);self.db.execute('INSERT INTO acquisition_source_421 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));self.audit.log('tor435_fixture_source_seeded','acquisition_source_421',sid,'',{'fixture_only':True,'network_execution':False});return self.registry421.get(sid)
  def get(self,task_id):
   row=self.db.one('SELECT * FROM tor_research_task_435 WHERE task_id=?',(str(task_id),))
   if not row:raise KeyError('Tor research task not found')
@@ -98,11 +98,12 @@ class IsolatedTorResearchWorker435:
  def execute_replay(self,*,identity,task_id,transport):
   return self._execute(identity=identity,task_id=task_id,transport=transport,mode='deterministic_replay',isolation_fingerprint='replay-no-network')
  def review(self,*,identity,task_id,decision,note=''):
-  task=self.get(task_id);ident=self._authorize(identity,task['case_id'],task_id)
-  if task['state']!='quarantined_for_review':raise ValueError('task is not awaiting review')
-  dec=str(decision or '').strip().lower()
+  initial=self.get(task_id);ident=self._authorize(identity,initial['case_id'],task_id);dec=str(decision or '').strip().lower()
   if dec not in {'accept_for_analysis','reject'}:raise ValueError('decision must be accept_for_analysis or reject')
-  state='reviewed' if dec=='accept_for_analysis' else 'rejected';updated=self._update(task_id,state=state,reviewed_by=str(ident['username']),reviewed_at=_now(),review_decision=dec,review_note=_clean(note,2000));self.audit.log('tor_research_reviewed_435','tor_research_task_435',task_id,task['case_id'],{'decision':dec,'evidence_promotion':False,'truth_determination':False});return updated
+  with self.db.transaction(immediate=True):
+   task=self.get(task_id)
+   if task['state']!='quarantined_for_review':raise ValueError('task is not awaiting review')
+   state='reviewed' if dec=='accept_for_analysis' else 'rejected';updated=self._update(task_id,state=state,reviewed_by=str(ident['username']),reviewed_at=_now(),review_decision=dec,review_note=_clean(note,2000));self.audit.log('tor_research_reviewed_435','tor_research_task_435',task_id,task['case_id'],{'decision':dec,'evidence_promotion':False,'truth_determination':False});return updated
  def case_tasks(self,case_id):
   return [dict(r) for r in self.db.all('SELECT * FROM tor_research_task_435 WHERE case_id=? ORDER BY created_at,task_id',(str(case_id),))]
  def case_report(self,case_id):
