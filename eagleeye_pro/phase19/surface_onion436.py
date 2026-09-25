@@ -23,18 +23,31 @@ CREATE TABLE IF NOT EXISTS surface_onion_candidate_436(candidate_id TEXT PRIMARY
   r=self.db.one('SELECT * FROM content_object_423 WHERE content_id=?',(str(content_id),))
   if not r:raise KeyError('content object not found')
   d=dict(r)
+  if self.content423._hash(d)!=d.get('record_hash'):raise RuntimeError('content integrity check failed')
   try:d['tokens']=set(json.loads(d.get('token_json') or '[]'))
   except Exception:d['tokens']=set()
   return d
  def _surface_rows(self,case_id):
-  rows=[]
-  for r in self.db.all("""SELECT o.* FROM content_observation_423 o JOIN acquisition_source_421 s ON s.source_id=o.source_id WHERE o.case_id=? AND s.source_type!='tor_onion' ORDER BY o.created_at,o.observation_id""",(str(case_id),)):
-   d=dict(r);d['content']=self._content(d['content_id']);rows.append(d)
+  rows=[];eligible=('website','news','rss','social','registry','ngo','government','api','search','archive')
+  marks=','.join('?' for _ in eligible)
+  for r in self.db.all("SELECT o.* FROM content_observation_423 o JOIN acquisition_source_421 s ON s.source_id=o.source_id WHERE o.case_id=? AND s.source_type IN ("+marks+") AND s.access_mode!='local_dataset' ORDER BY o.created_at,o.observation_id",(str(case_id),*eligible)):
+   d=dict(r)
+   if d.get('record_hash') and self.content423._hash(d)!=d['record_hash']:raise RuntimeError('surface observation integrity check failed')
+   rawsrc=self.db.one('SELECT * FROM acquisition_source_421 WHERE source_id=?',(d['source_id'],))
+   if not rawsrc or self.registry421._record_hash(dict(rawsrc))!=rawsrc.get('record_hash'):raise RuntimeError('surface source integrity check failed')
+   d['content']=self._content(d['content_id']);rows.append(d)
   return rows
  def _onion_rows(self,case_id):
   out=[]
-  for t in self.db.all("SELECT * FROM tor_research_task_435 WHERE case_id=? AND state='reviewed' AND content_id!='' ORDER BY created_at,task_id",(str(case_id),)):
-   d=dict(t);d['content']=self._content(d['content_id']);d['event']=self.events422.get(d['event_id']);out.append(d)
+  for t in self.db.all("SELECT * FROM tor_research_task_435 WHERE case_id=? AND state='reviewed' AND review_decision='accept_for_analysis' AND content_id!='' ORDER BY created_at,task_id",(str(case_id),)):
+   d=dict(t)
+   if self.tor435._rh(d)!=d.get('record_hash'):raise RuntimeError('onion task integrity check failed')
+   rawsrc=self.db.one('SELECT * FROM acquisition_source_421 WHERE source_id=?',(d['source_id'],))
+   if not rawsrc or self.registry421._record_hash(dict(rawsrc))!=rawsrc.get('record_hash'):raise RuntimeError('onion source integrity check failed')
+   rawev=self.db.one('SELECT * FROM acquisition_event_422 WHERE event_id=?',(d['event_id'],))
+   if not rawev or self.events422._hash(dict(rawev))!=rawev.get('record_hash'):raise RuntimeError('onion acquisition integrity check failed')
+   if not self.db.one('SELECT 1 FROM content_observation_423 WHERE event_id=? AND content_id=?',(d['event_id'],d['content_id'])):raise RuntimeError('onion task content is not bound to its acquisition event')
+   d['content']=self._content(d['content_id']);d['event']=self.events422.get(d['event_id']);out.append(d)
   return out
  def _pair(self,surface,onion,min_jaccard):
   a=surface['content'];b=onion['content'];signals=[];score=0.0;strength=''
@@ -65,7 +78,7 @@ CREATE TABLE IF NOT EXISTS surface_onion_candidate_436(candidate_id TEXT PRIMARY
    for o in onion:
     pair=self._pair(s,o,threshold)
     if not pair:continue
-    cid='soc436_'+secrets.token_hex(10);r={'candidate_id':cid,'run_id':run_id,'case_id':case_id,'surface_observation_id':s['observation_id'],'surface_source_id':s['source_id'],'onion_task_id':o['task_id'],'onion_source_id':o['source_id'],'surface_content_id':s['content_id'],'onion_content_id':o['content_id'],'signals_json':_canon(pair['signals']),'score':pair['score'],'strength':pair['strength'],'created_at':_now()};r['record_hash']=self._rh(r);self.db.execute('INSERT INTO surface_onion_candidate_436 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));candidates.append({**r,'signals':pair['signals'],'candidate_only':True,'entity_identity_determined':False})
+    cid='soc436_'+secrets.token_hex(10);r={'candidate_id':cid,'run_id':run_id,'case_id':case_id,'surface_observation_id':s['observation_id'],'surface_source_id':s['source_id'],'onion_task_id':o['task_id'],'onion_source_id':o['source_id'],'surface_content_id':s['content_id'],'onion_content_id':o['content_id'],'signals_json':_canon(pair['signals']),'score':pair['score'],'strength':pair['strength'],'created_at':_now()};r['record_hash']=self._rh(r);self.db.execute('INSERT INTO surface_onion_candidate_436 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',tuple(r.values()));candidates.append({**r,'signals':pair['signals'],'surface_target':s.get('target',''),'onion_target':o.get('target',''),'candidate_only':True,'entity_identity_determined':False})
   result={'build':BUILD,'case_id':case_id,'surface_observations':len(surface),'reviewed_onion_tasks':len(onion),'candidate_count':len(candidates),'candidates':candidates,'opsec_findings':opsec,'opsec_blocker_count':blockers,'analysis_review_allowed':blockers==0,'operational_followup_allowed':False,'automatic_entity_resolution':False,'automatic_scope_expansion':False,'network_execution':False,'cross_surface_contact':False,'operational_followup_authority':False,'identity_determination':False,'truth_determination':False,'method_note':'Correlation scores describe content/provenance similarity only. They are not probabilities that surface and onion actors or entities are identical.'}
   row={'run_id':run_id,'case_id':case_id,'min_jaccard':threshold,'candidate_count':len(candidates),'opsec_blocker_count':blockers,'result_json':_canon(result),'created_by':str(ident['username']),'created_at':_now()};row['record_hash']=self._rh(row);self.db.execute('INSERT INTO surface_onion_run_436 VALUES(?,?,?,?,?,?,?,?,?)',tuple(row.values()));self.audit.log('surface_onion_correlation_run_436','case',case_id,case_id,{'run_id':run_id,'candidates':len(candidates),'opsec_blockers':blockers,'network_execution':False});return {**row,'result':result}
  def latest(self,case_id):
