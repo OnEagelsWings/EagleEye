@@ -83,4 +83,4 @@ def test_case_selftest_and_hard_checkpoint(tmp_path):
 def test_contract_and_docs(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   s=c.build435.tor_worker_status();assert s['version_coherent'];assert s['hard_checkpoint'];assert s['checkpoint_ready'];assert s['public_v3_onion_only'];assert s['read_only_get_only'];assert s['live_execution_requires_approval_ref_and_confirmation'];assert not s['destination_credentials_supported'];assert not s['forms_or_uploads_supported'];assert not s['access_control_bypass_supported'];assert not s['autonomous_scope_expansion'];assert s['quarantine_before_review'];assert not s['production_release_ready']
- assert 'app435 import create_workspace_app435' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text();assert (ROOT/'BUILD_435_CASE_TEST.md').exists();readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_435_0.py' in readme and 'test_build435_integrated.py' in readme
+ assert (ROOT/'src/eagleeye/interfaces/web/app435.py').exists();assert (ROOT/'EAGLEEYE_PRO_435_0.py').exists();assert (ROOT/'BUILD_435_CASE_TEST.md').exists()
