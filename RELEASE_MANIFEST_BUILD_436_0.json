@@ -1,1 +1,31 @@
-{"build":"436.0","phase":19,"name":"Surface <-> Onion Correlation & OPSEC","production_release_ready":false,"hard_checkpoint":false,"acceptance":["reviewed-onion-only correlation","exact SHA-256 signal","normalized text fingerprint signal","token Jaccard candidate signal","Tor acquisition OPSEC contract verification","case-scoped candidate records","no network execution","no cross-surface contact","no automatic entity resolution","no identity/truth determination","case-specific deterministic selftest"],"next_build":"437.0","next_hard_checkpoint":"440.0"}
+{
+  "build": "436.0",
+  "phase": 19,
+  "name": "Surface <-> Onion Correlation & OPSEC",
+  "production_release_ready": false,
+  "hard_checkpoint": false,
+  "acceptance": [
+    "reviewed-onion-only correlation",
+    "exact SHA-256 signal",
+    "normalized text fingerprint signal",
+    "token Jaccard candidate signal",
+    "Tor acquisition OPSEC contract verification",
+    "case-scoped candidate records",
+    "no network execution",
+    "no cross-surface contact",
+    "no automatic entity resolution",
+    "no identity/truth determination",
+    "case-specific deterministic selftest",
+    "strict same-origin mutation boundary",
+    "atomic Build-435 terminal review",
+    "concurrency-safe synthetic fixture seeding",
+    "spawn-safe current launcher"
+  ],
+  "next_build": "437.0",
+  "next_hard_checkpoint": "440.0",
+  "carried_forward_hardening": [
+    "Build 435 same-origin mutation protection",
+    "Build 435 atomic terminal review",
+    "Build 435 fixture seeding race protection"
+  ]
+}
