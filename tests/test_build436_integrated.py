@@ -43,12 +43,12 @@ def test_high_lexical_overlap_is_candidate_signal_only(tmp_path):
 def test_opsec_failure_blocks_analysis_review_not_active_followup(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);cid=case(c,'OPSEC')['case_id'];surface_content(c,cid,'opsec shared text');_,r,rv=reviewed_onion(c,cid,'opsec shared text','public/opsec')
-  ev=c.events422.get(rv['event_id']);row=c.db.one('SELECT * FROM acquisition_event_422 WHERE event_id=?',(rv['event_id'],));d=dict(row);d['usage_json']='{}';d['record_hash']=c.events422._hash(d);c.db.execute('UPDATE acquisition_event_422 SET usage_json=?,record_hash=? WHERE event_id=?',(d['usage_json'],d['record_hash'],rv['event_id']))
+  ev=c.acquisition_events_422.get(rv['event_id']);row=c.db.one('SELECT * FROM acquisition_event_422 WHERE event_id=?',(rv['event_id'],));d=dict(row);d['usage_json']='{}';d['record_hash']=c.acquisition_events_422._hash(d);c.db.execute('UPDATE acquisition_event_422 SET usage_json=?,record_hash=? WHERE event_id=?',(d['usage_json'],d['record_hash'],rv['event_id']))
   run=c.build436.analyze_surface_onion(identity=i,case_id=cid);res=run['result'];assert res['opsec_blocker_count']==1;assert res['analysis_review_allowed'] is False;assert res['operational_followup_allowed'] is False
 def test_case_selftest_and_fixture_seeding_are_repeatable(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);cid=case(c,'Selftest436')['case_id'];a=c.build436.run_surface_onion_case_selftest(identity=i,case_id=cid);b=c.build436.run_surface_onion_case_selftest(identity=i,case_id=cid);assert a['result']=='PASS' and b['result']=='PASS';assert all(a['checks'].values());assert all(b['checks'].values())
-  assert c.build421.get('src421_fixture_surface436')['coverage']['fixture_only'];assert c.build421.get('src421_fixture_tor435')['coverage']['fixture_only']
+  assert c.acquisition_source_registry_421.get('src421_fixture_surface436')['coverage']['fixture_only'];assert c.acquisition_source_registry_421.get('src421_fixture_tor435')['coverage']['fixture_only']
 def test_carried_forward_build435_review_is_terminal(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);cid=case(c,'Atomic review')['case_id'];_,r,rv=reviewed_onion(c,cid,'atomic terminal review','public/atomic')
