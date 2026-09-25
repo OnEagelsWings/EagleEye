@@ -14,7 +14,7 @@ def case(c,title='Surface Onion 436'):
  return c.build436.team_create_case(identity=ident(c),title=title,client='QA',purpose='authorized public-source correlation',legal_basis='public_data')
 def surface_source(c):
  i=ident(c)
- existing=[s for s in c.build421.list_sources(source_type='website') if s.get('base_url')=='https://surface436.example.org']
+ existing=[s for s in c.acquisition_source_registry_421.list_sources(source_type='website') if s.get('base_url')=='https://surface436.example.org']
  return existing[0] if existing else c.build421.register_source(identity=i,name='Surface 436',source_type='website',base_url='https://surface436.example.org',capabilities=['public_pages'])
 def surface_content(c,case_id,body,target='https://surface436.example.org/page'):
  i=ident(c);s=surface_source(c);raw=body.encode() if isinstance(body,str) else bytes(body);import hashlib;digest=hashlib.sha256(raw).hexdigest()
@@ -45,6 +45,12 @@ def test_opsec_failure_blocks_analysis_review_not_active_followup(tmp_path):
   i=ident(c);cid=case(c,'OPSEC')['case_id'];surface_content(c,cid,'opsec shared text');_,r,rv=reviewed_onion(c,cid,'opsec shared text','public/opsec')
   ev=c.acquisition_events_422.get(rv['event_id']);row=c.db.one('SELECT * FROM acquisition_event_422 WHERE event_id=?',(rv['event_id'],));d=dict(row);d['usage_json']='{}';d['record_hash']=c.acquisition_events_422._hash(d);c.db.execute('UPDATE acquisition_event_422 SET usage_json=?,record_hash=? WHERE event_id=?',(d['usage_json'],d['record_hash'],rv['event_id']))
   run=c.build436.analyze_surface_onion(identity=i,case_id=cid);res=run['result'];assert res['opsec_blocker_count']==1;assert res['analysis_review_allowed'] is False;assert res['operational_followup_allowed'] is False
+def test_relevant_provenance_tamper_fails_closed(tmp_path):
+ with AppContext(base_dir=tmp_path) as c:
+  i=ident(c);cid=case(c,'Integrity preflight')['case_id'];_,e,o=surface_content(c,cid,'integrity bound text');reviewed_onion(c,cid,'integrity bound text','public/integrity')
+  c.db.execute("UPDATE content_observation_423 SET target='https://tampered.invalid' WHERE observation_id=?",(o['observation_id'],))
+  with pytest.raises(RuntimeError):c.build436.analyze_surface_onion(identity=i,case_id=cid)
+
 def test_case_selftest_and_fixture_seeding_are_repeatable(tmp_path):
  with AppContext(base_dir=tmp_path) as c:
   i=ident(c);cid=case(c,'Selftest436')['case_id'];a=c.build436.run_surface_onion_case_selftest(identity=i,case_id=cid);b=c.build436.run_surface_onion_case_selftest(identity=i,case_id=cid);assert a['result']=='PASS' and b['result']=='PASS';assert all(a['checks'].values());assert all(b['checks'].values())
