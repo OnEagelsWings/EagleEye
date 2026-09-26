@@ -1,112 +1,139 @@
-# EagleEye — Build 441
+# EagleEye — Build 442
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 441 starts **Phase 20** by adding controlled execution for ordinary public Surface-Web crawl tasks.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 442 is the second build of **Phase 20 — Real-World Acquisition, Operationalization & Serious Beta**.
 
-## Build 441 focus
+## Build 442 focus
 
-Build 440 established that the Phase-19 engineering chain was internally coherent but still lacked ordinary live Surface-Web execution. Build 441 closes that specific gap.
+Build 441 introduced controlled ordinary public Surface-Web retrieval. Build 442 hardens that path for real-world use without widening its authority.
 
-Existing Build-425 crawl tasks can now be executed through a tightly bounded Surface-Web adapter:
+The active Surface-Web execution path now adds:
+
+- task-scoped DNS/IP pinning;
+- detection of later non-public DNS answers;
+- protection against DNS rebinding into private/loopback/link-local space;
+- bounded retry for transient transport errors and selected HTTP failures;
+- exponential backoff;
+- per-source task-rate control;
+- minimum spacing between tasks to the same source;
+- source-scoped worker locking;
+- one concurrent live Build-442 worker;
+- fresh stateless transport per live run;
+- persisted attempt/failure telemetry.
+
+Build 441's safety contract remains in force:
 
 - public HTTP(S) GET only;
-- exact registered source host only;
-- exact task host allowlist;
-- globally routable DNS addresses only;
-- DNS-to-IP pinning for the actual connection;
-- HTTPS SNI and certificate validation;
-- fail-closed robots.txt enforcement;
-- same-host redirects only, maximum three;
-- hard timeout and response-size limits;
-- safe content-type allowlist;
-- no credentials, cookies, forms, uploads, writes or JavaScript;
-- no environment proxy inheritance;
-- no private/local-network or onion targets;
-- no autonomous source or scope expansion.
+- exact registered host and task scope;
+- fail-closed robots.txt handling;
+- same-host redirects only;
+- TLS certificate/SNI validation;
+- hard time and byte budgets;
+- no credentials, cookies, forms, uploads, write methods or JavaScript;
+- no private/local targets;
+- no onion execution;
+- no autonomous source/scope expansion.
 
-Results are ingested through the existing Build-425 -> Build-422/423 provenance path.
+## DNS hardening
 
-## Human authorization
+The first valid public DNS answer becomes the task's pinned connection set. Later DNS answers are observed again. If a later answer becomes private or otherwise non-global, EagleEye stops before the next fetch. If a public CDN answer changes while remaining public, the change is recorded but the original validated IP set remains pinned for that task.
 
-A permitted case user can explicitly run a planned task with:
+## Retry and rate policy
 
-\`SURFACE441_LIVE\`
+Transient retries are bounded to at most three attempts for transport failures and HTTP 408, 425, 429, 500, 502, 503 and 504.
 
-Tasks created by an already active, explicitly human-authorized Build-439 investigation loop can also use that existing loop authorization. Build 441 still revalidates case binding, source allowlist, target host, DNS and robots policy before any public request.
+TLS certificate verification failures are not retried.
 
-## Phase-20 readiness
+The current EagleEye safety ceiling is:
 
-Build 441 changes one major readiness item:
+- maximum 6 task starts per source per rolling minute;
+- minimum 1 second between task starts against the same source.
 
-- controlled ordinary Surface-Web retrieval: **implemented**
+A source's own terms or server guidance may require stricter behavior.
+
+## External validation
+
+External validation never runs automatically, on startup, or in CI.
+
+A reviewed non-fixture public Build-425 task can be used for one explicit validation run with:
+
+\`VALIDATE442_EXTERNAL\`
+
+That run still passes through all Build-441/442 restrictions and provenance handling.
+
+## Isolation boundary
+
+Build 442 provides logical isolation through source locks, one live worker and fresh stateless transports. It does **not** claim process/container isolation. Stronger process/network isolation remains planned for the later Phase-20 OPSEC block.
+
+## Current readiness
+
+Implemented:
+
+- controlled ordinary Surface-Web retrieval;
+- current-scope Surface-Web hardening;
+- deterministic retry/DNS/rate-limit qualification;
+- explicit real external validation mechanism.
 
 Still incomplete:
 
-- dedicated News retrieval adapter;
-- dedicated Public-Social retrieval adapter;
-- broader external end-to-end validation;
+- dedicated live News acquisition;
+- dedicated Public-Social acquisition;
+- broad external end-to-end validation;
+- process/container retrieval isolation;
 - production hardening.
 
-Therefore EagleEye still reports:
+Therefore:
 
 - \`general_live_collection_complete: false\`
 - \`real_world_general_research_ready: false\`
 - \`production_release_ready: false\`
 
-## External testers wanted
+The next build is **443 — Live News Acquisition**. The next hard checkpoint is **445 — Data Acquisition Hard Checkpoint**.
 
-Use only synthetic, demo, or clearly public data. Do not use confidential investigations, credentials, secrets, or sensitive personal information during beta testing.
+## External testers
+
+Use only synthetic, demo, or clearly public data. Do not use confidential investigations, credentials, secrets, internal services or sensitive personal information.
 
 **Repository:** https://github.com/OnEagelsWings/EagleEye  
 **Testing guide:** [TESTING.md](TESTING.md)  
 **Public beta feedback:** https://github.com/OnEagelsWings/EagleEye/issues/2
 
-## Windows
+## Start
 
-Requirements: **Python 3.12 or newer**.
+Python **3.12+** is required.
+
+Windows:
 
 \`\`\`powershell
-git clone https://github.com/OnEagelsWings/EagleEye.git
-cd EagleEye
 START_EAGLEEYE_PRO.bat
 \`\`\`
 
-Manual start:
+Manual Windows start:
 
 \`\`\`powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_441_0.py
+py -3 EAGLEEYE_PRO_442_0.py
 \`\`\`
 
-## Linux / macOS
-
-Debian/Ubuntu users may need \`python3-venv\` before the first start.
+Linux/macOS:
 
 \`\`\`bash
-git clone https://github.com/OnEagelsWings/EagleEye.git
-cd EagleEye
 chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 \`\`\`
 
-The default workspace address is \`http://127.0.0.1:8765\`.
-
 ## Qualification
 
-For the deterministic no-network case test:
+Deterministic no-network qualification:
 
 \`\`\`
-POST /api/build441/cases/{case_id}/retrieval/selftest
+POST /api/build442/cases/{case_id}/retrieval/selftest
 \`\`\`
 
-Or run:
+or:
 
 \`\`\`bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build441_integrated.py
+pytest -q tests/test_build442_integrated.py
 \`\`\`
 
-The Build-441 suite covers successful provenance-bound retrieval replay, robots blocking, private-IP/SSRF rejection, cross-host redirect blocking, unsafe media blocking, fixture live-execution denial, Build-439 loop authorization and current launcher/version contracts.
-
-The Build-440 hard checkpoint remains retained as the Phase-19 baseline.
-
-See \`README_BUILD_441_0.md\`, \`BUILD_441_CASE_TEST.md\` and \`RELEASE_MANIFEST_BUILD_441_0.json\`.
+See \`README_BUILD_442_0.md\`, \`BUILD_442_CASE_TEST.md\` and \`RELEASE_MANIFEST_BUILD_442_0.json\`.
