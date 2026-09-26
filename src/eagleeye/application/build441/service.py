@@ -48,5 +48,5 @@ class Build441ControlledSurfaceRetrievalService:
             "general_live_collection_complete": False,
             "real_world_general_research_ready": False,
             "production_release_ready": False,
-            "next_hard_checkpoint": "460.0",
+            "next_hard_checkpoint": "445.0",
         }
