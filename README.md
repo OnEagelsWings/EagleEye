@@ -1,44 +1,60 @@
-# EagleEye — Build 440
+# EagleEye — Build 441
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 440 is the **Phase-19 hard engineering checkpoint** and is published for testing and evaluation, not as a general production-ready release.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 441 starts **Phase 20** by adding controlled execution for ordinary public Surface-Web crawl tasks.
 
-## Build 440 focus
+## Build 441 focus
 
-Build 440 qualifies the integrated chain created in Builds 421–439 rather than adding another broad feature layer.
+Build 440 established that the Phase-19 engineering chain was internally coherent but still lacked ordinary live Surface-Web execution. Build 441 closes that specific gap.
 
-The checkpoint verifies:
+Existing Build-425 crawl tasks can now be executed through a tightly bounded Surface-Web adapter:
 
-- source registration, provenance-aware acquisition records and content storage;
-- source-health tracking, crawl-task planning and prioritisation;
-- change detection and archive-history intake;
-- News ingest/extraction/provenance;
-- public-social normalization;
-- organization and registry intelligence;
-- separately approved isolated Tor research;
-- surface/onion correlation;
-- cross-source entity resolution;
-- temporal/relationship fusion;
-- the human-authorized AI Investigation Loop from plan through synthesis.
+- public HTTP(S) GET only;
+- exact registered source host only;
+- exact task host allowlist;
+- globally routable DNS addresses only;
+- DNS-to-IP pinning for the actual connection;
+- HTTPS SNI and certificate validation;
+- fail-closed robots.txt enforcement;
+- same-host redirects only, maximum three;
+- hard timeout and response-size limits;
+- safe content-type allowlist;
+- no credentials, cookies, forms, uploads, writes or JavaScript;
+- no environment proxy inheritance;
+- no private/local-network or onion targets;
+- no autonomous source or scope expansion.
 
-A dedicated qualification case also executes the synthetic Build-439 end-to-end path.
+Results are ingested through the existing Build-425 -> Build-422/423 provenance path.
 
-## What a PASS means
+## Human authorization
 
-A Build-440 \`qualification_result: pass\` means the **Phase-19 engineering checkpoint passed**.
+A permitted case user can explicitly run a planned task with:
 
-It does not mean that EagleEye has complete live collection or production readiness.
+\`SURFACE441_LIVE\`
 
-The checkpoint deliberately reports:
+Tasks created by an already active, explicitly human-authorized Build-439 investigation loop can also use that existing loop authorization. Build 441 still revalidates case binding, source allowlist, target host, DNS and robots policy before any public request.
 
-- \`live_collection_complete: false\`
+## Phase-20 readiness
+
+Build 441 changes one major readiness item:
+
+- controlled ordinary Surface-Web retrieval: **implemented**
+
+Still incomplete:
+
+- dedicated News retrieval adapter;
+- dedicated Public-Social retrieval adapter;
+- broader external end-to-end validation;
+- production hardening.
+
+Therefore EagleEye still reports:
+
+- \`general_live_collection_complete: false\`
 - \`real_world_general_research_ready: false\`
 - \`production_release_ready: false\`
 
-The main current blockers are concrete: Build 425 has no ordinary Surface-Web network executor; Build 429 has no News retrieval executor; Build 432 has no Public-Social retrieval executor; Build-439 crawl tasks therefore still need a separately governed external retrieval adapter. The Tor path is different: it is implemented only through the isolated worker with its own approval and confirmation boundary.
-
 ## External testers wanted
 
-We are looking for independent testing on Windows, Linux and macOS. Use only synthetic, demo, or clearly public data. Do not use confidential investigations, credentials, secrets, or sensitive personal information.
+Use only synthetic, demo, or clearly public data. Do not use confidential investigations, credentials, secrets, or sensitive personal information during beta testing.
 
 **Repository:** https://github.com/OnEagelsWings/EagleEye  
 **Testing guide:** [TESTING.md](TESTING.md)  
@@ -58,7 +74,7 @@ Manual start:
 
 \`\`\`powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_440_0.py
+py -3 EAGLEEYE_PRO_441_0.py
 \`\`\`
 
 ## Linux / macOS
@@ -72,29 +88,25 @@ chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 \`\`\`
 
-The default local address is \`http://127.0.0.1:8765\`. If the port is occupied, EagleEye selects another free loopback port automatically.
+The default workspace address is \`http://127.0.0.1:8765\`.
 
-## Checkpoint test
+## Qualification
 
-1. Start EagleEye.
-2. Open \`/health\` and verify build \`440.0\`.
-3. Create a dedicated synthetic/demo qualification case.
-4. Run the authenticated Build-440 qualification described in [BUILD_440_CASE_TEST.md](BUILD_440_CASE_TEST.md).
-5. A technical PASS must still report live-collection and production readiness as false.
-6. Restart EagleEye and verify the workspace starts cleanly again.
+For the deterministic no-network case test:
 
-## Diagnostics and tests
-
-\`\`\`bash
-eagleeye --diagnose
-python -m pip install -e '.[test]'
-pytest -q tests/test_build440_integrated.py
+\`\`\`
+POST /api/build441/cases/{case_id}/retrieval/selftest
 \`\`\`
 
-The canonical Build-440 suite verifies fail-closed qualification, full Phase-19 component integrity, the Build-439 end-to-end case path, truthful live-capability disclosure, authority boundaries, qualification-record integrity and case isolation.
+Or run:
 
-## Next priority
+\`\`\`bash
+python -m pip install -e '.[test]'
+pytest -q tests/test_build441_integrated.py
+\`\`\`
 
-After Build 440, the highest-value engineering work is a controlled ordinary-surface retrieval adapter plus external end-to-end validation. Additional analytical layers should not be treated as a substitute for closing this data-acquisition gap.
+The Build-441 suite covers successful provenance-bound retrieval replay, robots blocking, private-IP/SSRF rejection, cross-host redirect blocking, unsafe media blocking, fixture live-execution denial, Build-439 loop authorization and current launcher/version contracts.
 
-See \`README_BUILD_440_0.md\` and \`RELEASE_MANIFEST_BUILD_440_0.json\` for the checkpoint contract.
+The Build-440 hard checkpoint remains retained as the Phase-19 baseline.
+
+See \`README_BUILD_441_0.md\`, \`BUILD_441_CASE_TEST.md\` and \`RELEASE_MANIFEST_BUILD_441_0.json\`.
