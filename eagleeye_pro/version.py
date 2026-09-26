@@ -1,3 +1,3 @@
-BUILD = "441.0"
-SCHEMA_VERSION = "441.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 441.0 Controlled Surface Retrieval"
+BUILD = "442.0"
+SCHEMA_VERSION = "442.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 442.0 Surface Retrieval Hardening & External Validation"

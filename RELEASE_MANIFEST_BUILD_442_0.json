@@ -1,0 +1,36 @@
+{
+  "build": "442.0",
+  "package": "442.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 2,
+  "name": "Surface Retrieval Hardening & External Validation",
+  "retained_boundary": "Build 441 controlled public GET executor",
+  "hardening": [
+    "task-scoped DNS/IP pinning",
+    "DNS rebind detection for non-public later answers",
+    "bounded retry max 3",
+    "exponential backoff",
+    "transient HTTP classification",
+    "per-source rolling-minute rate limit",
+    "minimum per-source task interval",
+    "source-scoped worker lock",
+    "single concurrent live worker",
+    "ephemeral stateless live transport",
+    "persisted failure/attempt telemetry"
+  ],
+  "external_validation": {
+    "automatic": false,
+    "startup_network": false,
+    "exact_confirmation": "VALIDATE442_EXTERNAL",
+    "fixture_sources_forbidden": true
+  },
+  "process_isolation": false,
+  "ordinary_surface_retrieval_available": true,
+  "news_retrieval_adapter_complete": false,
+  "public_social_retrieval_adapter_complete": false,
+  "general_live_collection_complete": false,
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_build": "443.0",
+  "next_hard_checkpoint": "445.0"
+}
