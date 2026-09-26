@@ -45,4 +45,4 @@ if ! "$VENV_PY" -c 'import fastapi, uvicorn, sqlalchemy, pydantic' >/dev/null 2>
   "$VENV_PY" -m pip install -e .
 fi
 
-exec "$VENV_PY" EAGLEEYE_PRO_439_0.py
+exec "$VENV_PY" EAGLEEYE_PRO_440_0.py
