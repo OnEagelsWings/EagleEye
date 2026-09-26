@@ -210,13 +210,13 @@ def test_live_fixture_execution_is_forbidden_before_external_fetch(tmp_path):
             suffix="fixture",
             coverage={"fixture_only": True, "live_execution_forbidden": True},
         )
-        with pytest.raises(RuntimeError):
+        with pytest.raises(PermissionError):
             c.surface_retrieval_441.execute_live(
                 identity=i,
                 task_id=task["task_id"],
                 confirmation="SURFACE441_LIVE",
             )
-        assert c.crawler_core_425.get(task["task_id"])["state"] == "failed"
+        assert c.crawler_core_425.get(task["task_id"])["state"] == "planned"
 
 
 def test_explicit_live_confirmation_required(tmp_path):
