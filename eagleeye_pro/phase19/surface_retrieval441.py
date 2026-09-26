@@ -947,6 +947,90 @@ class ControlledSurfaceRetrieval441:
         finally:
             self._live_lock.release()
 
+    def run_case_selftest(self, *, identity, case_id):
+        from eagleeye.crawler.engine import StaticTransport
+
+        ident = self._identity(identity)
+        self.governance.authorize(
+            ident,
+            case_id=str(case_id),
+            capability="crawler.run",
+            object_type="surface_retrieval_441",
+            object_id=str(case_id),
+        )
+        token = hashlib.sha256((str(case_id) + _now()).encode()).hexdigest()[:12]
+        base = "https://surface441-" + token + ".example.org/"
+        source = self.registry421.register(
+            identity=ident,
+            name="Build 441 Synthetic Surface Fixture " + token,
+            source_type="website",
+            access_mode="public",
+            base_url=base,
+            capabilities=["public_pages", "case_fixture"],
+            coverage={"fixture_only": True, "live_execution_forbidden": True},
+            license_note="Synthetic Build 441 deterministic replay source; no external retrieval.",
+        )
+        target = base + "public/" + token
+        task = self.crawler425.create_task(
+            identity=ident,
+            case_id=str(case_id),
+            source_id=source["source_id"],
+            target=target,
+            objective="Build 441 deterministic controlled-surface qualification",
+            scope={"allowed_hosts": [urlsplit(base).hostname], "build441_fixture": True},
+            budget={"max_pages": 1, "max_bytes": 100000, "max_seconds": 5},
+        )
+        robots_url = base + "robots.txt"
+        body = ("Synthetic Build 441 public surface page " + token).encode()
+        transport = StaticTransport(
+            {
+                robots_url: FetchResponse(
+                    robots_url,
+                    200,
+                    {"content-type": "text/plain"},
+                    b"User-agent: *\nAllow: /\n",
+                    1,
+                ),
+                target: FetchResponse(
+                    target,
+                    200,
+                    {"content-type": "text/plain; charset=utf-8"},
+                    body,
+                    2,
+                ),
+            }
+        )
+        result = self.execute_replay(
+            identity=ident,
+            task_id=task["task_id"],
+            transport=transport,
+            resolver=lambda host: ["93.184.216.34"],
+        )
+        completed = self.crawler425.get(task["task_id"])
+        event = self.crawler425.events422.get(result["accepted"]["event_id"])
+        checks = {
+            "task_completed": completed["state"] == "completed",
+            "retrieval_event_recorded": event["status"] == "retrieved",
+            "content_ingested": bool(result["accepted"].get("content")),
+            "robots_checked_first": transport.calls[:1] == [robots_url],
+            "target_fetched": target in transport.calls,
+            "two_gets_only": len(transport.calls) == 2,
+            "no_live_network": result["run"]["execution_mode"] == "deterministic_replay",
+            "exact_host_scope": urlsplit(result["run"]["final_url"]).hostname == urlsplit(base).hostname,
+            "integrity_valid": self.verify_integrity()["valid"],
+        }
+        return {
+            "build": BUILD,
+            "case_id": str(case_id),
+            "result": "PASS" if all(checks.values()) else "FAIL",
+            "checks": checks,
+            "source_id": source["source_id"],
+            "task_id": task["task_id"],
+            "run": result["run"],
+            "event": event,
+            "note": "Deterministic replay opens no external sockets; live fixture execution remains forbidden.",
+        }
+
     def run(self, run_id):
         row = self.db.one("SELECT * FROM surface_retrieval_run_441 WHERE run_id=?", (str(run_id),))
         if not row:
