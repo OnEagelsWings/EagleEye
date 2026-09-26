@@ -37,6 +37,26 @@ def test_reviewed_same_entity_link_fuses_view_without_merge(tmp_path):
         assert c.db.one('SELECT COUNT(*) n FROM resolution_entities_115 WHERE case_id=?',(cid,))['n']==2
         assert groups['destructive_merge'] is False
 
+
+def test_reviewed_same_entity_link_survives_build437_resync(tmp_path):
+    with AppContext(base_dir=tmp_path) as c:
+        admin=ident(c);cid=case(c,'Reviewed fusion resync')['case_id'];base=c.build437.run_entity_resolution_case_selftest(identity=admin,case_id=cid)
+        cmp=base['comparison_packet']['comparison'];canonical=cmp['left_entity_id']
+        p=c.build437.propose_same_entity_437(identity=admin,case_id=cid,comparison_id=cmp['comparison_id'],canonical_entity_id=canonical)
+        c.team_governance_359.create_user(identity=admin,username='reviewer438sync',display_name='Reviewer 438 Sync',global_role='reviewer',password='Cedar!Orbit!Quartz!438Sync')
+        c.team_governance_359.assign_case_role(identity=admin,case_id=cid,username='reviewer438sync',case_role='reviewer',notes='independent Build 438 resync review')
+        reviewer=c.team_identity_359.public_user('reviewer438sync')
+        out=c.build437.review_same_entity_437(identity=reviewer,case_id=cid,proposal_id=p['proposal_id'],approve=True,reason='Independent review confirms a non-destructive same-entity link before resync')
+        assert out['state']=='approved'
+        before=c.build438.fusion_groups_438(cid)
+        assert before['reviewed_same_entity_links']==1 and any(len(x['member_entity_ids'])==2 for x in before['groups'])
+        c.build437.sync_cross_source_entities(identity=admin,case_id=cid,include_fixtures=True,min_name_similarity=.8)
+        state=c.db.one('SELECT state FROM resolution_comparisons_115 WHERE comparison_id=?',(cmp['comparison_id'],))
+        assert state['state']=='approved_same'
+        after=c.build438.fusion_groups_438(cid)
+        assert after['reviewed_same_entity_links']==1 and any(len(x['member_entity_ids'])==2 for x in after['groups'])
+        assert after['destructive_merge'] is False
+
 def test_explicit_organization_relation_becomes_edge_only(tmp_path):
     with AppContext(base_dir=tmp_path) as c:
         i=ident(c);cid=case(c,'Explicit relationships')['case_id']
