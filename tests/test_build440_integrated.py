@@ -112,14 +112,14 @@ def test_non_admin_cannot_run_global_checkpoint(tmp_path):
             identity=admin,
             username="researcher440",
             display_name="Researcher 440",
-            global_role="analyst",
+            global_role="investigator",
             password="Cedar!Orbit!Quartz!440",
         )
         c.team_governance_359.assign_case_role(
             identity=admin,
             case_id=cid,
             username="researcher440",
-            case_role="researcher",
+            case_role="investigator",
             notes="Build 440 role-boundary test",
         )
         researcher = c.team_identity_359.public_user("researcher440")
