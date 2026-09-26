@@ -1,18 +1,28 @@
-# EagleEye — Build 438
+# EagleEye — Build 439
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 438 is published for **public testing and evaluation**, not as a general production-ready release.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 439 is published for **public testing and evaluation**, not as a general production-ready release.
 
-## Build 438 focus
+## Build 439 focus
 
-Build 438 adds **Temporal / Relationship Fusion** on top of Build 437 cross-source entity resolution. It groups only identity records already connected by independently reviewed `same_entity_reviewed` links, and does so non-destructively: the original entity records and source bindings remain intact.
+Build 439 adds the **AI Investigation Loop**, the final major functional step before the Phase-19 hard checkpoint at Build 440.
 
-The fusion layer produces:
-- a case-scoped timeline from explicit source timestamps and source-asserted lifecycle dates;
-- a case-scoped relationship graph from explicit source relationship claims;
-- provenance-preserving entity context across News, Social, Organization/Registry, archive/change-history, and existing reviewed identity links;
-- review-visible temporal disagreements and unresolved relationship endpoints.
+After explicit human authorization, the loop coordinates the existing EagleEye stack:
 
-Machine-extracted news events remain candidates. Social reply/reshare links remain observation relationships unless an explicit entity relationship exists. Text co-occurrence is not converted into a relationship, temporal adjacency is not converted into causality, and Build 438 performs no automatic identity confirmation, destructive merge, truth determination, or network execution.
+- investigation planning and bounded research waves;
+- Phase-19 registered-source selection;
+- bounded crawl-task planning and prioritisation;
+- observation of evidence intake;
+- cross-source entity resolution;
+- temporal and relationship fusion;
+- multi-agent analysis;
+- working hypotheses, counterevidence and gap analysis;
+- reviewable investigation synthesis.
+
+The exact activation phrase is:
+
+\`AUTHORIZE INVESTIGATION LOOP\`
+
+Human GO activates only the bounded analytical orchestration envelope. Build 439 does not grant itself direct network authority. Ordinary web retrieval still requires the separately governed retrieval path; Tor/onion material stays behind the isolated Tor worker and its separate approval boundary.
 
 ## External testers wanted
 
@@ -26,61 +36,66 @@ We are actively looking for independent testers on Windows, Linux and macOS. Ple
 
 Requirements: **Python 3.12 or newer**.
 
-```powershell
+\`\`\`powershell
 git clone https://github.com/OnEagelsWings/EagleEye.git
 cd EagleEye
 START_EAGLEEYE_PRO.bat
-```
-
-Alternatively, download the repository as ZIP, extract it, and double-click `START_EAGLEEYE_PRO.bat`.
+\`\`\`
 
 Manual Windows start:
 
-```powershell
+\`\`\`powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_438_0.py
-```
+py -3 EAGLEEYE_PRO_439_0.py
+\`\`\`
 
 ## Linux / macOS
 
-Debian/Ubuntu users may need the OS venv package before first start. If `python3 -m ensurepip --version` reports that ensurepip is unavailable, install `python3-venv` or the matching versioned package.
+Debian/Ubuntu users may need the OS venv package before first start. If \`python3 -m ensurepip --version\` reports that ensurepip is unavailable, install \`python3-venv\` or the matching versioned package.
 
-```bash
+\`\`\`bash
 git clone https://github.com/OnEagelsWings/EagleEye.git
 cd EagleEye
 chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
-```
+\`\`\`
 
-The default local address is `http://127.0.0.1:8765`. If that port is occupied, EagleEye selects another free loopback port automatically.
+The default local address is \`http://127.0.0.1:8765\`. If that port is occupied, EagleEye selects another free loopback port automatically.
 
 ## Five-minute smoke test
 
 1. Start EagleEye on a clean machine or Python environment.
-2. Confirm the browser workspace opens.
-3. Open `/health` and verify `ok: true` and build `438.0`.
-4. Create a test/demo case and exercise the case/evidence workspace.
-5. Run the Build-438 case self-test described in [BUILD_438_CASE_TEST.md](BUILD_438_CASE_TEST.md).
-6. Close EagleEye completely and start it again.
-7. Report PASS/FAIL and reproducible errors in the public beta issue.
+2. Confirm that the browser workspace opens.
+3. Open \`/health\` and verify \`ok: true\` and build \`439.0\`.
+4. Create a synthetic/demo case.
+5. Run the Build-439 case self-test described in [BUILD_439_CASE_TEST.md](BUILD_439_CASE_TEST.md).
+6. Confirm that the test reports human-GO enforcement, bounded task planning and no direct network execution.
+7. Close EagleEye completely and start it again.
 
 ## Diagnostics and tests
 
-```bash
+\`\`\`bash
 eagleeye --diagnose
 python -m pip install -e '.[test]'
-pytest -q tests/test_build438_integrated.py
-```
+pytest -q tests/test_build439_integrated.py
+\`\`\`
 
-The canonical case-specific Build-438 test uses the authenticated self-test endpoint and validates provenance-bound timeline construction, review-gated identity fusion, explicit-only relationship semantics, and the absence of automatic causality/identity/relationship inference.
+The canonical Build-439 suite verifies the full plan-to-synthesis loop, explicit GO, Phase-19 source scoping, public crawl-task planning, Tor separation, hypothesis discipline, integrity and case isolation.
+
+For regression work on the immediately preceding fusion layer, the retained artifacts are \`EAGLEEYE_PRO_438_0.py\` and \`tests/test_build438_integrated.py\`.
 
 ## Security and release scope
 
-- The default server binds only to loopback (`127.0.0.1`).
-- No automatic external research/network execution is started on boot by Build 438.
-- Reviewed same-entity links are used as a non-destructive view; source records are retained.
-- Temporal conflicts remain review items; Build 438 does not decide which source is true.
-- Relationship edges require explicit source assertions; text co-occurrence does not create edges.
-- Build 438 is a Phase-19 engineering build; broad live-research/general production readiness is **not** claimed.
+- Default server binding remains loopback-only.
+- No Build-439 network execution starts automatically or on boot.
+- Build 439 cannot autonomously enlarge the approved source scope.
+- Crawl tasks are planning/intake contracts, not proof that retrieval occurred.
+- Working hypotheses are not findings and remain human-reviewable.
+- Counterevidence and unresolved gaps stay first-class.
+- Build 437 reviewed identity links remain non-destructive.
+- Build 438 temporal/relationship assertions retain provenance.
+- Production readiness remains **false**.
 
-See `README_BUILD_438_0.md` and `RELEASE_MANIFEST_BUILD_438_0.json` for the engineering scope.
+Build 440 is the next hard checkpoint. It should qualify the complete Phase-19 investigation path rather than introduce another large capability.
+
+See \`README_BUILD_439_0.md\` and \`RELEASE_MANIFEST_BUILD_439_0.json\` for the engineering scope.
