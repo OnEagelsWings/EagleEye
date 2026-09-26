@@ -292,7 +292,7 @@ def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
         assert status["autonomous_scope_expansion"] is False
         assert status["general_live_collection_complete"] is False
         assert status["production_release_ready"] is False
-        assert status["next_hard_checkpoint"] == "460.0"
+        assert status["next_hard_checkpoint"] == "445.0"
 
     import eagleeye.interfaces.web.app441 as appmod
 
@@ -305,11 +305,11 @@ def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_441_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app441 import create_workspace_app441" in (
+    assert "app442 import create_workspace_app442" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_441_CASE_TEST.md").exists()
     assert (ROOT / "README_BUILD_441_0.md").exists()
     readme = (ROOT / "README.md").read_text()
-    assert "EAGLEEYE_PRO_441_0.py" in readme
-    assert "test_build441_integrated.py" in readme
+    assert "EAGLEEYE_PRO_442_0.py" in readme
+    assert "test_build442_integrated.py" in readme
