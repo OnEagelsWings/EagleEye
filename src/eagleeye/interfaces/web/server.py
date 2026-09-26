@@ -20,7 +20,7 @@ import uvicorn
 from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
 
-from .app439 import create_workspace_app439 as create_workspace_app
+from .app440 import create_workspace_app440 as create_workspace_app
 
 
 def _free_port(host: str, preferred: int) -> int:
