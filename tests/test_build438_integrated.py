@@ -114,6 +114,6 @@ def test_contract_and_launcher(tmp_path,monkeypatch):
     import eagleeye.interfaces.web.app438 as appmod
     calls=[];monkeypatch.setattr(appmod,'create_workspace_app438',lambda *a,**k:calls.append((a,k)))
     ns=runpy.run_path(str(ROOT/'EAGLEEYE_PRO_438_0.py'),run_name='__mp_main__');assert calls==[];assert ns['app'] is None
-    assert 'app440 import create_workspace_app440' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
+    assert 'app441 import create_workspace_app441' in (ROOT/'src/eagleeye/interfaces/web/server.py').read_text()
     assert (ROOT/'BUILD_438_CASE_TEST.md').exists();assert (ROOT/'README_BUILD_438_0.md').exists()
-    readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_440_0.py' in readme and 'test_build440_integrated.py' in readme
+    readme=(ROOT/'README.md').read_text();assert 'EAGLEEYE_PRO_441_0.py' in readme and 'test_build441_integrated.py' in readme

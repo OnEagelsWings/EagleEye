@@ -44,7 +44,7 @@ class Build440Phase19QualificationService:
                 component_integrity[name] = False
         last = self.qualification440.latest()
         checks = {
-            "version_coherent": RUNTIME_BUILD == SCHEMA_VERSION == self.BUILD,
+            "version_coherent": RUNTIME_BUILD == SCHEMA_VERSION and int(RUNTIME_BUILD.split(".")[0]) >= int(self.BUILD.split(".")[0]),
             "qualification_record_integrity": status["integrity_valid"],
             "all_current_component_integrity": all(component_integrity.values()),
             "passing_phase19_qualification": bool(last and last["result"] == "pass"),

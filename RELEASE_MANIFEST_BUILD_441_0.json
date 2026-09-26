@@ -1,0 +1,34 @@
+{
+  "build": "441.0",
+  "package": "441.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 1,
+  "name": "Controlled Surface Retrieval",
+  "capabilities": [
+    "public HTTP(S) GET execution for existing Build-425 single-page tasks",
+    "exact registered-host enforcement",
+    "robots.txt fail-closed enforcement",
+    "public DNS validation and IP-pinned connections",
+    "same-host bounded redirects",
+    "Build-425 -> 422/423 provenance intake",
+    "explicit SURFACE441_LIVE authorization",
+    "active Build-439 loop authorization reuse"
+  ],
+  "prohibited": [
+    "authenticated crawling",
+    "cookies/session reuse",
+    "forms/uploads/write methods",
+    "JavaScript execution",
+    "private/local network targets",
+    "cross-host redirects",
+    "onion execution",
+    "autonomous scope expansion"
+  ],
+  "ordinary_surface_retrieval_available": true,
+  "news_retrieval_adapter_complete": false,
+  "public_social_retrieval_adapter_complete": false,
+  "general_live_collection_complete": false,
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_hard_checkpoint": "460.0"
+}

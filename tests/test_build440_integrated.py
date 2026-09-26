@@ -160,11 +160,11 @@ def test_contract_launcher_and_current_server(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_440_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app440 import create_workspace_app440" in (
+    assert "app441 import create_workspace_app441" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_440_CASE_TEST.md").exists()
     assert (ROOT / "README_BUILD_440_0.md").exists()
     readme = (ROOT / "README.md").read_text()
-    assert "EAGLEEYE_PRO_440_0.py" in readme
-    assert "test_build440_integrated.py" in readme
+    assert "EAGLEEYE_PRO_441_0.py" in readme
+    assert "test_build441_integrated.py" in readme
