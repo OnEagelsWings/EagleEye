@@ -47,7 +47,7 @@ class Build439AIInvestigationLoopService:
         status = self.loop439.status()
         return {
             **status,
-            "version_coherent": RUNTIME_BUILD == SCHEMA_VERSION == self.BUILD,
+            "version_coherent": RUNTIME_BUILD == SCHEMA_VERSION and int(RUNTIME_BUILD.split(".")[0]) >= int(self.BUILD.split(".")[0]),
             "phase": 19,
             "phase19_builds_completed": 19,
             "next_hard_checkpoint": "440.0",
