@@ -599,6 +599,118 @@ class SurfaceRetrievalHardening442:
         finally:
             self._live_worker_lock.release()
 
+    def run_case_selftest(self, *, identity, case_id):
+        from eagleeye.crawler.engine import FetchResponse
+
+        ident = self._identity(identity)
+        self.governance.authorize(
+            ident,
+            case_id=str(case_id),
+            capability="crawler.run",
+            object_type="surface_hardening_442",
+            object_id=str(case_id),
+        )
+        token = secrets.token_hex(5)
+        base = f"https://surface442-{token}.example.org/"
+        source = self.registry421.register(
+            identity=ident,
+            name="Build 442 Synthetic Surface Fixture " + token,
+            source_type="website",
+            access_mode="public",
+            base_url=base,
+            capabilities=["public_pages", "case_fixture"],
+            coverage={"fixture_only": True, "live_execution_forbidden": True},
+            license_note="Synthetic Build 442 hardening replay source.",
+        )
+        target = base + "page"
+        task = self.crawler425.create_task(
+            identity=ident,
+            case_id=str(case_id),
+            source_id=source["source_id"],
+            target=target,
+            objective="Build 442 deterministic hardening qualification",
+            scope={"allowed_hosts": [f"surface442-{token}.example.org"]},
+            budget={"max_pages": 1, "max_bytes": 100000, "max_seconds": 5},
+        )
+        robots_url = base + "robots.txt"
+
+        class SequenceTransport:
+            transport_kind = "surface442_sequence_replay"
+            externally_configured = False
+            requires_resolved_ips = False
+
+            def __init__(self):
+                self.calls = []
+                self.target_attempt = 0
+
+            def fetch(self, url, **kwargs):
+                self.calls.append(str(url))
+                if str(url) == robots_url:
+                    return FetchResponse(
+                        robots_url,
+                        200,
+                        {"content-type": "text/plain"},
+                        b"User-agent: *\nAllow: /\n",
+                        1,
+                    )
+                if str(url) == target:
+                    self.target_attempt += 1
+                    if self.target_attempt == 1:
+                        return FetchResponse(
+                            target,
+                            503,
+                            {"content-type": "text/plain"},
+                            b"temporary",
+                            2,
+                        )
+                    return FetchResponse(
+                        target,
+                        200,
+                        {"content-type": "text/plain"},
+                        ("Build 442 retry success " + token).encode(),
+                        2,
+                    )
+                raise KeyError(str(url))
+
+        transport = SequenceTransport()
+        old_sleep = self.sleep
+        self.sleep = lambda _seconds: None
+        try:
+            result = self.execute_replay(
+                identity=ident,
+                task_id=task["task_id"],
+                transport=transport,
+                resolver=lambda _host: ["93.184.216.34"],
+            )
+        finally:
+            self.sleep = old_sleep
+
+        telemetry = self.task_telemetry(task["task_id"])
+        checks = {
+            "surface_completed": result["run"]["state"] == "completed",
+            "hardening_completed": result["hardening"]["state"] == "completed",
+            "retry_happened": transport.target_attempt == 2,
+            "transient_503_recorded": any(
+                int(x["http_status"]) == 503 and bool(x["transient"]) for x in telemetry
+            ),
+            "backoff_recorded": any(int(x["backoff_ms"]) > 0 for x in telemetry),
+            "dns_pin_recorded": bool(result["hardening"]["dns_report"]["pinned"]),
+            "no_rebind_violation": not result["hardening"]["dns_report"]["rebind_violations"],
+            "deterministic_no_network": result["hardening"]["execution_mode"]
+            == "deterministic_hardened_replay",
+            "integrity_valid": self.verify_integrity()["valid"],
+        }
+        return {
+            "build": BUILD,
+            "case_id": str(case_id),
+            "result": "PASS" if all(checks.values()) else "FAIL",
+            "checks": checks,
+            "task_id": task["task_id"],
+            "hardening": result["hardening"],
+            "telemetry": telemetry,
+            "note": "Synthetic replay validates retry, backoff, telemetry and DNS pinning without external sockets.",
+        }
+
     def run(self, hardening_run_id):
         row = self.db.one(
             "SELECT * FROM surface_hardening_run_442 WHERE hardening_run_id=?",
