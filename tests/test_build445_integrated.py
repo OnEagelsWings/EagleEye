@@ -133,9 +133,8 @@ def test_qualification_integrity_tamper_fails(tmp_path):
         assert c.data_acquisition_qualification_445.verify_integrity()["valid"] is False
         status = c.build445.data_acquisition_status_445()
         assert status["integrity_valid"] is False
-        assert status["data_acquisition_gate_pass"] is True
-        # A tampered value can be read from the database, but integrity is false;
-        # callers must never treat gate_pass without integrity_valid as certification.
+        assert status["data_acquisition_gate_pass"] is False
+        assert status["engineering_acquisition_stack_qualified"] is False
 
 
 def test_non_admin_cannot_run_global_acquisition_checkpoint(tmp_path):
