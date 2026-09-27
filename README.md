@@ -1,77 +1,104 @@
-# EagleEye — Build 445
+# EagleEye — Build 446
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 445 is the **Phase-20 Data Acquisition Hard Checkpoint**.
+Build 446 implements the **Live AI Investigation Loop** integration identified as the main open gap by Build 445.
 
-## What this checkpoint evaluates
+## What changed
 
-The gate qualifies the three public acquisition paths implemented in Builds 441–444:
+A human-authorized Build-439 investigation loop can now prepare reviewed per-source dispatch tickets and route each approved source to the correct acquisition path:
 
-- controlled Surface-Web retrieval;
-- live public News-feed acquisition;
-- controlled Public-Social acquisition.
+- Surface -> Build 442 hardened retrieval
+- News -> Build 443 public News acquisition
+- Public Social -> Build 444 controlled Social acquisition
 
-It separates four distinct claims:
+The AI loop still does not receive generic network authority.
 
-1. implementation;
-2. deterministic engineering qualification;
-3. external non-fixture validation;
-4. production readiness.
+## Human control remains explicit
 
-A deterministic CI pass is not treated as real-world validation.
+A Build-439 loop must already be active.
 
-## Expected fresh-install result
+Every source must already be present in the loop's `allowed_source_ids`.
 
-On CI or a fresh installation with no real external validation history:
+Every live dispatch retains its own path-specific confirmation:
 
-- engineering result: `pass`
-- external result: `hold`
-- overall result: `hold`
-- data acquisition gate pass: `false`
+- Surface: `SURFACE442_LIVE`
+- News: `NEWS443_LIVE`
+- Social: `SOCIAL444_LIVE`
 
-That is the correct fail-closed state.
+There is no global "run all" confirmation and no automatic live batch execution.
 
-## What counts as real external validation
+## Conservative routing
 
-Fixture and replay runs do not count.
+- `social` sources require an explicit reviewed Social adapter.
+- `rss` and `news` sources route to News.
+- `api` routes to News only when explicit News-feed capabilities are declared; otherwise it routes to Surface.
+- other reviewed public HTTP(S) sources route to Surface.
+- non-public access modes require human review.
+- Tor remains outside Build 446 and retains its separate isolated-worker approval boundary.
 
-The gate requires at least one successful non-fixture run for each path:
+## Closed analytical loop
 
-- Surface: Build-442 explicit external validation;
-- News: Build-443 live public ingestion;
-- Public Social: Build-444 live public ingestion.
+After successful acquisition, EagleEye refreshes:
 
-Only after all three are present can Build 445 return an overall `pass`.
+```
+Acquisition
+  -> Entity Resolution 437
+  -> Temporal / Relationship Fusion 438
+  -> Hypothesis / Counterevidence Matrix 418
+  -> Synthesis 419
+```
 
-Even then, EagleEye does **not** claim production readiness.
+This does not promote hypotheses to fact, determine truth or automatically launch another acquisition wave.
 
-## Known open integration items
+## Build 445 relationship
 
-Build 445 deliberately reports two remaining gaps:
+Build 445 remains a historical hard checkpoint.
 
-- Build 439 does not yet route News/Social collection tasks into the specialized 443/444 live adapters;
-- retrieval has logical isolation but not OS process/container isolation.
+Build 446 closes the specific integration gap:
 
-The first is the main target for **Build 446 — Live AI Investigation Loop**.
+`build439_specialized_news_social_adapter_dispatch_not_implemented`
+
+It does not retroactively rewrite an earlier Build-445 report and does not convert missing external validation into a PASS.
+
+## Current limitations
+
+Still not claimed:
+
+- OS process/container retrieval isolation
+- authenticated/private collection
+- broad external platform coverage
+- automatic social-graph expansion
+- production readiness
+
+Therefore:
+
+- `real_world_general_research_ready = false`
+- `production_release_ready = false`
 
 ## Qualification
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build445_integrated.py
+pytest -q tests/test_build446_integrated.py
 ```
 
-Case-specific API:
+Case-specific deterministic qualification:
 
 ```
-POST /api/build445/cases/{case_id}/qualification/run
+POST /api/build446/cases/{case_id}/selftest
 ```
 
-Status:
+Prepare reviewed dispatch tickets:
 
 ```
-GET /api/build445/qualification/status
+POST /api/build446/loops/{loop_id}/dispatches/prepare
+```
+
+Execute exactly one ticket with the confirmation specified on that ticket:
+
+```
+POST /api/build446/dispatches/{dispatch_id}/execute
 ```
 
 ## Start
@@ -88,7 +115,7 @@ Manual start:
 
 ```powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_445_0.py
+py -3 EAGLEEYE_PRO_446_0.py
 ```
 
 Linux/macOS:
@@ -98,17 +125,12 @@ chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 ```
 
-See `README_BUILD_445_0.md`, `BUILD_445_CASE_TEST.md` and `RELEASE_MANIFEST_BUILD_445_0.json`.
+See `README_BUILD_446_0.md`, `BUILD_446_CASE_TEST.md` and `RELEASE_MANIFEST_BUILD_446_0.json`.
 
 Current roadmap:
 
-- 445 Data Acquisition Hard Checkpoint
 - 446 Live AI Investigation Loop
-- 447 Evidence → Claims → Dossier Closure
+- 447 Evidence -> Claims -> Dossier Closure
 - 448 Investigator Workspace
 - 449 Human Review / Team Workflow
 - 450 Investigation Workflow Hard Checkpoint
-
-`real_world_general_research_ready = false`
-
-`production_release_ready = false`
