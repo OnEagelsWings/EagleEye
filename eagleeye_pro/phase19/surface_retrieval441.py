@@ -22,6 +22,8 @@ SAFE_MEDIA = {
     "text/xml",
     "application/json",
     "application/feed+json",
+    "application/activity+json",
+    "application/ld+json",
     "application/xml",
     "application/xhtml+xml",
     "application/rss+xml",
