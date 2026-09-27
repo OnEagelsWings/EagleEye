@@ -1,0 +1,35 @@
+{
+  "build": "445.0",
+  "package": "445.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 5,
+  "name": "Data Acquisition Hard Checkpoint",
+  "hard_checkpoint": true,
+  "gate_semantics": {
+    "engineering": "deterministic selftests + integrity + provenance + authority contract",
+    "external": "one successful non-fixture external validation for Surface, News and Public Social",
+    "overall": "pass only when engineering and external both pass"
+  },
+  "deterministic_paths": [
+    "surface441",
+    "hardening442",
+    "news443",
+    "social444"
+  ],
+  "external_paths": {
+    "surface": "Build 442 external validation",
+    "news": "Build 443 live non-fixture ingestion",
+    "social": "Build 444 live non-fixture ingestion"
+  },
+  "fixture_or_ci_replay_counts_as_external": false,
+  "known_open_items": [
+    "Build 439 specialized News/Social adapter dispatch not implemented",
+    "retrieval process/container isolation not implemented",
+    "broad external coverage not established"
+  ],
+  "general_live_collection_complete": false,
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_build": "446.0",
+  "next_hard_checkpoint": "450.0"
+}

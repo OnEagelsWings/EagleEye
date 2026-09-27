@@ -1,78 +1,78 @@
-# EagleEye — Build 444
+# EagleEye — Build 445
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 444 is the fourth build of **Phase 20 — Real-World Acquisition, Operationalization & Serious Beta**.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-## Build 444 focus
+Build 445 is the **Phase-20 Data Acquisition Hard Checkpoint**.
 
-Build 444 adds **Controlled Public-Social Acquisition** on top of the hardened Build-442 network path and the existing Build-432 social observation model.
+## What this checkpoint evaluates
 
-Supported public adapters:
+The gate qualifies the three public acquisition paths implemented in Builds 441–444:
 
-- Mastodon public JSON
-- Bluesky public AppView JSON
-- explicit `generic_public` schema `eagleeye_public_social_v1`
+- controlled Surface-Web retrieval;
+- live public News-feed acquisition;
+- controlled Public-Social acquisition.
 
-Every source must be registered as `source_type=social`, `access_mode=public` and must explicitly declare `coverage.social_adapter`.
+It separates four distinct claims:
 
-## Acquisition chain
+1. implementation;
+2. deterministic engineering qualification;
+3. external non-fixture validation;
+4. production readiness.
+
+A deterministic CI pass is not treated as real-world validation.
+
+## Expected fresh-install result
+
+On CI or a fresh installation with no real external validation history:
+
+- engineering result: `pass`
+- external result: `hold`
+- overall result: `hold`
+- data acquisition gate pass: `false`
+
+That is the correct fail-closed state.
+
+## What counts as real external validation
+
+Fixture and replay runs do not count.
+
+The gate requires at least one successful non-fixture run for each path:
+
+- Surface: Build-442 explicit external validation;
+- News: Build-443 live public ingestion;
+- Public Social: Build-444 live public ingestion.
+
+Only after all three are present can Build 445 return an overall `pass`.
+
+Even then, EagleEye does **not** claim production readiness.
+
+## Known open integration items
+
+Build 445 deliberately reports two remaining gaps:
+
+- Build 439 does not yet route News/Social collection tasks into the specialized 443/444 live adapters;
+- retrieval has logical isolation but not OS process/container isolation.
+
+The first is the main target for **Build 446 — Live AI Investigation Loop**.
+
+## Qualification
+
+```bash
+python -m pip install -e '.[test]'
+pytest -q tests/test_build445_integrated.py
+```
+
+Case-specific API:
 
 ```
-421 social source
-  -> 425 single-endpoint task
-  -> 442 hardened public retrieval
-  -> 422/423 endpoint provenance
-  -> normalized public social objects
-  -> derived 422/423 observations
-  -> 432 public-social observations
+POST /api/build445/cases/{case_id}/qualification/run
 ```
 
-The endpoint JSON is parsed in memory and is not introduced as a second persistent raw-response store.
+Status:
 
-## Guardrails
-
-Build 444 does not authenticate, use cookies, access private/direct content, send messages, execute JavaScript, enumerate follower/following graphs, auto-discover endpoints or paginate automatically.
-
-Each run is limited to one reviewed endpoint and at most 50 returned objects.
-
-Only `public` and `unlisted` objects are accepted. Posts and threads require a valid source timestamp. Profile/account collection-time fallback is explicitly labeled as observation time rather than publication time.
-
-Canonical object URLs must remain on the source host or an explicitly reviewed `coverage.allowed_object_hosts` entry.
-
-Responses containing credential/session-like fields are rejected.
-
-## Live execution
-
-Live execution requires exactly:
-
-`SOCIAL444_LIVE`
-
-All network access inherits Build 442 DNS rebinding protection, IP pinning, robots policy, TLS validation, retry/backoff, rate control and byte/time budgets.
-
-## Phase 20 acquisition status
-
-Implemented before the Build-445 gate:
-
-- 441 controlled Surface-Web retrieval
-- 442 Surface retrieval hardening
-- 443 live public News feed acquisition
-- 444 controlled Public-Social acquisition
-
-Still not claimed:
-
-- general production readiness
-- broad platform coverage
-- authenticated/private collection
-- automated social-graph expansion
-- process/container isolation
-- broad external end-to-end validation
-
-Therefore:
-
-- `general_live_collection_complete: false`
-- `real_world_general_research_ready: false`
-- `production_release_ready: false`
-
-The next build is **445 — Data Acquisition Hard Checkpoint**.
+```
+GET /api/build445/qualification/status
+```
 
 ## Start
 
@@ -88,7 +88,7 @@ Manual start:
 
 ```powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_444_0.py
+py -3 EAGLEEYE_PRO_445_0.py
 ```
 
 Linux/macOS:
@@ -98,11 +98,17 @@ chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 ```
 
-## Qualification
+See `README_BUILD_445_0.md`, `BUILD_445_CASE_TEST.md` and `RELEASE_MANIFEST_BUILD_445_0.json`.
 
-```bash
-python -m pip install -e '.[test]'
-pytest -q tests/test_build444_integrated.py
-```
+Current roadmap:
 
-See `README_BUILD_444_0.md`, `BUILD_444_CASE_TEST.md` and `RELEASE_MANIFEST_BUILD_444_0.json`.
+- 445 Data Acquisition Hard Checkpoint
+- 446 Live AI Investigation Loop
+- 447 Evidence → Claims → Dossier Closure
+- 448 Investigator Workspace
+- 449 Human Review / Team Workflow
+- 450 Investigation Workflow Hard Checkpoint
+
+`real_world_general_research_ready = false`
+
+`production_release_ready = false`

@@ -305,11 +305,11 @@ def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_441_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app444 import create_workspace_app444" in (
+    assert "app445 import create_workspace_app445" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_441_CASE_TEST.md").exists()
     assert (ROOT / "README_BUILD_441_0.md").exists()
     readme = (ROOT / "README.md").read_text()
-    assert "EAGLEEYE_PRO_444_0.py" in readme
-    assert "test_build444_integrated.py" in readme
+    assert "EAGLEEYE_PRO_445_0.py" in readme
+    assert "test_build445_integrated.py" in readme
