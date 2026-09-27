@@ -497,6 +497,7 @@ class DataAcquisitionHardCheckpoint445:
     def status(self):
         last = self.latest()
         external = self._external_evidence()
+        integrity = self.verify_integrity()["valid"]
         return {
             "build": BUILD,
             "policy": POLICY_ID,
@@ -513,12 +514,16 @@ class DataAcquisitionHardCheckpoint445:
             "news_external_validation_present": external["paths"]["news"]["validated"],
             "social_external_validation_present": external["paths"]["social"]["validated"],
             "all_three_paths_externally_validated": external["all_three_paths_externally_validated"],
-            "integrity_valid": self.verify_integrity()["valid"],
+            "integrity_valid": integrity,
             "last_engineering_result": last["engineering_result"] if last else None,
             "last_external_result": last["external_result"] if last else None,
             "last_qualification_result": last["overall_result"] if last else None,
-            "data_acquisition_gate_pass": bool(last and last["overall_result"] == "pass"),
-            "engineering_acquisition_stack_qualified": bool(last and last["engineering_result"] == "pass"),
+            "data_acquisition_gate_pass": bool(
+                integrity and last and last["overall_result"] == "pass"
+            ),
+            "engineering_acquisition_stack_qualified": bool(
+                integrity and last and last["engineering_result"] == "pass"
+            ),
             "build439_specialized_news_social_dispatch_implemented": False,
             "general_live_collection_complete": False,
             "real_world_general_research_ready": False,
