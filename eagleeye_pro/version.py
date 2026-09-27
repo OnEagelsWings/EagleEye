@@ -1,3 +1,3 @@
-BUILD = "443.0"
-SCHEMA_VERSION = "443.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 443.0 Live News Acquisition"
+BUILD = "444.0"
+SCHEMA_VERSION = "444.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 444.0 Controlled Public-Social Acquisition"
