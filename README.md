@@ -1,97 +1,99 @@
-# EagleEye — Build 442
+# EagleEye — Build 443
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 442 is the second build of **Phase 20 — Real-World Acquisition, Operationalization & Serious Beta**.
+EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance. Build 443 is the third build of **Phase 20 — Real-World Acquisition, Operationalization & Serious Beta**.
 
-## Build 442 focus
+## Build 443 focus
 
-Build 441 introduced controlled ordinary public Surface-Web retrieval. Build 442 hardens that path for real-world use without widening its authority.
+Build 441 introduced controlled public Surface-Web retrieval. Build 442 hardened that path. Build 443 now adds a dedicated **live public News acquisition layer** on top of the same hardened retrieval boundary.
 
-The active Surface-Web execution path now adds:
+Supported feed formats:
 
-- task-scoped DNS/IP pinning;
-- detection of later non-public DNS answers;
-- protection against DNS rebinding into private/loopback/link-local space;
-- bounded retry for transient transport errors and selected HTTP failures;
-- exponential backoff;
-- per-source task-rate control;
-- minimum spacing between tasks to the same source;
-- source-scoped worker locking;
-- one concurrent live Build-442 worker;
-- fresh stateless transport per live run;
-- persisted attempt/failure telemetry.
+- RSS
+- Atom
+- JSON Feed
 
-Build 441's safety contract remains in force:
+Registered sources must use source type \`rss\`, \`news\` or \`api\` and access mode \`public\`.
 
-- public HTTP(S) GET only;
-- exact registered host and task scope;
-- fail-closed robots.txt handling;
-- same-host redirects only;
-- TLS certificate/SNI validation;
-- hard time and byte budgets;
-- no credentials, cookies, forms, uploads, write methods or JavaScript;
-- no private/local targets;
-- no onion execution;
-- no autonomous source/scope expansion.
+## News acquisition chain
 
-## DNS hardening
+\`\`\`
+421 Source Registry
+  -> 425 feed task
+  -> 442 hardened public retrieval
+  -> 422 parent feed acquisition event
+  -> 423 feed fingerprint/dedup
+  -> normalized feed entries
+  -> derived 422/423 item observations
+  -> 429 normalized news items
+  -> 431 provenance/syndication analysis
+\`\`\`
 
-The first valid public DNS answer becomes the task's pinned connection set. Later DNS answers are observed again. If a later answer becomes private or otherwise non-global, EagleEye stops before the next fetch. If a public CDN answer changes while remaining public, the change is recorded but the original validated IP set remains pinned for that task.
+The feed body is used only in memory during parsing. Build 443 does not introduce a second persistent raw-payload store.
 
-## Retry and rate policy
+## Data-quality boundary
 
-Transient retries are bounded to at most three attempts for transport failures and HTTP 408, 425, 429, 500, 502, 503 and 504.
+A feed item is persisted only when it has:
 
-TLS certificate verification failures are not retried.
+- a title;
+- a public HTTP(S) canonical URL;
+- a parseable publication timestamp;
+- an article host inside the reviewed source allowlist.
 
-The current EagleEye safety ceiling is:
+The registered source host is automatically allowed. Additional publisher/article hosts must be declared explicitly through \`coverage.allowed_article_hosts\`.
 
-- maximum 6 task starts per source per rolling minute;
-- minimum 1 second between task starts against the same source.
+Missing publication times are not silently replaced by collection time. Cross-host article links outside the reviewed allowlist are skipped rather than followed.
 
-A source's own terms or server guidance may require stricter behavior.
+Duplicate \`source_id + external_id\` items are not re-ingested.
 
-## External validation
+## Parser security
 
-External validation never runs automatically, on startup, or in CI.
+XML feeds with DTD or ENTITY declarations are rejected. Feed parsing is bounded by the Build-443 byte and item limits and still inherits Build-442 DNS, retry, rate-limit, TLS and robots protections.
 
-A reviewed non-fixture public Build-425 task can be used for one explicit validation run with:
+## Semantic discipline
 
-\`VALIDATE442_EXTERNAL\`
+Build 443 does **not** infer entities, events or claims merely from feed titles and summaries.
 
-That run still passes through all Build-441/442 restrictions and provenance handling.
+Build 430 remains available downstream for an explicit semantic-extraction stage, but Build 443 itself records source observations rather than presenting feed metadata as verified fact.
 
-## Isolation boundary
+## Live execution
 
-Build 442 provides logical isolation through source locks, one live worker and fresh stateless transports. It does **not** claim process/container isolation. Stronger process/network isolation remains planned for the later Phase-20 OPSEC block.
+A reviewed feed task requires the exact confirmation:
+
+\`NEWS443_LIVE\`
+
+No authenticated feeds, cookie sessions, login automation, paywall bypass, JavaScript rendering or article-body spidering are introduced.
 
 ## Current readiness
 
 Implemented:
 
-- controlled ordinary Surface-Web retrieval;
-- current-scope Surface-Web hardening;
-- deterministic retry/DNS/rate-limit qualification;
-- explicit real external validation mechanism.
+- controlled public Surface-Web retrieval;
+- Build-442 retrieval hardening;
+- live RSS/Atom/JSON Feed acquisition;
+- normalized 429 news-item ingestion;
+- 431 provenance/syndication analysis;
+- deterministic no-network qualification.
 
 Still incomplete:
 
-- dedicated live News acquisition;
-- dedicated Public-Social acquisition;
+- controlled Public-Social acquisition;
+- automatic semantic extraction from news content;
+- broad article-body acquisition;
 - broad external end-to-end validation;
 - process/container retrieval isolation;
 - production hardening.
 
-Therefore:
+Therefore EagleEye still reports:
 
 - \`general_live_collection_complete: false\`
 - \`real_world_general_research_ready: false\`
 - \`production_release_ready: false\`
 
-The next build is **443 — Live News Acquisition**. The next hard checkpoint is **445 — Data Acquisition Hard Checkpoint**.
+The next build is **444 — Controlled Public-Social Acquisition**. The next hard checkpoint is **445 — Data Acquisition Hard Checkpoint**.
 
-## External testers
+## External testing
 
-Use only synthetic, demo, or clearly public data. Do not use confidential investigations, credentials, secrets, internal services or sensitive personal information.
+Use only synthetic, demo, or clearly public data. Do not use confidential investigations, credentials, private/internal services, paywalled login flows or sensitive personal information during beta qualification.
 
 **Repository:** https://github.com/OnEagelsWings/EagleEye  
 **Testing guide:** [TESTING.md](TESTING.md)  
@@ -107,11 +109,11 @@ Windows:
 START_EAGLEEYE_PRO.bat
 \`\`\`
 
-Manual Windows start:
+Manual start:
 
 \`\`\`powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_442_0.py
+py -3 EAGLEEYE_PRO_443_0.py
 \`\`\`
 
 Linux/macOS:
@@ -126,14 +128,14 @@ chmod +x START_EAGLEEYE_PRO.sh
 Deterministic no-network qualification:
 
 \`\`\`
-POST /api/build442/cases/{case_id}/retrieval/selftest
+POST /api/build443/cases/{case_id}/news/selftest
 \`\`\`
 
 or:
 
 \`\`\`bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build442_integrated.py
+pytest -q tests/test_build443_integrated.py
 \`\`\`
 
-See \`README_BUILD_442_0.md\`, \`BUILD_442_CASE_TEST.md\` and \`RELEASE_MANIFEST_BUILD_442_0.json\`.
+See \`README_BUILD_443_0.md\`, \`BUILD_443_CASE_TEST.md\` and \`RELEASE_MANIFEST_BUILD_443_0.json\`.
