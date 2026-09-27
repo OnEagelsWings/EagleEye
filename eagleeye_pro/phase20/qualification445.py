@@ -330,12 +330,13 @@ class DataAcquisitionHardCheckpoint445:
         if not case_id:
             raise ValueError("dedicated Build-445 qualification case_id required")
 
-        component_checks, component_details = self._component_integrity()
+        pre_component_checks, pre_component_details = self._component_integrity()
         matrix = self._status_matrix()
         authority = self._authority_contract()
         before = self._provenance_snapshot(case_id)
         deterministic = self._deterministic_qualification(identity=identity, case_id=case_id)
         after = self._provenance_snapshot(case_id)
+        component_checks, component_details = self._component_integrity()
         external = self._external_evidence()
 
         capability_checks = {
@@ -367,7 +368,8 @@ class DataAcquisitionHardCheckpoint445:
         }
 
         engineering_checks = {
-            "all_required_component_integrity": all(component_checks.get(x, False) for x in self.REQUIRED),
+            "all_required_component_integrity_before": all(pre_component_checks.get(x, False) for x in self.REQUIRED),
+            "all_required_component_integrity_after": all(component_checks.get(x, False) for x in self.REQUIRED),
             "all_deterministic_acquisition_selftests_pass": deterministic["all_pass"],
             "capability_contract_pass": all(capability_checks.values()),
             "authority_contract_pass": authority["pass"],
@@ -399,6 +401,8 @@ class DataAcquisitionHardCheckpoint445:
             "hard_checkpoint": True,
             "checkpoint_name": "Data Acquisition Hard Checkpoint",
             "phase20_builds_completed": 5,
+            "pre_component_checks": pre_component_checks,
+            "pre_component_details": pre_component_details,
             "component_checks": component_checks,
             "component_details": component_details,
             "capability_matrix": matrix,
