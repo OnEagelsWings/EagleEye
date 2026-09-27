@@ -1,0 +1,43 @@
+{
+  "build": "446.0",
+  "package": "446.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 6,
+  "name": "Live AI Investigation Loop",
+  "routes": {
+    "surface": {
+      "adapter": "Build 442 hardened Surface",
+      "confirmation": "SURFACE442_LIVE"
+    },
+    "news": {
+      "adapter": "Build 443 News",
+      "confirmation": "NEWS443_LIVE"
+    },
+    "social": {
+      "adapter": "Build 444 Public Social",
+      "confirmation": "SOCIAL444_LIVE"
+    }
+  },
+  "requires_active_build439_loop": true,
+  "source_must_be_in_loop_allowlist": true,
+  "per_path_confirmation_required": true,
+  "batch_auto_execute": false,
+  "automatic_scope_expansion": false,
+  "generic_network_authority": false,
+  "tor_separate_review": true,
+  "analysis_refresh": [
+    "Build 437",
+    "Build 438",
+    "Build 418",
+    "Build 419"
+  ],
+  "automatic_truth_determination": false,
+  "automatic_evidence_promotion": false,
+  "build445_gap_closed": "specialized News/Social adapter dispatch",
+  "build445_checkpoint_rewritten": false,
+  "process_isolation": false,
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_build": "447.0",
+  "next_hard_checkpoint": "450.0"
+}
