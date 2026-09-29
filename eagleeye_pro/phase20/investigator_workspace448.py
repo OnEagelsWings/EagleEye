@@ -290,7 +290,7 @@ class InvestigatorWorkspace448:
             ),
             "legacy_workspace_available": "/legacy" in markup,
             "build447_visible": "Build 447" in markup or "447" in markup,
-            "truth_boundary_visible": "keine automatische Wahrheitsfeststellung" in markup.lower(),
+            "truth_boundary_visible": "keine automatische wahrheitsfeststellung" in markup.lower(),
         }
         missing_routes = []
         for route in REQUIRED_READ_ROUTES + REQUIRED_MUTATION_ROUTES:
