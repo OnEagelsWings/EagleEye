@@ -284,6 +284,8 @@ class InvestigatorWorkspace448:
             "status_region": 'aria-live="polite"' in markup.lower(),
             "keyboard_focus_css": ":focus-visible" in markup,
             "mobile_breakpoint": "@media" in markup and "max-width" in markup,
+            "csp_safe_external_script": 'src="/assets/build448/workspace.js"' in markup and "<script>" not in markup.lower(),
+            "inline_event_handlers_absent": not any(token in markup.lower() for token in ("onclick=", "onchange=", "onsubmit=", "onload=")),
             "legacy_phase13_brand_removed": "Phase 13 · Simplified AI Investigation Workspace" not in markup,
             "primary_view_count": all(
                 f"view={key}" in markup for key, _label in PRIMARY_VIEWS
