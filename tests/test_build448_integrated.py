@@ -90,6 +90,10 @@ def test_primary_workspace_is_clear_responsive_and_current(tmp_path):
         assert 'aria-live="polite"' in markup
         assert ":focus-visible" in markup
         assert "@media(max-width:1000px)" in markup
+        assert 'src="/assets/build448/workspace.js"' in markup
+        assert "<script>" not in markup.lower()
+        assert "onchange=" not in markup.lower()
+        assert "onclick=" not in markup.lower()
         assert "Build 448 · Investigator Workspace" in markup
         assert "Build 447 Evidence/Claims/Dossier integriert" in markup
         assert "Phase 13 · Simplified AI Investigation Workspace" not in markup
@@ -163,7 +167,17 @@ def test_workspace_http_root_and_views_work_with_authenticated_session(tmp_path)
             assert "Build 448" in response.text
             assert "Phase 13 · Simplified AI Investigation Workspace" not in response.text
 
-        legacy = client.get("/legacy", params={"tab": "cockpit302", "case_id": cid})
+        asset = client.get("/assets/build448/workspace.js")
+        assert asset.status_code == 200
+        assert "application/javascript" in asset.headers.get("content-type", "")
+        assert "document.addEventListener" in asset.text
+        root = client.get("/", params={"view": "overview", "case_id": cid})
+        csp = root.headers.get("content-security-policy", "")
+        assert "default-src 'self'" in csp
+        assert "script-src 'unsafe-inline'" not in csp
+        assert 'src="/assets/build448/workspace.js"' in root.text
+
+        legacy = client.get("/legacy", params={"case_id": cid})
         assert legacy.status_code == 200
         assert "<html" in legacy.text.lower()
         assert "Search Capsules" in legacy.text or "Fall" in legacy.text
