@@ -7,7 +7,7 @@ import json
 from urllib.parse import urlencode
 
 from fastapi import HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from .app379 import COOKIE
 from .app447 import create_workspace_app447
@@ -361,7 +361,7 @@ def render_workspace(snapshot, *, view, cases, audits):
         f'<option value="{_e(x.get("case_id"))}" {"selected" if x.get("case_id")==case_id else ""}>{_e(x.get("title"))} · {_e(x.get("status"))}</option>'
         for x in cases
     )
-    selector = f'<form class="case-switch" method="get" action="/"><input type="hidden" name="view" value="{_e(view)}"><select name="case_id" onchange="this.form.submit()">{options}</select><noscript><button>Fall öffnen</button></noscript></form>'
+    selector = f'<form class="case-switch" method="get" action="/"><input type="hidden" name="view" value="{_e(view)}"><select name="case_id">{options}</select><button class="ghost" type="submit">Fall öffnen</button></form>'
     content = {
         "overview": _overview,
         "research": _research,
@@ -372,7 +372,7 @@ def render_workspace(snapshot, *, view, cases, audits):
         "dossier": _dossier,
         "operations": lambda s: _operations(s, audits),
     }[view](snapshot)
-    return f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye Build 448 · {_e(case.get("title"))}</title><style>{CSS}</style></head><body><div class="app"><aside class="side"><div class="brand"><div class="logo">EE</div><div><b>EagleEye</b><small>Build 448 · Investigator Workspace</small></div></div><nav class="nav" aria-label="Hauptnavigation">{nav}</nav><div class="side-foot">Case-first · provenance-first · review-first<br><a href="/legacy">Legacy/Expert Workspace</a><br>Build 447 Evidence/Claims/Dossier integriert.</div></aside><main class="main"><header class="top"><div><h1>{_e(dict(VIEWS).get(view))}</h1><p>{_e(case.get("title"))} · Benutzer: {_e(snapshot.get("actor"))}</p></div>{selector}</header>{_flow(snapshot,case_id)}{content}<div id="workspace-status" class="statusline" aria-live="polite"></div><footer class="footer">Anzeige gespeicherter Daten ≠ unabhängige Verifikation. Evidence, Claims und Hypothesen bleiben unterscheidbar; keine automatische Wahrheitsfeststellung, Identitätsbestätigung, Kausalitäts- oder Schuldzuweisung.</footer></main></div><script>{JS}</script></body></html>'''
+    return f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye Build 448 · {_e(case.get("title"))}</title><style>{CSS}</style></head><body><div class="app"><aside class="side"><div class="brand"><div class="logo">EE</div><div><b>EagleEye</b><small>Build 448 · Investigator Workspace</small></div></div><nav class="nav" aria-label="Hauptnavigation">{nav}</nav><div class="side-foot">Case-first · provenance-first · review-first<br><a href="/legacy">Legacy/Expert Workspace</a><br>Build 447 Evidence/Claims/Dossier integriert.</div></aside><main class="main"><header class="top"><div><h1>{_e(dict(VIEWS).get(view))}</h1><p>{_e(case.get("title"))} · Benutzer: {_e(snapshot.get("actor"))}</p></div>{selector}</header>{_flow(snapshot,case_id)}{content}<div id="workspace-status" class="statusline" aria-live="polite"></div><footer class="footer">Anzeige gespeicherter Daten ≠ unabhängige Verifikation. Evidence, Claims und Hypothesen bleiben unterscheidbar; keine automatische Wahrheitsfeststellung, Identitätsbestätigung, Kausalitäts- oder Schuldzuweisung.</footer></main></div><script src="/assets/build448/workspace.js"></script></body></html>'''
 
 
 def create_workspace_app448(*, base_dir=None):
@@ -465,6 +465,10 @@ def create_workspace_app448(*, base_dir=None):
                 if str(item.get("case_id")) == str(requested):
                     return item
         return cases[0] if cases else None
+
+    @app.get("/assets/build448/workspace.js", response_class=PlainTextResponse)
+    def workspace_js448():
+        return PlainTextResponse(JS, media_type="application/javascript; charset=utf-8")
 
     @app.get("/", response_class=HTMLResponse)
     def workspace448(request: Request, view: str = "overview", case_id: str = "", token: str = ""):
