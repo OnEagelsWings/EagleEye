@@ -54,7 +54,7 @@ JS = r"""
    form.querySelectorAll('[name]').forEach(el=>{
      if(el.disabled)return;
      if(el.type==='checkbox'){out[el.name]=!!el.checked;return;}
-     if(el.dataset.array==='true'){out[el.name]=splitList(el.value);return;}
+     if(el.dataset.array==='true'){const vals=splitList(el.value);if(vals.length||el.required)out[el.name]=vals;return;}
      if(el.dataset.number==='true'){out[el.name]=Number(el.value||0);return;}
      out[el.name]=el.value;
    });
