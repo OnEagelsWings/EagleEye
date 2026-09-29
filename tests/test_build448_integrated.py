@@ -196,35 +196,35 @@ def test_ui_audit_endpoint_executes_and_persists(tmp_path):
 
 
 def test_ui_audit_record_tamper_is_detected(tmp_path):
-    with AppContext(base_dir=tmp_path) as ctx:
+    app = create_workspace_app448(base_dir=tmp_path)
+    ctx = app.state.context
+    try:
         identity = admin(ctx)
         cid = make_case(ctx, identity, "Audit tamper 448")["case_id"]
-        snap = ctx.build448.investigator_workspace_snapshot_448(identity=identity, case_id=cid)
-        markup = render_workspace(snap, view="overview", cases=[snap["case"]], audits=[])
-        # Route inventory can be supplied from the app contract without executing network I/O.
-        from eagleeye.interfaces.web.app448 import REQUIRED_MUTATION_ROUTES if False else render_workspace
-        # Use an actual app so every inherited route is included.
-        app = create_workspace_app448(base_dir=tmp_path / "route-app")
-        try:
-            route_identity = admin(app.state.context)
-            route_case = make_case(app.state.context, route_identity, "route inventory")["case_id"]
-            route_snap = app.state.context.build448.investigator_workspace_snapshot_448(identity=route_identity, case_id=route_case)
-            route_markup = render_workspace(route_snap, view="overview", cases=[route_snap["case"]], audits=[])
-            result = app.state.context.build448.run_ui_audit_448(
-                identity=route_identity,
-                case_id=route_case,
-                markup=route_markup,
-                route_inventory=route_inventory(app),
-            )
-            assert result["result"] == "PASS"
-            app.state.context.db.execute(
-                "UPDATE ui_audit_448 SET result='FAIL' WHERE audit_id=?",
-                (result["audit_id"],),
-            )
-            assert app.state.context.investigator_workspace_448.verify_integrity()["valid"] is False
-        finally:
-            app.state.context.close()
-
+        snap = ctx.build448.investigator_workspace_snapshot_448(
+            identity=identity,
+            case_id=cid,
+        )
+        markup = render_workspace(
+            snap,
+            view="overview",
+            cases=[snap["case"]],
+            audits=[],
+        )
+        result = ctx.build448.run_ui_audit_448(
+            identity=identity,
+            case_id=cid,
+            markup=markup,
+            route_inventory=route_inventory(app),
+        )
+        assert result["result"] == "PASS"
+        ctx.db.execute(
+            "UPDATE ui_audit_448 SET result='FAIL' WHERE audit_id=?",
+            (result["audit_id"],),
+        )
+        assert ctx.investigator_workspace_448.verify_integrity()["valid"] is False
+    finally:
+        ctx.close()
 
 def test_status_and_launcher_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
