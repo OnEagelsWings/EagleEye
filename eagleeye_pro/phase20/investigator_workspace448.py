@@ -156,8 +156,32 @@ class InvestigatorWorkspace448:
         case = self.cases.get_case(str(case_id))
         loops = self.loop439.loops(str(case_id))
         latest_loop = loops[-1] if loops else None
-        dispatches = self.dispatcher446.dispatches(latest_loop["loop_id"]) if latest_loop else []
-        executions = self.dispatcher446.executions(latest_loop["loop_id"]) if latest_loop else []
+        dispatches = []
+        executions = []
+        for loop in loops:
+            dispatches.extend(self.dispatcher446.dispatches(loop["loop_id"]))
+            executions.extend(self.dispatcher446.executions(loop["loop_id"]))
+        dispatches.sort(key=lambda x: (str(x.get("created_at") or ""), str(x.get("dispatch_id") or "")))
+        executions.sort(key=lambda x: (str(x.get("created_at") or ""), str(x.get("execution_id") or "")))
+
+        recommended_dispatch_source_ids = []
+        if latest_loop and latest_loop.get("state") == "active":
+            allowed = sorted({
+                str(x) for x in (latest_loop.get("scope") or {}).get("allowed_source_ids", [])
+                if str(x)
+            })
+            maxn = int((latest_loop.get("scope") or {}).get("max_collection_tasks_per_cycle") or 4)
+            current_cycle = int(latest_loop.get("current_cycle") or 0)
+            already = {
+                str(x.get("source_id") or "")
+                for x in dispatches
+                if str(x.get("loop_id") or "") == str(latest_loop.get("loop_id"))
+                and int(x.get("cycle_number") or 0) == current_cycle
+                and str(x.get("state") or "") != "failed"
+            }
+            pending = [source_id for source_id in allowed if source_id not in already]
+            recommended_dispatch_source_ids = (pending or allowed)[:maxn]
+
         evidence = self.closure447.case_evidence(str(case_id))
         claims = self.closure447.case_claims(str(case_id))
         dossiers = self.closure447.case_dossiers(str(case_id))
@@ -260,6 +284,7 @@ class InvestigatorWorkspace448:
             "latest_loop": latest_loop,
             "dispatches": dispatches,
             "executions": executions,
+            "recommended_dispatch_source_ids": recommended_dispatch_source_ids,
             "evidence": evidence,
             "claims": claims,
             "dossiers": dossiers,
