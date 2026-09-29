@@ -308,7 +308,7 @@ def _analysis(snapshot):
     return f"""
 <section class="panel"><h2>Temporal-/Relationship-Fusion</h2><div class="metrics">{_metric("Entities",m["entities"])}{_metric("Timeline Events",m["timeline_events"])}{_metric("Relationships",m["relationship_edges"])}{_metric("Unresolved",m["unresolved_relationships"])}</div><p class="muted">Nur explizite Quellenbeziehungen; keine Beziehung aus bloßer Text-Kookkurrenz, keine Kausalitätsableitung.</p></section>
 <section class="panel"><h2>Letzte Synthese</h2>{f'<p><b>{_e(synth.get("title"))}</b></p><p class="muted">Synthesis-ID: {_e(synth.get("synthesis_id"))}</p><pre class="mono">{_e(json.dumps(synth.get("summary") or {},ensure_ascii=False,indent=2,default=str))}</pre>' if synth else '<div class="empty">Noch keine Synthese.</div>'}</section>
-<section class="panel"><h2>Vertiefte Graph-/Timeline-Werkzeuge</h2><p>Die komplexen Graph- und Timeline-Ansichten bleiben verfügbar, sind aber aus der Hauptnavigation entfernt.</p><a class="button ghost" href="/legacy?tab=analysis302&case_id={_e(snapshot["case"]["case_id"])}">Erweiterte Analyse öffnen</a></section>
+<section class="panel"><h2>Vertiefte Graph-/Timeline-Werkzeuge</h2><p>Die komplexen Graph- und Timeline-Ansichten bleiben verfügbar, sind aber aus der Hauptnavigation entfernt.</p><a class="button ghost" href="/legacy?case_id={_e(snapshot["case"]["case_id"])}">Erweiterte Fallansicht öffnen</a></section>
 """
 
 
@@ -345,7 +345,7 @@ def _operations(snapshot, audits):
 <section class="panel"><h2>UI-Funktionsprüfung</h2><p>Build 448 prüft Hauptnavigation, Accessibility-Basics, Responsive Layout und die Registrierung der operativen Build-439/446/447-Routen.</p><form data-json-form data-endpoint="/api/build448/cases/{_e(snapshot["case"]["case_id"])}/ui-audit" data-success="UI-Audit abgeschlossen."><button type="submit">UI jetzt prüfen</button></form></section>
 <section class="panel"><h2>Audit-Historie</h2>{hist}</section>
 <section class="panel"><h2>Operations-Sicht</h2><div class="metrics">{_metric("Quellen",m["sources"])}{_metric("Dispatches",m["dispatches"])}{_metric("Executions",m["executions"])}{_metric("Exports",m["exports"])}</div><p class="muted">Build 448 verändert keine OPSEC-/Netzwerkbefugnisse.</p></section>
-<section class="panel"><h2>Experten-/Legacy-Werkzeuge</h2><p>Die historische Oberfläche bleibt für Spezialfunktionen verfügbar, ist aber nicht mehr die primäre Ermittlernavigation.</p><a class="button ghost" href="/legacy?tab=operations302&case_id={_e(snapshot["case"]["case_id"])}">Legacy/Expert Workspace öffnen</a></section>
+<section class="panel"><h2>Experten-/Legacy-Werkzeuge</h2><p>Die historische Oberfläche bleibt für Spezialfunktionen verfügbar, ist aber nicht mehr die primäre Ermittlernavigation.</p><a class="button ghost" href="/legacy?case_id={_e(snapshot["case"]["case_id"])}">Legacy/Expert Workspace öffnen</a></section>
 """
 
 
@@ -469,7 +469,7 @@ def create_workspace_app448(*, base_dir=None):
     @app.get("/", response_class=HTMLResponse)
     def workspace448(request: Request, view: str = "overview", case_id: str = "", token: str = ""):
         if token and callable(old_home):
-            return old_home(request, tab="cockpit302", case_id=case_id)
+            return old_home(request)
         try:
             identity = auth(request)
         except HTTPException:
@@ -487,26 +487,12 @@ def create_workspace_app448(*, base_dir=None):
         return HTMLResponse(render_workspace(snap, view=view, cases=cases, audits=audits))
 
     @app.get("/legacy", response_class=HTMLResponse)
-    def legacy448(
-        request: Request,
-        tab: str = "cockpit302",
-        case_id: str = "",
-        flash: str = "",
-        page: int = 1,
-        min_precision: int = 0,
-        target_id: str = "",
-    ):
+    def legacy448(request: Request, case_id: str = ""):
+        if case_id:
+            return RedirectResponse(f"/cases/{case_id}", status_code=303)
         if not callable(old_home):
             raise HTTPException(404, "Legacy workspace unavailable")
-        return old_home(
-            request,
-            tab=tab,
-            case_id=case_id,
-            flash=flash,
-            page=page,
-            min_precision=min_precision,
-            target_id=target_id,
-        )
+        return old_home(request)
 
     @app.get("/health")
     def health448():
