@@ -154,7 +154,12 @@ class InvestigatorWorkspace448:
     def snapshot(self, *, identity, case_id):
         ident = self._authorize(identity, case_id)
         case = self.cases.get_case(str(case_id))
-        loops = self.loop439.loops(str(case_id))
+        loop_rows = self.db.all(
+            "SELECT loop_id FROM phase19_ai_loop_439 WHERE case_id=? "
+            "ORDER BY created_at,rowid",
+            (str(case_id),),
+        )
+        loops = [self.loop439.loop(row["loop_id"]) for row in loop_rows]
         latest_loop = loops[-1] if loops else None
         dispatches = []
         executions = []
