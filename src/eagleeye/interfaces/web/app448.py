@@ -173,10 +173,13 @@ def _research(snapshot):
     dispatches = snapshot["dispatches"]
     loop_id = loop.get("loop_id", "")
     prepare = ""
+    recommended = snapshot.get("recommended_dispatch_source_ids") or []
+    recommended_text = "\n".join(recommended)
     if loop and loop.get("state") == "active":
         prepare = f"""
 <form data-json-form data-endpoint="/api/build446/loops/{_e(loop_id)}/dispatches/prepare" data-success="Dispatch-Tickets vorbereitet.">
-<div class="field"><label>Optional: Source-IDs, eine pro Zeile. Leer = freigegebene Loop-Quellen bis zum Budget.</label><textarea name="source_ids" data-array="true" rows="3"></textarea></div>
+<div class="field"><label>Source-IDs für diesen Zyklus. Vorauswahl ist auf das autorisierte Zyklusbudget begrenzt.</label><textarea name="source_ids" data-array="true" rows="3">{_e(recommended_text)}</textarea></div>
+<p class="muted">{len(recommended)} Quelle(n) vorausgewählt; Auswahl kann innerhalb des autorisierten Loop-Scopes geändert werden.</p>
 <p><button type="submit">Dispatch vorbereiten</button></p>
 </form>"""
     rows = []
@@ -193,14 +196,15 @@ def _research(snapshot):
         else:
             action = f'<span class="badge">{_e(d.get("state"))}</span>'
         rows.append({
+            "loop_id": d.get("loop_id"),
             "source_id": d.get("source_id"),
             "route": d.get("route"),
             "state": d.get("state"),
             "confirmation": d.get("required_confirmation"),
             "action": action,
         })
-    dispatch_html = '<div class="empty">Noch keine Dispatch-Tickets.</div>' if not rows else '<div class="table-wrap"><table><thead><tr><th>Quelle</th><th>Route</th><th>Status</th><th>Aktion</th></tr></thead><tbody>' + "".join(
-        f'<tr><td class="mono">{_e(r["source_id"])}</td><td>{_e(r["route"])}</td><td>{_e(r["state"])}</td><td>{r["action"]}</td></tr>'
+    dispatch_html = '<div class="empty">Noch keine Dispatch-Tickets.</div>' if not rows else '<div class="table-wrap"><table><thead><tr><th>Loop</th><th>Quelle</th><th>Route</th><th>Status</th><th>Aktion</th></tr></thead><tbody>' + "".join(
+        f'<tr><td class="mono">{_e(r["loop_id"])}</td><td class="mono">{_e(r["source_id"])}</td><td>{_e(r["route"])}</td><td>{_e(r["state"])}</td><td>{r["action"]}</td></tr>'
         for r in rows
     ) + '</tbody></table></div>'
     return f"""
