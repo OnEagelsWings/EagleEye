@@ -72,7 +72,7 @@ Warnings additionally flag excessive initial markup, table/disclosure density an
 
 `.github/workflows/ui-audit.yml` runs a scheduled weekly UI audit and can also be triggered manually.
 
-UI-facing pull requests should additionally request GitHub Copilot code review when that reviewer is available in the repository.
+UI-facing pull requests should additionally request GitHub Codex review when that reviewer is available in the repository.
 
 ## Safety and analytical boundaries
 
