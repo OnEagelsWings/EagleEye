@@ -1314,6 +1314,23 @@ class EvidenceClaimsDossier447:
 
     def verify_integrity(self):
         bad = []
+        upstream = {
+            "acquisition_source_421": self.registry421.verify_integrity(),
+            "acquisition_event_422": self.events422.verify_integrity(),
+            "content_store_423": self.content423.verify_integrity(),
+            "news_item_429": self.news429.verify_integrity(),
+            "social_observation_432": self.social432.verify_integrity(),
+        }
+        for component, result in upstream.items():
+            if not result.get("valid", False):
+                bad.append(
+                    {
+                        "table": component,
+                        "id": component,
+                        "reason": "upstream_integrity_invalid",
+                        "violations": result.get("violations") or [],
+                    }
+                )
         for table, key in (
             ("evidence_item_447", "evidence_id"),
             ("claim_447", "claim_id"),
