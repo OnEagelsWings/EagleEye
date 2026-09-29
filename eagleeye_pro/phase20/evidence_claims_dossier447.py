@@ -359,6 +359,7 @@ class EvidenceClaimsDossier447:
         )
         created = 0
         refreshed = 0
+        unchanged = 0
         ids = []
         for raw in observations:
             obs = dict(raw)
@@ -370,42 +371,45 @@ class EvidenceClaimsDossier447:
             now = _now()
             if existing:
                 row = dict(existing)
-                row.update(
-                    {
-                        "title": snap["title"],
-                        "canonical_url": snap["canonical_url"],
-                        "observed_at": snap["observed_at"],
-                        "content_sha256": str(snap["content"].get("sha256") or ""),
-                        "media_type": str(snap["content"].get("media_type") or ""),
-                        "duplicate_kind": str(obs.get("duplicate_kind") or ""),
-                        "source_snapshot_json": _canon(snap["source_snapshot"]),
-                        "provenance_json": _canon(snap["provenance"]),
-                        "usage_json": _canon(snap["usage"]),
-                        "descriptive_json": _canon(snap["descriptive"]),
-                        "source_record_hash": str(snap["source"].get("record_hash") or ""),
-                        "event_record_hash": str(snap["event"].get("record_hash") or ""),
-                        "content_record_hash": str(snap["content"].get("record_hash") or ""),
-                        "observation_record_hash": str(obs.get("record_hash") or ""),
-                        "updated_at": now,
-                    }
-                )
-                row["record_hash"] = self._rh(row)
-                self.db.execute(
-                    "UPDATE evidence_item_447 SET title=?,canonical_url=?,observed_at=?,content_sha256=?,"
-                    "media_type=?,duplicate_kind=?,source_snapshot_json=?,provenance_json=?,usage_json=?,"
-                    "descriptive_json=?,source_record_hash=?,event_record_hash=?,content_record_hash=?,"
-                    "observation_record_hash=?,updated_at=?,record_hash=? WHERE evidence_id=?",
-                    (
-                        row["title"], row["canonical_url"], row["observed_at"], row["content_sha256"],
-                        row["media_type"], row["duplicate_kind"], row["source_snapshot_json"],
-                        row["provenance_json"], row["usage_json"], row["descriptive_json"],
-                        row["source_record_hash"], row["event_record_hash"], row["content_record_hash"],
-                        row["observation_record_hash"], row["updated_at"], row["record_hash"],
-                        row["evidence_id"],
-                    ),
-                )
+                candidate = {
+                    "title": snap["title"],
+                    "canonical_url": snap["canonical_url"],
+                    "observed_at": snap["observed_at"],
+                    "content_sha256": str(snap["content"].get("sha256") or ""),
+                    "media_type": str(snap["content"].get("media_type") or ""),
+                    "duplicate_kind": str(obs.get("duplicate_kind") or ""),
+                    "source_snapshot_json": _canon(snap["source_snapshot"]),
+                    "provenance_json": _canon(snap["provenance"]),
+                    "usage_json": _canon(snap["usage"]),
+                    "descriptive_json": _canon(snap["descriptive"]),
+                    "source_record_hash": str(snap["source"].get("record_hash") or ""),
+                    "event_record_hash": str(snap["event"].get("record_hash") or ""),
+                    "content_record_hash": str(snap["content"].get("record_hash") or ""),
+                    "observation_record_hash": str(obs.get("record_hash") or ""),
+                }
+                changed = any(str(row.get(k) or "") != str(v or "") for k, v in candidate.items())
+                if changed:
+                    row.update(candidate)
+                    row["updated_at"] = now
+                    row["record_hash"] = self._rh(row)
+                    self.db.execute(
+                        "UPDATE evidence_item_447 SET title=?,canonical_url=?,observed_at=?,content_sha256=?,"
+                        "media_type=?,duplicate_kind=?,source_snapshot_json=?,provenance_json=?,usage_json=?,"
+                        "descriptive_json=?,source_record_hash=?,event_record_hash=?,content_record_hash=?,"
+                        "observation_record_hash=?,updated_at=?,record_hash=? WHERE evidence_id=?",
+                        (
+                            row["title"], row["canonical_url"], row["observed_at"], row["content_sha256"],
+                            row["media_type"], row["duplicate_kind"], row["source_snapshot_json"],
+                            row["provenance_json"], row["usage_json"], row["descriptive_json"],
+                            row["source_record_hash"], row["event_record_hash"], row["content_record_hash"],
+                            row["observation_record_hash"], row["updated_at"], row["record_hash"],
+                            row["evidence_id"],
+                        ),
+                    )
+                    refreshed += 1
+                else:
+                    unchanged += 1
                 evidence_id = row["evidence_id"]
-                refreshed += 1
             else:
                 row = {
                     "evidence_id": "ev447_" + secrets.token_hex(10),
@@ -454,6 +458,7 @@ class EvidenceClaimsDossier447:
             {
                 "created": created,
                 "refreshed": refreshed,
+                "unchanged": unchanged,
                 "automatic_claim_creation": False,
                 "raw_payload_duplicated": False,
             },
@@ -463,6 +468,7 @@ class EvidenceClaimsDossier447:
             "case_id": str(case_id),
             "created": created,
             "refreshed": refreshed,
+            "unchanged": unchanged,
             "evidence_ids": ids,
             "preflight": preflight,
             "automatic_claim_creation": False,
@@ -738,13 +744,15 @@ class EvidenceClaimsDossier447:
 
     def _latest_synthesis(self, session_id):
         row = self.db.one(
-            "SELECT synthesis_id FROM investigation_synthesis_419 "
+            "SELECT * FROM investigation_synthesis_419 "
             "WHERE session_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1",
             (str(session_id),),
         )
         if not row:
             return None
-        return self.synthesis419.get(row["synthesis_id"])
+        item = dict(row)
+        item["summary"] = json.loads(item.get("summary_json") or "{}")
+        return item
 
     def build_dossier(self, *, identity, case_id, title="", loop_id=""):
         ident = self._authorize(identity, case_id, "dossier.write", case_id)
