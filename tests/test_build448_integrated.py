@@ -94,7 +94,7 @@ def test_primary_workspace_is_clear_responsive_and_current(tmp_path):
         assert "Build 447 Evidence/Claims/Dossier integriert" in markup
         assert "Phase 13 · Simplified AI Investigation Workspace" not in markup
         assert "/legacy" in markup
-        assert "keine automatische Wahrheitsfeststellung" in markup.lower()
+        assert "keine automatische wahrheitsfeststellung" in markup.lower()
         for key in ("overview","research","ai","evidence","claims","analysis","dossier","operations"):
             assert f"view={key}" in markup
 
