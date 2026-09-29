@@ -60,7 +60,7 @@ UI audit results are hash-bound and retained per case.
 
 Build 448 adds a scheduled GitHub UI audit workflow in addition to the normal PR CI. The scheduled job exercises structural UI and route-contract tests even when no feature PR is active.
 
-GitHub Copilot code review should also be requested on UI-related PRs when available in the repository.
+GitHub Codex review should also be requested on UI-related PRs when available in the repository.
 
 ## Deliberate boundaries
 
