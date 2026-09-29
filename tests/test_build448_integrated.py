@@ -272,6 +272,82 @@ def test_workspace_binding_metric_reads_canonical_build437_table(tmp_path):
         assert snap["metrics"]["bindings"] == 1
 
 
+
+def test_dispatch_defaults_respect_budget_and_older_loop_work_remains_visible(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity = admin(ctx)
+        cid = make_case(ctx, identity, "Multi-loop dispatch 448")["case_id"]
+        sources = []
+        for idx in range(6):
+            source = ctx.build421.register_source(
+                identity=identity,
+                name=f"Build 448 public source {idx}",
+                source_type="website",
+                access_mode="public",
+                base_url=f"https://build448-source-{idx}.example.org/",
+                capabilities=["public_pages"],
+                coverage={"build448_test": True},
+                license_note="Synthetic registered source for Build 448 UI qualification.",
+            )
+            sources.append(source["source_id"])
+
+        first = ctx.ai_investigation_loop_439.create_loop(
+            identity=identity,
+            case_id=cid,
+            objective="First loop keeps unfinished dispatch work visible.",
+            subquestions=["Which source should be acquired first?"],
+            allowed_source_ids=sources[:2],
+            max_cycles=2,
+            max_collection_tasks_per_cycle=2,
+        )
+        first = ctx.ai_investigation_loop_439.authorize_loop(
+            identity=identity,
+            loop_id=first["loop_id"],
+            confirmation="AUTHORIZE INVESTIGATION LOOP",
+        )
+        prepared = ctx.live_investigation_dispatcher_446.prepare_loop_dispatches(
+            identity=identity,
+            loop_id=first["loop_id"],
+            source_ids=[sources[0]],
+        )
+        old_dispatch_id = prepared["dispatches"][0]["dispatch_id"]
+
+        second = ctx.ai_investigation_loop_439.create_loop(
+            identity=identity,
+            case_id=cid,
+            objective="Second loop has more allowed sources than its cycle budget.",
+            subquestions=["Which bounded subset should be dispatched this cycle?"],
+            allowed_source_ids=sources,
+            max_cycles=2,
+            max_collection_tasks_per_cycle=4,
+        )
+        second = ctx.ai_investigation_loop_439.authorize_loop(
+            identity=identity,
+            loop_id=second["loop_id"],
+            confirmation="AUTHORIZE INVESTIGATION LOOP",
+        )
+
+        snap = ctx.build448.investigator_workspace_snapshot_448(
+            identity=identity,
+            case_id=cid,
+        )
+        assert snap["latest_loop"]["loop_id"] == second["loop_id"]
+        assert old_dispatch_id in {x["dispatch_id"] for x in snap["dispatches"]}
+        assert len(snap["recommended_dispatch_source_ids"]) == 4
+        assert set(snap["recommended_dispatch_source_ids"]).issubset(set(sources))
+
+        markup = render_workspace(
+            snap,
+            view="research",
+            cases=[snap["case"]],
+            audits=[],
+        )
+        for source_id in snap["recommended_dispatch_source_ids"]:
+            assert source_id in markup
+        assert old_dispatch_id in markup
+        assert first["loop_id"] in markup
+
+
 def test_status_and_launcher_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         admin(ctx)
