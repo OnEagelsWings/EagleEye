@@ -31,6 +31,6 @@ The audit checks route presence. The integrated tests additionally execute repre
 Two recurring mechanisms are intended:
 
 1. GitHub Actions scheduled UI audit workflow.
-2. Periodic independent review of UI clarity/functionality plus GitHub Copilot PR review.
+2. Periodic independent review of UI clarity/functionality plus GitHub Codex PR review.
 
 These reviews should treat regressions in clarity, dead controls, stale build wording, hidden core workflow actions, and broken route contracts as release blockers for subsequent UI-facing builds.
