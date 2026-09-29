@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import inspect
 import json
 from urllib.parse import urlencode
 
@@ -371,7 +372,7 @@ def render_workspace(snapshot, *, view, cases, audits):
         "dossier": _dossier,
         "operations": lambda s: _operations(s, audits),
     }[view](snapshot)
-    return f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye Build 448 · {_e(case.get("title"))}</title><style>{CSS}</style></head><body><div class="app"><aside class="side"><div class="brand"><div class="logo">EE</div><div><b>EagleEye</b><small>Build 448 · Investigator Workspace</small></div></div><nav class="nav" aria-label="Hauptnavigation">{nav}</nav><div class="side-foot">Case-first · provenance-first · review-first<br>Legacy-Werkzeuge bleiben unter „OPSEC & Team“ erreichbar.<br>Build 447 Evidence/Claims/Dossier integriert.</div></aside><main class="main"><header class="top"><div><h1>{_e(dict(VIEWS).get(view))}</h1><p>{_e(case.get("title"))} · Benutzer: {_e(snapshot.get("actor"))}</p></div>{selector}</header>{_flow(snapshot,case_id)}{content}<div id="workspace-status" class="statusline" aria-live="polite"></div><footer class="footer">Anzeige gespeicherter Daten ≠ unabhängige Verifikation. Evidence, Claims und Hypothesen bleiben unterscheidbar; keine automatische Wahrheitsfeststellung, Identitätsbestätigung, Kausalitäts- oder Schuldzuweisung.</footer></main></div><script>{JS}</script></body></html>'''
+    return f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye Build 448 · {_e(case.get("title"))}</title><style>{CSS}</style></head><body><div class="app"><aside class="side"><div class="brand"><div class="logo">EE</div><div><b>EagleEye</b><small>Build 448 · Investigator Workspace</small></div></div><nav class="nav" aria-label="Hauptnavigation">{nav}</nav><div class="side-foot">Case-first · provenance-first · review-first<br><a href="/legacy">Legacy/Expert Workspace</a><br>Build 447 Evidence/Claims/Dossier integriert.</div></aside><main class="main"><header class="top"><div><h1>{_e(dict(VIEWS).get(view))}</h1><p>{_e(case.get("title"))} · Benutzer: {_e(snapshot.get("actor"))}</p></div>{selector}</header>{_flow(snapshot,case_id)}{content}<div id="workspace-status" class="statusline" aria-live="polite"></div><footer class="footer">Anzeige gespeicherter Daten ≠ unabhängige Verifikation. Evidence, Claims und Hypothesen bleiben unterscheidbar; keine automatische Wahrheitsfeststellung, Identitätsbestätigung, Kausalitäts- oder Schuldzuweisung.</footer></main></div><script>{JS}</script></body></html>'''
 
 
 def create_workspace_app448(*, base_dir=None):
@@ -382,14 +383,20 @@ def create_workspace_app448(*, base_dir=None):
     app.title = "EagleEye Build 448.0 Investigator Workspace"
     app.version = "448.0"
 
+    home_candidates = [
+        r.endpoint
+        for r in app.router.routes
+        if getattr(r, "path", None) == "/"
+        and "GET" in set(getattr(r, "methods", set()) or set())
+    ]
     old_home = next(
         (
-            r.endpoint
-            for r in app.router.routes
-            if getattr(r, "path", None) == "/"
-            and "GET" in set(getattr(r, "methods", set()) or set())
+            endpoint
+            for endpoint in reversed(home_candidates)
+            if "tab" in inspect.signature(endpoint).parameters
+            and "case_id" in inspect.signature(endpoint).parameters
         ),
-        None,
+        home_candidates[-1] if home_candidates else None,
     )
     app.router.routes[:] = [
         r
