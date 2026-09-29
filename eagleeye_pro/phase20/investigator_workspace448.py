@@ -177,10 +177,10 @@ class InvestigatorWorkspace448:
         )
         binding_count = int(
             (self.db.one(
-                "SELECT COUNT(*) n FROM entity_binding_437 WHERE case_id=?",
+                "SELECT COUNT(*) n FROM phase19_entity_binding_437 WHERE case_id=?",
                 (str(case_id),),
             ) or {}).get("n") or 0
-        ) if self.db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='entity_binding_437'") else 0
+        ) if self.db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='phase19_entity_binding_437'") else 0
 
         matrix = None
         latest_synthesis = None
