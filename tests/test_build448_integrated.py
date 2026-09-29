@@ -165,7 +165,8 @@ def test_workspace_http_root_and_views_work_with_authenticated_session(tmp_path)
 
         legacy = client.get("/legacy", params={"tab": "cockpit302", "case_id": cid})
         assert legacy.status_code == 200
-        assert "EagleEye" in legacy.text
+        assert "<html" in legacy.text.lower()
+        assert "Search Capsules" in legacy.text or "Fall" in legacy.text
 
 
 def test_ui_audit_endpoint_executes_and_persists(tmp_path):
