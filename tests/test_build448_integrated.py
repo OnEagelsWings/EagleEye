@@ -227,6 +227,37 @@ def test_ui_audit_record_tamper_is_detected(tmp_path):
     finally:
         ctx.close()
 
+
+def test_blank_optional_array_fields_are_omitted_from_ui_payload():
+    source = (ROOT / "src/eagleeye/interfaces/web/app448.py").read_text()
+    assert "const vals=splitList(el.value);if(vals.length||el.required)out[el.name]=vals" in source
+    assert "allowed_source_ids" in source
+    assert "source_ids" in source
+
+
+def test_workspace_binding_metric_reads_canonical_build437_table(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity = admin(ctx)
+        cid = make_case(ctx, identity, "Binding metric 448")["case_id"]
+        _ = ctx.build448
+        ctx.db.execute(
+            "INSERT INTO phase19_entity_binding_437("
+            "binding_id,case_id,source_kind,source_object_id,resolution_entity_id,"
+            "source_id,event_id,content_id,source_ref,reliability,provenance_json,"
+            "created_by,created_at,record_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                "bind448_fixture", cid, "fixture", "object-1", "entity-fixture",
+                "source-fixture", "event-fixture", "content-fixture", "fixture-ref",
+                1.0, "{}", "test", "2026-09-29T00:00:00+00:00", "fixture-hash",
+            ),
+        )
+        snap = ctx.build448.investigator_workspace_snapshot_448(
+            identity=identity,
+            case_id=cid,
+        )
+        assert snap["metrics"]["bindings"] == 1
+
+
 def test_status_and_launcher_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         admin(ctx)
