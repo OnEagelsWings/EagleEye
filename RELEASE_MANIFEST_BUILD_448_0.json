@@ -1,0 +1,29 @@
+{
+  "build": "448.0",
+  "package": "448.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 8,
+  "name": "Investigator Workspace + UI Audit",
+  "primary_views": [
+    "overview",
+    "research",
+    "ai",
+    "evidence",
+    "claims",
+    "analysis",
+    "dossier",
+    "operations"
+  ],
+  "primary_workspace_replaced": true,
+  "legacy_workspace_available": true,
+  "ui_route_contract_audited": true,
+  "responsive_workspace": true,
+  "keyboard_focus_visible": true,
+  "evidence_claim_dossier_flow_visible": true,
+  "scheduled_ui_audit_supported": true,
+  "automatic_truth_determination": false,
+  "network_authority_added": false,
+  "production_release_ready": false,
+  "next_build": "449.0",
+  "next_hard_checkpoint": "450.0"
+}
