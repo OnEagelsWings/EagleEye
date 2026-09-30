@@ -93,7 +93,7 @@ def test_build450_rejects_same_user_as_reviewer(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, _reviewer, case = setup_team(ctx, "Reviewer separation 450")
         with pytest.raises(PermissionError, match="independent reviewer"):
-            ctx.build450.qualify_investigation_workflow_450(
+            ctx.investigation_workflow_qualification_450.run_case_workflow(
                 identity=admin,
                 case_id=case["case_id"],
                 reviewer_username=admin["username"],
