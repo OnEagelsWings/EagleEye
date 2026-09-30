@@ -335,6 +335,28 @@ def test_dispatch_defaults_respect_budget_and_older_loop_work_remains_visible(tm
         assert old_dispatch_id in {x["dispatch_id"] for x in snap["dispatches"]}
         assert len(snap["recommended_dispatch_source_ids"]) == 4
         assert set(snap["recommended_dispatch_source_ids"]).issubset(set(sources))
+        assert any(
+            x["view"] == "research" and x["label"] == "Quellen-Dispatch vorbereiten"
+            for x in snap["next_actions"]
+        )
+
+        latest_prepared = ctx.live_investigation_dispatcher_446.prepare_loop_dispatches(
+            identity=identity,
+            loop_id=second["loop_id"],
+            source_ids=[sources[0]],
+        )
+        latest_dispatch_id = latest_prepared["dispatches"][0]["dispatch_id"]
+        snap = ctx.build448.investigator_workspace_snapshot_448(
+            identity=identity,
+            case_id=cid,
+        )
+        assert latest_dispatch_id in {x["dispatch_id"] for x in snap["dispatches"]}
+        assert len(snap["recommended_dispatch_source_ids"]) == 3
+        assert sources[0] not in snap["recommended_dispatch_source_ids"]
+        assert not any(
+            x["view"] == "research" and x["label"] == "Quellen-Dispatch vorbereiten"
+            for x in snap["next_actions"]
+        )
 
         markup = render_workspace(
             snap,
@@ -345,6 +367,7 @@ def test_dispatch_defaults_respect_budget_and_older_loop_work_remains_visible(tm
         for source_id in snap["recommended_dispatch_source_ids"]:
             assert source_id in markup
         assert old_dispatch_id in markup
+        assert latest_dispatch_id in markup
         assert first["loop_id"] in markup
 
 
