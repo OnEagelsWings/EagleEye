@@ -1,0 +1,20 @@
+{
+  "build": "450.0",
+  "package": "450.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 10,
+  "name": "Investigation Workflow Hard Checkpoint",
+  "hard_checkpoint": true,
+  "full_governed_case_workflow_required": true,
+  "independent_reviewer_required": true,
+  "component_integrity_required": true,
+  "github_ci_required": true,
+  "full_repository_regression_required": true,
+  "ui_regression_required": true,
+  "codex_review_required_for_current_head": true,
+  "engineering_release_separation": true,
+  "automatic_truth_determination": false,
+  "automatic_review_completion": false,
+  "production_release_ready": false,
+  "release_gate_pass": false
+}
