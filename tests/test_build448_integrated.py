@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from eagleeye_pro.core.app_context import AppContext
-from eagleeye.interfaces.web.app449 import create_workspace_app449, render_workspace
+from eagleeye.interfaces.web.app448 import create_workspace_app448, render_workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 PASSWORD = "SecureFixturePassword!2026"
