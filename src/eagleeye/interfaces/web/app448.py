@@ -545,6 +545,7 @@ def _operations(snapshot, audits):
 <section class="panel"><h2>Audit-Historie</h2>{hist}</section>
 <section class="panel"><h2>Operations-Sicht</h2><div class="metrics">{_metric("Quellen",m["sources"])}{_metric("Dispatches",m["dispatches"])}{_metric("Executions",m["executions"])}{_metric("Exports",m["exports"])}</div><p class="muted">Build 450 verändert keine OPSEC-/Netzwerkbefugnisse.</p></section>
 <section class="panel"><h2>Experten-/Legacy-Werkzeuge</h2><p>Die historische Oberfläche bleibt für Spezialfunktionen verfügbar, ist aber nicht mehr die primäre Ermittlernavigation.</p><a class="button ghost" href="/legacy?case_id={_e(snapshot["case"]["case_id"])}">Legacy/Expert Workspace öffnen</a></section>
+"""
 
 
 def render_workspace(snapshot, *, view, cases, audits):
