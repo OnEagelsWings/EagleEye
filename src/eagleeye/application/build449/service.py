@@ -40,6 +40,12 @@ class Build449HumanReviewTeamWorkflowService:
     def review_queue_449(self, **kwargs):
         return self.review449.queue(**kwargs)
 
+    def run_ui_audit_449(self, **kwargs):
+        return self.review449.audit_ui(**kwargs)
+
+    def ui_audit_history_449(self, case_id, limit=25):
+        return self.review449.ui_audit_history(case_id, limit=limit)
+
     def human_review_status_449(self):
         status = self.review449.status()
         return {
