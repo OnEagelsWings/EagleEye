@@ -505,9 +505,18 @@ def _operations(snapshot, audits):
     m = snapshot["metrics"]
     hist = _table(audits,[("created_at","Zeit"),("result","Result"),("route_count","Routes"),("markup_sha256","Markup SHA-256")])
     team_panel = _team_review_queue_panel(snapshot)
+    team449 = bool(snapshot.get("team_review449"))
+    audit_build = "449" if team449 else "448"
+    audit_endpoint = f'/api/build{audit_build}/cases/{_e(snapshot["case"]["case_id"])}/ui-audit'
+    audit_text = (
+        "Build 449 prüft zusätzlich den Team-Review-Routenkontrakt und stellt sicher, "
+        "dass direkte Build-447-Review-/Export-Bypass-Routen im aktuellen App fehlen."
+        if team449 else
+        "Build 448 prüft Hauptnavigation, Accessibility-Basics, Responsive Layout und die Registrierung der operativen Build-439/446/447-Routen."
+    )
     return f"""
 {team_panel}
-<section class="panel"><h2>UI-Funktionsprüfung</h2><p>Build 448 prüft Hauptnavigation, Accessibility-Basics, Responsive Layout und die Registrierung der operativen Build-439/446/447-Routen.</p><form data-json-form data-endpoint="/api/build448/cases/{_e(snapshot["case"]["case_id"])}/ui-audit" data-success="UI-Audit abgeschlossen."><button type="submit">UI jetzt prüfen</button></form></section>
+<section class="panel"><h2>UI-Funktionsprüfung</h2><p>{audit_text}</p><form data-json-form data-endpoint="{audit_endpoint}" data-success="UI-Audit abgeschlossen."><button type="submit">UI jetzt prüfen</button></form></section>
 <section class="panel"><h2>Audit-Historie</h2>{hist}</section>
 <section class="panel"><h2>Operations-Sicht</h2><div class="metrics">{_metric("Quellen",m["sources"])}{_metric("Dispatches",m["dispatches"])}{_metric("Executions",m["executions"])}{_metric("Exports",m["exports"])}</div><p class="muted">Build 448 verändert keine OPSEC-/Netzwerkbefugnisse.</p></section>
 <section class="panel"><h2>Experten-/Legacy-Werkzeuge</h2><p>Die historische Oberfläche bleibt für Spezialfunktionen verfügbar, ist aber nicht mehr die primäre Ermittlernavigation.</p><a class="button ghost" href="/legacy?case_id={_e(snapshot["case"]["case_id"])}">Legacy/Expert Workspace öffnen</a></section>
