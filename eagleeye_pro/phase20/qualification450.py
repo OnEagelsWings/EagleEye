@@ -339,7 +339,7 @@ class InvestigationWorkflowHardCheckpoint450:
 
         checks = {
             "build446_acquisition_pass": acquisition.get("result") == "PASS",
-            "evidence_synchronized": int(sync.get("evidence_count") or 0) >= 1,
+            "evidence_synchronized": bool(sync.get("evidence_ids")) and int(sync.get("created") or 0) >= 1,
             "independent_evidence_review": (
                 reviewed_evidence.get("reviewed_by") == reviewer["username"]
                 and reviewed_evidence.get("review_state") == "accepted"
