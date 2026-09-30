@@ -206,6 +206,20 @@ def test_requester_cannot_review_own_work_and_reviewer_assignment_is_enforced(tm
 def test_object_creator_cannot_be_assigned_as_reviewer(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, reviewer, case = setup_team(ctx)
+        coordinator = ctx.team_governance_359.create_user(
+            identity=admin,
+            username="coordinator449",
+            display_name="Review Coordinator",
+            global_role="investigator",
+            password="Build449CoordinatorPassword!2026",
+        )
+        ctx.team_governance_359.assign_case_role(
+            identity=admin,
+            case_id=case["case_id"],
+            username=coordinator["username"],
+            case_role="report_author",
+            notes="Authorized independent review requester",
+        )
         evidence = seed_unreviewed_evidence(ctx, admin, case["case_id"])[0]
         ev_request = ctx.build449.request_review_449(
             identity=admin,
@@ -229,7 +243,7 @@ def test_object_creator_cannot_be_assigned_as_reviewer(tmp_path):
         )
         with pytest.raises(PermissionError, match="object creator"):
             ctx.build449.request_review_449(
-                identity=reviewer,
+                identity=coordinator,
                 object_type="claim",
                 object_id=claim["claim_id"],
                 note="Attempt to assign review back to the claim creator.",
@@ -388,7 +402,7 @@ def test_http_workspace_uses_build449_snapshot_and_review_queue(tmp_path):
         assert "Team Review · Build 449" in root.text
         status = client.get("/api/build449/status")
         assert status.status_code == 200
-        assert status.json()["four_eyes_dossier_export"] is True
+        assert status.json()["dossier_export_four_eyes"] is True
 
 
 def test_status_launcher_and_checkpoint_contract(tmp_path, monkeypatch):
