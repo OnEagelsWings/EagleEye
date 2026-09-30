@@ -372,6 +372,7 @@ def _team_review_queue_panel(snapshot):
 {''.join(cards) if cards else '<div class="empty">Keine Review-Aufgaben in diesem Fall.</div>'}
 </section>
 <section class="panel"><h2>Fallteam</h2>{_table(membership_rows,[("display_name","Name"),("username","Benutzer"),("case_role","Rolle"),("granted_by","Zugewiesen von")])}</section>
+"""
 
 
 def _evidence(snapshot):
