@@ -645,11 +645,20 @@ class HumanReviewTeamWorkflow449:
             "assigned_to_me": len(assigned),
             "team_members": len({x.get("username") for x in memberships}),
         }
+        export_executions = [
+            dict(x)
+            for x in self.db.all(
+                "SELECT * FROM review_export_execution_449 WHERE case_id=? "
+                "ORDER BY executed_at,rowid",
+                (str(case_id),),
+            )
+        ]
         base["build"] = BUILD
         base["team_review449"] = {
             "queue": queue,
             "memberships": memberships,
             "metrics": review_metrics,
+            "export_executions": export_executions,
             "eligible_reviewers": {
                 key: self.eligible_reviewers(case_id, key)
                 for key in sorted(OBJECT_TYPES)
