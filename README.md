@@ -1,29 +1,30 @@
-# EagleEye — Build 448
+# EagleEye — Build 449
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 448 introduces the **Investigator Workspace** and a recurring **UI functionality audit**.
+Build 449 adds the formal **Human Review & Team Workflow** on top of the Build-448 Investigator Workspace.
 
-## Primary workflow
-
-The current operator path is now visible as one coherent chain:
+## Current investigation chain
 
 ```
 Recherche
   -> AI Investigation
   -> Acquisition
   -> Evidence
+  -> Team Review
   -> Claims / Counterevidence
+  -> Team Review
   -> Graph & Timeline
   -> Synthesis
   -> Living Dossier
+  -> Dossier Review
+  -> Export Approval
+  -> Export
 ```
 
-The previous historical workspace is retained at `/legacy` for specialized and compatibility functions.
+## Primary workspace
 
-## Simplified primary navigation
-
-The primary UI has eight case-scoped views:
+The eight-view case-first workspace remains:
 
 - Übersicht
 - Recherche
@@ -34,49 +35,47 @@ The primary UI has eight case-scoped views:
 - Dossier
 - OPSEC & Team
 
-The stale “Phase 13 · Simplified AI Investigation Workspace” primary shell is no longer the current workspace.
+Build 449 integrates the review queue into these views rather than adding another navigation layer.
 
-## Functional UI
+## Four-eyes review
 
-Build 448 exposes the already governed actions from Builds 439, 446 and 447 directly in the current workspace:
+Formal review tasks are available for:
 
-- create, authorize and advance bounded AI investigation loops;
-- prepare source dispatches and execute one individually confirmed acquisition route;
-- synchronize and review Evidence;
-- create and review Claims with explicit support/contradict/context links;
-- inspect hypothesis gaps and conflicts;
-- inspect graph/timeline summary and latest synthesis;
-- create, review and export Living Dossier revisions.
+- Evidence
+- Claims
+- Dossier revisions
+- Dossier export approval
 
-No UI control bypasses the underlying RBAC, case scope or exact confirmation phrase.
+Rules:
 
-## UI audit
+- requester and reviewer must be different users;
+- Claim/Dossier creator and reviewer must be different users;
+- optional named reviewer assignment is case-scoped;
+- reviewer explicitly claims the task;
+- object changes after request make the review stale;
+- rationale is mandatory;
+- comments, challenges, agreement and counter-hypotheses are preserved as review discussion;
+- no review action determines objective truth automatically.
 
-Build 448 records hash-bound case-scoped UI audits.
+## Dossier release
 
-The audit checks:
+A current Build-449 dossier release requires:
 
-- current build branding;
-- eight primary views;
-- responsive viewport and mobile breakpoints;
-- keyboard focus styling;
-- semantic main/navigation landmarks;
-- accessible status feedback;
-- availability of the Legacy workspace;
-- visible Evidence/Claim/Dossier epistemic boundary;
-- registration of all required Build-439/446/447 read and mutation routes.
+1. accepted human-reviewed Claims;
+2. independent Dossier approval;
+3. a separate export-review request;
+4. independent export approval;
+5. an authorized executor different from the approving reviewer.
 
-Warnings additionally flag excessive initial markup, table/disclosure density and inline click handlers.
+The current Build-449 app removes the direct Build-447 Evidence/Claim/Dossier review and export mutation routes. Older build apps retain them only for compatibility.
 
-## Recurring GitHub review
+## UI and QA
 
-`.github/workflows/ui-audit.yml` runs a scheduled weekly UI audit and can also be triggered manually.
-
-UI-facing pull requests should additionally request GitHub Codex review when that reviewer is available in the repository.
+Build 448's UI audit remains active. Build 449 adds team-review integration tests and is included in the current Phase-19/20 regression chain.
 
 ## Safety and analytical boundaries
 
-Still unchanged:
+Unchanged:
 
 - no generic AI network authority;
 - no automatic Evidence acceptance;
@@ -89,7 +88,7 @@ Still unchanged:
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build448_integrated.py
+pytest -q tests/test_build449_integrated.py
 ```
 
 ## Start
@@ -106,7 +105,7 @@ Manual:
 
 ```powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_448_0.py
+py -3 EAGLEEYE_PRO_449_0.py
 ```
 
 Linux/macOS:
@@ -116,10 +115,9 @@ chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 ```
 
-See `README_BUILD_448_0.md`, `BUILD_448_UI_AUDIT.md` and `RELEASE_MANIFEST_BUILD_448_0.json`.
+See `README_BUILD_449_0.md`, `BUILD_449_CASE_TEST.md`, and `RELEASE_MANIFEST_BUILD_449_0.json`.
 
 Current roadmap:
 
-- 448 Investigator Workspace + UI Audit
 - 449 Human Review / Team Workflow
 - 450 Investigation Workflow Hard Checkpoint
