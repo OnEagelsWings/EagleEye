@@ -1,0 +1,22 @@
+{
+  "build": "449.0",
+  "package": "449.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 9,
+  "name": "Human Review & Team Workflow",
+  "case_scoped_review_queue": true,
+  "reviewer_assignment": true,
+  "explicit_claiming": true,
+  "requester_reviewer_separation": true,
+  "creator_reviewer_separation": true,
+  "stale_object_detection": true,
+  "review_comments": true,
+  "challenge_agreement_counter_hypothesis": true,
+  "dossier_export_four_eyes": true,
+  "direct_build447_review_mutations_current_app": false,
+  "automatic_truth_determination": false,
+  "automatic_review_completion": false,
+  "production_release_ready": false,
+  "next_build": "450.0",
+  "next_hard_checkpoint": "450.0"
+}
