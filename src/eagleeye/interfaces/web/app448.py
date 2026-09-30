@@ -251,13 +251,141 @@ def _ai(snapshot):
 """
 
 
+def _active_team_review(snapshot, object_type, object_id):
+    team = snapshot.get("team_review449") or {}
+    rows = team.get("queue") or []
+    candidates = [
+        x for x in rows
+        if x.get("object_type") == object_type
+        and str(x.get("object_id")) == str(object_id)
+        and x.get("state") in {"pending", "claimed", "completed", "stale"}
+    ]
+    return candidates[0] if candidates else None
+
+
+def _reviewer_options(snapshot, object_type):
+    team = snapshot.get("team_review449") or {}
+    current = str(snapshot.get("actor") or "").casefold()
+    rows = (team.get("eligible_reviewers") or {}).get(object_type, [])
+    options = ['<option value="">Offene Review-Queue</option>']
+    for row in rows:
+        username = str(row.get("username") or "")
+        if not username or username.casefold() == current:
+            continue
+        label = row.get("display_name") or username
+        roles = ", ".join(row.get("case_roles") or [])
+        options.append(
+            f'<option value="{_e(username)}">{_e(label)} · {_e(roles or "Reviewer")}</option>'
+        )
+    return "".join(options)
+
+
+def _review_request_form(snapshot, object_type, object_id, *, label="Review anfordern"):
+    existing = _active_team_review(snapshot, object_type, object_id)
+    if existing and existing.get("state") in {"pending", "claimed"}:
+        return (
+            f'<div class="notice warn"><b>Team-Review {_e(existing.get("state"))}</b><br>'
+            f'Review-ID: <span class="mono">{_e(existing.get("review_id"))}</span> · '
+            f'angefordert von {_e(existing.get("requested_by"))}'
+            f'{" · zugewiesen an " + _e(existing.get("assigned_to")) if existing.get("assigned_to") else ""}'
+            '</div>'
+        )
+    if existing and existing.get("state") == "stale":
+        stale = '<div class="notice error">Die vorige Review-Anforderung ist veraltet, weil sich das Objekt geändert hat. Neue Prüfung erforderlich.</div>'
+    else:
+        stale = ""
+    return stale + f"""
+<form data-json-form data-endpoint="/api/build449/reviews" data-success="Team-Review angefordert.">
+<input type="hidden" name="object_type" value="{_e(object_type)}">
+<input type="hidden" name="object_id" value="{_e(object_id)}">
+<div class="field"><label>Warum ist die Prüfung jetzt erforderlich?</label><input name="note" required placeholder="Review-Auftrag kurz dokumentieren"></div>
+<div class="field"><label>Reviewer, optional</label><select name="assigned_to">{_reviewer_options(snapshot, object_type)}</select></div>
+<button type="submit">{_e(label)}</button>
+</form>"""
+
+
+def _team_review_queue_panel(snapshot):
+    team = snapshot.get("team_review449") or {}
+    if not team:
+        return ""
+    metrics = team.get("metrics") or {}
+    decision_options = {
+        "evidence": [("accepted", "accepted"), ("context_only", "context_only"), ("rejected", "rejected")],
+        "claim": [("accepted_for_dossier", "accepted_for_dossier"), ("needs_more_evidence", "needs_more_evidence"), ("rejected", "rejected")],
+        "dossier": [("approved_for_export", "approved_for_export"), ("changes_required", "changes_required")],
+        "dossier_export": [("approve", "approve"), ("deny", "deny")],
+    }
+    confirmations = {
+        "evidence": "REVIEW EVIDENCE 447",
+        "claim": "REVIEW CLAIM 447",
+        "dossier": "APPROVE DOSSIER 447",
+        "dossier_export": "APPROVE DOSSIER EXPORT 449",
+    }
+    cards = []
+    for row in team.get("queue") or []:
+        state = str(row.get("state") or "")
+        actions = ""
+        if row.get("can_claim"):
+            actions += f"""
+<form data-json-form data-endpoint="/api/build449/reviews/{_e(row.get("review_id"))}/claim" data-success="Review übernommen.">
+<button type="submit">Review übernehmen</button>
+</form>"""
+        if row.get("can_complete"):
+            opts = "".join(
+                f'<option value="{_e(value)}">{_e(label)}</option>'
+                for value, label in decision_options.get(row.get("object_type"), [])
+            )
+            confirm = confirmations.get(row.get("object_type"), "")
+            actions += f"""
+<form data-json-form data-endpoint="/api/build449/reviews/{_e(row.get("review_id"))}/complete" data-success="Review abgeschlossen.">
+<div class="field"><label>Entscheidung</label><select name="decision">{opts}</select></div>
+<div class="field"><label>Begründung</label><input name="note" required></div>
+<div class="field"><label>Bestätigung exakt</label><input name="confirmation" placeholder="{_e(confirm)}"></div>
+<div class="inline"><button type="submit">Review abschließen</button><button class="ghost" type="button" data-copy="{_e(confirm)}">Text kopieren</button></div>
+</form>"""
+        comment_form = ""
+        if state in {"pending", "claimed"}:
+            comment_form = f"""
+<form data-json-form data-endpoint="/api/build449/reviews/{_e(row.get("review_id"))}/comments" data-success="Review-Kommentar gespeichert.">
+<div class="form-grid"><div class="field"><label>Typ</label><select name="kind"><option value="comment">Kommentar</option><option value="challenge">Challenge</option><option value="agreement">Agreement</option><option value="counter_hypothesis">Gegenhypothese</option></select></div><div class="field"><label>Text</label><input name="body" required></div></div>
+<button class="ghost" type="submit">Zum Review protokollieren</button>
+</form>"""
+        comments = "".join(
+            f'<li><b>{_e(x.get("kind"))}</b> · {_e(x.get("created_by"))}: {_e(x.get("body"))}</li>'
+            for x in row.get("comments") or []
+        )
+        cards.append(f"""
+<details {"open" if row.get("assigned_to_me") else ""}>
+<summary>{_e(row.get("object_type"))} · {_e(_short(row.get("object_id"),48))} · {_e(state)}</summary>
+<p><b>Angefordert:</b> {_e(row.get("requested_by"))} · <b>Zugewiesen:</b> {_e(row.get("assigned_to") or "offene Queue")} · <b>Claimed:</b> {_e(row.get("claimed_by") or "—")}</p>
+<p class="muted">{_e(row.get("request_note"))}</p>
+{actions}{comment_form}
+{"<ul>" + comments + "</ul>" if comments else ""}
+</details>""")
+    membership_rows = [
+        x for x in team.get("memberships") or [] if x.get("active")
+    ]
+    return f"""
+<section class="panel"><h2>Team Review · Build 449</h2>
+<div class="metrics">{_metric("Offen",metrics.get("pending",0))}{_metric("Übernommen",metrics.get("claimed",0))}{_metric("Für mich",metrics.get("assigned_to_me",0))}{_metric("Veraltet",metrics.get("stale",0))}</div>
+<p class="muted">Vier-Augen-Prinzip: Antragsteller bzw. Objekt-Ersteller dürfen die eigene Review-Aufgabe nicht abschließen. Änderungen nach Review-Anforderung machen den Auftrag veraltet.</p>
+{''.join(cards) if cards else '<div class="empty">Keine Review-Aufgaben in diesem Fall.</div>'}
+</section>
+<section class="panel"><h2>Fallteam</h2>{_table(membership_rows,[("display_name","Name"),("username","Benutzer"),("case_role","Rolle"),("granted_by","Zugewiesen von")])}</section>
+
+
 def _evidence(snapshot):
     case_id = snapshot["case"]["case_id"]
     rows = []
     for item in reversed(snapshot["evidence"]):
         controls = ""
         if item.get("review_state") == "unreviewed":
-            controls = f"""
+            if snapshot.get("team_review449"):
+                controls = _review_request_form(
+                    snapshot, "evidence", item["evidence_id"], label="Evidence-Review anfordern"
+                )
+            else:
+                controls = f"""
 <form data-json-form data-endpoint="/api/build447/evidence/{_e(item["evidence_id"])}/review" data-success="Evidence-Review gespeichert.">
 <div class="field"><label>Entscheidung</label><select name="decision"><option value="accepted">accepted</option><option value="context_only">context_only</option><option value="rejected">rejected</option></select></div>
 <div class="field"><label>Review-Notiz</label><input name="note" required></div>
@@ -281,7 +409,12 @@ def _claims(snapshot):
         links = ", ".join(f'{x.get("stance")}:{x.get("evidence_id")}' for x in claim.get("links") or [])
         controls = ""
         if claim.get("state") == "candidate_review_required":
-            controls = f"""
+            if snapshot.get("team_review449"):
+                controls = _review_request_form(
+                    snapshot, "claim", claim["claim_id"], label="Claim-Review anfordern"
+                )
+            else:
+                controls = f"""
 <form data-json-form data-endpoint="/api/build447/claims/{_e(claim["claim_id"])}/review" data-success="Claim-Review gespeichert.">
 <div class="field"><label>Entscheidung</label><select name="decision"><option value="accepted_for_dossier">accepted_for_dossier</option><option value="needs_more_evidence">needs_more_evidence</option><option value="rejected">rejected</option></select></div>
 <div class="field"><label>Review-Notiz</label><input name="note" required></div>
@@ -323,13 +456,38 @@ def _dossier(snapshot):
     for d in reversed(snapshot["dossiers"]):
         controls = ""
         if d.get("state") == "draft_for_review":
-            controls = f"""
+            if snapshot.get("team_review449"):
+                controls = _review_request_form(
+                    snapshot, "dossier", d["revision_id"], label="Dossier-Review anfordern"
+                )
+            else:
+                controls = f"""
 <form data-json-form data-endpoint="/api/build447/dossiers/{_e(d["revision_id"])}/review" data-success="Dossier-Review gespeichert.">
 <div class="field"><label>Entscheidung</label><select name="decision"><option value="approved_for_export">approved_for_export</option><option value="changes_required">changes_required</option></select></div>
 <div class="field"><label>Review-Notiz</label><input name="note" required></div>
 <div class="field"><label>Bestätigung</label><input name="confirmation" placeholder="APPROVE DOSSIER 447"></div><button type="submit">Dossier reviewen</button></form>"""
         elif d.get("state") == "approved_for_export":
-            controls = f"""
+            if snapshot.get("team_review449"):
+                export_review = _active_team_review(snapshot, "dossier_export", d["revision_id"])
+                executions = (snapshot.get("team_review449") or {}).get("export_executions") or []
+                executed = next(
+                    (x for x in executions if x.get("review_id") == (export_review or {}).get("review_id")),
+                    None,
+                )
+                if executed:
+                    controls = f'<div class="notice"><b>Vier-Augen-Export ausgeführt.</b><br>Package SHA-256: <span class="mono">{_e(executed.get("package_hash"))}</span></div>'
+                elif export_review and export_review.get("state") == "completed" and export_review.get("decision") == "approve":
+                    controls = f"""
+<form data-json-form data-endpoint="/api/build449/reviews/{_e(export_review.get("review_id"))}/export" data-success="Vier-Augen-Dossierexport ausgeführt.">
+<div class="field"><label>Bestätigung exakt</label><input name="confirmation" placeholder="EXPORT DOSSIER 447"></div>
+<div class="inline"><button type="submit">Freigegebenes Dossier exportieren</button><button class="ghost" type="button" data-copy="EXPORT DOSSIER 447">Text kopieren</button></div>
+</form>"""
+                else:
+                    controls = _review_request_form(
+                        snapshot, "dossier_export", d["revision_id"], label="Exportfreigabe anfordern"
+                    )
+            else:
+                controls = f"""
 <form data-json-form data-endpoint="/api/build447/dossiers/{_e(d["revision_id"])}/export" data-success="Dossier exportiert.">
 <div class="field"><label>Bestätigung</label><input name="confirmation" placeholder="EXPORT DOSSIER 447"></div><button type="submit">JSON · DOCX · PDF · ZIP exportieren</button></form>"""
         cards.append(f"""
@@ -345,7 +503,9 @@ def _dossier(snapshot):
 def _operations(snapshot, audits):
     m = snapshot["metrics"]
     hist = _table(audits,[("created_at","Zeit"),("result","Result"),("route_count","Routes"),("markup_sha256","Markup SHA-256")])
+    team_panel = _team_review_queue_panel(snapshot)
     return f"""
+{team_panel}
 <section class="panel"><h2>UI-Funktionsprüfung</h2><p>Build 448 prüft Hauptnavigation, Accessibility-Basics, Responsive Layout und die Registrierung der operativen Build-439/446/447-Routen.</p><form data-json-form data-endpoint="/api/build448/cases/{_e(snapshot["case"]["case_id"])}/ui-audit" data-success="UI-Audit abgeschlossen."><button type="submit">UI jetzt prüfen</button></form></section>
 <section class="panel"><h2>Audit-Historie</h2>{hist}</section>
 <section class="panel"><h2>Operations-Sicht</h2><div class="metrics">{_metric("Quellen",m["sources"])}{_metric("Dispatches",m["dispatches"])}{_metric("Executions",m["executions"])}{_metric("Exports",m["exports"])}</div><p class="muted">Build 448 verändert keine OPSEC-/Netzwerkbefugnisse.</p></section>
