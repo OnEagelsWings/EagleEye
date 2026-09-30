@@ -405,6 +405,43 @@ def test_http_workspace_uses_build449_snapshot_and_review_queue(tmp_path):
         assert status.json()["dossier_export_four_eyes"] is True
 
 
+def test_current_ui_audit_checks_449_routes_and_bypass_absence(tmp_path):
+    app = create_workspace_app449(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, reviewer, case = setup_team(ctx, "UI audit Build 449")
+    evidence = seed_unreviewed_evidence(ctx, admin, case["case_id"])[0]
+    ctx.build449.request_review_449(
+        identity=admin,
+        object_type="evidence",
+        object_id=evidence["evidence_id"],
+        note="UI audit needs a visible team-review task.",
+        assigned_to=reviewer["username"],
+    )
+    fingerprint = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    session = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fingerprint,
+    )
+    assert session is not None
+
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", session.token)
+        response = client.post(
+            f"/api/build449/cases/{case['case_id']}/ui-audit",
+            headers={"sec-fetch-site": "same-origin"},
+        )
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["result"] == "PASS"
+        assert result["checks"]["required_build449_routes"] is True
+        assert result["checks"]["direct_build447_review_bypass_absent"] is True
+        assert result["bypass_routes"] == []
+        history = client.get(f"/api/build449/cases/{case['case_id']}/ui-audits")
+        assert history.status_code == 200
+        assert len(history.json()["items"]) == 1
+
+
 def test_status_launcher_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         setup_team(ctx)
@@ -419,6 +456,8 @@ def test_status_launcher_and_checkpoint_contract(tmp_path, monkeypatch):
         assert status["stale_object_detection"]
         assert status["comments_challenges_agreement_counter_hypothesis"]
         assert status["dossier_export_four_eyes"]
+        assert status["current_ui_route_contract_audited"]
+        assert status["direct_build447_review_bypass_forbidden"]
         assert status["automatic_truth_determination"] is False
         assert status["production_release_ready"] is False
         assert status["next_build"] == "450.0"
