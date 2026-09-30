@@ -43,6 +43,23 @@ POSITIVE_DECISIONS = {
     "dossier_export": {"approve"},
 }
 
+CURRENT_REQUIRED_ROUTES = {
+    ("GET", "/api/build449/status"),
+    ("GET", "/api/build449/cases/{case_id}/snapshot"),
+    ("GET", "/api/build449/cases/{case_id}/reviews"),
+    ("POST", "/api/build449/reviews"),
+    ("POST", "/api/build449/reviews/{review_id}/claim"),
+    ("POST", "/api/build449/reviews/{review_id}/complete"),
+    ("POST", "/api/build449/reviews/{review_id}/comments"),
+    ("POST", "/api/build449/reviews/{review_id}/export"),
+}
+CURRENT_FORBIDDEN_BYPASS_ROUTES = {
+    ("POST", "/api/build447/evidence/{evidence_id}/review"),
+    ("POST", "/api/build447/claims/{claim_id}/review"),
+    ("POST", "/api/build447/dossiers/{revision_id}/review"),
+    ("POST", "/api/build447/dossiers/{revision_id}/export"),
+}
+
 
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -140,6 +157,21 @@ class HumanReviewTeamWorkflow449:
             );
             CREATE INDEX IF NOT EXISTS idx_review_export449_case
             ON review_export_execution_449(case_id,executed_at);
+
+            CREATE TABLE IF NOT EXISTS ui_audit_449(
+            audit_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL,
+            result TEXT NOT NULL,
+            checks_json TEXT NOT NULL,
+            warnings_json TEXT NOT NULL,
+            route_count INTEGER NOT NULL,
+            markup_sha256 TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            record_hash TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_ui_audit449_case
+            ON ui_audit_449(case_id,created_at);
             """
         )
         self.db.conn.commit()
@@ -688,12 +720,70 @@ class HumanReviewTeamWorkflow449:
             )
         return base
 
+    def audit_ui(self, *, identity, case_id, markup, route_inventory):
+        ident = self._authorize(identity, case_id, "case.read", case_id)
+        routes = {(str(method).upper(), str(path)) for method, path in route_inventory}
+        missing = sorted(f"{m} {p}" for m, p in CURRENT_REQUIRED_ROUTES if (m, p) not in routes)
+        bypass = sorted(f"{m} {p}" for m, p in CURRENT_FORBIDDEN_BYPASS_ROUTES if (m, p) in routes)
+        lower = str(markup or "").lower()
+        checks = {
+            "build449_branding": "build 449" in lower,
+            "team_review_panel": "team review · build 449" in lower,
+            "four_eyes_boundary_visible": "vier-augen" in lower,
+            "status_region": 'aria-live="polite"' in lower,
+            "keyboard_focus_css": ":focus-visible" in str(markup or ""),
+            "responsive_breakpoint": "@media" in str(markup or "") and "max-width" in str(markup or ""),
+            "required_build449_routes": not missing,
+            "direct_build447_review_bypass_absent": not bypass,
+            "truth_boundary_visible": "keine automatische wahrheitsfeststellung" in lower,
+        }
+        warnings = []
+        if missing:
+            warnings.append("missing_current_routes: " + ", ".join(missing))
+        if bypass:
+            warnings.append("review_bypass_routes_present: " + ", ".join(bypass))
+        if str(markup or "").count("<table") > 8:
+            warnings.append("high_table_density")
+        if str(markup or "").count("<details") > 16:
+            warnings.append("high_disclosure_density")
+        result = "PASS" if all(checks.values()) else "FAIL"
+        row = {
+            "audit_id": "uia449_" + secrets.token_hex(10),
+            "case_id": str(case_id),
+            "result": result,
+            "checks_json": _canon(checks),
+            "warnings_json": _canon(warnings),
+            "route_count": len(routes),
+            "markup_sha256": hashlib.sha256(str(markup or "").encode("utf-8")).hexdigest(),
+            "created_by": str(ident["username"]),
+            "created_at": _now(),
+        }
+        row["record_hash"] = self._rh(row)
+        self.db.execute(
+            "INSERT INTO ui_audit_449 VALUES(" + ",".join("?" for _ in row) + ")",
+            tuple(row.values()),
+        )
+        return {**row, "checks": checks, "warnings": warnings, "missing_routes": missing, "bypass_routes": bypass}
+
+    def ui_audit_history(self, case_id, limit=25):
+        out = []
+        for row in self.db.all(
+            "SELECT * FROM ui_audit_449 WHERE case_id=? ORDER BY created_at DESC,rowid DESC LIMIT ?",
+            (str(case_id), int(limit)),
+        ):
+            item = dict(row)
+            item["checks"] = json.loads(item.pop("checks_json"))
+            item["warnings"] = json.loads(item.pop("warnings_json"))
+            out.append(item)
+        return out
+
     def verify_integrity(self):
         violations = []
         for table, key in (
             ("review_request_449", "review_id"),
             ("review_comment_449", "comment_id"),
             ("review_export_execution_449", "execution_id"),
+            ("ui_audit_449", "audit_id"),
         ):
             for row in self.db.all(f"SELECT * FROM {table}"):
                 item = dict(row)
@@ -707,6 +797,7 @@ class HumanReviewTeamWorkflow449:
         claimed = int((self.db.one("SELECT COUNT(*) n FROM review_request_449 WHERE state='claimed'") or {}).get("n") or 0)
         completed = int((self.db.one("SELECT COUNT(*) n FROM review_request_449 WHERE state='completed'") or {}).get("n") or 0)
         exports = int((self.db.one("SELECT COUNT(*) n FROM review_export_execution_449") or {}).get("n") or 0)
+        ui_audits = int((self.db.one("SELECT COUNT(*) n FROM ui_audit_449") or {}).get("n") or 0)
         return {
             "build": BUILD,
             "policy": POLICY_ID,
@@ -715,6 +806,7 @@ class HumanReviewTeamWorkflow449:
             "claimed_reviews": claimed,
             "completed_positive_reviews": completed,
             "four_eyes_exports_executed": exports,
+            "ui_audits": ui_audits,
             "integrity_valid": self.verify_integrity()["valid"],
             "case_scoped_review_queue": True,
             "reviewer_assignment": True,
@@ -724,6 +816,8 @@ class HumanReviewTeamWorkflow449:
             "stale_object_detection": True,
             "comments_challenges_agreement_counter_hypothesis": True,
             "dossier_export_four_eyes": True,
+            "current_ui_route_contract_audited": True,
+            "direct_build447_review_bypass_forbidden": True,
             "automatic_truth_determination": False,
             "automatic_review_completion": False,
             "production_release_ready": False,
