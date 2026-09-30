@@ -40,6 +40,7 @@ def create_workspace_app449(*, base_dir=None):
 
     _drop(app, "/", {"GET"})
     _drop(app, "/health", {"GET"})
+    _drop(app, "/api/build448/cases/{case_id}/ui-audit", {"POST"})
 
     # Build 449 is the current review API surface. The lower-level Build-447
     # mutation routes remain available in app447/app448 compatibility apps, but
@@ -94,6 +95,16 @@ def create_workspace_app449(*, base_dir=None):
                 if str(item.get("case_id")) == str(requested):
                     return item
         return cases[0] if cases else None
+
+    def route_inventory():
+        rows = []
+        for route in app.router.routes:
+            path = getattr(route, "path", None)
+            if not path:
+                continue
+            for method in getattr(route, "methods", set()) or set():
+                rows.append((str(method).upper(), str(path)))
+        return rows
 
     def api_error(exc):
         if isinstance(exc, PermissionError):
@@ -176,6 +187,51 @@ def create_workspace_app449(*, base_dir=None):
                     include_closed=include_closed,
                 )
             }
+        except Exception as exc:
+            api_error(exc)
+
+    @app.get("/api/build449/cases/{case_id}/ui-audits")
+    def ui_audits449(case_id: str, request: Request):
+        identity = auth(request)
+        try:
+            ctx.team_governance_359.authorize(
+                identity,
+                case_id=case_id,
+                capability="case.read",
+                object_type="ui_audit_449",
+                object_id=case_id,
+            )
+            return {"items": ctx.build449.ui_audit_history_449(case_id, limit=25)}
+        except Exception as exc:
+            api_error(exc)
+
+    @app.post("/api/build449/cases/{case_id}/ui-audit")
+    def ui_audit449(case_id: str, request: Request):
+        same_origin(request)
+        identity = auth(request)
+        try:
+            cases = visible_cases(identity)
+            selected = choose_case(cases, case_id)
+            if not selected or str(selected.get("case_id")) != str(case_id):
+                raise PermissionError("case access denied")
+            snapshot = ctx.build449.team_review_snapshot_449(
+                identity=identity,
+                case_id=case_id,
+            )
+            markup = render_workspace(
+                snapshot,
+                view="operations",
+                cases=cases,
+                audits=ctx.build449.ui_audit_history_449(case_id, limit=15),
+            )
+            result = ctx.build449.run_ui_audit_449(
+                identity=identity,
+                case_id=case_id,
+                markup=markup,
+                route_inventory=route_inventory(),
+            )
+            code = 200 if result["result"] == "PASS" else 409
+            return JSONResponse(result, status_code=code)
         except Exception as exc:
             api_error(exc)
 
