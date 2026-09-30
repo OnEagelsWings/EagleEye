@@ -185,7 +185,8 @@ class InvestigatorWorkspace448:
                 and str(x.get("state") or "") != "failed"
             }
             pending = [source_id for source_id in allowed if source_id not in already]
-            recommended_dispatch_source_ids = (pending or allowed)[:maxn]
+            remaining = max(0, maxn - len(already))
+            recommended_dispatch_source_ids = pending[:remaining]
 
         evidence = self.closure447.case_evidence(str(case_id))
         claims = self.closure447.case_claims(str(case_id))
@@ -264,8 +265,14 @@ class InvestigatorWorkspace448:
             next_actions.append({"view": "ai", "priority": "high", "label": "AI-Ermittlung anlegen"})
         elif latest_loop and latest_loop["state"] == "awaiting_human_authorization":
             next_actions.append({"view": "ai", "priority": "high", "label": "AI-Ermittlung freigeben"})
-        elif latest_loop and latest_loop["state"] == "active" and not dispatches:
-            next_actions.append({"view": "research", "priority": "high", "label": "Quellen-Dispatch vorbereiten"})
+        elif latest_loop and latest_loop["state"] == "active":
+            latest_loop_dispatches = [
+                x for x in dispatches
+                if str(x.get("loop_id") or "") == str(latest_loop.get("loop_id") or "")
+                and str(x.get("state") or "") != "failed"
+            ]
+            if not latest_loop_dispatches and recommended_dispatch_source_ids:
+                next_actions.append({"view": "research", "priority": "high", "label": "Quellen-Dispatch vorbereiten"})
         if metrics["evidence_unreviewed"]:
             next_actions.append({"view": "evidence", "priority": "high", "label": f"{metrics['evidence_unreviewed']} Evidence-Items prüfen"})
         if metrics["claims_review_required"]:
