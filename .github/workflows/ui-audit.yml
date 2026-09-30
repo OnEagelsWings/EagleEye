@@ -21,8 +21,8 @@ jobs:
       - name: Install EagleEye
         run: python -m pip install -e '.[test]'
       - name: Current UI import smoke
-        run: python -c "from eagleeye.interfaces.web.app449 import create_workspace_app449; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '449.0'; print(BUILD)"
+        run: python -c "from eagleeye.interfaces.web.app450 import create_workspace_app450; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '450.0'; print(BUILD)"
       - name: Investigator workspace and UI functionality audit
-        run: pytest -q tests/test_build448_integrated.py tests/test_build449_integrated.py
+        run: pytest -q tests/test_build448_integrated.py tests/test_build449_integrated.py tests/test_build450_integrated.py
       - name: Compile current web surface
         run: python -m compileall -q src/eagleeye/interfaces/web eagleeye_pro/phase20
