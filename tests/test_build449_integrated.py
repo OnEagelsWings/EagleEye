@@ -54,7 +54,7 @@ def seed_unreviewed_evidence(ctx, admin, case_id):
         identity=admin,
         case_id=case_id,
     )
-    assert sync["evidence_count"] >= 1
+    assert len(sync["evidence_ids"]) >= 1
     rows = ctx.evidence_claims_dossier_447.case_evidence(case_id)
     assert rows
     return rows
