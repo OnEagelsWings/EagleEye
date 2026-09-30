@@ -1,140 +1,95 @@
-# EagleEye — Build 447
+# EagleEye — Build 448
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 447 implements **Evidence → Claims → Dossier Closure**.
+Build 448 introduces the **Investigator Workspace** and a recurring **UI functionality audit**.
 
-## What changed
+## Primary workflow
 
-The current Phase-20 flow is now closed from acquisition into a reviewable Living Dossier:
+The current operator path is now visible as one coherent chain:
 
 ```
-Acquisition
+Recherche
+  -> AI Investigation
+  -> Acquisition
   -> Evidence
-  -> Claims
-  -> Hypotheses / Counterevidence
-  -> Evidence Matrix
+  -> Claims / Counterevidence
+  -> Graph & Timeline
   -> Synthesis
   -> Living Dossier
 ```
 
-Build 447 does not convert observations into facts automatically.
+The previous historical workspace is retained at `/legacy` for specialized and compatibility functions.
 
-## Evidence Viewer and source snapshots
+## Simplified primary navigation
 
-Build 447 synchronizes case-scoped Build-423 observations and binds them to their Build-421/422/423 provenance. Where available, Build-429 News and Build-432 Social metadata are attached.
+The primary UI has eight case-scoped views:
 
-Each Evidence item records:
+- Übersicht
+- Recherche
+- AI-Ermittlung
+- Evidence
+- Claims & Hypothesen
+- Graph & Timeline
+- Dossier
+- OPSEC & Team
 
-- source ID and source snapshot;
-- acquisition event;
-- content ID and SHA-256;
-- canonical target;
-- media type;
-- duplicate state;
-- descriptive News/Social context;
-- underlying record hashes.
+The stale “Phase 13 · Simplified AI Investigation Workspace” primary shell is no longer the current workspace.
 
-Raw payloads are not duplicated into the Build-447 ledger.
+## Functional UI
 
-Evidence begins `unreviewed` and requires explicit human review.
+Build 448 exposes the already governed actions from Builds 439, 446 and 447 directly in the current workspace:
 
-## Claim ↔ Evidence model
+- create, authorize and advance bounded AI investigation loops;
+- prepare source dispatches and execute one individually confirmed acquisition route;
+- synchronize and review Evidence;
+- create and review Claims with explicit support/contradict/context links;
+- inspect hypothesis gaps and conflicts;
+- inspect graph/timeline summary and latest synthesis;
+- create, review and export Living Dossier revisions.
 
-Claims are explicit propositions, not AI findings.
+No UI control bypasses the underlying RBAC, case scope or exact confirmation phrase.
 
-A Claim requires at least one human-accepted supporting Evidence item.
+## UI audit
 
-Links are explicitly classified as:
+Build 448 records hash-bound case-scoped UI audits.
 
-- support;
-- contradict;
-- context.
+The audit checks:
 
-Counterevidence is retained. A Claim with contradictory Evidence cannot be created without an uncertainty note.
+- current build branding;
+- eight primary views;
+- responsive viewport and mobile breakpoints;
+- keyboard focus styling;
+- semantic main/navigation landmarks;
+- accessible status feedback;
+- availability of the Legacy workspace;
+- visible Evidence/Claim/Dossier epistemic boundary;
+- registration of all required Build-439/446/447 read and mutation routes.
 
-Claim review is a separate human action. Only `accepted_for_dossier` Claims can enter a Living Dossier revision.
+Warnings additionally flag excessive initial markup, table/disclosure density and inline click handlers.
 
-No automatic probability or truth score is assigned.
+## Recurring GitHub review
 
-## Living Dossier revisions
+`.github/workflows/ui-audit.yml` runs a scheduled weekly UI audit and can also be triggered manually.
 
-Each dossier build creates a numbered revision containing:
+UI-facing pull requests should additionally request GitHub Codex review when that reviewer is available in the repository.
 
-- case context;
-- accepted Claims;
-- Claim↔Evidence matrix;
-- Counterevidence;
-- uncertainty register;
-- Build-418 hypothesis/counterevidence matrix when a Build-439 loop is bound;
-- latest Build-419 synthesis;
-- Build-446 acquisition execution references;
-- source snapshots and content hashes.
+## Safety and analytical boundaries
 
-Every revision begins as:
+Still unchanged:
 
-`draft_for_review`
-
-Human review is required before export.
-
-## Export
-
-Approved revisions can be exported as:
-
-- JSON
-- DOCX
-- PDF
-- manifest with hashes
-- ZIP Case Package
-
-The package carries references, provenance and integrity hashes. Raw source payloads are not automatically copied into it.
-
-Formal four-eyes review/export workflow is intentionally left for Build 449.
-
-## Explicit confirmations
-
-- Evidence review: `REVIEW EVIDENCE 447`
-- Claim review: `REVIEW CLAIM 447`
-- Dossier approval: `APPROVE DOSSIER 447`
-- Dossier export: `EXPORT DOSSIER 447`
-
-The confirmations are intentionally separate.
-
-## Integrity
-
-Build 447 checks both its own records and the provenance chain underneath them.
-
-If a referenced Build-421/422/423 record changes after Evidence sync, integrity becomes invalid.
-
-If an Evidence item changes after it has been linked to a Claim, the Claim link is no longer considered intact.
-
-Dossier approval/export fail closed on integrity errors.
-
-## Still not claimed
-
-- automatic truth determination
-- automatic Claim acceptance
-- automatic Dossier publication
-- unrestricted AI network authority
-- formal four-eyes workflow for Build-447 export
-- production readiness
-
-Therefore:
-
-- `real_world_general_research_ready = false`
-- `production_release_ready = false`
+- no generic AI network authority;
+- no automatic Evidence acceptance;
+- no automatic Claim acceptance;
+- no automatic truth determination;
+- no automatic Dossier publication;
+- production readiness remains false.
 
 ## Qualification
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build447_integrated.py
-```
-
-Case-specific deterministic qualification:
-
-```
-POST /api/build447/cases/{case_id}/selftest
+pytest -q tests/test_build448_integrated.py
 ```
 
 ## Start
@@ -147,11 +102,11 @@ Windows:
 START_EAGLEEYE_PRO.bat
 ```
 
-Manual start:
+Manual:
 
 ```powershell
 py -3 -m pip install -e .
-py -3 EAGLEEYE_PRO_447_0.py
+py -3 EAGLEEYE_PRO_448_0.py
 ```
 
 Linux/macOS:
@@ -161,11 +116,10 @@ chmod +x START_EAGLEEYE_PRO.sh
 ./START_EAGLEEYE_PRO.sh
 ```
 
-See `README_BUILD_447_0.md`, `BUILD_447_CASE_TEST.md` and `RELEASE_MANIFEST_BUILD_447_0.json`.
+See `README_BUILD_448_0.md`, `BUILD_448_UI_AUDIT.md` and `RELEASE_MANIFEST_BUILD_448_0.json`.
 
 Current roadmap:
 
-- 447 Evidence → Claims → Dossier Closure
-- 448 Investigator Workspace
+- 448 Investigator Workspace + UI Audit
 - 449 Human Review / Team Workflow
 - 450 Investigation Workflow Hard Checkpoint
