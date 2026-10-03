@@ -532,11 +532,8 @@ def _operations(snapshot, audits):
         qualification_panel = f"""
 <section class="panel"><h2>Build 450 · Investigation Workflow Hard Checkpoint</h2>
 <div class="metrics">{_metric("Engineering",engineering)}{_metric("External Validation",external)}{_metric("Release",release)}</div>
-<p class="muted">Der Checkpoint qualifiziert die deterministische End-to-End-Kette. Engineering-PASS ist keine Production-Freigabe.</p>
-<form data-json-form data-endpoint="/api/build450/cases/{_e(snapshot["case"]["case_id"])}/qualify" data-success="Build-450-Qualifikation abgeschlossen.">
-<div class="field"><label>Unabhängiger Reviewer</label><select name="reviewer_username" required><option value="">Reviewer wählen</option>{reviewer_options}</select></div>
-<button type="submit">Hard Checkpoint ausführen</button>
-</form>
+<p class="muted">Engineering-PASS ist keine Production-Freigabe. Die mutierende Hard-Checkpoint-Qualifikation läuft ausschließlich in einem isolierten synthetischen Qualifikationsfall mit zwei getrennt authentifizierten Sitzungen. Sie kann aus einem normalen Ermittlungsfall nicht gestartet werden.</p>
+<div class="notice"><b>Operationaler Workspace: read-only Checkpoint-Status.</b><br>Die eigentliche Build-450-Qualifikation ist CI-/Test-/Admin-intern und nicht als Browser-Aktion verfügbar.</div>
 </section>"""
     return f"""
 {qualification_panel}
