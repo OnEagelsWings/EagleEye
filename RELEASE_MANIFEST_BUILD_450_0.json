@@ -21,5 +21,6 @@
   "automatic_truth_determination": false,
   "automatic_review_completion": false,
   "production_release_ready": false,
-  "release_gate_pass": false
+  "release_gate_pass": false,
+  "explicit_reviewer_consent_required": true
 }
