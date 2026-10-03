@@ -19,9 +19,9 @@ A Build-450 qualification run now requires:
 - reviewer case capabilities for Evidence, Dossier and export review;
 - valid component integrity before any mutating qualification action.
 
-The checkpoint does not trust a copied `session_id` as authentication. Reviewer consent and qualification revalidate the actual session token plus client fingerprint through the canonical session validator.
+The checkpoint does not trust a copied `session_id` as authentication. Reviewer consent and qualification revalidate the actual session token plus client fingerprint through the canonical session validator. Reviewer consents are append-only history records so a later re-consent cannot invalidate an earlier qualified run.
 
-The operational browser workspace exposes checkpoint status only. It does not expose a mutating “run qualification” action, and Build-450-marked qualification cases are excluded from the operational case selector.
+The operational browser workspace exposes checkpoint status only. It does not expose a mutating “run qualification” action, and Build-450-marked qualification cases are excluded from the operational case selector and guarded Legacy entry. If no operational case exists, the app renders a safe empty state instead of falling back to an unfiltered legacy workspace.
 
 ## Fail-closed preflight
 
