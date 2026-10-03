@@ -142,8 +142,8 @@ def test_build450_requires_two_distinct_authenticated_sessions(tmp_path):
             ctx.build450.qualify_investigation_workflow_450(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_session_token=_r.token,
-            reviewer_client_fingerprint=FP_REVIEWER,
+                reviewer_session_token=reviewer_session.token,
+                reviewer_client_fingerprint=FP_REVIEWER,
             )
 
 
@@ -175,7 +175,7 @@ def test_build450_rejects_unmarked_operational_case_without_mutation(tmp_path):
                 identity=admin,
                 case_id=case["case_id"],
                 reviewer_session_token=_r.token,
-            reviewer_client_fingerprint=FP_REVIEWER,
+                reviewer_client_fingerprint=FP_REVIEWER,
             )
         after = {
             "evidence": len(ctx.evidence_claims_dossier_447.case_evidence(case["case_id"])),
@@ -213,7 +213,7 @@ def test_build450_preflight_integrity_failure_aborts_before_workflow_mutation(tm
                 identity=admin,
                 case_id=case["case_id"],
                 reviewer_session_token=_r.token,
-            reviewer_client_fingerprint=FP_REVIEWER,
+                reviewer_client_fingerprint=FP_REVIEWER,
             )
         after_events = int(
             (ctx.db.one(
@@ -240,7 +240,7 @@ def test_build450_rejects_reviewer_after_case_capability_revocation(tmp_path):
                 identity=admin,
                 case_id=case["case_id"],
                 reviewer_session_token=_r.token,
-            reviewer_client_fingerprint=FP_REVIEWER,
+                reviewer_client_fingerprint=FP_REVIEWER,
             )
 
 
@@ -256,7 +256,7 @@ def test_build450_requires_explicit_reviewer_consent(tmp_path):
                 identity=admin,
                 case_id=case["case_id"],
                 reviewer_session_token=_r.token,
-            reviewer_client_fingerprint=FP_REVIEWER,
+                reviewer_client_fingerprint=FP_REVIEWER,
             )
         with pytest.raises(PermissionError, match="explicit CONSENT BUILD 450 QUALIFICATION"):
             ctx.build450.consent_investigation_workflow_qualification_case_450(
