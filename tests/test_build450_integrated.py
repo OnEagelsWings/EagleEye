@@ -334,6 +334,105 @@ def test_build450_required_component_tamper_invalidates_existing_pass(tmp_path):
         assert status["investigation_workflow_checkpoint_pass"] is False
 
 
+
+def test_build450_reviewer_proof_requires_real_session_token_and_fingerprint(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        _bootstrap, _reviewer_user, admin, reviewer, admin_session, reviewer_session = setup_users(ctx)
+        case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
+            identity=admin,
+            reviewer_username=reviewer["username"],
+        )
+        with pytest.raises(PermissionError, match="reviewer authentication failed"):
+            ctx.build450.consent_investigation_workflow_qualification_case_450(
+                case_id=case["case_id"],
+                confirmation="CONSENT BUILD 450 QUALIFICATION",
+                reviewer_session_token=reviewer_session.token,
+                reviewer_client_fingerprint="copied-or-wrong-fingerprint",
+            )
+        with pytest.raises(PermissionError, match="only the designated reviewer"):
+            ctx.build450.consent_investigation_workflow_qualification_case_450(
+                case_id=case["case_id"],
+                confirmation="CONSENT BUILD 450 QUALIFICATION",
+                reviewer_session_token=admin_session.token,
+                reviewer_client_fingerprint=FP_ADMIN,
+            )
+
+
+def test_build450_deleted_consent_retracts_existing_checkpoint_pass(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, reviewer, case, _a, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        assert result["engineering_result"] == "pass"
+        assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is True
+        ctx.db.execute(
+            "DELETE FROM phase20_qualification_consent_450 WHERE case_id=?",
+            (case["case_id"],),
+        )
+        integrity = ctx.investigation_workflow_qualification_450.verify_integrity()
+        assert integrity["valid"] is False
+        assert any(x["reason"] == "reviewer_consent_missing" for x in integrity["violations"])
+        assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is False
+
+
+def test_build450_deleted_case_marker_retracts_existing_checkpoint_pass(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, reviewer, case, _a, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        assert result["engineering_result"] == "pass"
+        ctx.db.execute(
+            "DELETE FROM phase20_qualification_case_450 WHERE case_id=?",
+            (case["case_id"],),
+        )
+        integrity = ctx.investigation_workflow_qualification_450.verify_integrity()
+        assert integrity["valid"] is False
+        assert any(x["reason"] == "qualification_case_marker_missing" for x in integrity["violations"])
+        assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is False
+
+
+def test_build450_qualification_cases_are_hidden_from_operational_workspace(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    _bootstrap, _reviewer_user, admin, reviewer, _admin_session, _reviewer_session = setup_users(ctx)
+    qualification_case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
+        identity=admin,
+        reviewer_username=reviewer["username"],
+    )
+    operational_case = ctx.team_governance_359.create_case(
+        identity=admin,
+        title="Operational Build 450 Case",
+        client="QA",
+        purpose="Normal operational case visible in the current workspace.",
+        legal_basis="public_data",
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        root = client.get(
+            "/",
+            params={"view": "overview", "case_id": qualification_case["case_id"]},
+        )
+        assert root.status_code == 200
+        assert "Operational Build 450 Case" in root.text
+        assert "Build 450 Isolated Qualification" not in root.text
+        assert qualification_case["case_id"] not in root.text
+        assert operational_case["case_id"] in root.text
+
+
 def test_build450_current_app_is_read_only_for_checkpoint_and_keeps_review_bypass_closed(tmp_path):
     app = create_workspace_app450(base_dir=tmp_path)
     try:
