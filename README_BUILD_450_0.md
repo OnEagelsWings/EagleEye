@@ -15,10 +15,11 @@ A Build-450 qualification run now requires:
 - an isolated qualification case created and marked by Build 450;
 - a system administrator using a real active authenticated session;
 - a different reviewer using a separate real active authenticated session;
+- explicit reviewer consent for that exact qualification case (`CONSENT BUILD 450 QUALIFICATION`);
 - reviewer case capabilities for Evidence, Dossier and export review;
 - valid component integrity before any mutating qualification action.
 
-The checkpoint does not fabricate reviewer identities and does not execute review actions on behalf of an unauthenticated user.
+The checkpoint does not fabricate reviewer identities and does not execute review actions on behalf of an unauthenticated or non-consenting user.
 
 The operational browser workspace exposes checkpoint status only. It does not expose a mutating “run qualification” action.
 
