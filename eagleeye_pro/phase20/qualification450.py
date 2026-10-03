@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from zipfile import ZipFile
 import hashlib
 import json
 import secrets
@@ -331,6 +332,84 @@ class InvestigationWorkflowHardCheckpoint450:
             "pass": all(checks.values()),
         }
 
+    def _preflight(self):
+        component_checks, component_details = self._component_integrity()
+        statuses = self._statuses()
+        authority = self._authority_contract(statuses)
+        if not all(component_checks.values()):
+            raise RuntimeError("Build-450 preflight integrity failed before any workflow mutation")
+        if not authority["pass"]:
+            raise RuntimeError("Build-450 authority contract failed before any workflow mutation")
+        return component_checks, component_details, statuses, authority
+
+    def _verify_export_artifacts(self, export):
+        paths = dict(export.get("paths") or {})
+        recorded_hashes = dict(export.get("hashes") or {})
+        required = {
+            "json": "EagleEye_Living_Dossier.json",
+            "docx": "EagleEye_Living_Dossier.docx",
+            "pdf": "EagleEye_Living_Dossier.pdf",
+            "manifest": "manifest.json",
+        }
+        exists = {}
+        hash_matches = {}
+        actual_hashes = {}
+        for key, expected_name in required.items():
+            raw = paths.get(key)
+            path = Path(raw) if raw else None
+            exists[key] = bool(path and path.exists() and path.is_file())
+            if exists[key]:
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                actual_hashes[expected_name] = digest
+                hash_matches[key] = digest == str(recorded_hashes.get(expected_name) or "")
+            else:
+                hash_matches[key] = False
+
+        package_raw = paths.get("case_package")
+        package = Path(package_raw) if package_raw else None
+        package_exists = bool(package and package.exists() and package.is_file())
+        package_digest = hashlib.sha256(package.read_bytes()).hexdigest() if package_exists else ""
+        package_hash_matches = package_digest == str(export.get("package_hash") or "")
+
+        package_members_ok = False
+        if package_exists:
+            try:
+                with ZipFile(package) as zf:
+                    names = set(zf.namelist())
+                package_members_ok = set(required.values()).issubset(names)
+            except Exception:
+                package_members_ok = False
+
+        return {
+            "exists": exists,
+            "hash_matches": hash_matches,
+            "actual_hashes": actual_hashes,
+            "package_exists": package_exists,
+            "package_actual_hash": package_digest,
+            "package_hash_matches": package_hash_matches,
+            "package_members_ok": package_members_ok,
+            "valid": (
+                all(exists.values())
+                and all(hash_matches.values())
+                and package_exists
+                and package_hash_matches
+                and package_members_ok
+            ),
+        }
+
+    def _latest_artifacts_valid(self, last):
+        if not last:
+            return False
+        workflow = (last.get("report") or {}).get("workflow_selftest") or {}
+        paths = workflow.get("artifact_paths") or {}
+        hashes = workflow.get("artifact_hashes") or {}
+        package_hash = workflow.get("package_hash") or ""
+        if not paths:
+            return False
+        return self._verify_export_artifacts(
+            {"paths": paths, "hashes": hashes, "package_hash": package_hash}
+        )["valid"]
+
     def _new_evidence(self, before_ids, case_id):
         rows = self.services["closure447"].case_evidence(str(case_id))
         candidates = [
@@ -372,6 +451,7 @@ class InvestigationWorkflowHardCheckpoint450:
         if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
             raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
         self._qualification_consent(case_id, reviewer)
+        self._preflight()
         dispatcher = self.services["dispatcher446"]
         closure = self.services["closure447"]
         review449 = self.services["review449"]
@@ -467,9 +547,7 @@ class InvestigationWorkflowHardCheckpoint450:
             confirmation="EXPORT DOSSIER 447",
         )
 
-        package_path = Path(exported["export"]["paths"]["case_package"])
-        docx_path = Path(exported["export"]["paths"]["docx"])
-        pdf_path = Path(exported["export"]["paths"]["pdf"])
+        artifact_verification = self._verify_export_artifacts(exported["export"])
         workspace = review449.snapshot(
             identity=admin,
             case_id=str(case_id),
@@ -497,12 +575,18 @@ class InvestigationWorkflowHardCheckpoint450:
             "executor_differs_from_export_approver": (
                 exported["execution"].get("executed_by") != reviewer["username"]
             ),
-            "case_package_exists": package_path.exists(),
-            "docx_exists": docx_path.exists(),
-            "pdf_exists": pdf_path.exists(),
+            "case_package_exists": artifact_verification["package_exists"],
+            "json_exists": artifact_verification["exists"]["json"],
+            "docx_exists": artifact_verification["exists"]["docx"],
+            "pdf_exists": artifact_verification["exists"]["pdf"],
+            "manifest_exists": artifact_verification["exists"]["manifest"],
+            "artifact_hashes_recomputed_match": all(artifact_verification["hash_matches"].values()),
+            "package_hash_recomputed_match": artifact_verification["package_hash_matches"],
+            "package_contains_expected_files": artifact_verification["package_members_ok"],
             "package_hash_bound": (
                 exported["execution"].get("package_hash")
                 == exported["export"].get("package_hash")
+                == artifact_verification["package_actual_hash"]
             ),
             "workspace_review_layer_visible": bool(workspace.get("team_review449")),
             "review_integrity_valid": review449.verify_integrity()["valid"],
@@ -518,6 +602,9 @@ class InvestigationWorkflowHardCheckpoint450:
             "export_review_id": export_request["review_id"],
             "export_id": exported["export"]["export_id"],
             "package_hash": exported["export"]["package_hash"],
+            "artifact_paths": dict(exported["export"].get("paths") or {}),
+            "artifact_hashes": dict(exported["export"].get("hashes") or {}),
+            "artifact_verification": artifact_verification,
             "reviewer": reviewer["username"],
             "executor": exported["execution"]["executed_by"],
             "truth_determined": False,
@@ -531,14 +618,7 @@ class InvestigationWorkflowHardCheckpoint450:
             raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
         self._qualification_consent(case_id, reviewer)
 
-        component_checks, component_details = self._component_integrity()
-        statuses = self._statuses()
-        authority = self._authority_contract(statuses)
-
-        if not all(component_checks.values()):
-            raise RuntimeError("Build-450 preflight integrity failed before any workflow mutation")
-        if not authority["pass"]:
-            raise RuntimeError("Build-450 authority contract failed before any workflow mutation")
+        component_checks, component_details, statuses, authority = self._preflight()
 
         workflow = self.run_case_workflow(
             identity=admin,
@@ -683,6 +763,19 @@ class InvestigationWorkflowHardCheckpoint450:
     def status(self):
         last = self.latest()
         q445 = self.services["qualification445"].status()
+        component_checks, _component_details = self._component_integrity()
+        authority = self._authority_contract(self._statuses())
+        local_integrity = self.verify_integrity()
+        artifacts_valid = self._latest_artifacts_valid(last) if last else False
+        current_components_valid = all(component_checks.values())
+        checkpoint_pass = bool(
+            local_integrity["valid"]
+            and current_components_valid
+            and authority["pass"]
+            and artifacts_valid
+            and last
+            and last["engineering_result"] == "pass"
+        )
         return {
             "build": BUILD,
             "policy": POLICY_ID,
@@ -704,15 +797,14 @@ class InvestigationWorkflowHardCheckpoint450:
             "full_repository_regression_required": True,
             "ui_regression_required": True,
             "codex_review_required_for_current_head": True,
-            "integrity_valid": self.verify_integrity()["valid"],
+            "integrity_valid": local_integrity["valid"],
+            "current_component_integrity_valid": current_components_valid,
+            "current_authority_contract_valid": authority["pass"],
+            "qualified_artifacts_valid": artifacts_valid,
             "last_engineering_result": last["engineering_result"] if last else None,
             "last_external_validation_result": last["external_validation_result"] if last else None,
             "last_release_result": last["release_result"] if last else None,
-            "investigation_workflow_checkpoint_pass": bool(
-                self.verify_integrity()["valid"]
-                and last
-                and last["engineering_result"] == "pass"
-            ),
+            "investigation_workflow_checkpoint_pass": checkpoint_pass,
             "external_nonfixture_acquisition_validated": bool(
                 q445.get("data_acquisition_gate_pass")
             ),
