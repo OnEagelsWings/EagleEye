@@ -142,21 +142,6 @@ def create_workspace_app450(*, base_dir=None):
         )
         return {"item": ctx.build450.investigation_workflow_latest_450(case_id)}
 
-    @app.post("/api/build450/cases/{case_id}/qualify")
-    async def qualify450(case_id: str, request: Request):
-        same_origin(request)
-        identity = auth(request)
-        try:
-            body = await request.json()
-            if not isinstance(body, dict):
-                body = {}
-            return ctx.build450.qualify_investigation_workflow_450(
-                identity=identity,
-                case_id=case_id,
-                reviewer_username=body.get("reviewer_username", ""),
-            )
-        except Exception as exc:
-            api_error(exc)
 
     return app
 
