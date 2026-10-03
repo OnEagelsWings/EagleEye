@@ -32,5 +32,9 @@
   "copied_session_id_not_authentication": true,
   "qualification_case_hidden_from_operational_workspace": true,
   "qualification_marker_presence_bound_to_pass": true,
-  "reviewer_consent_presence_bound_to_pass": true
+  "reviewer_consent_presence_bound_to_pass": true,
+  "reviewer_consent_history_append_only": true,
+  "reconsent_preserves_prior_run_integrity": true,
+  "safe_empty_operational_workspace": true,
+  "qualification_case_hidden_from_legacy_workspace": true
 }
