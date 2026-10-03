@@ -15,21 +15,22 @@ The reviewer must have case-scoped `source.review`, `dossier.review`, and `dossi
 
 1. Create the isolated Build-450 qualification case and marker.
 2. Assign the separately authenticated reviewer to that qualification case.
-3. Verify all required component integrity before mutation.
-4. Verify the authority contract.
-5. Run deterministic Build-446 acquisition/dispatch selftest.
-6. Synchronize Build-447 Evidence.
-7. Request and complete independent Evidence review.
-8. Create a bounded synthetic Claim.
-9. Independently review the Claim.
-10. Create a Living Dossier.
-11. Independently approve the Dossier.
-12. Request separate export approval.
-13. Independently approve export.
-14. Execute export with an authorized executor different from the approving reviewer.
-15. Verify JSON, DOCX, PDF, manifest and ZIP package/hash bindings.
-16. Re-run component integrity.
-17. Store the Build-450 qualification record.
+3. Reviewer explicitly consents with `CONSENT BUILD 450 QUALIFICATION`.
+4. Verify all required component integrity before mutation.
+5. Verify the authority contract.
+6. Run deterministic Build-446 acquisition/dispatch selftest.
+7. Synchronize Build-447 Evidence.
+8. Request and complete independent Evidence review.
+9. Create a bounded synthetic Claim.
+10. Independently review the Claim.
+11. Create a Living Dossier.
+12. Independently approve the Dossier.
+13. Request separate export approval.
+14. Independently approve export.
+15. Execute export with an authorized executor different from the approving reviewer.
+16. Verify JSON, DOCX, PDF, manifest and ZIP package/hash bindings.
+17. Re-run component integrity.
+18. Store the Build-450 qualification record.
 
 ## Fail-closed conditions
 
@@ -37,6 +38,7 @@ The checkpoint must abort or HOLD when any of the following occurs:
 
 - ordinary/unmarked investigation case;
 - missing or revoked admin/reviewer session;
+- missing or invalid explicit reviewer consent;
 - same admin/reviewer identity;
 - wrong reviewer for the qualification case;
 - missing reviewer capabilities;
