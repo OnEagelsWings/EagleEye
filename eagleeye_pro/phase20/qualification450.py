@@ -98,6 +98,13 @@ class InvestigationWorkflowHardCheckpoint450:
             );
             CREATE INDEX IF NOT EXISTS idx_workflow_qual450_case
             ON phase20_workflow_qualification_run_450(case_id,created_at);
+            CREATE TABLE IF NOT EXISTS phase20_qualification_case_450(
+            case_id TEXT PRIMARY KEY,
+            reviewer_username TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            record_hash TEXT NOT NULL
+            );
             """
         )
         self.db.conn.commit()
@@ -105,9 +112,41 @@ class InvestigationWorkflowHardCheckpoint450:
     def _rh(self, row):
         return _sha({k: row[k] for k in row if k != "record_hash"})
 
-    def _auth_admin(self, identity):
+    def _session_identity(self, identity):
         if not isinstance(identity, dict) or not identity.get("username") or not identity.get("user_id"):
-            raise PermissionError("system administrator identity required for Build-450 qualification")
+            raise PermissionError("authenticated identity required for Build-450 qualification")
+        session_id = str(identity.get("session_id") or "").strip()
+        if not session_id:
+            raise PermissionError("active authenticated session required for Build-450 qualification")
+        now = int(self.governance.identity.clock())
+        row = self.db.one(
+            "SELECT s.*,u.username,u.display_name,u.global_role,u.active,"
+            "u.session_generation AS user_generation "
+            "FROM phase15_team_sessions s JOIN phase15_team_users u ON u.user_id=s.user_id "
+            "WHERE s.session_id=?",
+            (session_id,),
+        )
+        if (
+            not row
+            or not bool(row.get("active"))
+            or bool(row.get("revoked"))
+            or int(row.get("idle_expires_epoch") or 0) <= now
+            or int(row.get("absolute_expires_epoch") or 0) <= now
+            or int(row.get("session_generation") or -1) != int(row.get("user_generation") or -2)
+            or str(row.get("user_id")) != str(identity.get("user_id"))
+            or str(row.get("username") or "").casefold() != str(identity.get("username") or "").casefold()
+        ):
+            raise PermissionError("active authenticated session required for Build-450 qualification")
+        return {
+            "user_id": row["user_id"],
+            "username": row["username"],
+            "display_name": row["display_name"],
+            "global_role": row["global_role"],
+            "session_id": row["session_id"],
+        }
+
+    def _auth_admin(self, identity):
+        identity = self._session_identity(identity)
         roles = {str(x).lower() for x in (identity.get("roles") or [])}
         for key in ("role", "global_role"):
             if identity.get(key):
@@ -116,19 +155,11 @@ class InvestigationWorkflowHardCheckpoint450:
             raise PermissionError("system administrator required for Build-450 qualification")
         return identity
 
-    def _reviewer(self, identity, reviewer_username, case_id):
-        reviewer_username = str(reviewer_username or "").strip()
-        if not reviewer_username:
-            raise ValueError("independent reviewer_username required")
-        if reviewer_username.casefold() == str(identity["username"]).casefold():
+    def _reviewer(self, admin, reviewer_identity, case_id):
+        reviewer = self._session_identity(reviewer_identity)
+        if reviewer["username"].casefold() == str(admin["username"]).casefold():
             raise PermissionError("Build-450 qualification requires an independent reviewer")
-        user = self.governance.identity.public_user(reviewer_username)
-        reviewer = {**user, "session_id": "checkpoint450"}
-        required_caps = {
-            "source.review",
-            "dossier.review",
-            "dossier.export.approve",
-        }
+        required_caps = {"source.review", "dossier.review", "dossier.export.approve"}
         caps = set(self.governance.effective_capabilities(reviewer, str(case_id)))
         missing = sorted(required_caps - caps)
         if missing:
@@ -136,6 +167,52 @@ class InvestigationWorkflowHardCheckpoint450:
                 "reviewer lacks Build-450 case capabilities: " + ",".join(missing)
             )
         return reviewer
+
+    def prepare_qualification_case(self, *, identity, reviewer_identity):
+        admin = self._auth_admin(identity)
+        reviewer = self._session_identity(reviewer_identity)
+        if reviewer["username"].casefold() == admin["username"].casefold():
+            raise PermissionError("Build-450 qualification requires an independent reviewer")
+        case = self.governance.create_case(
+            identity=admin,
+            title="Build 450 Isolated Qualification",
+            client="INTERNAL-QA",
+            purpose="Isolated deterministic Build 450 hard-checkpoint qualification; no operational investigation data.",
+            legal_basis="synthetic_test_fixture",
+        )
+        self.governance.assign_case_role(
+            identity=admin,
+            case_id=case["case_id"],
+            username=reviewer["username"],
+            case_role="reviewer",
+            notes="Build 450 isolated qualification reviewer",
+        )
+        row = {
+            "case_id": str(case["case_id"]),
+            "reviewer_username": str(reviewer["username"]),
+            "created_by": str(admin["username"]),
+            "created_at": _now(),
+        }
+        row["record_hash"] = self._rh(row)
+        self.db.execute(
+            "INSERT INTO phase20_qualification_case_450 VALUES(?,?,?,?,?)",
+            tuple(row.values()),
+        )
+        return {**case, "qualification_marker": row}
+
+    def _qualification_case(self, case_id):
+        row = self.db.one(
+            "SELECT * FROM phase20_qualification_case_450 WHERE case_id=?",
+            (str(case_id),),
+        )
+        if not row:
+            raise PermissionError(
+                "Build-450 qualification may run only on an isolated qualification case"
+            )
+        item = dict(row)
+        if self._rh(item) != item.get("record_hash"):
+            raise PermissionError("Build-450 qualification-case marker integrity invalid")
+        return item
 
     def _component_integrity(self):
         checks = {}
@@ -231,9 +308,12 @@ class InvestigationWorkflowHardCheckpoint450:
             confirmation=confirmation,
         )
 
-    def run_case_workflow(self, *, identity, case_id, reviewer_username):
+    def run_case_workflow(self, *, identity, case_id, reviewer_identity):
         admin = self._auth_admin(identity)
-        reviewer = self._reviewer(admin, reviewer_username, case_id)
+        marker = self._qualification_case(case_id)
+        reviewer = self._reviewer(admin, reviewer_identity, case_id)
+        if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
+            raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
         dispatcher = self.services["dispatcher446"]
         closure = self.services["closure447"]
         review449 = self.services["review449"]
@@ -385,39 +465,36 @@ class InvestigationWorkflowHardCheckpoint450:
             "truth_determined": False,
         }
 
-    def qualify(self, *, identity, case_id, reviewer_username):
+    def qualify(self, *, identity, case_id, reviewer_identity):
         admin = self._auth_admin(identity)
-        case_id = str(case_id or "").strip()
-        if not case_id:
-            raise ValueError("dedicated qualification case_id required")
+        marker = self._qualification_case(case_id)
+        reviewer = self._reviewer(admin, reviewer_identity, case_id)
+        if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
+            raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
 
         component_checks, component_details = self._component_integrity()
         statuses = self._statuses()
         authority = self._authority_contract(statuses)
 
-        try:
-            workflow = self.run_case_workflow(
-                identity=admin,
-                case_id=case_id,
-                reviewer_username=reviewer_username,
-            )
-        except Exception as exc:
-            workflow = {
-                "result": "FAIL",
-                "error": type(exc).__name__,
-                "message": str(exc),
-                "truth_determined": False,
-            }
+        if not all(component_checks.values()):
+            raise RuntimeError("Build-450 preflight integrity failed before any workflow mutation")
+        if not authority["pass"]:
+            raise RuntimeError("Build-450 authority contract failed before any workflow mutation")
 
-        # Re-check after the complete workflow because the checkpoint itself
-        # created Evidence/Claims/Dossier/review/export records.
+        workflow = self.run_case_workflow(
+            identity=admin,
+            case_id=case_id,
+            reviewer_identity=reviewer,
+        )
+
         post_component_checks, post_component_details = self._component_integrity()
-
         q445 = statuses.get("qualification445", {})
         external_validation_pass = bool(q445.get("data_acquisition_gate_pass"))
         external_validation_result = "pass" if external_validation_pass else "hold"
 
         engineering_checks = {
+            "isolated_qualification_case": True,
+            "authenticated_independent_reviewer": True,
             "all_components_integrity_before": all(component_checks.values()),
             "all_components_integrity_after": all(post_component_checks.values()),
             "authority_contract_pass": authority["pass"],
@@ -431,9 +508,6 @@ class InvestigationWorkflowHardCheckpoint450:
         }
         engineering_result = "pass" if all(engineering_checks.values()) else "hold"
 
-        # Production release is deliberately not granted by deterministic tests.
-        # Build 445 external non-fixture validation may lift one gate, but broader
-        # field validation/security/deployment qualification still remains.
         release_checks = {
             "engineering_checkpoint_pass": engineering_result == "pass",
             "external_acquisition_validation_pass": external_validation_pass,
@@ -449,6 +523,11 @@ class InvestigationWorkflowHardCheckpoint450:
             "checkpoint_name": "Investigation Workflow Hard Checkpoint",
             "phase20_builds_completed": 10,
             "required_components": list(self.REQUIRED),
+            "qualification_case": {
+                "case_id": str(case_id),
+                "isolated": True,
+                "reviewer_username": reviewer["username"],
+            },
             "component_checks_before": component_checks,
             "component_details_before": component_details,
             "component_checks_after": post_component_checks,
@@ -466,21 +545,21 @@ class InvestigationWorkflowHardCheckpoint450:
             "production_release_ready": False,
             "truth_determined": False,
             "note": (
-                "Build 450 qualifies deterministic engineering coherence of the governed "
-                "investigation workflow. It does not certify external endpoint reliability, "
-                "operational security in every deployment, factual truth, or production readiness."
+                "Build 450 qualifies deterministic engineering coherence only in an isolated "
+                "synthetic qualification case with a separately authenticated reviewer. "
+                "It does not certify external endpoint reliability, factual truth, or production readiness."
             ),
         }
 
         row = {
             "qualification_id": "qual450_" + secrets.token_hex(10),
-            "case_id": case_id,
-            "reviewer_username": str(reviewer_username),
+            "case_id": str(case_id),
+            "reviewer_username": reviewer["username"],
             "engineering_result": engineering_result,
             "external_validation_result": external_validation_result,
             "release_result": release_result,
             "report_json": _canon(report),
-            "created_by": str(admin.get("username") or self.actor),
+            "created_by": str(admin["username"]),
             "created_at": _now(),
         }
         row["record_hash"] = self._rh(row)
@@ -494,11 +573,13 @@ class InvestigationWorkflowHardCheckpoint450:
             "investigation_workflow_hard_checkpoint_450",
             "phase20_workflow_qualification_run_450",
             row["qualification_id"],
-            case_id,
+            str(case_id),
             {
                 "engineering_result": engineering_result,
                 "external_validation_result": external_validation_result,
                 "release_result": release_result,
+                "isolated_qualification_case": True,
+                "authenticated_reviewer": reviewer["username"],
                 "production_release_ready": False,
             },
         )
@@ -523,15 +604,20 @@ class InvestigationWorkflowHardCheckpoint450:
 
     def verify_integrity(self):
         bad = []
-        for row in self.db.all("SELECT * FROM phase20_workflow_qualification_run_450"):
-            item = dict(row)
-            if self._rh(item) != item.get("record_hash"):
-                bad.append(
-                    {
-                        "qualification_id": item.get("qualification_id"),
-                        "reason": "qualification_hash_mismatch",
-                    }
-                )
+        for table, key in (
+            ("phase20_workflow_qualification_run_450", "qualification_id"),
+            ("phase20_qualification_case_450", "case_id"),
+        ):
+            for row in self.db.all(f"SELECT * FROM {table}"):
+                item = dict(row)
+                if self._rh(item) != item.get("record_hash"):
+                    bad.append(
+                        {
+                            key: item.get(key),
+                            "table": table,
+                            "reason": "record_hash_mismatch",
+                        }
+                    )
         return {"build": BUILD, "valid": not bad, "violations": bad}
 
     def status(self):
@@ -548,6 +634,9 @@ class InvestigationWorkflowHardCheckpoint450:
             "qualification_fail_closed": True,
             "admin_qualification_required": True,
             "independent_reviewer_required": True,
+            "authenticated_reviewer_session_required": True,
+            "isolated_qualification_case_required": True,
+            "interactive_http_qualification_disabled": True,
             "component_integrity_required": True,
             "full_governed_case_workflow_required": True,
             "github_ci_required": True,
@@ -559,7 +648,9 @@ class InvestigationWorkflowHardCheckpoint450:
             "last_external_validation_result": last["external_validation_result"] if last else None,
             "last_release_result": last["release_result"] if last else None,
             "investigation_workflow_checkpoint_pass": bool(
-                last and last["engineering_result"] == "pass"
+                self.verify_integrity()["valid"]
+                and last
+                and last["engineering_result"] == "pass"
             ),
             "external_nonfixture_acquisition_validated": bool(
                 q445.get("data_acquisition_gate_pass")
