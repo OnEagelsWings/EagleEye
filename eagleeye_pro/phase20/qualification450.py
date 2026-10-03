@@ -121,6 +121,20 @@ class InvestigationWorkflowHardCheckpoint450:
     def _rh(self, row):
         return _sha({k: row[k] for k in row if k != "record_hash"})
 
+    def _authenticated_session(self, *, session_token, client_fingerprint):
+        token = str(session_token or "")
+        fingerprint = str(client_fingerprint or "")
+        if not token or not fingerprint:
+            raise PermissionError("reviewer session token and client fingerprint required for Build-450 qualification")
+        identity = self.governance.identity.validate_session(
+            token,
+            client_fingerprint=fingerprint,
+            touch=False,
+        )
+        if not identity:
+            raise PermissionError("reviewer authentication failed for Build-450 qualification")
+        return identity
+
     def _session_identity(self, identity):
         if not isinstance(identity, dict) or not identity.get("username") or not identity.get("user_id"):
             raise PermissionError("authenticated identity required for Build-450 qualification")
@@ -226,8 +240,20 @@ class InvestigationWorkflowHardCheckpoint450:
             raise PermissionError("Build-450 qualification-case marker integrity invalid")
         return item
 
-    def consent_qualification_case(self, *, identity, case_id, confirmation):
-        reviewer = self._session_identity(identity)
+    def consent_qualification_case(
+        self,
+        *,
+        case_id,
+        confirmation,
+        reviewer_session_token,
+        reviewer_client_fingerprint,
+    ):
+        reviewer = self._session_identity(
+            self._authenticated_session(
+                session_token=reviewer_session_token,
+                client_fingerprint=reviewer_client_fingerprint,
+            )
+        )
         marker = self._qualification_case(case_id)
         if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
             raise PermissionError("only the designated reviewer may consent to this qualification case")
@@ -444,9 +470,20 @@ class InvestigationWorkflowHardCheckpoint450:
             confirmation=confirmation,
         )
 
-    def run_case_workflow(self, *, identity, case_id, reviewer_identity):
+    def run_case_workflow(
+        self,
+        *,
+        identity,
+        case_id,
+        reviewer_session_token,
+        reviewer_client_fingerprint,
+    ):
         admin = self._auth_admin(identity)
         marker = self._qualification_case(case_id)
+        reviewer_identity = self._authenticated_session(
+            session_token=reviewer_session_token,
+            client_fingerprint=reviewer_client_fingerprint,
+        )
         reviewer = self._reviewer(admin, reviewer_identity, case_id)
         if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
             raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
@@ -610,20 +647,32 @@ class InvestigationWorkflowHardCheckpoint450:
             "truth_determined": False,
         }
 
-    def qualify(self, *, identity, case_id, reviewer_identity):
+    def qualify(
+        self,
+        *,
+        identity,
+        case_id,
+        reviewer_session_token,
+        reviewer_client_fingerprint,
+    ):
         admin = self._auth_admin(identity)
         marker = self._qualification_case(case_id)
+        reviewer_identity = self._authenticated_session(
+            session_token=reviewer_session_token,
+            client_fingerprint=reviewer_client_fingerprint,
+        )
         reviewer = self._reviewer(admin, reviewer_identity, case_id)
         if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
             raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
-        self._qualification_consent(case_id, reviewer)
+        consent = self._qualification_consent(case_id, reviewer)
 
         component_checks, component_details, statuses, authority = self._preflight()
 
         workflow = self.run_case_workflow(
             identity=admin,
             case_id=case_id,
-            reviewer_identity=reviewer,
+            reviewer_session_token=reviewer_session_token,
+            reviewer_client_fingerprint=reviewer_client_fingerprint,
         )
 
         post_component_checks, post_component_details = self._component_integrity()
@@ -666,6 +715,9 @@ class InvestigationWorkflowHardCheckpoint450:
                 "case_id": str(case_id),
                 "isolated": True,
                 "reviewer_username": reviewer["username"],
+                "marker_record_hash": marker["record_hash"],
+                "consent_record_hash": consent["record_hash"],
+                "reviewer_session_id_hash": consent["session_id_hash"],
             },
             "component_checks_before": component_checks,
             "component_details_before": component_details,
@@ -758,6 +810,62 @@ class InvestigationWorkflowHardCheckpoint450:
                             "reason": "record_hash_mismatch",
                         }
                     )
+        for row in self.db.all("SELECT * FROM phase20_workflow_qualification_run_450"):
+            run = dict(row)
+            try:
+                report = json.loads(run.get("report_json") or "{}")
+            except Exception:
+                report = {}
+            qcase = report.get("qualification_case") or {}
+            case_id = str(run.get("case_id") or "")
+            marker = self.db.one(
+                "SELECT * FROM phase20_qualification_case_450 WHERE case_id=?",
+                (case_id,),
+            )
+            consent = self.db.one(
+                "SELECT * FROM phase20_qualification_consent_450 WHERE case_id=?",
+                (case_id,),
+            )
+            if not marker:
+                bad.append({
+                    "qualification_id": run.get("qualification_id"),
+                    "table": "phase20_qualification_case_450",
+                    "reason": "qualification_case_marker_missing",
+                })
+            else:
+                marker = dict(marker)
+                if str(marker.get("record_hash") or "") != str(qcase.get("marker_record_hash") or ""):
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_qualification_case_450",
+                        "reason": "qualification_case_marker_not_bound_to_run",
+                    })
+            if not consent:
+                bad.append({
+                    "qualification_id": run.get("qualification_id"),
+                    "table": "phase20_qualification_consent_450",
+                    "reason": "reviewer_consent_missing",
+                })
+            else:
+                consent = dict(consent)
+                if str(consent.get("record_hash") or "") != str(qcase.get("consent_record_hash") or ""):
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_qualification_consent_450",
+                        "reason": "reviewer_consent_not_bound_to_run",
+                    })
+                if str(consent.get("session_id_hash") or "") != str(qcase.get("reviewer_session_id_hash") or ""):
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_qualification_consent_450",
+                        "reason": "reviewer_session_binding_mismatch",
+                    })
+                if str(consent.get("reviewer_username") or "").casefold() != str(run.get("reviewer_username") or "").casefold():
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_qualification_consent_450",
+                        "reason": "reviewer_identity_binding_mismatch",
+                    })
         return {"build": BUILD, "valid": not bad, "violations": bad}
 
     def status(self):
