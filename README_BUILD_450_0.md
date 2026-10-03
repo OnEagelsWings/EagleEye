@@ -32,7 +32,7 @@ Before fixture acquisition, Evidence synchronization, Claim creation, Dossier cr
 - component integrity;
 - the authority contract.
 
-A failed preflight aborts before workflow mutation.
+A failed preflight aborts before workflow mutation. The same preflight is enforced even when the internal mutating workflow method is called directly.
 
 ## Engineering vs field validation
 
@@ -72,7 +72,7 @@ Build 450 CI runs:
 - current UI audit;
 - GitHub Codex review on the tested head.
 
-Build-450 tests explicitly cover isolated-case enforcement, authenticated reviewer sessions, fail-before-mutation integrity behavior, bypass-route absence, checkpoint-record tamper behavior and release-vs-engineering separation.
+Build-450 tests explicitly cover isolated-case enforcement, authenticated reviewer sessions and consent, fail-before-mutation integrity behavior, direct internal workflow preflight, bypass-route absence, physical JSON/DOCX/PDF/manifest/ZIP hash revalidation, post-qualification component tamper, checkpoint-record tamper behavior and release-vs-engineering separation.
 
 ## Boundaries
 
