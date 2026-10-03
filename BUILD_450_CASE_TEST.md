@@ -4,7 +4,7 @@
 
 Build 450 must create/use an **isolated synthetic qualification case**. A normal operational investigation case is not accepted.
 
-Two independent active sessions are required:
+Two independent active sessions are required; reviewer proof uses the real session token plus the matching client fingerprint, not a copied session ID:
 
 1. system-administrator/executor session;
 2. separate reviewer session.
@@ -15,7 +15,7 @@ The reviewer must have case-scoped `source.review`, `dossier.review`, and `dossi
 
 1. Create the isolated Build-450 qualification case and marker.
 2. Assign the separately authenticated reviewer to that qualification case.
-3. Reviewer explicitly consents with `CONSENT BUILD 450 QUALIFICATION`.
+3. Reviewer explicitly consents with `CONSENT BUILD 450 QUALIFICATION` after token/fingerprint session validation.
 4. Verify all required component integrity before mutation.
 5. Verify the authority contract.
 6. Run deterministic Build-446 acquisition/dispatch selftest.
@@ -47,13 +47,13 @@ The checkpoint must abort or HOLD when any of the following occurs:
 - stale review object;
 - exposed current-app review/export bypass;
 - package/export hash mismatch;
-- qualification-record or qualification-case-marker tamper;
+- qualification-record, qualification-case-marker or reviewer-consent tamper/deletion;
 - physical export artifact replacement/corruption;
 - later tampering of any required qualified component record.
 
 ## UI boundary
 
-The operational Build-450 workspace shows read-only checkpoint status. It does not expose a browser action that can inject synthetic qualification data into the selected investigation case.
+The operational Build-450 workspace shows read-only checkpoint status. It does not expose a browser action that can inject synthetic qualification data into the selected investigation case, and marked qualification cases are filtered out of the operational workspace entirely.
 
 ## Result semantics
 
