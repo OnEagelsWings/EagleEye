@@ -19,6 +19,9 @@ class Build450InvestigationWorkflowQualificationService:
             raise AttributeError(name)
         return value
 
+    def prepare_investigation_workflow_qualification_case_450(self, **kwargs):
+        return self.qualification450.prepare_qualification_case(**kwargs)
+
     def qualify_investigation_workflow_450(self, **kwargs):
         return self.qualification450.qualify(**kwargs)
 
