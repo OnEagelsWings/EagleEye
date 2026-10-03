@@ -39,6 +39,7 @@ The checkpoint must abort or HOLD when any of the following occurs:
 - ordinary/unmarked investigation case;
 - missing or revoked admin/reviewer session;
 - missing or invalid explicit reviewer consent;
+- replacement/re-consent must preserve historical consent binding for earlier qualification runs;
 - same admin/reviewer identity;
 - wrong reviewer for the qualification case;
 - missing reviewer capabilities;
@@ -53,7 +54,7 @@ The checkpoint must abort or HOLD when any of the following occurs:
 
 ## UI boundary
 
-The operational Build-450 workspace shows read-only checkpoint status. It does not expose a browser action that can inject synthetic qualification data into the selected investigation case, and marked qualification cases are filtered out of the operational workspace entirely.
+The operational Build-450 workspace shows read-only checkpoint status. It does not expose a browser action that can inject synthetic qualification data into the selected investigation case. Marked qualification cases are filtered from both the operational selector and Legacy entry; when no normal case exists, a safe empty-state page is rendered.
 
 ## Result semantics
 
