@@ -6,7 +6,32 @@ Build 450 is a fail-closed engineering checkpoint for the complete current inves
 
 Source Registry → Controlled Acquisition → Build-446 AI Dispatch → Evidence → Independent Evidence Review → Claim → Independent Claim Review → Living Dossier → Independent Dossier Review → Separate Export Approval → Authorized Export Executor → JSON/DOCX/PDF/ZIP Case Package.
 
-The checkpoint requires a dedicated case, a system administrator/investigator and a separate eligible reviewer.
+The checkpoint is deliberately **not executable from an ordinary investigation case**.
+
+## Isolation and authentication boundary
+
+A Build-450 qualification run now requires:
+
+- an isolated qualification case created and marked by Build 450;
+- a system administrator using a real active authenticated session;
+- a different reviewer using a separate real active authenticated session;
+- reviewer case capabilities for Evidence, Dossier and export review;
+- valid component integrity before any mutating qualification action.
+
+The checkpoint does not fabricate reviewer identities and does not execute review actions on behalf of an unauthenticated user.
+
+The operational browser workspace exposes checkpoint status only. It does not expose a mutating “run qualification” action.
+
+## Fail-closed preflight
+
+Before fixture acquisition, Evidence synchronization, Claim creation, Dossier creation or export, Build 450 verifies:
+
+- the qualification-case marker;
+- both authenticated identities;
+- component integrity;
+- the authority contract.
+
+A failed preflight aborts before workflow mutation.
 
 ## Engineering vs field validation
 
@@ -16,17 +41,37 @@ A deterministic engineering PASS does not turn the release result into PASS. Pro
 
 ## Required components
 
-The checkpoint checks 441 controlled surface retrieval, 442 surface hardening, 443 live news acquisition, 444 controlled public social acquisition, 445 data acquisition checkpoint, 446 live AI investigation dispatch, 447 Evidence→Claims→Dossier, 448 Investigator Workspace and 449 Human Review/Team Workflow.
+The checkpoint checks Builds 441–449:
+
+- 441 controlled surface retrieval;
+- 442 surface hardening;
+- 443 live news acquisition;
+- 444 controlled public social acquisition;
+- 445 data acquisition checkpoint;
+- 446 live AI investigation dispatch;
+- 447 Evidence → Claims → Dossier;
+- 448 Investigator Workspace;
+- 449 Human Review / Team Workflow.
 
 ## Authority contract
 
 The checkpoint fails when current components claim prohibited automatic authority such as automatic GO, scope expansion, Evidence/Claim acceptance, truth determination, review completion, direct review bypass, private/direct social collection or access-control bypass.
 
-Per-path acquisition confirmation and four-eyes export remain required.
+Per-path acquisition confirmation and formal four-eyes export remain required.
 
 ## Required test levels
 
-Build 450 CI runs the Build-450 integrated suite, Phase-19/20 regression 421–450, Phase-18/19/20 current-chain regression 413–450, full repository regression and targeted Build-420/418/417/416 regressions. UI regression is retained and GitHub Codex review is required for the current head.
+Build 450 CI runs:
+
+- Build-450 integrated tests;
+- Phase-19/20 regression 421–450;
+- Phase-18/19/20 current-chain regression 413–450;
+- full repository regression;
+- targeted Build-420/418/417/416 regressions;
+- current UI audit;
+- GitHub Codex review on the tested head.
+
+Build-450 tests explicitly cover isolated-case enforcement, authenticated reviewer sessions, fail-before-mutation integrity behavior, bypass-route absence, checkpoint-record tamper behavior and release-vs-engineering separation.
 
 ## Boundaries
 
