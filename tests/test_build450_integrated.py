@@ -57,9 +57,10 @@ def setup_qualification_case(ctx):
         reviewer_username=reviewer["username"],
     )
     consent = ctx.build450.consent_investigation_workflow_qualification_case_450(
-        identity=reviewer,
         case_id=case["case_id"],
         confirmation="CONSENT BUILD 450 QUALIFICATION",
+        reviewer_session_token=reviewer_session.token,
+        reviewer_client_fingerprint=FP_REVIEWER,
     )
     assert consent["reviewer_username"] == reviewer["username"]
     return admin, reviewer, case, admin_session, reviewer_session
@@ -71,7 +72,8 @@ def test_build450_full_governed_workflow_engineering_pass(tmp_path):
         result = ctx.build450.qualify_investigation_workflow_450(
             identity=admin,
             case_id=case["case_id"],
-            reviewer_identity=reviewer,
+            reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         report = result["report"]
 
@@ -101,7 +103,8 @@ def test_build450_external_validation_is_not_faked_by_deterministic_pass(tmp_pat
         result = ctx.build450.qualify_investigation_workflow_450(
             identity=admin,
             case_id=case["case_id"],
-            reviewer_identity=reviewer,
+            reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         report = result["report"]
         assert report["engineering_result"] == "pass"
@@ -126,19 +129,21 @@ def test_build450_requires_two_distinct_authenticated_sessions(tmp_path):
             reviewer_username=reviewer["username"],
         )
         ctx.build450.consent_investigation_workflow_qualification_case_450(
-            identity=reviewer,
             case_id=case["case_id"],
             confirmation="CONSENT BUILD 450 QUALIFICATION",
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         ctx.team_identity_359.revoke_session(
             reviewer_session.token,
             reason="Build 450 revoked-reviewer regression",
         )
-        with pytest.raises(PermissionError, match="active authenticated session"):
+        with pytest.raises(PermissionError, match="reviewer authentication failed"):
             ctx.build450.qualify_investigation_workflow_450(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_identity=reviewer,
+                reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
             )
 
 
@@ -169,7 +174,8 @@ def test_build450_rejects_unmarked_operational_case_without_mutation(tmp_path):
             ctx.build450.qualify_investigation_workflow_450(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_identity=reviewer,
+                reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
             )
         after = {
             "evidence": len(ctx.evidence_claims_dossier_447.case_evidence(case["case_id"])),
@@ -206,7 +212,8 @@ def test_build450_preflight_integrity_failure_aborts_before_workflow_mutation(tm
             ctx.investigation_workflow_qualification_450.run_case_workflow(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_identity=reviewer,
+                reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
             )
         after_events = int(
             (ctx.db.one(
@@ -232,7 +239,8 @@ def test_build450_rejects_reviewer_after_case_capability_revocation(tmp_path):
             ctx.build450.qualify_investigation_workflow_450(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_identity=reviewer,
+                reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
             )
 
 
@@ -247,18 +255,21 @@ def test_build450_requires_explicit_reviewer_consent(tmp_path):
             ctx.build450.qualify_investigation_workflow_450(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_identity=reviewer,
+                reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
             )
         with pytest.raises(PermissionError, match="explicit CONSENT BUILD 450 QUALIFICATION"):
             ctx.build450.consent_investigation_workflow_qualification_case_450(
-                identity=reviewer,
                 case_id=case["case_id"],
                 confirmation="GO",
+                reviewer_session_token=_r.token,
+                reviewer_client_fingerprint=FP_REVIEWER,
             )
         consent = ctx.build450.consent_investigation_workflow_qualification_case_450(
-            identity=reviewer,
             case_id=case["case_id"],
             confirmation="CONSENT BUILD 450 QUALIFICATION",
+            reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         assert consent["confirmation"] == "CONSENT BUILD 450 QUALIFICATION"
 
@@ -268,7 +279,8 @@ def test_build450_qualification_record_tamper_disables_checkpoint_pass(tmp_path)
         result = ctx.build450.qualify_investigation_workflow_450(
             identity=admin,
             case_id=case["case_id"],
-            reviewer_identity=reviewer,
+            reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         assert ctx.investigation_workflow_qualification_450.verify_integrity()["valid"]
         assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is True
@@ -288,7 +300,8 @@ def test_build450_corrupt_export_artifact_invalidates_checkpoint_status(tmp_path
         result = ctx.build450.qualify_investigation_workflow_450(
             identity=admin,
             case_id=case["case_id"],
-            reviewer_identity=reviewer,
+            reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         workflow = result["report"]["workflow_selftest"]
         assert workflow["artifact_verification"]["valid"] is True
@@ -305,7 +318,8 @@ def test_build450_required_component_tamper_invalidates_existing_pass(tmp_path):
         result = ctx.build450.qualify_investigation_workflow_450(
             identity=admin,
             case_id=case["case_id"],
-            reviewer_identity=reviewer,
+            reviewer_session_token=_r.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
         )
         assert result["engineering_result"] == "pass"
         assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is True
