@@ -105,6 +105,14 @@ class InvestigationWorkflowHardCheckpoint450:
             created_at TEXT NOT NULL,
             record_hash TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS phase20_qualification_consent_450(
+            case_id TEXT PRIMARY KEY,
+            reviewer_username TEXT NOT NULL,
+            session_id_hash TEXT NOT NULL,
+            confirmation TEXT NOT NULL,
+            consented_at TEXT NOT NULL,
+            record_hash TEXT NOT NULL
+            );
             """
         )
         self.db.conn.commit()
@@ -169,9 +177,11 @@ class InvestigationWorkflowHardCheckpoint450:
             )
         return reviewer
 
-    def prepare_qualification_case(self, *, identity, reviewer_identity):
+    def prepare_qualification_case(self, *, identity, reviewer_username):
         admin = self._auth_admin(identity)
-        reviewer = self._session_identity(reviewer_identity)
+        reviewer = self.governance.identity.public_user(str(reviewer_username or "").strip())
+        if not reviewer.get("active"):
+            raise PermissionError("Build-450 qualification reviewer must be active")
         if reviewer["username"].casefold() == admin["username"].casefold():
             raise PermissionError("Build-450 qualification requires an independent reviewer")
         case = self.governance.create_case(
@@ -213,6 +223,52 @@ class InvestigationWorkflowHardCheckpoint450:
         item = dict(row)
         if self._rh(item) != item.get("record_hash"):
             raise PermissionError("Build-450 qualification-case marker integrity invalid")
+        return item
+
+    def consent_qualification_case(self, *, identity, case_id, confirmation):
+        reviewer = self._session_identity(identity)
+        marker = self._qualification_case(case_id)
+        if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
+            raise PermissionError("only the designated reviewer may consent to this qualification case")
+        self._reviewer({"username": marker["created_by"]}, reviewer, case_id)
+        if str(confirmation or "").strip().upper() != "CONSENT BUILD 450 QUALIFICATION":
+            raise PermissionError("explicit CONSENT BUILD 450 QUALIFICATION confirmation required")
+        row = {
+            "case_id": str(case_id),
+            "reviewer_username": reviewer["username"],
+            "session_id_hash": hashlib.sha256(str(reviewer["session_id"]).encode("utf-8")).hexdigest(),
+            "confirmation": "CONSENT BUILD 450 QUALIFICATION",
+            "consented_at": _now(),
+        }
+        row["record_hash"] = self._rh(row)
+        self.db.execute(
+            "INSERT OR REPLACE INTO phase20_qualification_consent_450 VALUES(?,?,?,?,?,?)",
+            tuple(row.values()),
+        )
+        self.audit.log(
+            "build450_reviewer_consent",
+            "phase20_qualification_consent_450",
+            str(case_id),
+            str(case_id),
+            {"reviewer": reviewer["username"], "explicit_consent": True},
+        )
+        return dict(row)
+
+    def _qualification_consent(self, case_id, reviewer):
+        row = self.db.one(
+            "SELECT * FROM phase20_qualification_consent_450 WHERE case_id=?",
+            (str(case_id),),
+        )
+        if not row:
+            raise PermissionError("explicit reviewer consent required for Build-450 qualification")
+        item = dict(row)
+        if self._rh(item) != item.get("record_hash"):
+            raise PermissionError("Build-450 reviewer-consent integrity invalid")
+        if item["reviewer_username"].casefold() != reviewer["username"].casefold():
+            raise PermissionError("reviewer consent belongs to a different reviewer")
+        session_hash = hashlib.sha256(str(reviewer["session_id"]).encode("utf-8")).hexdigest()
+        if item["session_id_hash"] != session_hash:
+            raise PermissionError("reviewer consent is not bound to the active reviewer session")
         return item
 
     def _component_integrity(self):
@@ -315,6 +371,7 @@ class InvestigationWorkflowHardCheckpoint450:
         reviewer = self._reviewer(admin, reviewer_identity, case_id)
         if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
             raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
+        self._qualification_consent(case_id, reviewer)
         dispatcher = self.services["dispatcher446"]
         closure = self.services["closure447"]
         review449 = self.services["review449"]
@@ -472,6 +529,7 @@ class InvestigationWorkflowHardCheckpoint450:
         reviewer = self._reviewer(admin, reviewer_identity, case_id)
         if reviewer["username"].casefold() != str(marker["reviewer_username"]).casefold():
             raise PermissionError("authenticated reviewer does not match qualification-case reviewer")
+        self._qualification_consent(case_id, reviewer)
 
         component_checks, component_details = self._component_integrity()
         statuses = self._statuses()
@@ -608,6 +666,7 @@ class InvestigationWorkflowHardCheckpoint450:
         for table, key in (
             ("phase20_workflow_qualification_run_450", "qualification_id"),
             ("phase20_qualification_case_450", "case_id"),
+            ("phase20_qualification_consent_450", "case_id"),
         ):
             for row in self.db.all(f"SELECT * FROM {table}"):
                 item = dict(row)
@@ -636,6 +695,7 @@ class InvestigationWorkflowHardCheckpoint450:
             "admin_qualification_required": True,
             "independent_reviewer_required": True,
             "authenticated_reviewer_session_required": True,
+            "explicit_reviewer_consent_required": True,
             "isolated_qualification_case_required": True,
             "interactive_http_qualification_disabled": True,
             "component_integrity_required": True,
