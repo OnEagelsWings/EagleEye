@@ -73,7 +73,15 @@ def create_workspace_app450(*, base_dir=None):
         raise exc
 
     def visible_cases(identity):
-        return ctx.team_governance_359.visible_cases(identity)
+        marked = {
+            str(row["case_id"])
+            for row in ctx.db.all("SELECT case_id FROM phase20_qualification_case_450")
+        }
+        return [
+            item
+            for item in ctx.team_governance_359.visible_cases(identity)
+            if str(item.get("case_id") or "") not in marked
+        ]
 
     def choose_case(cases, requested):
         if requested:
