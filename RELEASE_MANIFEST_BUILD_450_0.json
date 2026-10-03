@@ -22,5 +22,9 @@
   "automatic_review_completion": false,
   "production_release_ready": false,
   "release_gate_pass": false,
-  "explicit_reviewer_consent_required": true
+  "explicit_reviewer_consent_required": true,
+  "direct_workflow_preflight_required": true,
+  "physical_export_hash_revalidation": true,
+  "post_qualification_component_revalidation": true,
+  "checkpoint_pass_retracts_on_integrity_loss": true
 }
