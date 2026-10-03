@@ -54,8 +54,14 @@ def setup_qualification_case(ctx):
     _bootstrap, _reviewer_user, admin, reviewer, admin_session, reviewer_session = setup_users(ctx)
     case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
         identity=admin,
-        reviewer_identity=reviewer,
+        reviewer_username=reviewer["username"],
     )
+    consent = ctx.build450.consent_investigation_workflow_qualification_case_450(
+        identity=reviewer,
+        case_id=case["case_id"],
+        confirmation="CONSENT BUILD 450 QUALIFICATION",
+    )
+    assert consent["reviewer_username"] == reviewer["username"]
     return admin, reviewer, case, admin_session, reviewer_session
 
 
@@ -112,12 +118,17 @@ def test_build450_requires_two_distinct_authenticated_sessions(tmp_path):
         with pytest.raises(PermissionError, match="independent reviewer"):
             ctx.build450.prepare_investigation_workflow_qualification_case_450(
                 identity=admin,
-                reviewer_identity=admin,
+                reviewer_username=admin["username"],
             )
 
         case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
             identity=admin,
-            reviewer_identity=reviewer,
+            reviewer_username=reviewer["username"],
+        )
+        ctx.build450.consent_investigation_workflow_qualification_case_450(
+            identity=reviewer,
+            case_id=case["case_id"],
+            confirmation="CONSENT BUILD 450 QUALIFICATION",
         )
         ctx.team_identity_359.revoke_session(
             reviewer_session.token,
@@ -207,33 +218,49 @@ def test_build450_preflight_integrity_failure_aborts_before_workflow_mutation(tm
         assert ctx.build450.investigation_workflow_latest_450(case["case_id"]) is None
 
 
-def test_build450_rejects_authenticated_reviewer_without_case_capabilities(tmp_path):
+def test_build450_rejects_reviewer_after_case_capability_revocation(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
-        bootstrap, _reviewer_user, admin, reviewer, _a, _r = setup_users(ctx)
-        weak_user = ctx.team_governance_359.create_user(
-            identity=bootstrap,
-            username="readonly450",
-            display_name="Read Only 450",
-            global_role="read_only",
-            password="Build450ReadOnlyPassword!2026",
-        )
-        weak, _weak_session = login(
-            ctx,
-            weak_user["username"],
-            "Build450ReadOnlyPassword!2026",
-            "weak450-fingerprint",
-        )
-        case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
+        admin, reviewer, case, _a, _r = setup_qualification_case(ctx)
+        ctx.team_governance_359.revoke_case_role(
             identity=admin,
-            reviewer_identity=reviewer,
+            case_id=case["case_id"],
+            username=reviewer["username"],
+            case_role="reviewer",
+            reason="Build 450 capability-revocation regression.",
         )
         with pytest.raises(PermissionError, match="lacks Build-450 case capabilities"):
-            ctx.investigation_workflow_qualification_450.run_case_workflow(
+            ctx.build450.qualify_investigation_workflow_450(
                 identity=admin,
                 case_id=case["case_id"],
-                reviewer_identity=weak,
+                reviewer_identity=reviewer,
             )
 
+
+def test_build450_requires_explicit_reviewer_consent(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        _bootstrap, _reviewer_user, admin, reviewer, _a, _r = setup_users(ctx)
+        case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
+            identity=admin,
+            reviewer_username=reviewer["username"],
+        )
+        with pytest.raises(PermissionError, match="explicit reviewer consent"):
+            ctx.build450.qualify_investigation_workflow_450(
+                identity=admin,
+                case_id=case["case_id"],
+                reviewer_identity=reviewer,
+            )
+        with pytest.raises(PermissionError, match="explicit CONSENT BUILD 450 QUALIFICATION"):
+            ctx.build450.consent_investigation_workflow_qualification_case_450(
+                identity=reviewer,
+                case_id=case["case_id"],
+                confirmation="GO",
+            )
+        consent = ctx.build450.consent_investigation_workflow_qualification_case_450(
+            identity=reviewer,
+            case_id=case["case_id"],
+            confirmation="CONSENT BUILD 450 QUALIFICATION",
+        )
+        assert consent["confirmation"] == "CONSENT BUILD 450 QUALIFICATION"
 
 def test_build450_qualification_record_tamper_disables_checkpoint_pass(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
@@ -365,6 +392,7 @@ def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, mon
         assert status["qualification_fail_closed"]
         assert status["independent_reviewer_required"]
         assert status["authenticated_reviewer_session_required"]
+        assert status["explicit_reviewer_consent_required"]
         assert status["isolated_qualification_case_required"]
         assert status["interactive_http_qualification_disabled"]
         assert status["component_integrity_required"]
