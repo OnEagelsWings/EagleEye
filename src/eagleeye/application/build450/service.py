@@ -22,6 +22,9 @@ class Build450InvestigationWorkflowQualificationService:
     def prepare_investigation_workflow_qualification_case_450(self, **kwargs):
         return self.qualification450.prepare_qualification_case(**kwargs)
 
+    def consent_investigation_workflow_qualification_case_450(self, **kwargs):
+        return self.qualification450.consent_qualification_case(**kwargs)
+
     def qualify_investigation_workflow_450(self, **kwargs):
         return self.qualification450.qualify(**kwargs)
 
