@@ -203,7 +203,7 @@ def test_build450_preflight_integrity_failure_aborts_before_workflow_mutation(tm
             ) or {}).get("n") or 0
         )
         with pytest.raises(RuntimeError, match="preflight integrity failed"):
-            ctx.build450.qualify_investigation_workflow_450(
+            ctx.investigation_workflow_qualification_450.run_case_workflow(
                 identity=admin,
                 case_id=case["case_id"],
                 reviewer_identity=reviewer,
@@ -278,6 +278,45 @@ def test_build450_qualification_record_tamper_disables_checkpoint_pass(tmp_path)
         )
         status = ctx.build450.investigation_workflow_status_450()
         assert status["integrity_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
+
+
+def test_build450_corrupt_export_artifact_invalidates_checkpoint_status(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, reviewer, case, _a, _r = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_identity=reviewer,
+        )
+        workflow = result["report"]["workflow_selftest"]
+        assert workflow["artifact_verification"]["valid"] is True
+        package = Path(workflow["artifact_paths"]["case_package"])
+        package.write_bytes(b"corrupted-build450-package")
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_artifacts_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
+
+def test_build450_required_component_tamper_invalidates_existing_pass(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, reviewer, case, _a, _r = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_identity=reviewer,
+        )
+        assert result["engineering_result"] == "pass"
+        assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is True
+
+        evidence_id = result["report"]["workflow_selftest"]["evidence_id"]
+        ctx.db.execute(
+            "UPDATE evidence_item_447 SET review_note='tampered-after-qualification' WHERE evidence_id=?",
+            (evidence_id,),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["current_component_integrity_valid"] is False
         assert status["investigation_workflow_checkpoint_pass"] is False
 
 
@@ -396,6 +435,8 @@ def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, mon
         assert status["isolated_qualification_case_required"]
         assert status["interactive_http_qualification_disabled"]
         assert status["component_integrity_required"]
+        assert status["current_component_integrity_valid"]
+        assert status["current_authority_contract_valid"]
         assert status["full_governed_case_workflow_required"]
         assert status["github_ci_required"]
         assert status["full_repository_regression_required"]
