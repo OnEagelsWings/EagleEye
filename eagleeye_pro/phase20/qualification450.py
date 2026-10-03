@@ -132,7 +132,8 @@ class InvestigationWorkflowHardCheckpoint450:
             or bool(row.get("revoked"))
             or int(row.get("idle_expires_epoch") or 0) <= now
             or int(row.get("absolute_expires_epoch") or 0) <= now
-            or int(row.get("session_generation") or -1) != int(row.get("user_generation") or -2)
+            or int(row.get("session_generation") if row.get("session_generation") is not None else -1)
+            != int(row.get("user_generation") if row.get("user_generation") is not None else -2)
             or str(row.get("user_id")) != str(identity.get("user_id"))
             or str(row.get("username") or "").casefold() != str(identity.get("username") or "").casefold()
         ):
