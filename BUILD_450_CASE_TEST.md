@@ -28,8 +28,8 @@ The reviewer must have case-scoped `source.review`, `dossier.review`, and `dossi
 13. Request separate export approval.
 14. Independently approve export.
 15. Execute export with an authorized executor different from the approving reviewer.
-16. Verify JSON, DOCX, PDF, manifest and ZIP package/hash bindings.
-17. Re-run component integrity.
+16. Recompute SHA-256 hashes from the physical JSON, DOCX, PDF, manifest and ZIP files and verify the ZIP members.
+17. Re-run component integrity and authority boundaries.
 18. Store the Build-450 qualification record.
 
 ## Fail-closed conditions
@@ -47,7 +47,9 @@ The checkpoint must abort or HOLD when any of the following occurs:
 - stale review object;
 - exposed current-app review/export bypass;
 - package/export hash mismatch;
-- qualification-record or qualification-case-marker tamper.
+- qualification-record or qualification-case-marker tamper;
+- physical export artifact replacement/corruption;
+- later tampering of any required qualified component record.
 
 ## UI boundary
 
