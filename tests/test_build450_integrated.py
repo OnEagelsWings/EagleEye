@@ -433,6 +433,84 @@ def test_build450_qualification_cases_are_hidden_from_operational_workspace(tmp_
         assert operational_case["case_id"] in root.text
 
 
+
+def test_build450_reconsent_preserves_prior_qualification_integrity(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+        first = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        assert first["engineering_result"] == "pass"
+        first_consent_id = first["report"]["qualification_case"]["consent_id"]
+
+        ctx.team_identity_359.revoke_session(
+            reviewer_session.token,
+            reason="Build 450 re-consent history regression.",
+        )
+        reviewer2, reviewer_session2 = login(
+            ctx,
+            reviewer["username"],
+            REVIEWER_PASSWORD,
+            "build450-reviewer-fingerprint-2",
+        )
+        second_consent = ctx.build450.consent_investigation_workflow_qualification_case_450(
+            case_id=case["case_id"],
+            confirmation="CONSENT BUILD 450 QUALIFICATION",
+            reviewer_session_token=reviewer_session2.token,
+            reviewer_client_fingerprint="build450-reviewer-fingerprint-2",
+        )
+        assert second_consent["consent_id"] != first_consent_id
+
+        second = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session2.token,
+            reviewer_client_fingerprint="build450-reviewer-fingerprint-2",
+        )
+        assert second["engineering_result"] == "pass"
+        assert ctx.investigation_workflow_qualification_450.verify_integrity()["valid"] is True
+        assert ctx.build450.investigation_workflow_status_450()["investigation_workflow_checkpoint_pass"] is True
+        consent_count = int(
+            (ctx.db.one(
+                "SELECT COUNT(*) n FROM phase20_qualification_consent_450 WHERE case_id=?",
+                (case["case_id"],),
+            ) or {}).get("n") or 0
+        )
+        assert consent_count == 2
+
+
+def test_build450_only_qualification_case_renders_safe_empty_state_and_blocks_legacy_exposure(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    _bootstrap, _reviewer_user, admin, reviewer, _admin_session, _reviewer_session = setup_users(ctx)
+    qualification_case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
+        identity=admin,
+        reviewer_username=reviewer["username"],
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        root = client.get("/", params={"case_id": qualification_case["case_id"]})
+        assert root.status_code == 200
+        assert "Kein operativer Fall verfügbar" in root.text
+        assert qualification_case["case_id"] not in root.text
+        assert "Build 450 Isolated Qualification" not in root.text
+
+        legacy = client.get("/legacy", params={"case_id": qualification_case["case_id"]})
+        assert legacy.status_code == 200
+        assert "Legacy Workspace nicht verfügbar" in legacy.text
+        assert qualification_case["case_id"] not in legacy.text
+        assert "Build 450 Isolated Qualification" not in legacy.text
+
+
 def test_build450_current_app_is_read_only_for_checkpoint_and_keeps_review_bypass_closed(tmp_path):
     app = create_workspace_app450(base_dir=tmp_path)
     try:
