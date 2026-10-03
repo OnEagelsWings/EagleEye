@@ -107,13 +107,16 @@ class InvestigationWorkflowHardCheckpoint450:
             record_hash TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS phase20_qualification_consent_450(
-            case_id TEXT PRIMARY KEY,
+            consent_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL,
             reviewer_username TEXT NOT NULL,
             session_id_hash TEXT NOT NULL,
             confirmation TEXT NOT NULL,
             consented_at TEXT NOT NULL,
             record_hash TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS idx_qual_consent450_case
+            ON phase20_qualification_consent_450(case_id,consented_at);
             """
         )
         self.db.conn.commit()
@@ -261,6 +264,7 @@ class InvestigationWorkflowHardCheckpoint450:
         if str(confirmation or "").strip().upper() != "CONSENT BUILD 450 QUALIFICATION":
             raise PermissionError("explicit CONSENT BUILD 450 QUALIFICATION confirmation required")
         row = {
+            "consent_id": "consent450_" + secrets.token_hex(10),
             "case_id": str(case_id),
             "reviewer_username": reviewer["username"],
             "session_id_hash": hashlib.sha256(str(reviewer["session_id"]).encode("utf-8")).hexdigest(),
@@ -269,13 +273,13 @@ class InvestigationWorkflowHardCheckpoint450:
         }
         row["record_hash"] = self._rh(row)
         self.db.execute(
-            "INSERT OR REPLACE INTO phase20_qualification_consent_450 VALUES(?,?,?,?,?,?)",
+            "INSERT INTO phase20_qualification_consent_450 VALUES(?,?,?,?,?,?,?)",
             tuple(row.values()),
         )
         self.audit.log(
             "build450_reviewer_consent",
             "phase20_qualification_consent_450",
-            str(case_id),
+            row["consent_id"],
             str(case_id),
             {"reviewer": reviewer["username"], "explicit_consent": True},
         )
@@ -283,7 +287,8 @@ class InvestigationWorkflowHardCheckpoint450:
 
     def _qualification_consent(self, case_id, reviewer):
         row = self.db.one(
-            "SELECT * FROM phase20_qualification_consent_450 WHERE case_id=?",
+            "SELECT * FROM phase20_qualification_consent_450 WHERE case_id=? "
+            "ORDER BY consented_at DESC,rowid DESC LIMIT 1",
             (str(case_id),),
         )
         if not row:
@@ -716,6 +721,7 @@ class InvestigationWorkflowHardCheckpoint450:
                 "isolated": True,
                 "reviewer_username": reviewer["username"],
                 "marker_record_hash": marker["record_hash"],
+                "consent_id": consent["consent_id"],
                 "consent_record_hash": consent["record_hash"],
                 "reviewer_session_id_hash": consent["session_id_hash"],
             },
@@ -798,7 +804,7 @@ class InvestigationWorkflowHardCheckpoint450:
         for table, key in (
             ("phase20_workflow_qualification_run_450", "qualification_id"),
             ("phase20_qualification_case_450", "case_id"),
-            ("phase20_qualification_consent_450", "case_id"),
+            ("phase20_qualification_consent_450", "consent_id"),
         ):
             for row in self.db.all(f"SELECT * FROM {table}"):
                 item = dict(row)
@@ -822,10 +828,11 @@ class InvestigationWorkflowHardCheckpoint450:
                 "SELECT * FROM phase20_qualification_case_450 WHERE case_id=?",
                 (case_id,),
             )
+            consent_id = str(qcase.get("consent_id") or "")
             consent = self.db.one(
-                "SELECT * FROM phase20_qualification_consent_450 WHERE case_id=?",
-                (case_id,),
-            )
+                "SELECT * FROM phase20_qualification_consent_450 WHERE consent_id=?",
+                (consent_id,),
+            ) if consent_id else None
             if not marker:
                 bad.append({
                     "qualification_id": run.get("qualification_id"),
@@ -848,6 +855,12 @@ class InvestigationWorkflowHardCheckpoint450:
                 })
             else:
                 consent = dict(consent)
+                if str(consent.get("case_id") or "") != case_id:
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_qualification_consent_450",
+                        "reason": "reviewer_consent_case_mismatch",
+                    })
                 if str(consent.get("record_hash") or "") != str(qcase.get("consent_record_hash") or ""):
                     bad.append({
                         "qualification_id": run.get("qualification_id"),
