@@ -26,8 +26,18 @@ def create_workspace_app450(*, base_dir=None):
         ),
         None,
     )
+    old_legacy = next(
+        (
+            route.endpoint
+            for route in app.router.routes
+            if getattr(route, "path", None) == "/legacy"
+            and "GET" in set(getattr(route, "methods", set()) or set())
+        ),
+        None,
+    )
     _drop(app, "/", {"GET"})
     _drop(app, "/health", {"GET"})
+    _drop(app, "/legacy", {"GET"})
 
     def fingerprint(request):
         material = "|".join(
@@ -100,7 +110,17 @@ def create_workspace_app450(*, base_dir=None):
         cases = visible_cases(identity)
         selected = choose_case(cases, case_id)
         if not selected:
-            return RedirectResponse("/legacy", status_code=303)
+            return HTMLResponse(
+                """<!doctype html><html lang="de"><head><meta charset="utf-8">"""
+                """<meta name="viewport" content="width=device-width,initial-scale=1">"""
+                """<title>EagleEye Build 450</title></head><body>"""
+                """<main><h1>Kein operativer Fall verfügbar</h1>"""
+                """<p>Build-450-Qualifikationsfälle sind absichtlich aus dem operativen """
+                """Workspace und den Legacy-Werkzeugen ausgeschlossen.</p>"""
+                """<p>Lege einen normalen Ermittlungsfall an, um den Investigator Workspace zu nutzen.</p>"""
+                """</main></body></html>""",
+                status_code=200,
+            )
         snapshot = ctx.build449.team_review_snapshot_449(
             identity=identity,
             case_id=selected["case_id"],
@@ -112,6 +132,29 @@ def create_workspace_app450(*, base_dir=None):
         return HTMLResponse(
             render_workspace(snapshot, view=view, cases=cases, audits=audits)
         )
+
+    @app.get("/legacy", response_class=HTMLResponse)
+    def legacy450(request: Request, case_id: str = ""):
+        try:
+            identity = auth(request)
+        except HTTPException:
+            destination = "/security/bootstrap" if team.bootstrap_required() else "/security/login"
+            return RedirectResponse(destination, status_code=303)
+        cases = visible_cases(identity)
+        selected = choose_case(cases, case_id)
+        if not selected:
+            return HTMLResponse(
+                """<!doctype html><html lang="de"><head><meta charset="utf-8">"""
+                """<meta name="viewport" content="width=device-width,initial-scale=1">"""
+                """<title>EagleEye Build 450</title></head><body><main>"""
+                """<h1>Legacy Workspace nicht verfügbar</h1>"""
+                """<p>Es existiert kein operativer Fall. Qualifikationsfälle bleiben isoliert.</p>"""
+                """</main></body></html>""",
+                status_code=200,
+            )
+        if not callable(old_legacy):
+            raise HTTPException(404, "Legacy workspace unavailable")
+        return old_legacy(request, case_id=selected["case_id"])
 
     @app.get("/health")
     def health450():
