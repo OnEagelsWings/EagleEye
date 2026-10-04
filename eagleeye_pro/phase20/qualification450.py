@@ -387,7 +387,7 @@ class InvestigationWorkflowHardCheckpoint450:
         actual_hashes = {}
         for key, expected_name in required.items():
             raw = paths.get(key)
-            path = Path(raw) if raw else None
+            path = Path(raw) if isinstance(raw, str) and raw else None
             try:
                 exists[key] = bool(path and path.exists() and path.is_file())
             except OSError:
@@ -404,7 +404,7 @@ class InvestigationWorkflowHardCheckpoint450:
                 hash_matches[key] = False
 
         package_raw = paths.get("case_package")
-        package = Path(package_raw) if package_raw else None
+        package = Path(package_raw) if isinstance(package_raw, str) and package_raw else None
         try:
             package_exists = bool(package and package.exists() and package.is_file())
         except OSError:
