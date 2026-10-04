@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -88,18 +89,8 @@ def create_workspace_app450(*, base_dir=None):
             for row in ctx.db.all("SELECT case_id FROM phase20_qualification_case_450")
         }
 
-    def qualification_case_for_path(request):
-        # Build-450 checkpoint read endpoints are allowed to report qualification
-        # status. Every inherited operational/legacy route is denied when its
-        # path or referenced object resolves to a marked qualification case.
-        path = str(request.url.path or "")
-        if path.startswith("/api/build450/"):
-            return ""
-        marked = qualification_case_ids()
-        requested = str(request.query_params.get("case_id") or "")
-        if requested in marked:
-            return requested
-        tokens = {x for x in path.split("/") if x}
+    def qualification_case_for_tokens(tokens, marked):
+        tokens = {str(x) for x in tokens if str(x)}
         for case_id in marked:
             if case_id in tokens:
                 return case_id
@@ -123,9 +114,52 @@ def create_workspace_app450(*, base_dir=None):
                     return str(row.get("case_id") or "")
         return ""
 
+    def qualification_case_for_path(request):
+        # Build-450 checkpoint read endpoints are allowed to report qualification
+        # status. Every inherited operational/legacy route is denied when its
+        # path or referenced object resolves to a marked qualification case.
+        path = str(request.url.path or "")
+        if path.startswith("/api/build450/"):
+            return ""
+        marked = qualification_case_ids()
+        requested = str(request.query_params.get("case_id") or "")
+        if requested in marked:
+            return requested
+        return qualification_case_for_tokens(
+            {x for x in path.split("/") if x},
+            marked,
+        )
+
+    def payload_tokens(value):
+        out = set()
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if str(key).lower() in {
+                    "case_id", "object_id", "review_id", "evidence_id", "claim_id",
+                    "revision_id", "loop_id", "dispatch_id", "execution_id",
+                } and isinstance(item, (str, int)):
+                    out.add(str(item))
+                out.update(payload_tokens(item))
+        elif isinstance(value, list):
+            for item in value:
+                out.update(payload_tokens(item))
+        return out
+
     @app.middleware("http")
     async def isolate_qualification_cases450(request: Request, call_next):
         case_id = qualification_case_for_path(request)
+        if not case_id and request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"} and not str(request.url.path).startswith("/api/build450/"):
+            content_type = str(request.headers.get("content-type") or "").lower()
+            if "application/json" in content_type:
+                raw = await request.body()
+                try:
+                    payload = json.loads(raw.decode("utf-8")) if raw else {}
+                except Exception:
+                    payload = {}
+                case_id = qualification_case_for_tokens(
+                    payload_tokens(payload),
+                    qualification_case_ids(),
+                )
         if case_id:
             message = "Build-450 qualification cases are isolated from operational and legacy routes"
             if str(request.url.path).startswith("/api/"):
