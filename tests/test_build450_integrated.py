@@ -772,6 +772,26 @@ def test_build450_malformed_report_json_fails_closed_without_status_exception(tm
         reasons = {x["reason"] for x in integrity["violations"]}
         assert "report_json_invalid" in reasons
 
+
+def test_build450_non_object_report_json_fails_closed_without_status_exception(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        ctx.db.execute(
+            "UPDATE phase20_workflow_qualification_run_450 SET report_json=? WHERE qualification_id=?",
+            ("null", result["qualification_id"]),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["integrity_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+        integrity = ctx.investigation_workflow_qualification_450.verify_integrity()
+        assert any(x["reason"] == "report_json_not_object" for x in integrity["violations"])
+
 def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         _bootstrap, _reviewer_user, _admin, _reviewer, _a, _r = setup_users(ctx)
