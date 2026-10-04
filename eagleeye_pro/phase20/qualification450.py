@@ -431,11 +431,16 @@ class InvestigationWorkflowHardCheckpoint450:
     def _latest_artifacts_valid(self, last):
         if not last:
             return False
-        workflow = (last.get("report") or {}).get("workflow_selftest") or {}
+        report = last.get("report") or {}
+        if not isinstance(report, dict):
+            return False
+        workflow = report.get("workflow_selftest") or {}
+        if not isinstance(workflow, dict):
+            return False
         paths = workflow.get("artifact_paths") or {}
         hashes = workflow.get("artifact_hashes") or {}
         package_hash = workflow.get("package_hash") or ""
-        if not paths:
+        if not isinstance(paths, dict) or not isinstance(hashes, dict) or not paths:
             return False
         return self._verify_export_artifacts(
             {"paths": paths, "hashes": hashes, "package_hash": package_hash}
@@ -444,7 +449,12 @@ class InvestigationWorkflowHardCheckpoint450:
     def _bound_workflow_rows_valid(self, last):
         if not last:
             return {"valid": False, "violations": [{"reason": "qualification_run_missing"}]}
-        workflow = (last.get("report") or {}).get("workflow_selftest") or {}
+        report = last.get("report") or {}
+        if not isinstance(report, dict):
+            return {"valid": False, "violations": [{"reason": "qualification_report_not_object"}]}
+        workflow = report.get("workflow_selftest") or {}
+        if not isinstance(workflow, dict):
+            return {"valid": False, "violations": [{"reason": "workflow_selftest_report_not_object"}]}
         case_id = str(last.get("case_id") or "")
         reviewer = str(workflow.get("reviewer") or "")
         executor = str(workflow.get("executor") or "")
@@ -878,14 +888,29 @@ class InvestigationWorkflowHardCheckpoint450:
                 out["report"] = {}
                 out["report_decode_error"] = True
                 out["report_structure_error"] = True
+                out["report_structure_errors"] = ["report_json_not_object"]
             else:
+                structure_errors = []
+                for key in (
+                    "qualification_case",
+                    "workflow_selftest",
+                    "engineering_checks",
+                    "release_checks",
+                    "component_checks_before",
+                    "component_checks_after",
+                    "authority_contract",
+                ):
+                    if key in decoded and not isinstance(decoded.get(key), dict):
+                        structure_errors.append(f"{key}_not_object")
                 out["report"] = decoded
                 out["report_decode_error"] = False
-                out["report_structure_error"] = False
+                out["report_structure_error"] = bool(structure_errors)
+                out["report_structure_errors"] = structure_errors
         except Exception:
             out["report"] = {}
             out["report_decode_error"] = True
             out["report_structure_error"] = False
+            out["report_structure_errors"] = ["report_json_invalid"]
         return out
 
     def verify_integrity(self):
@@ -923,13 +948,23 @@ class InvestigationWorkflowHardCheckpoint450:
                     "table": "phase20_workflow_qualification_run_450",
                     "reason": "report_json_invalid",
                 })
+            for section in (
+                "qualification_case",
+                "workflow_selftest",
+                "engineering_checks",
+                "release_checks",
+                "component_checks_before",
+                "component_checks_after",
+                "authority_contract",
+            ):
+                if section in report and not isinstance(report.get(section), dict):
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_workflow_qualification_run_450",
+                        "reason": f"{section}_report_not_object",
+                    })
             qcase = report.get("qualification_case") or {}
             if not isinstance(qcase, dict):
-                bad.append({
-                    "qualification_id": run.get("qualification_id"),
-                    "table": "phase20_workflow_qualification_run_450",
-                    "reason": "qualification_case_report_not_object",
-                })
                 qcase = {}
             case_id = str(run.get("case_id") or "")
             marker = self.db.one(
