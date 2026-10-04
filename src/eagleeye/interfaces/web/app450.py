@@ -5,9 +5,68 @@ import json
 
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.routing import Match
 
 from .app448 import COOKIE, render_workspace
 from .app449 import _drop, create_workspace_app449
+
+JSON_PAYLOAD_GUARD_MAX_BYTES = 1024 * 1024
+MANUAL_JSON_GUARD_PATHS = {"/api/build449/reviews"}
+_MUTATION_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_FORM_MEDIA_TYPES = {"multipart/form-data", "application/x-www-form-urlencoded"}
+
+
+def _route_requires_payload_guard(app, scope):
+    method = str(scope.get("method") or "").upper()
+    path = str(scope.get("path") or "")
+    if method not in _MUTATION_METHODS:
+        return False
+    if not path.startswith("/api/") or path.startswith("/api/build450/"):
+        return False
+    if path in MANUAL_JSON_GUARD_PATHS:
+        return True
+    for route in app.router.routes:
+        try:
+            match, _child_scope = route.matches(scope)
+        except Exception:
+            continue
+        if match is not Match.FULL:
+            continue
+        body_field = getattr(route, "body_field", None)
+        if body_field is None:
+            return False
+        field_info = getattr(body_field, "field_info", None)
+        media_type = str(getattr(field_info, "media_type", "") or "").split(";", 1)[0].strip().lower()
+        return media_type not in _FORM_MEDIA_TYPES
+    return False
+
+
+async def _guarded_json_payload(request):
+    declared = str(request.headers.get("content-length") or "").strip()
+    if declared:
+        try:
+            if int(declared) > JSON_PAYLOAD_GUARD_MAX_BYTES:
+                raise HTTPException(413, "JSON mutation body exceeds Build-450 guard limit")
+        except ValueError:
+            pass
+
+    chunks = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > JSON_PAYLOAD_GUARD_MAX_BYTES:
+            raise HTTPException(413, "JSON mutation body exceeds Build-450 guard limit")
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+    # Preserve the exact bytes for the inherited route. Starlette Request.json()
+    # also feeds bytes directly to json.loads(), which supports UTF-8/16/32.
+    request._body = raw
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
 
 
 def create_workspace_app450(*, base_dir=None):
@@ -148,12 +207,11 @@ def create_workspace_app450(*, base_dir=None):
     @app.middleware("http")
     async def isolate_qualification_cases450(request: Request, call_next):
         case_id = qualification_case_for_path(request)
-        if not case_id and request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"} and not str(request.url.path).startswith("/api/build450/"):
-            raw = await request.body()
+        if not case_id and _route_requires_payload_guard(app, request.scope):
             try:
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-            except Exception:
-                payload = {}
+                payload = await _guarded_json_payload(request)
+            except HTTPException as exc:
+                return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
             case_id = qualification_case_for_tokens(
                 payload_tokens(payload),
                 qualification_case_ids(),
