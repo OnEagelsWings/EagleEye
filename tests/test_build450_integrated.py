@@ -350,6 +350,34 @@ def test_build450_artifact_read_errors_fail_closed_without_status_exception(tmp_
         assert status["investigation_workflow_checkpoint_pass"] is False
 
 
+
+def test_build450_malformed_artifact_path_values_fail_closed_without_status_500(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        original_report = result["report"]
+
+        for key, malformed in (
+            ("docx", ["not", "a", "path"]),
+            ("case_package", {"not": "a path"}),
+        ):
+            report = json.loads(json.dumps(original_report))
+            report["workflow_selftest"]["artifact_paths"][key] = malformed
+            ctx.db.execute(
+                "UPDATE phase20_workflow_qualification_run_450 SET report_json=? WHERE qualification_id=?",
+                (json.dumps(report), result["qualification_id"]),
+            )
+            status = ctx.build450.investigation_workflow_status_450()
+            assert status["integrity_valid"] is False
+            assert status["qualified_artifacts_valid"] is False
+            assert status["investigation_workflow_checkpoint_pass"] is False
+
+
 def test_build450_required_component_tamper_invalidates_existing_pass(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, reviewer, case, _a, _r = setup_qualification_case(ctx)
