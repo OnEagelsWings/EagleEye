@@ -16,6 +16,15 @@ _MUTATION_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _FORM_MEDIA_TYPES = {"multipart/form-data", "application/x-www-form-urlencoded"}
 
 
+def _route_body_requires_payload_guard(route):
+    body_field = getattr(route, "body_field", None)
+    if body_field is None:
+        return False
+    field_info = getattr(body_field, "field_info", None)
+    media_type = str(getattr(field_info, "media_type", "") or "").split(";", 1)[0].strip().lower()
+    return media_type not in _FORM_MEDIA_TYPES
+
+
 def _route_requires_payload_guard(app, scope):
     method = str(scope.get("method") or "").upper()
     path = str(scope.get("path") or "")
@@ -32,12 +41,7 @@ def _route_requires_payload_guard(app, scope):
             continue
         if match is not Match.FULL:
             continue
-        body_field = getattr(route, "body_field", None)
-        if body_field is None:
-            return False
-        field_info = getattr(body_field, "field_info", None)
-        media_type = str(getattr(field_info, "media_type", "") or "").split(";", 1)[0].strip().lower()
-        return media_type not in _FORM_MEDIA_TYPES
+        return _route_body_requires_payload_guard(route)
     return False
 
 
