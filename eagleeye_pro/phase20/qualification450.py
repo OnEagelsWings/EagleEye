@@ -388,9 +388,16 @@ class InvestigationWorkflowHardCheckpoint450:
         for key, expected_name in required.items():
             raw = paths.get(key)
             path = Path(raw) if raw else None
-            exists[key] = bool(path and path.exists() and path.is_file())
+            try:
+                exists[key] = bool(path and path.exists() and path.is_file())
+            except OSError:
+                exists[key] = False
             if exists[key]:
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                try:
+                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                except OSError:
+                    hash_matches[key] = False
+                    continue
                 actual_hashes[expected_name] = digest
                 hash_matches[key] = digest == str(recorded_hashes.get(expected_name) or "")
             else:
@@ -398,9 +405,20 @@ class InvestigationWorkflowHardCheckpoint450:
 
         package_raw = paths.get("case_package")
         package = Path(package_raw) if package_raw else None
-        package_exists = bool(package and package.exists() and package.is_file())
-        package_digest = hashlib.sha256(package.read_bytes()).hexdigest() if package_exists else ""
-        package_hash_matches = package_digest == str(export.get("package_hash") or "")
+        try:
+            package_exists = bool(package and package.exists() and package.is_file())
+        except OSError:
+            package_exists = False
+        package_digest = ""
+        if package_exists:
+            try:
+                package_digest = hashlib.sha256(package.read_bytes()).hexdigest()
+            except OSError:
+                package_exists = False
+        package_hash_matches = (
+            package_exists
+            and package_digest == str(export.get("package_hash") or "")
+        )
 
         package_members_ok = False
         if package_exists:
@@ -408,6 +426,8 @@ class InvestigationWorkflowHardCheckpoint450:
                 with ZipFile(package) as zf:
                     names = set(zf.namelist())
                 package_members_ok = set(required.values()).issubset(names)
+            except (OSError, ValueError, RuntimeError):
+                package_members_ok = False
             except Exception:
                 package_members_ok = False
 
