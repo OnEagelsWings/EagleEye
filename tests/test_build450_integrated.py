@@ -834,6 +834,57 @@ def test_build450_payload_isolation_does_not_trust_content_type(tmp_path):
         assert "isolated" in response.json()["detail"].lower()
 
 
+
+def test_build450_manual_request_json_route_cannot_mutate_qualification_case(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    source = ctx.build421.register_source(
+        identity=admin,
+        name="Build 450 manual-json guard source",
+        source_type="website",
+        access_mode="public",
+        base_url="https://manual-json-guard450.example.org/",
+        capabilities=["public_pages"],
+        coverage={"fixture_only": True},
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    before = int(
+        (ctx.db.one(
+            "SELECT COUNT(*) n FROM crawl_task_425 WHERE case_id=?",
+            (case["case_id"],),
+        ) or {}).get("n") or 0
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.post(
+            "/api/build425/crawler/tasks",
+            headers={"sec-fetch-site": "same-origin"},
+            json={
+                "case_id": case["case_id"],
+                "source_id": source["source_id"],
+                "target": "https://manual-json-guard450.example.org/item",
+                "objective": "This must be blocked before the inherited manual JSON handler.",
+                "scope": {"allowed_hosts": ["manual-json-guard450.example.org"]},
+                "budget": {"max_pages": 1, "max_bytes": 100000},
+            },
+        )
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+    after = int(
+        (ctx.db.one(
+            "SELECT COUNT(*) n FROM crawl_task_425 WHERE case_id=?",
+            (case["case_id"],),
+        ) or {}).get("n") or 0
+    )
+    assert after == before
+
+
 def test_build450_utf16_json_payload_cannot_bypass_qualification_isolation(tmp_path):
     app = create_workspace_app450(base_dir=tmp_path)
     ctx = app.state.context
