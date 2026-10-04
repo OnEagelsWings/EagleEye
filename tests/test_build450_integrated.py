@@ -1,5 +1,6 @@
 from pathlib import Path
 import hashlib
+import json
 import runpy
 
 import pytest
@@ -7,7 +8,11 @@ from fastapi.testclient import TestClient
 
 from eagleeye_pro.core.app_context import AppContext
 from eagleeye.interfaces.web.app448 import render_workspace
-from eagleeye.interfaces.web.app450 import create_workspace_app450
+from eagleeye.interfaces.web.app450 import (
+    JSON_PAYLOAD_GUARD_MAX_BYTES,
+    _route_body_requires_payload_guard,
+    create_workspace_app450,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 ADMIN_PASSWORD = "Build450AdminPassword!2026"
@@ -827,6 +832,111 @@ def test_build450_payload_isolation_does_not_trust_content_type(tmp_path):
         )
         assert response.status_code == 403
         assert "isolated" in response.json()["detail"].lower()
+
+
+def test_build450_utf16_json_payload_cannot_bypass_qualification_isolation(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+    result = ctx.build450.qualify_investigation_workflow_450(
+        identity=admin,
+        case_id=case["case_id"],
+        reviewer_session_token=reviewer_session.token,
+        reviewer_client_fingerprint=FP_REVIEWER,
+    )
+    revision_id = result["report"]["workflow_selftest"]["revision_id"]
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    body = json.dumps(
+        {
+            "object_type": "dossier_export",
+            "object_id": revision_id,
+            "note": "utf16 qualification isolation regression",
+            "assigned_to": "",
+        }
+    ).encode("utf-16")
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.post(
+            "/api/build449/reviews",
+            headers={
+                "sec-fetch-site": "same-origin",
+                "content-type": "application/json",
+            },
+            content=body,
+        )
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+
+
+def test_build450_json_guard_is_bounded_but_does_not_classify_multipart_routes(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    try:
+        multipart_routes = []
+        for route in app.router.routes:
+            body_field = getattr(route, "body_field", None)
+            field_info = getattr(body_field, "field_info", None) if body_field is not None else None
+            media_type = str(getattr(field_info, "media_type", "") or "").split(";", 1)[0].strip().lower()
+            if media_type in {"multipart/form-data", "application/x-www-form-urlencoded"}:
+                multipart_routes.append(route)
+        assert multipart_routes, "expected at least one inherited form/multipart route"
+        assert all(not _route_body_requires_payload_guard(route) for route in multipart_routes)
+
+        # Guarded JSON routes are intentionally bounded; large binary/form
+        # uploads are not passed through this JSON buffer.
+        fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+        bootstrap = app.state.context.team_identity_359.create_initial_admin(
+            username="guard450",
+            display_name="Guard Regression Admin",
+            password="Build450GuardPassword!2026",
+        )
+        issued = app.state.context.team_identity_359.authenticate(
+            username=bootstrap["username"],
+            password="Build450GuardPassword!2026",
+            client_fingerprint=fp,
+        )
+        with TestClient(app) as client:
+            client.cookies.set("ee_auth_session", issued.token)
+            response = client.post(
+                "/api/build449/reviews",
+                headers={"sec-fetch-site": "same-origin", "content-type": "application/json"},
+                content=b"{" + b'"note":"' + (b"x" * JSON_PAYLOAD_GUARD_MAX_BYTES) + b'"}',
+            )
+            assert response.status_code == 413
+            assert "guard limit" in response.json()["detail"].lower()
+    finally:
+        app.state.context.close()
+
+
+def test_build450_nested_workflow_report_shape_fails_closed_without_status_500(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        report = dict(result["report"])
+        report["workflow_selftest"] = [1]
+        ctx.db.execute(
+            "UPDATE phase20_workflow_qualification_run_450 SET report_json=? WHERE qualification_id=?",
+            (json.dumps(report), result["qualification_id"]),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["integrity_valid"] is False
+        assert status["qualified_artifacts_valid"] is False
+        assert status["qualified_workflow_rows_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+        integrity = ctx.investigation_workflow_qualification_450.verify_integrity()
+        assert any(
+            x["reason"] == "workflow_selftest_report_not_object"
+            for x in integrity["violations"]
+        )
 
 def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
