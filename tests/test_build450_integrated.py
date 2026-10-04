@@ -611,6 +611,49 @@ def test_build450_workspace_render_retains_team_review_and_checkpoint_boundaries
         assert "/api/build450/cases/" not in markup or "/qualify" not in markup
 
 
+
+def test_build450_deleting_bound_export_row_retracts_checkpoint_pass(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _a, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        workflow = result["report"]["workflow_selftest"]
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["investigation_workflow_checkpoint_pass"] is True
+        assert status["qualified_workflow_rows_valid"] is True
+        ctx.db.execute(
+            "DELETE FROM dossier_export_447 WHERE export_id=?",
+            (workflow["export_id"],),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_workflow_rows_valid"] is False
+        assert any(x["reason"] == "export_row_missing" for x in status["qualified_workflow_row_violations"])
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
+
+def test_build450_deleting_bound_review_row_retracts_checkpoint_pass(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _a, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        workflow = result["report"]["workflow_selftest"]
+        ctx.db.execute(
+            "DELETE FROM review_request_449 WHERE review_id=?",
+            (workflow["export_review_id"],),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_workflow_rows_valid"] is False
+        assert any(x["reason"] == "export_review_row_missing" for x in status["qualified_workflow_row_violations"])
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
 def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         _bootstrap, _reviewer_user, _admin, _reviewer, _a, _r = setup_users(ctx)
