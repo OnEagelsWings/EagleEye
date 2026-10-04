@@ -654,6 +654,63 @@ def test_build450_deleting_bound_review_row_retracts_checkpoint_pass(tmp_path):
         assert any(x["reason"] == "export_review_row_missing" for x in status["qualified_workflow_row_violations"])
         assert status["investigation_workflow_checkpoint_pass"] is False
 
+
+def test_build450_qualification_case_is_blocked_on_inherited_case_routes(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    _bootstrap, _reviewer_user, admin, reviewer, _admin_session, _reviewer_session = setup_users(ctx)
+    qualification_case = ctx.build450.prepare_investigation_workflow_qualification_case_450(
+        identity=admin,
+        reviewer_username=reviewer["username"],
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        legacy_case = client.get(f"/cases/{qualification_case['case_id']}")
+        assert legacy_case.status_code == 403
+        assert "Qualifikationsfall isoliert" in legacy_case.text
+
+        inherited_mutation = client.post(
+            f"/api/build447/cases/{qualification_case['case_id']}/claims",
+            headers={"sec-fetch-site": "same-origin"},
+            json={"statement": "qualification isolation regression", "support_evidence_ids": []},
+        )
+        assert inherited_mutation.status_code == 403
+        assert "isolated" in inherited_mutation.json()["detail"].lower()
+
+
+def test_build450_qualification_review_object_is_blocked_on_inherited_review_route(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+    result = ctx.build450.qualify_investigation_workflow_450(
+        identity=admin,
+        case_id=case["case_id"],
+        reviewer_session_token=reviewer_session.token,
+        reviewer_client_fingerprint=FP_REVIEWER,
+    )
+    review_id = result["report"]["workflow_selftest"]["export_review_id"]
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.post(
+            f"/api/build449/reviews/{review_id}/comments",
+            headers={"sec-fetch-site": "same-origin"},
+            json={"kind": "comment", "body": "qualification isolation regression"},
+        )
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+
 def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         _bootstrap, _reviewer_user, _admin, _reviewer, _a, _r = setup_users(ctx)
