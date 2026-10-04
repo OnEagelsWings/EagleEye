@@ -422,10 +422,13 @@ def test_build450_qualification_cases_are_hidden_from_operational_workspace(tmp_
     )
     with TestClient(app) as client:
         client.cookies.set("ee_auth_session", issued.token)
-        root = client.get(
+        blocked = client.get(
             "/",
             params={"view": "overview", "case_id": qualification_case["case_id"]},
         )
+        assert blocked.status_code == 403
+        assert "Qualifikationsfall isoliert" in blocked.text
+        root = client.get("/", params={"view": "overview"})
         assert root.status_code == 200
         assert "Operational Build 450 Case" in root.text
         assert "Build 450 Isolated Qualification" not in root.text
@@ -498,15 +501,19 @@ def test_build450_only_qualification_case_renders_safe_empty_state_and_blocks_le
     )
     with TestClient(app) as client:
         client.cookies.set("ee_auth_session", issued.token)
-        root = client.get("/", params={"case_id": qualification_case["case_id"]})
+        blocked_root = client.get("/", params={"case_id": qualification_case["case_id"]})
+        assert blocked_root.status_code == 403
+        assert "Qualifikationsfall isoliert" in blocked_root.text
+
+        root = client.get("/")
         assert root.status_code == 200
         assert "Kein operativer Fall verfügbar" in root.text
         assert qualification_case["case_id"] not in root.text
         assert "Build 450 Isolated Qualification" not in root.text
 
         legacy = client.get("/legacy", params={"case_id": qualification_case["case_id"]})
-        assert legacy.status_code == 200
-        assert "Legacy Workspace nicht verfügbar" in legacy.text
+        assert legacy.status_code == 403
+        assert "Qualifikationsfall isoliert" in legacy.text
         assert qualification_case["case_id"] not in legacy.text
         assert "Build 450 Isolated Qualification" not in legacy.text
 
