@@ -179,6 +179,98 @@ def test_four_eyes_chain_evidence_claim_dossier_and_export(tmp_path):
         assert ctx.human_review_449.verify_integrity()["valid"]
 
 
+
+def test_export_approval_is_reserved_before_artifact_generation(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, reviewer, case = setup_team(ctx, "Atomic export reservation 449")
+        cid = case["case_id"]
+        evidence = seed_unreviewed_evidence(ctx, admin, cid)[0]
+        evidence_request = ctx.build449.request_review_449(
+            identity=admin,
+            object_type="evidence",
+            object_id=evidence["evidence_id"],
+            note="Independent Evidence review before atomic export regression.",
+            assigned_to=reviewer["username"],
+        )
+        complete_review(
+            ctx, reviewer, evidence_request, "accepted",
+            "Evidence accepted for atomic export reservation regression."
+        )
+        claim = ctx.evidence_claims_dossier_447.propose_claim(
+            identity=admin,
+            case_id=cid,
+            statement="Atomic export reservation regression claim.",
+            support_evidence_ids=[evidence["evidence_id"]],
+        )
+        claim_request = ctx.build449.request_review_449(
+            identity=admin,
+            object_type="claim",
+            object_id=claim["claim_id"],
+            note="Independent Claim review before atomic export regression.",
+            assigned_to=reviewer["username"],
+        )
+        complete_review(
+            ctx, reviewer, claim_request, "accepted_for_dossier",
+            "Claim accepted for atomic export reservation regression."
+        )
+        dossier = ctx.evidence_claims_dossier_447.build_dossier(
+            identity=admin, case_id=cid, title="Atomic Export Reservation Dossier"
+        )
+        dossier_request = ctx.build449.request_review_449(
+            identity=admin,
+            object_type="dossier",
+            object_id=dossier["revision_id"],
+            note="Independent dossier review before atomic export regression.",
+            assigned_to=reviewer["username"],
+        )
+        complete_review(
+            ctx, reviewer, dossier_request, "approved_for_export",
+            "Dossier approved for atomic export reservation regression."
+        )
+        export_request = ctx.build449.request_review_449(
+            identity=admin,
+            object_type="dossier_export",
+            object_id=dossier["revision_id"],
+            note="Independent export approval before atomic reservation regression.",
+            assigned_to=reviewer["username"],
+        )
+        complete_review(
+            ctx, reviewer, export_request, "approve",
+            "Export approved for atomic reservation regression."
+        )
+
+        original = ctx.evidence_claims_dossier_447.export_dossier
+        competing_checked = {"done": False}
+
+        def guarded_export(**kwargs):
+            if not competing_checked["done"]:
+                competing_checked["done"] = True
+                with pytest.raises(ValueError, match="reserved or executed"):
+                    ctx.build449.execute_approved_export_449(
+                        identity=admin,
+                        review_id=export_request["review_id"],
+                        confirmation="EXPORT DOSSIER 447",
+                    )
+            return original(**kwargs)
+
+        ctx.evidence_claims_dossier_447.export_dossier = guarded_export
+        result = ctx.build449.execute_approved_export_449(
+            identity=admin,
+            review_id=export_request["review_id"],
+            confirmation="EXPORT DOSSIER 447",
+        )
+        assert competing_checked["done"] is True
+        assert result["execution"]["export_id"] != "RESERVED"
+        assert result["execution"]["package_hash"] != "RESERVED"
+        assert len(ctx.evidence_claims_dossier_447.exports(cid)) == 1
+        assert len(
+            ctx.db.all(
+                "SELECT * FROM review_export_execution_449 WHERE review_id=?",
+                (export_request["review_id"],),
+            )
+        ) == 1
+
+
 def test_requester_cannot_review_own_work_and_reviewer_assignment_is_enforced(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, reviewer, case = setup_team(ctx)
@@ -362,6 +454,7 @@ def test_current_app_removes_direct_build447_review_mutations_and_registers_449_
         assert ("POST", "/api/build447/claims/{claim_id}/review") not in paths
         assert ("POST", "/api/build447/dossiers/{revision_id}/review") not in paths
         assert ("POST", "/api/build447/dossiers/{revision_id}/export") not in paths
+        assert ("POST", "/api/build447/cases/{case_id}/selftest") not in paths
         for path in (
             "/api/build449/reviews",
             "/api/build449/reviews/{review_id}/claim",
