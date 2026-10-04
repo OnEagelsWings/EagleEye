@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import secrets
+import sqlite3
 
 BUILD = "449.0"
 POLICY_ID = "phase20.human-review-team-workflow.v449"
@@ -58,6 +59,7 @@ CURRENT_FORBIDDEN_BYPASS_ROUTES = {
     ("POST", "/api/build447/claims/{claim_id}/review"),
     ("POST", "/api/build447/dossiers/{revision_id}/review"),
     ("POST", "/api/build447/dossiers/{revision_id}/export"),
+    ("POST", "/api/build447/cases/{case_id}/selftest"),
 }
 
 
@@ -589,30 +591,58 @@ class HumanReviewTeamWorkflow449:
             raise PermissionError("export approval is stale because the dossier changed")
         if str(ident["username"]).casefold() == str(review["completed_by"]).casefold():
             raise PermissionError("export executor must differ from the approving reviewer")
-        if self.db.one("SELECT * FROM review_export_execution_449 WHERE review_id=?", (review_id,)):
-            raise ValueError("approved export review has already been executed")
         if str(confirmation or "").strip().upper() != "EXPORT DOSSIER 447":
             raise PermissionError("explicit EXPORT DOSSIER 447 confirmation required")
 
-        export = self.closure447.export_dossier(
-            identity=ident,
-            revision_id=review["object_id"],
-            confirmation="EXPORT DOSSIER 447",
-        )
-        row = {
+        reserved = {
             "execution_id": "rexec449_" + secrets.token_hex(10),
-            "review_id": review_id,
-            "revision_id": review["object_id"],
-            "case_id": review["case_id"],
-            "export_id": str(export["export_id"]),
-            "package_hash": str(export["package_hash"]),
+            "review_id": str(review_id),
+            "revision_id": str(review["object_id"]),
+            "case_id": str(review["case_id"]),
+            "export_id": "RESERVED",
+            "package_hash": "RESERVED",
             "executed_by": str(ident["username"]),
             "executed_at": _now(),
         }
+        reserved["record_hash"] = self._rh(reserved)
+        try:
+            self.db.execute(
+                "INSERT INTO review_export_execution_449 VALUES("
+                + ",".join("?" for _ in reserved)
+                + ")",
+                tuple(reserved.values()),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("approved export review has already been reserved or executed") from exc
+
+        try:
+            export = self.closure447.export_dossier(
+                identity=ident,
+                revision_id=review["object_id"],
+                confirmation="EXPORT DOSSIER 447",
+            )
+        except Exception:
+            self.db.execute(
+                "DELETE FROM review_export_execution_449 "
+                "WHERE review_id=? AND export_id='RESERVED'",
+                (str(review_id),),
+            )
+            raise
+
+        row = dict(reserved)
+        row["export_id"] = str(export["export_id"])
+        row["package_hash"] = str(export["package_hash"])
         row["record_hash"] = self._rh(row)
         self.db.execute(
-            "INSERT INTO review_export_execution_449 VALUES(" + ",".join("?" for _ in row) + ")",
-            tuple(row.values()),
+            "UPDATE review_export_execution_449 SET export_id=?,package_hash=?,"
+            "record_hash=? WHERE execution_id=? AND review_id=? AND export_id='RESERVED'",
+            (
+                row["export_id"],
+                row["package_hash"],
+                row["record_hash"],
+                row["execution_id"],
+                row["review_id"],
+            ),
         )
         self.audit.log(
             "approved_dossier_export_executed_449",
@@ -624,6 +654,7 @@ class HumanReviewTeamWorkflow449:
                 "reviewer": review["completed_by"],
                 "executor": ident["username"],
                 "package_hash": row["package_hash"],
+                "atomic_reservation": True,
             },
         )
         return {"review": self.review(review_id), "execution": row, "export": export}
