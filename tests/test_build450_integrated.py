@@ -751,6 +751,27 @@ def test_build450_payload_bound_review_request_cannot_target_qualification_case(
         assert response.status_code == 403
         assert "isolated" in response.json()["detail"].lower()
 
+
+def test_build450_malformed_report_json_fails_closed_without_status_exception(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        ctx.db.execute(
+            "UPDATE phase20_workflow_qualification_run_450 SET report_json=? WHERE qualification_id=?",
+            ("not-valid-json", result["qualification_id"]),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["integrity_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+        integrity = ctx.investigation_workflow_qualification_450.verify_integrity()
+        reasons = {x["reason"] for x in integrity["violations"]}
+        assert "report_json_invalid" in reasons
+
 def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         _bootstrap, _reviewer_user, _admin, _reviewer, _a, _r = setup_users(ctx)
