@@ -421,12 +421,21 @@ class InvestigationWorkflowHardCheckpoint450:
         )
 
         package_members_ok = False
+        package_member_hash_matches = {name: False for name in required.values()}
+        package_member_actual_hashes = {}
         if package_exists:
             try:
                 with ZipFile(package) as zf:
                     names = set(zf.namelist())
-                package_members_ok = set(required.values()).issubset(names)
-            except (OSError, ValueError, RuntimeError):
+                    package_members_ok = set(required.values()).issubset(names)
+                    if package_members_ok:
+                        for expected_name in required.values():
+                            member_digest = hashlib.sha256(zf.read(expected_name)).hexdigest()
+                            package_member_actual_hashes[expected_name] = member_digest
+                            package_member_hash_matches[expected_name] = (
+                                member_digest == str(recorded_hashes.get(expected_name) or "")
+                            )
+            except (OSError, ValueError, RuntimeError, KeyError):
                 package_members_ok = False
             except Exception:
                 package_members_ok = False
@@ -439,12 +448,15 @@ class InvestigationWorkflowHardCheckpoint450:
             "package_actual_hash": package_digest,
             "package_hash_matches": package_hash_matches,
             "package_members_ok": package_members_ok,
+            "package_member_hash_matches": package_member_hash_matches,
+            "package_member_actual_hashes": package_member_actual_hashes,
             "valid": (
                 all(exists.values())
                 and all(hash_matches.values())
                 and package_exists
                 and package_hash_matches
                 and package_members_ok
+                and all(package_member_hash_matches.values())
             ),
         }
 
@@ -493,6 +505,48 @@ class InvestigationWorkflowHardCheckpoint450:
                 violations.append({"reason": f"{label}_case_mismatch", "id": str(value)})
             return item
 
+        acquisition = workflow.get("acquisition") or {}
+        if not isinstance(acquisition, dict):
+            violations.append({"reason": "acquisition_report_not_object"})
+            acquisition = {}
+        loop = row("phase19_ai_loop_439", "loop_id", acquisition.get("loop_id"), "acquisition_loop")
+
+        dispatch_rows = []
+        dispatch_report = acquisition.get("dispatches") or []
+        if not isinstance(dispatch_report, list) or not dispatch_report:
+            violations.append({"reason": "acquisition_dispatch_report_missing"})
+            dispatch_report = []
+        for item in dispatch_report:
+            if not isinstance(item, dict):
+                violations.append({"reason": "acquisition_dispatch_report_invalid"})
+                continue
+            dispatch = row(
+                "live_ai_dispatch_446",
+                "dispatch_id",
+                item.get("dispatch_id"),
+                "acquisition_dispatch",
+            )
+            if dispatch:
+                dispatch_rows.append(dispatch)
+
+        execution_rows = []
+        execution_report = acquisition.get("executions") or []
+        if not isinstance(execution_report, list) or not execution_report:
+            violations.append({"reason": "acquisition_execution_report_missing"})
+            execution_report = []
+        for item in execution_report:
+            if not isinstance(item, dict):
+                violations.append({"reason": "acquisition_execution_report_invalid"})
+                continue
+            execution = row(
+                "live_ai_execution_446",
+                "execution_id",
+                item.get("execution_id"),
+                "acquisition_execution",
+            )
+            if execution:
+                execution_rows.append(execution)
+
         evidence = row("evidence_item_447", "evidence_id", workflow.get("evidence_id"), "evidence")
         claim = row("claim_447", "claim_id", workflow.get("claim_id"), "claim")
         dossier = row("dossier_revision_447", "revision_id", workflow.get("revision_id"), "dossier")
@@ -502,6 +556,41 @@ class InvestigationWorkflowHardCheckpoint450:
         dossier_review = row("review_request_449", "review_id", workflow.get("dossier_review_id"), "dossier_review")
         export_review = row("review_request_449", "review_id", workflow.get("export_review_id"), "export_review")
         export_execution = row("review_export_execution_449", "execution_id", workflow.get("export_execution_id"), "export_execution")
+
+        if loop and str(loop.get("loop_id") or "") != str(acquisition.get("loop_id") or ""):
+            violations.append({"reason": "acquisition_loop_binding_invalid"})
+        known_dispatch_ids = {str(x.get("dispatch_id") or "") for x in dispatch_rows}
+        for dispatch in dispatch_rows:
+            if str(dispatch.get("loop_id") or "") != str(acquisition.get("loop_id") or ""):
+                violations.append({"reason": "acquisition_dispatch_loop_mismatch", "id": dispatch.get("dispatch_id")})
+            if str(dispatch.get("state") or "") != "completed":
+                violations.append({"reason": "acquisition_dispatch_not_completed", "id": dispatch.get("dispatch_id")})
+        for execution in execution_rows:
+            if str(execution.get("loop_id") or "") != str(acquisition.get("loop_id") or ""):
+                violations.append({"reason": "acquisition_execution_loop_mismatch", "id": execution.get("execution_id")})
+            if str(execution.get("dispatch_id") or "") not in known_dispatch_ids:
+                violations.append({"reason": "acquisition_execution_dispatch_missing", "id": execution.get("execution_id")})
+            if str(execution.get("state") or "") != "completed":
+                violations.append({"reason": "acquisition_execution_not_completed", "id": execution.get("execution_id")})
+            if bool(execution.get("external_network")):
+                violations.append({"reason": "qualification_execution_unexpected_external_network", "id": execution.get("execution_id")})
+
+        if evidence:
+            event = row("acquisition_event_422", "event_id", evidence.get("event_id"), "evidence_event")
+            observation = row("content_observation_423", "observation_id", evidence.get("observation_id"), "evidence_observation")
+            content = self.db.one(
+                "SELECT * FROM content_object_423 WHERE content_id=?",
+                (str(evidence.get("content_id") or ""),),
+            )
+            if not content:
+                violations.append({"reason": "evidence_content_row_missing", "id": str(evidence.get("content_id") or "")})
+            if event and str(event.get("source_id") or "") != str(evidence.get("source_id") or ""):
+                violations.append({"reason": "evidence_event_source_mismatch"})
+            if observation and (
+                str(observation.get("event_id") or "") != str(evidence.get("event_id") or "")
+                or str(observation.get("content_id") or "") != str(evidence.get("content_id") or "")
+            ):
+                violations.append({"reason": "evidence_observation_binding_invalid"})
 
         if evidence and (evidence.get("review_state") != "accepted" or str(evidence.get("reviewed_by") or "") != reviewer):
             violations.append({"reason": "evidence_review_binding_invalid"})
@@ -727,6 +816,9 @@ class InvestigationWorkflowHardCheckpoint450:
             "artifact_hashes_recomputed_match": all(artifact_verification["hash_matches"].values()),
             "package_hash_recomputed_match": artifact_verification["package_hash_matches"],
             "package_contains_expected_files": artifact_verification["package_members_ok"],
+            "package_members_match_exported_file_hashes": all(
+                artifact_verification["package_member_hash_matches"].values()
+            ),
             "package_hash_bound": (
                 exported["execution"].get("package_hash")
                 == exported["export"].get("package_hash")
