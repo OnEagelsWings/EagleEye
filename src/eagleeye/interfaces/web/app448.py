@@ -506,6 +506,7 @@ def _operations(snapshot, audits):
     hist = _table(audits,[("created_at","Zeit"),("result","Result"),("route_count","Routes"),("markup_sha256","Markup SHA-256")])
     team_panel = _team_review_queue_panel(snapshot)
     team449 = bool(snapshot.get("team_review449"))
+    checkpoint = snapshot.get("checkpoint450") or {}
     audit_build = "449" if team449 else "448"
     audit_endpoint = f'/api/build{audit_build}/cases/{_e(snapshot["case"]["case_id"])}/ui-audit'
     audit_text = (
@@ -514,11 +515,32 @@ def _operations(snapshot, audits):
         if team449 else
         "Build 448 prüft Hauptnavigation, Accessibility-Basics, Responsive Layout und die Registrierung der operativen Build-439/446/447-Routen."
     )
+    qualification_panel = ""
+    if checkpoint:
+        reviewers = ((snapshot.get("team_review449") or {}).get("eligible_reviewers") or {}).get("dossier_export", [])
+        current = str(snapshot.get("actor") or "").casefold()
+        reviewer_options = "".join(
+            f'<option value="{_e(x.get("username"))}">{_e(x.get("display_name") or x.get("username"))}</option>'
+            for x in reviewers
+            if str(x.get("username") or "").casefold() != current
+        )
+        latest = checkpoint.get("latest") or {}
+        report = latest.get("report") or {}
+        engineering = report.get("engineering_result") or checkpoint.get("last_engineering_result") or "nicht ausgeführt"
+        external = report.get("external_validation_result") or checkpoint.get("last_external_validation_result") or "nicht ausgeführt"
+        release = report.get("release_result") or checkpoint.get("last_release_result") or "HOLD"
+        qualification_panel = f"""
+<section class="panel"><h2>Build 450 · Investigation Workflow Hard Checkpoint</h2>
+<div class="metrics">{_metric("Engineering",engineering)}{_metric("External Validation",external)}{_metric("Release",release)}</div>
+<p class="muted">Engineering-PASS ist keine Production-Freigabe. Die mutierende Hard-Checkpoint-Qualifikation läuft ausschließlich in einem isolierten synthetischen Qualifikationsfall mit zwei getrennt authentifizierten Sitzungen. Sie kann aus einem normalen Ermittlungsfall nicht gestartet werden.</p>
+<div class="notice"><b>Operationaler Workspace: read-only Checkpoint-Status.</b><br>Die eigentliche Build-450-Qualifikation ist CI-/Test-/Admin-intern und nicht als Browser-Aktion verfügbar.</div>
+</section>"""
     return f"""
+{qualification_panel}
 {team_panel}
 <section class="panel"><h2>UI-Funktionsprüfung</h2><p>{audit_text}</p><form data-json-form data-endpoint="{audit_endpoint}" data-success="UI-Audit abgeschlossen."><button type="submit">UI jetzt prüfen</button></form></section>
 <section class="panel"><h2>Audit-Historie</h2>{hist}</section>
-<section class="panel"><h2>Operations-Sicht</h2><div class="metrics">{_metric("Quellen",m["sources"])}{_metric("Dispatches",m["dispatches"])}{_metric("Executions",m["executions"])}{_metric("Exports",m["exports"])}</div><p class="muted">Build 448 verändert keine OPSEC-/Netzwerkbefugnisse.</p></section>
+<section class="panel"><h2>Operations-Sicht</h2><div class="metrics">{_metric("Quellen",m["sources"])}{_metric("Dispatches",m["dispatches"])}{_metric("Executions",m["executions"])}{_metric("Exports",m["exports"])}</div><p class="muted">Build 450 verändert keine OPSEC-/Netzwerkbefugnisse.</p></section>
 <section class="panel"><h2>Experten-/Legacy-Werkzeuge</h2><p>Die historische Oberfläche bleibt für Spezialfunktionen verfügbar, ist aber nicht mehr die primäre Ermittlernavigation.</p><a class="button ghost" href="/legacy?case_id={_e(snapshot["case"]["case_id"])}">Legacy/Expert Workspace öffnen</a></section>
 """
 
@@ -547,8 +569,13 @@ def render_workspace(snapshot, *, view, cases, audits):
         "operations": lambda s: _operations(s, audits),
     }[view](snapshot)
     team449 = bool(snapshot.get("team_review449"))
-    ui_build = "449" if team449 else "448"
-    ui_name = "Human Review & Team Workflow" if team449 else "Investigator Workspace"
+    checkpoint450 = bool(snapshot.get("checkpoint450"))
+    ui_build = "450" if checkpoint450 else ("449" if team449 else "448")
+    ui_name = (
+        "Investigation Workflow Hard Checkpoint"
+        if checkpoint450
+        else ("Human Review & Team Workflow" if team449 else "Investigator Workspace")
+    )
     review_note = " · formales Vier-Augen-Review aktiv" if team449 else ""
     return f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye Build {ui_build} · {_e(case.get("title"))}</title><style>{CSS}</style></head><body><div class="app"><aside class="side"><div class="brand"><div class="logo">EE</div><div><b>EagleEye</b><small>Build {ui_build} · {ui_name}</small></div></div><nav class="nav" aria-label="Hauptnavigation">{nav}</nav><div class="side-foot">Case-first · provenance-first · review-first{review_note}<br><a href="/legacy">Legacy/Expert Workspace</a><br>Build 447 Evidence/Claims/Dossier integriert.</div></aside><main class="main"><header class="top"><div><h1>{_e(dict(VIEWS).get(view))}</h1><p>{_e(case.get("title"))} · Benutzer: {_e(snapshot.get("actor"))}</p></div>{selector}</header>{_flow(snapshot,case_id)}{content}<div id="workspace-status" class="statusline" aria-live="polite"></div><footer class="footer">Anzeige gespeicherter Daten ≠ unabhängige Verifikation. Evidence, Claims und Hypothesen bleiben unterscheidbar; keine automatische Wahrheitsfeststellung, Identitätsbestätigung, Kausalitäts- oder Schuldzuweisung.</footer></main></div><script src="/assets/build448/workspace.js"></script></body></html>'''
 
