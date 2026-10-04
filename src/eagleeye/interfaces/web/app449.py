@@ -51,6 +51,7 @@ def create_workspace_app449(*, base_dir=None):
         "/api/build447/claims/{claim_id}/review",
         "/api/build447/dossiers/{revision_id}/review",
         "/api/build447/dossiers/{revision_id}/export",
+        "/api/build447/cases/{case_id}/selftest",
     ):
         _drop(app, path, {"POST"})
 
