@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 
 from fastapi import HTTPException, Request
@@ -18,11 +19,27 @@ _FORM_MEDIA_TYPES = {"multipart/form-data", "application/x-www-form-urlencoded"}
 
 def _route_body_requires_payload_guard(route):
     body_field = getattr(route, "body_field", None)
-    if body_field is None:
+    if body_field is not None:
+        field_info = getattr(body_field, "field_info", None)
+        media_type = str(getattr(field_info, "media_type", "") or "").split(";", 1)[0].strip().lower()
+        return media_type not in _FORM_MEDIA_TYPES
+
+    # Several inherited endpoints intentionally accept Request directly and
+    # call await request.json(), so FastAPI does not expose a body_field.
+    # Detect those handlers by their actual implementation instead of assuming
+    # that "no body_field" means "no JSON body".
+    endpoint = getattr(route, "endpoint", None)
+    if endpoint is None:
         return False
-    field_info = getattr(body_field, "field_info", None)
-    media_type = str(getattr(field_info, "media_type", "") or "").split(";", 1)[0].strip().lower()
-    return media_type not in _FORM_MEDIA_TYPES
+    try:
+        source = inspect.getsource(endpoint)
+    except (OSError, TypeError):
+        source = ""
+    compact = "".join(source.split())
+    if ".json()" in compact:
+        return True
+    code = getattr(endpoint, "__code__", None)
+    return bool(code and "json" in set(getattr(code, "co_names", ()) or ()))
 
 
 def _route_requires_payload_guard(app, scope):
