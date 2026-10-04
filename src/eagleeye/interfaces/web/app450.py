@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from fastapi import HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from .app448 import COOKIE, render_workspace
 from .app449 import _drop, create_workspace_app449
@@ -82,11 +82,65 @@ def create_workspace_app450(*, base_dir=None):
             raise HTTPException(400, str(exc))
         raise exc
 
-    def visible_cases(identity):
-        marked = {
+    def qualification_case_ids():
+        return {
             str(row["case_id"])
             for row in ctx.db.all("SELECT case_id FROM phase20_qualification_case_450")
         }
+
+    def qualification_case_for_path(request):
+        # Build-450 checkpoint read endpoints are allowed to report qualification
+        # status. Every inherited operational/legacy route is denied when its
+        # path or referenced object resolves to a marked qualification case.
+        path = str(request.url.path or "")
+        if path.startswith("/api/build450/"):
+            return ""
+        marked = qualification_case_ids()
+        requested = str(request.query_params.get("case_id") or "")
+        if requested in marked:
+            return requested
+        tokens = {x for x in path.split("/") if x}
+        for case_id in marked:
+            if case_id in tokens:
+                return case_id
+        lookups = (
+            ("evidence_item_447", "evidence_id"),
+            ("claim_447", "claim_id"),
+            ("dossier_revision_447", "revision_id"),
+            ("review_request_449", "review_id"),
+            ("review_export_execution_449", "execution_id"),
+            ("phase19_ai_loop_439", "loop_id"),
+            ("live_ai_dispatch_446", "dispatch_id"),
+            ("live_ai_execution_446", "execution_id"),
+        )
+        for table, key in lookups:
+            for token in tokens:
+                row = ctx.db.one(
+                    f"SELECT case_id FROM {table} WHERE {key}=?",
+                    (token,),
+                )
+                if row and str(row.get("case_id") or "") in marked:
+                    return str(row.get("case_id") or "")
+        return ""
+
+    @app.middleware("http")
+    async def isolate_qualification_cases450(request: Request, call_next):
+        case_id = qualification_case_for_path(request)
+        if case_id:
+            message = "Build-450 qualification cases are isolated from operational and legacy routes"
+            if str(request.url.path).startswith("/api/"):
+                return JSONResponse({"detail": message}, status_code=403)
+            return HTMLResponse(
+                "<!doctype html><html lang=\"de\"><body><main>"
+                "<h1>Qualifikationsfall isoliert</h1>"
+                "<p>Dieser Build-450-Qualifikationsfall ist nicht über operative oder Legacy-Routen zugänglich.</p>"
+                "</main></body></html>",
+                status_code=403,
+            )
+        return await call_next(request)
+
+    def visible_cases(identity):
+        marked = qualification_case_ids()
         return [
             item
             for item in ctx.team_governance_359.visible_cases(identity)
