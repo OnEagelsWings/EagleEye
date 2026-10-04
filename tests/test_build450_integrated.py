@@ -317,6 +317,39 @@ def test_build450_corrupt_export_artifact_invalidates_checkpoint_status(tmp_path
         assert status["investigation_workflow_checkpoint_pass"] is False
 
 
+
+def test_build450_artifact_read_errors_fail_closed_without_status_exception(tmp_path, monkeypatch):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        workflow = result["report"]["workflow_selftest"]
+        docx_path = Path(workflow["artifact_paths"]["docx"])
+        package_path = Path(workflow["artifact_paths"]["case_package"])
+        original_read_bytes = Path.read_bytes
+        blocked = {docx_path}
+
+        def guarded_read_bytes(path):
+            if Path(path) in blocked:
+                raise OSError("synthetic Build-450 artifact read failure")
+            return original_read_bytes(path)
+
+        monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_artifacts_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
+        blocked.clear()
+        blocked.add(package_path)
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_artifacts_valid"] is False
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
+
 def test_build450_required_component_tamper_invalidates_existing_pass(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, reviewer, case, _a, _r = setup_qualification_case(ctx)
