@@ -174,15 +174,24 @@ def create_workspace_app450(*, base_dir=None):
         for case_id in marked:
             if case_id in tokens:
                 return case_id
+        # Resolve every current case-bound identifier class that can be
+        # exposed through inherited ID-only operational routes. Qualification
+        # isolation must not depend on the literal case_id being present in the
+        # URL or JSON payload.
         lookups = (
+            ("acquisition_event_422", "event_id"),
+            ("content_observation_423", "observation_id"),
+            ("crawl_task_425", "task_id"),
+            ("news_item_429", "news_item_id"),
+            ("social_observation_432", "observation_id"),
+            ("phase19_ai_loop_439", "loop_id"),
+            ("live_ai_dispatch_446", "dispatch_id"),
+            ("live_ai_execution_446", "execution_id"),
             ("evidence_item_447", "evidence_id"),
             ("claim_447", "claim_id"),
             ("dossier_revision_447", "revision_id"),
             ("review_request_449", "review_id"),
             ("review_export_execution_449", "execution_id"),
-            ("phase19_ai_loop_439", "loop_id"),
-            ("live_ai_dispatch_446", "dispatch_id"),
-            ("live_ai_execution_446", "execution_id"),
         )
         for table, key in lookups:
             for token in tokens:
@@ -217,6 +226,7 @@ def create_workspace_app450(*, base_dir=None):
                 if str(key).lower() in {
                     "case_id", "object_id", "review_id", "evidence_id", "claim_id",
                     "revision_id", "loop_id", "dispatch_id", "execution_id",
+                    "event_id", "observation_id", "task_id", "news_item_id",
                 } and isinstance(item, (str, int)):
                     out.add(str(item))
                 out.update(payload_tokens(item))
