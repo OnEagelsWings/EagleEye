@@ -149,17 +149,15 @@ def create_workspace_app450(*, base_dir=None):
     async def isolate_qualification_cases450(request: Request, call_next):
         case_id = qualification_case_for_path(request)
         if not case_id and request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"} and not str(request.url.path).startswith("/api/build450/"):
-            content_type = str(request.headers.get("content-type") or "").lower()
-            if "application/json" in content_type:
-                raw = await request.body()
-                try:
-                    payload = json.loads(raw.decode("utf-8")) if raw else {}
-                except Exception:
-                    payload = {}
-                case_id = qualification_case_for_tokens(
-                    payload_tokens(payload),
-                    qualification_case_ids(),
-                )
+            raw = await request.body()
+            try:
+                payload = json.loads(raw.decode("utf-8")) if raw else {}
+            except Exception:
+                payload = {}
+            case_id = qualification_case_for_tokens(
+                payload_tokens(payload),
+                qualification_case_ids(),
+            )
         if case_id:
             message = "Build-450 qualification cases are isolated from operational and legacy routes"
             if str(request.url.path).startswith("/api/"):
