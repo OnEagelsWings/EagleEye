@@ -872,7 +872,12 @@ class InvestigationWorkflowHardCheckpoint450:
         if not row:
             return None
         out = dict(row)
-        out["report"] = json.loads(out["report_json"])
+        try:
+            out["report"] = json.loads(out.get("report_json") or "{}")
+            out["report_decode_error"] = False
+        except Exception:
+            out["report"] = {}
+            out["report_decode_error"] = True
         return out
 
     def verify_integrity(self):
@@ -898,6 +903,11 @@ class InvestigationWorkflowHardCheckpoint450:
                 report = json.loads(run.get("report_json") or "{}")
             except Exception:
                 report = {}
+                bad.append({
+                    "qualification_id": run.get("qualification_id"),
+                    "table": "phase20_workflow_qualification_run_450",
+                    "reason": "report_json_invalid",
+                })
             qcase = report.get("qualification_case") or {}
             case_id = str(run.get("case_id") or "")
             marker = self.db.one(
