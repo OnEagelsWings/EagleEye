@@ -594,9 +594,6 @@ class HumanReviewTeamWorkflow449:
         if str(confirmation or "").strip().upper() != "EXPORT DOSSIER 447":
             raise PermissionError("explicit EXPORT DOSSIER 447 confirmation required")
 
-        # Reserve the one-shot approval before any files are written. The UNIQUE
-        # review_id constraint makes concurrent execution attempts fail before
-        # closure447.export_dossier can create duplicate artifacts.
         reserved = {
             "execution_id": "rexec449_" + secrets.token_hex(10),
             "review_id": str(review_id),
