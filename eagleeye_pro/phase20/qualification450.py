@@ -441,6 +441,78 @@ class InvestigationWorkflowHardCheckpoint450:
             {"paths": paths, "hashes": hashes, "package_hash": package_hash}
         )["valid"]
 
+    def _bound_workflow_rows_valid(self, last):
+        if not last:
+            return {"valid": False, "violations": [{"reason": "qualification_run_missing"}]}
+        workflow = (last.get("report") or {}).get("workflow_selftest") or {}
+        case_id = str(last.get("case_id") or "")
+        reviewer = str(workflow.get("reviewer") or "")
+        executor = str(workflow.get("executor") or "")
+        violations = []
+
+        def row(table, key, value, label):
+            if not value:
+                violations.append({"reason": f"{label}_id_missing"})
+                return None
+            found = self.db.one(f"SELECT * FROM {table} WHERE {key}=?", (str(value),))
+            if not found:
+                violations.append({"reason": f"{label}_row_missing", "id": str(value)})
+                return None
+            item = dict(found)
+            if str(item.get("case_id") or "") != case_id:
+                violations.append({"reason": f"{label}_case_mismatch", "id": str(value)})
+            return item
+
+        evidence = row("evidence_item_447", "evidence_id", workflow.get("evidence_id"), "evidence")
+        claim = row("claim_447", "claim_id", workflow.get("claim_id"), "claim")
+        dossier = row("dossier_revision_447", "revision_id", workflow.get("revision_id"), "dossier")
+        export = row("dossier_export_447", "export_id", workflow.get("export_id"), "export")
+        evidence_review = row("review_request_449", "review_id", workflow.get("evidence_review_id"), "evidence_review")
+        claim_review = row("review_request_449", "review_id", workflow.get("claim_review_id"), "claim_review")
+        dossier_review = row("review_request_449", "review_id", workflow.get("dossier_review_id"), "dossier_review")
+        export_review = row("review_request_449", "review_id", workflow.get("export_review_id"), "export_review")
+        export_execution = row("review_export_execution_449", "execution_id", workflow.get("export_execution_id"), "export_execution")
+
+        if evidence and (evidence.get("review_state") != "accepted" or str(evidence.get("reviewed_by") or "") != reviewer):
+            violations.append({"reason": "evidence_review_binding_invalid"})
+        if claim:
+            if claim.get("state") != "accepted_for_dossier" or str(claim.get("reviewed_by") or "") != reviewer:
+                violations.append({"reason": "claim_review_binding_invalid"})
+            if evidence and not self.db.one(
+                "SELECT 1 FROM claim_evidence_link_447 WHERE claim_id=? AND evidence_id=? AND stance='support'",
+                (str(claim["claim_id"]), str(evidence["evidence_id"])),
+            ):
+                violations.append({"reason": "claim_support_link_missing"})
+        if dossier and (dossier.get("state") != "approved_for_export" or str(dossier.get("reviewed_by") or "") != reviewer):
+            violations.append({"reason": "dossier_review_binding_invalid"})
+        for item, kind, object_id in (
+            (evidence_review, "evidence", workflow.get("evidence_id")),
+            (claim_review, "claim", workflow.get("claim_id")),
+            (dossier_review, "dossier", workflow.get("revision_id")),
+            (export_review, "dossier_export", workflow.get("revision_id")),
+        ):
+            if item and (
+                str(item.get("object_type") or "") != kind
+                or str(item.get("object_id") or "") != str(object_id or "")
+                or str(item.get("completed_by") or "") != reviewer
+                or str(item.get("state") or "") != "completed"
+            ):
+                violations.append({"reason": f"{kind}_review_relationship_invalid"})
+        if export and (
+            str(export.get("revision_id") or "") != str(workflow.get("revision_id") or "")
+            or str(export.get("package_hash") or "") != str(workflow.get("package_hash") or "")
+        ):
+            violations.append({"reason": "dossier_export_binding_invalid"})
+        if export_execution and (
+            str(export_execution.get("review_id") or "") != str(workflow.get("export_review_id") or "")
+            or str(export_execution.get("export_id") or "") != str(workflow.get("export_id") or "")
+            or str(export_execution.get("revision_id") or "") != str(workflow.get("revision_id") or "")
+            or str(export_execution.get("executed_by") or "") != executor
+            or str(export_execution.get("package_hash") or "") != str(workflow.get("package_hash") or "")
+        ):
+            violations.append({"reason": "export_execution_binding_invalid"})
+        return {"valid": not violations, "violations": violations}
+
     def _new_evidence(self, before_ids, case_id):
         rows = self.services["closure447"].case_evidence(str(case_id))
         candidates = [
@@ -641,7 +713,11 @@ class InvestigationWorkflowHardCheckpoint450:
             "evidence_id": reviewed_evidence["evidence_id"],
             "claim_id": claim["claim_id"],
             "revision_id": dossier["revision_id"],
+            "evidence_review_id": evidence_request["review_id"],
+            "claim_review_id": claim_request["review_id"],
+            "dossier_review_id": dossier_request["review_id"],
             "export_review_id": export_request["review_id"],
+            "export_execution_id": exported["execution"]["execution_id"],
             "export_id": exported["export"]["export_id"],
             "package_hash": exported["export"]["package_hash"],
             "artifact_paths": dict(exported["export"].get("paths") or {}),
@@ -888,12 +964,14 @@ class InvestigationWorkflowHardCheckpoint450:
         authority = self._authority_contract(self._statuses())
         local_integrity = self.verify_integrity()
         artifacts_valid = self._latest_artifacts_valid(last) if last else False
+        bound_rows = self._bound_workflow_rows_valid(last) if last else {"valid": False, "violations": [{"reason": "qualification_run_missing"}]}
         current_components_valid = all(component_checks.values())
         checkpoint_pass = bool(
             local_integrity["valid"]
             and current_components_valid
             and authority["pass"]
             and artifacts_valid
+            and bound_rows["valid"]
             and last
             and last["engineering_result"] == "pass"
         )
@@ -922,6 +1000,8 @@ class InvestigationWorkflowHardCheckpoint450:
             "current_component_integrity_valid": current_components_valid,
             "current_authority_contract_valid": authority["pass"],
             "qualified_artifacts_valid": artifacts_valid,
+            "qualified_workflow_rows_valid": bound_rows["valid"],
+            "qualified_workflow_row_violations": bound_rows["violations"],
             "last_engineering_result": last["engineering_result"] if last else None,
             "last_external_validation_result": last["external_validation_result"] if last else None,
             "last_release_result": last["release_result"] if last else None,
