@@ -873,11 +873,19 @@ class InvestigationWorkflowHardCheckpoint450:
             return None
         out = dict(row)
         try:
-            out["report"] = json.loads(out.get("report_json") or "{}")
-            out["report_decode_error"] = False
+            decoded = json.loads(out.get("report_json") or "{}")
+            if not isinstance(decoded, dict):
+                out["report"] = {}
+                out["report_decode_error"] = True
+                out["report_structure_error"] = True
+            else:
+                out["report"] = decoded
+                out["report_decode_error"] = False
+                out["report_structure_error"] = False
         except Exception:
             out["report"] = {}
             out["report_decode_error"] = True
+            out["report_structure_error"] = False
         return out
 
     def verify_integrity(self):
@@ -901,6 +909,13 @@ class InvestigationWorkflowHardCheckpoint450:
             run = dict(row)
             try:
                 report = json.loads(run.get("report_json") or "{}")
+                if not isinstance(report, dict):
+                    bad.append({
+                        "qualification_id": run.get("qualification_id"),
+                        "table": "phase20_workflow_qualification_run_450",
+                        "reason": "report_json_not_object",
+                    })
+                    report = {}
             except Exception:
                 report = {}
                 bad.append({
@@ -909,6 +924,13 @@ class InvestigationWorkflowHardCheckpoint450:
                     "reason": "report_json_invalid",
                 })
             qcase = report.get("qualification_case") or {}
+            if not isinstance(qcase, dict):
+                bad.append({
+                    "qualification_id": run.get("qualification_id"),
+                    "table": "phase20_workflow_qualification_run_450",
+                    "reason": "qualification_case_report_not_object",
+                })
+                qcase = {}
             case_id = str(run.get("case_id") or "")
             marker = self.db.one(
                 "SELECT * FROM phase20_qualification_case_450 WHERE case_id=?",
