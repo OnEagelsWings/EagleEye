@@ -876,13 +876,13 @@ def test_build450_manual_request_json_route_cannot_mutate_qualification_case(tmp
         )
         assert response.status_code == 403
         assert "isolated" in response.json()["detail"].lower()
-    after = int(
-        (ctx.db.one(
-            "SELECT COUNT(*) n FROM crawl_task_425 WHERE case_id=?",
-            (case["case_id"],),
-        ) or {}).get("n") or 0
-    )
-    assert after == before
+        after = int(
+            (ctx.db.one(
+                "SELECT COUNT(*) n FROM crawl_task_425 WHERE case_id=?",
+                (case["case_id"],),
+            ) or {}).get("n") or 0
+        )
+        assert after == before
 
 
 def test_build450_utf16_json_payload_cannot_bypass_qualification_isolation(tmp_path):
