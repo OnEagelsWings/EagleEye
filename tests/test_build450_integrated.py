@@ -792,6 +792,42 @@ def test_build450_non_object_report_json_fails_closed_without_status_exception(t
         integrity = ctx.investigation_workflow_qualification_450.verify_integrity()
         assert any(x["reason"] == "report_json_not_object" for x in integrity["violations"])
 
+
+def test_build450_payload_isolation_does_not_trust_content_type(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
+    result = ctx.build450.qualify_investigation_workflow_450(
+        identity=admin,
+        case_id=case["case_id"],
+        reviewer_session_token=reviewer_session.token,
+        reviewer_client_fingerprint=FP_REVIEWER,
+    )
+    revision_id = result["report"]["workflow_selftest"]["revision_id"]
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    body = (
+        '{"object_type":"dossier_export","object_id":"'
+        + revision_id
+        + '","note":"media type isolation regression","assigned_to":""}'
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.post(
+            "/api/build449/reviews",
+            headers={
+                "sec-fetch-site": "same-origin",
+                "content-type": "text/plain",
+            },
+            content=body,
+        )
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+
 def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as ctx:
         _bootstrap, _reviewer_user, _admin, _reviewer, _a, _r = setup_users(ctx)
