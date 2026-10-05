@@ -258,7 +258,9 @@ def test_status_truthfully_distinguishes_logical_from_process_isolation(tmp_path
         assert status["single_concurrent_live_worker"]
         assert status["ephemeral_transport_per_live_run"]
         assert status["shared_cookie_or_session_state"] is False
-        assert status["process_isolation"] is False
+        assert status["process_isolation"] is True
+        assert status["os_sandbox_qualified"] is False
+        assert status["malware_scanner_qualified"] is False
         assert status["external_validation_requires_explicit_confirmation"]
         assert status["automatic_external_validation"] is False
         assert status["production_release_ready"] is False
