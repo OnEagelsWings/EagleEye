@@ -30,3 +30,6 @@ Current roadmap:
 - next phase is determined from checkpoint findings
 
 See `README_BUILD_450_0.md`, `BUILD_450_CASE_TEST.md`, and `RELEASE_MANIFEST_BUILD_450_0.json`.
+
+The retained checkpoint launcher `EAGLEEYE_PRO_450_0.py` remains available for
+Build-450 workspace compatibility. The default launchers start Build 451.
