@@ -52,23 +52,26 @@ jobs:
       - name: Start isolated CI scanner
         run: |
           cat > "$RUNNER_TEMP/clamd451.conf" <<EOF
-          LocalSocket $RUNNER_TEMP/clamd451.sock
+          LocalSocket /run/clamav/clamd451.sock
           LocalSocketMode 666
           DatabaseDirectory /var/lib/clamav
-          PidFile $RUNNER_TEMP/clamd451.pid
-          LogFile $RUNNER_TEMP/clamd451.log
+          PidFile /run/clamav/clamd451.pid
+          LogFile /var/log/clamav/clamd451.log
+          User clamav
           Foreground no
           StreamMaxLength 2M
           EOF
-          sudo clamd --config-file="$RUNNER_TEMP/clamd451.conf"
-          python -c "import os,time; p=os.environ['RUNNER_TEMP']+'/clamd451.sock'; deadline=time.monotonic()+30; exec('while not os.path.exists(p) and time.monotonic()<deadline: time.sleep(0.2)'); assert os.path.exists(p)"
+          sudo install -d -o clamav -g clamav /run/clamav
+          sudo install -m 644 "$RUNNER_TEMP/clamd451.conf" /etc/clamav/clamd451.conf
+          sudo clamd --config-file=/etc/clamav/clamd451.conf
+          python -c "import os,time; p='/run/clamav/clamd451.sock'; deadline=time.monotonic()+30; exec('while not os.path.exists(p) and time.monotonic()<deadline: time.sleep(0.2)'); assert os.path.exists(p)"
       - name: Real engine benign and EICAR intake gate
         env:
-          EAGLEEYE_TEST_CLAMD_SOCKET: ${{ runner.temp }}/clamd451.sock
+          EAGLEEYE_TEST_CLAMD_SOCKET: /run/clamav/clamd451.sock
         run: python -m pytest -q tests/test_build451_operating_profile.py -k real_clamd
       - name: Stop CI scanner
         if: always()
         run: |
-          if [ -f "$RUNNER_TEMP/clamd451.pid" ]; then
-            sudo kill "$(cat "$RUNNER_TEMP/clamd451.pid")" || true
+          if [ -f /run/clamav/clamd451.pid ]; then
+            sudo kill "$(cat /run/clamav/clamd451.pid)" || true
           fi
