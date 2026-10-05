@@ -10,7 +10,7 @@ root = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(root), str(root / "src")]
 
 from eagleeye_pro.phase19.surface_retrieval441 import PinnedSurfaceTransport441
-from eagleeye_pro.phase20.retrieval_isolation451 import validate_request451
+from eagleeye_pro.phase20.retrieval_isolation451 import validate_request451, worker_error_category451
 
 
 def main():
@@ -35,6 +35,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        # Parent receives failure only; no upstream content/credentials in stderr.
+    except Exception as exc:
+        # Fixed category only; no upstream content/credentials/exception text.
+        sys.stdout.write(json.dumps({"error": worker_error_category451(exc)}))
         sys.exit(1)

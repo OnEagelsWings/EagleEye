@@ -1,13 +1,28 @@
 import base64
+import gzip
+import io
 import json
 import os
+import ssl
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 
 import pytest
 
 from eagleeye_pro.phase20 import retrieval_isolation451 as module
+
+
+def archive_samples():
+    payload = io.BytesIO()
+    with tarfile.open(fileobj=payload, mode="w") as archive:
+        entry = tarfile.TarInfo("public.txt")
+        entry.size = 4
+        archive.addfile(entry, io.BytesIO(b"text"))
+    return [gzip.compress(b"public text"), payload.getvalue(),
+            b"BZh9archive", b"\xfd7zXZ\x00archive", b"\x28\xb5\x2f\xfdarchive",
+            b"PK\x05\x06" + b"\x00" * 18]
 
 
 def request(**changes):
@@ -39,7 +54,8 @@ def test_actual_worker_rejects_private_request_without_contacting_network(tmp_pa
                             capture_output=True, env=module.worker_environment451(),
                             cwd=tmp_path, timeout=10)
     assert result.returncode == 1
-    assert result.stdout == result.stderr == b""
+    assert json.loads(result.stdout) == {"error": "invalid_request"}
+    assert result.stderr == b""
 
 
 def test_response_and_process_boundary(monkeypatch):
@@ -140,14 +156,15 @@ def test_content_gate_is_case_insensitive_for_mime():
         module.inspect_response451(b"hidden", {"Content-Type": "APPLICATION/X-MSDOWNLOAD"})
 
 
-def test_quarantine_blocks_content_and_persists_failure_in_acquisition(tmp_path, monkeypatch):
+@pytest.mark.parametrize("unsafe_body", [b"MZunsafe source content", *archive_samples()[:2]])
+def test_quarantine_blocks_content_and_persists_failure_in_acquisition(tmp_path, monkeypatch, unsafe_body):
     from eagleeye_pro.core.app_context import AppContext
     from test_build441_integrated import ident, case, source_and_task, resolver
 
     def run(args, **kwargs):
         payload = json.loads(kwargs["input"])
         body = (b"User-agent: *\nAllow: /\n" if payload["url"].endswith("/robots.txt")
-                else b"MZunsafe source content")
+                else unsafe_body)
         response = dict(url=payload["url"], status=200,
                         headers={"content-type": "text/plain"}, elapsed_ms=1,
                         body=base64.b64encode(body).decode())
@@ -202,3 +219,80 @@ def test_all_public_phase20_live_entrypoints_choose_process_transport():
             assert isinstance(transports[0], ast.Call)
             assert isinstance(transports[0].func, ast.Name)
             assert transports[0].func.id == "ProcessSurfaceTransport451"
+
+
+
+
+@pytest.mark.parametrize("body", archive_samples())
+def test_common_archives_quarantined_even_when_mislabeled_text(body):
+    with pytest.raises(module.ContentQuarantined451):
+        module.inspect_response451(body, {"content-type": "text/plain"})
+
+
+@pytest.mark.parametrize("media", ["application/gzip", "application/x-gzip",
+    "application/x-tar", "application/x-bzip2", "application/x-xz", "application/zstd"])
+def test_archive_mime_is_quarantined_even_without_complete_magic(media):
+    with pytest.raises(module.ContentQuarantined451):
+        module.inspect_response451(b"truncated archive", {"content-type": media})
+
+
+@pytest.mark.parametrize("category,error_type", [
+    ("timeout", TimeoutError), ("connection", ConnectionError), ("os_error", OSError),
+])
+def test_transient_worker_failure_preserves_bounded_retry(monkeypatch, category, error_type):
+    from eagleeye_pro.phase20.surface_hardening442 import RetryingTransport442
+    calls, records = [], []
+    def run(args, **kwargs):
+        calls.append(args)
+        if len(calls) < 3:
+            return subprocess.CompletedProcess(args, 1, json.dumps({"error": category}).encode(), b"")
+        response = dict(url="https://example.org/", status=200, headers={"content-type": "text/plain"},
+                        elapsed_ms=1, body=base64.b64encode(b"recovered").decode())
+        return subprocess.CompletedProcess(args, 0, json.dumps(response).encode(), b"")
+    monkeypatch.setattr(module.subprocess, "run", run)
+    inner = module.ProcessSurfaceTransport451()
+    retry = RetryingTransport442(inner, recorder=lambda **r: records.append(r),
+                                sleeper=lambda _: None, max_attempts=3)
+    assert retry.fetch(**request()).body == b"recovered"
+    assert len(calls) == 3
+    assert records[0]["error_class"] == error_type.__name__
+    assert records[0]["transient"] is True
+
+
+@pytest.mark.parametrize("category", ["tls_certificate", "invalid_request", "worker_failure", "unknown"])
+def test_permanent_worker_failure_is_never_retried(monkeypatch, category):
+    from eagleeye_pro.phase20.surface_hardening442 import RetryingTransport442
+    calls = []
+    def run(args, **kwargs):
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 1, json.dumps({"error": category}).encode(), b"")
+    monkeypatch.setattr(module.subprocess, "run", run)
+    retry = RetryingTransport442(module.ProcessSurfaceTransport451(),
+                                recorder=lambda **_: None, sleeper=lambda _: None, max_attempts=3)
+    with pytest.raises((RuntimeError, ssl.SSLCertVerificationError)):
+        retry.fetch(**request())
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("exc,category", [
+    (ssl.SSLCertVerificationError("secret"), "tls_certificate"),
+    (TimeoutError("secret"), "timeout"), (ConnectionResetError("secret"), "connection"),
+    (OSError("secret"), "os_error"), (PermissionError("secret"), "invalid_request"),
+    (ValueError("secret"), "invalid_request"), (RuntimeError("secret"), "worker_failure"),
+])
+def test_worker_error_categories_contain_no_exception_text(exc, category):
+    assert module.worker_error_category451(exc) == category
+
+
+def test_transient_worker_failure_stops_at_retry_budget(monkeypatch):
+    from eagleeye_pro.phase20.surface_hardening442 import RetryingTransport442
+    calls = []
+    def run(args, **kwargs):
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 1, b'{"error":"connection"}', b"")
+    monkeypatch.setattr(module.subprocess, "run", run)
+    retry = RetryingTransport442(module.ProcessSurfaceTransport451(),
+                                recorder=lambda **_: None, sleeper=lambda _: None, max_attempts=3)
+    with pytest.raises(ConnectionError):
+        retry.fetch(**request())
+    assert len(calls) == 3

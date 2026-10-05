@@ -10,6 +10,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import ssl
 from pathlib import Path
 import subprocess
 import sys
@@ -93,10 +94,65 @@ def inspect_response451(body, headers):
     blocked = {"application/x-msdownload", "application/x-dosexec",
                "application/x-executable", "application/x-sharedlib",
                "application/zip", "application/x-7z-compressed",
-               "application/x-rar-compressed"}
-    if media in blocked or body.startswith((b"MZ", b"\x7fELF", b"PK\x03\x04",
-                                           b"7z\xbc\xaf\x27\x1c", b"Rar!")):
+               "application/x-rar-compressed", "application/vnd.rar",
+               "application/gzip", "application/x-gzip", "application/x-tar",
+               "application/x-gtar", "application/x-bzip", "application/x-bzip2",
+               "application/x-xz", "application/zstd", "application/x-zstd",
+               "application/x-compress", "application/x-lzip", "application/x-cpio",
+               "application/x-archive", "application/vnd.ms-cab-compressed",
+               "application/x-iso9660-image"}
+    signatures = (b"MZ", b"\x7fELF", b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08",
+                  b"7z\xbc\xaf\x27\x1c", b"Rar!", b"\x1f\x8b", b"\x1f\x9d",
+                  b"BZh", b"\xfd7zXZ\x00", b"\x28\xb5\x2f\xfd", b"LZIP",
+                  b"MSCF", b"!<arch>\n", b"070701", b"070702", b"070707")
+    # POSIX tar identifies itself at byte 257, not at the start of the payload.
+    tar = len(body) >= 512 and body[257:262] == b"ustar"
+    # Older tar formats have no magic; recognize their checksummed header.
+    if len(body) >= 512 and not tar:
+        checksum = body[148:156].strip(b"\x00 ")
+        if checksum and all(byte in b"01234567" for byte in checksum):
+            expected = sum(body[:148]) + 8 * ord(" ") + sum(body[156:512])
+            tar = int(checksum, 8) == expected
+    iso = len(body) >= 32774 and body[32769:32774] == b"CD001"
+    if media in blocked or body.startswith(signatures) or tar or iso:
         raise ContentQuarantined451(body, media)
+
+
+def worker_error_category451(exc):
+    """Fixed IPC categories only: never transmit exception text or source data."""
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        return "tls_certificate"
+    if isinstance(exc, (PermissionError, ValueError)):
+        return "invalid_request"
+    if isinstance(exc, TimeoutError):
+        return "timeout"
+    if isinstance(exc, ConnectionError):
+        return "connection"
+    if isinstance(exc, OSError):
+        return "os_error"
+    return "worker_failure"
+
+
+def raise_worker_error451(result):
+    if result.returncode != 1 or len(result.stdout) > 1024:
+        raise RuntimeError("retrieval worker failed; response withheld")
+    try:
+        response = json.loads(result.stdout)
+    except (ValueError, UnicodeError):
+        raise RuntimeError("retrieval worker failed; response withheld") from None
+    if not isinstance(response, dict) or set(response) != {"error"}:
+        raise RuntimeError("retrieval worker failure protocol invalid")
+    category = response["error"]
+    if category == "tls_certificate":
+        raise ssl.SSLCertVerificationError("retrieval worker TLS certificate rejected")
+    if category == "timeout":
+        raise TimeoutError("retrieval worker network timeout")
+    if category == "connection":
+        raise ConnectionError("retrieval worker connection failure")
+    if category == "os_error":
+        raise OSError("retrieval worker network OS failure")
+    # Invalid requests, protocol errors and all unknown categories are nonretryable.
+    raise RuntimeError("retrieval worker failed; response withheld")
 
 
 class ProcessSurfaceTransport451:
@@ -143,7 +199,7 @@ class ProcessSurfaceTransport451:
             except subprocess.TimeoutExpired as exc:
                 raise TimeoutError("retrieval worker exceeded wall-clock budget") from exc
         if result.returncode != 0:
-            raise RuntimeError("retrieval worker failed; response withheld")
+            raise_worker_error451(result)
         if len(result.stdout) > MAX_BYTES_HARD * 2 + 65_536:
             raise ValueError("retrieval response exceeds IPC budget")
         response = json.loads(result.stdout)

@@ -20,6 +20,21 @@ Status: implementation in progress, PR #39; released version remains Build 450.
 - The Build-445 checkpoint and test distinguish implemented process separation
   from unqualified OS sandbox and malware scanning; those gaps remain visible.
 
+## Current-head Codex findings and regression fixes
+
+Review of `0a248865ea` found two valid issues after all three CI workflows passed:
+P1 archive signatures were incomplete; P2 worker exceptions lost retry categories.
+The fixes recognize gzip, tar (offset-based POSIX and checksummed legacy headers),
+bzip2, xz, zstd and further common archive MIME/signature variants before intake.
+Integration tests prove mislabeled gzip/tar payloads produce failed acquisition,
+persist quarantine metadata after restart and create no content observations.
+
+The worker now returns only bounded fixed error categories. Transient timeout,
+connection and OS failures retain Build-442 bounded retries; TLS certificate,
+request, protocol and unknown errors do not retry. No exception text, source
+payload or credentials are emitted in the error protocol. Tests cover recovery,
+budget exhaustion and permanent-failure refusal.
+
 ## Validation and remaining acceptance
 
 Local worker tests and Linux wheel startup passed. The current iteration's
