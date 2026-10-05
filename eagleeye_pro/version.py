@@ -1,3 +1,3 @@
-BUILD = "449.0"
-SCHEMA_VERSION = "449.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 449.0 Human Review Team Workflow"
+BUILD = "450.0"
+SCHEMA_VERSION = "450.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 450.0 Investigation Workflow Hard Checkpoint"
