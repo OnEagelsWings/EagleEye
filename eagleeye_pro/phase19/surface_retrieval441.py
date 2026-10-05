@@ -798,6 +798,7 @@ class ControlledSurfaceRetrieval441:
                     "tls_validation": urlsplit(outcome["final_url"]).scheme == "https",
                     "execution_mode": execution_mode,
                     "transport_kind": str(getattr(transport, "transport_kind", type(transport).__name__)),
+                    "retrieval_security451": getattr(transport, "security_report", {}),
                 },
                 usage={
                     "public_only": True,

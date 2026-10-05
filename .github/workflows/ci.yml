@@ -21,8 +21,8 @@ jobs:
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye_pro.version import BUILD; print(BUILD)"
       - name: Build 450 integrated tests
         run: pytest -q tests/test_build450_integrated.py
-      - name: Build 451 retrieval isolation foundation
-        run: pytest -q tests/test_build451_retrieval_isolation.py
+      - name: Build 451 retrieval isolation and operating profile
+        run: pytest -q tests/test_build451_retrieval_isolation.py tests/test_build451_operating_profile.py
       - name: Phase 19/20 current regression 421-450
         run: pytest -q tests/test_build421_integrated.py tests/test_build422_integrated.py tests/test_build423_integrated.py tests/test_build424_integrated.py tests/test_build425_integrated.py tests/test_build426_integrated.py tests/test_build427_integrated.py tests/test_build428_integrated.py tests/test_build429_integrated.py tests/test_build430_integrated.py tests/test_build431_integrated.py tests/test_build432_integrated.py tests/test_build433_integrated.py tests/test_build434_integrated.py tests/test_build435_integrated.py tests/test_build436_integrated.py tests/test_build437_integrated.py tests/test_build438_integrated.py tests/test_build439_integrated.py tests/test_build440_integrated.py tests/test_build441_integrated.py tests/test_build442_integrated.py tests/test_build443_integrated.py tests/test_build444_integrated.py tests/test_build445_integrated.py tests/test_build446_integrated.py tests/test_build447_integrated.py tests/test_build448_integrated.py tests/test_build449_integrated.py tests/test_build450_integrated.py
       - name: Phase 18/19/20 current-chain regression 413-450

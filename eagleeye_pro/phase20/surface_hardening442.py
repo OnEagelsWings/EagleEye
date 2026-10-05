@@ -123,6 +123,10 @@ class RetryingTransport442:
         self.attempts = 0
 
     @property
+    def security_report(self):
+        return getattr(self.inner, "security_report", {})
+
+    @property
     def _inner_kind(self):
         return str(getattr(self.inner, "transport_kind", type(self.inner).__name__))
 

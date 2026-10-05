@@ -1,6 +1,7 @@
 # Build 451 — OPSEC / Retrieval Isolation
 
-Status: implementation in progress, PR #39; released version remains Build 450.
+Status: Build-451 implementation in PR #39; current runtime version 451.0.
+Engineering acceptance requires current-head CI and review. Operating-host / real-source acceptance remains HOLD.
 
 ## Changes in this iteration
 
@@ -43,10 +44,30 @@ checks on the new commit are required before any merge decision.
 
 The tests use offline startup, deterministic replay and bounded mocked IPC;
 they do not establish external source validation or real-world research quality.
-Windows execution is only evidenced when its new CI job passes. OS filesystem/
-network containment and malware scanner qualification are not implemented by
-this process separation. No host firewall or OS configuration is changed.
+Windows execution is only evidenced when its new CI job passes. The earlier process-only iteration did not implement OS containment or a
+scanner; the completion implementation below adds separate guarded profiles. No host firewall or OS configuration is changed.
 
-Next: qualify the isolation operating profile and complete a real-source case
-before finishing Build 451; then proceed with deployment/recovery/operations
-through the complete research workflow gate at 455.
+## Completion implementation
+
+The guarded Linux x86-64 profile now passes a single public-IP-pinned TCP socket
+into the child. Landlock refuses all filesystem access; seccomp refuses new
+connections, sockets, processes/control, io_uring and related bypass surfaces.
+TLS trust is loaded before confinement. The profile probes real kernel denials
+before source contact, applies CPU/memory/core limits, and never downgrades.
+
+A bounded ClamAV INSTREAM adapter with engine/database freshness checks gates
+intake. Detection and unavailable/stale/invalid scan results preserve failure
+metadata without content observations. The contained profile requires a scanner.
+Trusted successful scan hashes/profile metadata propagate into acquisition
+provenance, including through news/social capture and retry wrappers.
+
+Build service, authenticated status/admin diagnostics, app/server, both launchers,
+package version and release manifest now identify 451. Diagnostics are offline,
+audited, authenticated and origin guarded. CI requires actual Linux kernel
+confinement and real ClamAV benign/EICAR fixtures separately from mock regressions.
+
+The current workspace denies the Landlock syscall, so local kernel tests cannot
+qualify the profile. Native Windows remains process-only. A target host and a
+real-source authorized case remain necessary for operational acceptance; those
+facts do not become PASS from deterministic engineering tests. Next planned
+implementation: deployment/recovery/operations through research gate 455.

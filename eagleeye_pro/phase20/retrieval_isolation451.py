@@ -11,6 +11,7 @@ import ipaddress
 import json
 import os
 import ssl
+import socket
 from pathlib import Path
 import subprocess
 import sys
@@ -160,6 +161,33 @@ class ProcessSurfaceTransport451:
     externally_configured = True
     requires_resolved_ips = True
 
+    def __init__(self, *, profile=None, scanner=None):
+        self.profile = profile or os.environ.get("EAGLEEYE_RETRIEVAL_PROFILE", "process")
+        if self.profile not in {"process", "contained"}:
+            raise RuntimeError("unknown retrieval isolation profile")
+        scanner_path = os.environ.get("EAGLEEYE_CLAMD_SOCKET", "")
+        if scanner is None and scanner_path:
+            from .scanner451 import ClamdScanner451
+            scanner = ClamdScanner451(scanner_path)
+        self.scanner = scanner
+        self.last_scan = None
+        self.security_report = {}
+        if self.profile == "contained":
+            self.transport_kind = "surface451_kernel_contained_pinned_get"
+
+    def containment_probe(self):
+        worker = Path(__file__).with_name("retrieval_worker451.py")
+        result = subprocess.run([sys.executable, "-I", str(worker), "--containment-probe"],
+                                capture_output=True, env=worker_environment451(),
+                                close_fds=True, timeout=10, check=False)
+        if result.returncode or len(result.stdout) > 4096:
+            raise RuntimeError("retrieval kernel containment unavailable")
+        report = json.loads(result.stdout)
+        if not all(report.get("denied", {}).get(key) is True for key in
+                   ("file_read", "file_write", "new_socket", "new_process")):
+            raise RuntimeError("retrieval containment probe invalid")
+        return report
+
     def probe(self):
         """Offline startup check; neither contacts sources nor grants a GO."""
         worker = Path(__file__).with_name("retrieval_worker451.py")
@@ -178,6 +206,8 @@ class ProcessSurfaceTransport451:
 
     def fetch(self, url, *, resolved_ips, method="GET", headers=None,
               timeout_seconds=20, max_bytes=1_000_000):
+        self.last_scan = None
+        self.security_report = {}
         request = {"url": url, "resolved_ips": list(resolved_ips), "method": method,
                    "headers": dict(headers or {}), "timeout_seconds": int(timeout_seconds),
                    "max_bytes": int(max_bytes)}
@@ -186,18 +216,42 @@ class ProcessSurfaceTransport451:
         if len(payload) > 32_768:
             raise ValueError("retrieval request exceeds IPC budget")
         worker = Path(__file__).with_name("retrieval_worker451.py")
+        connected = None
+        options = {}
+        command = [sys.executable, "-I", str(worker)]
+        if self.profile == "contained":
+            # Qualify confinement BEFORE opening any source connection.
+            self.containment_probe()
+            if self.scanner is None:
+                raise RuntimeError("contained retrieval requires a configured malware scanner")
+            parsed = urlsplit(url)
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            last_error = None
+            for address in request["resolved_ips"]:
+                try:
+                    connected = socket.create_connection((address, port), request["timeout_seconds"])
+                    break
+                except OSError as exc:
+                    last_error = exc
+            if connected is None:
+                raise last_error or ConnectionError("pinned connection unavailable")
+            options["pass_fds"] = (connected.fileno(),)
+            command += ["--connected-fd", str(connected.fileno())]
         # -I disables user site/PYTHONPATH. No inherited secrets or proxy settings.
         # A disposable cwd is separation of process state, not filesystem isolation.
         with tempfile.TemporaryDirectory(prefix="eagleeye-retrieval451-") as workdir:
             try:
                 result = subprocess.run(
-                    [sys.executable, "-I", str(worker)], input=payload,
+                    command, input=payload,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     cwd=workdir, env=worker_environment451(), close_fds=True,
-                    timeout=request["timeout_seconds"] + 5, check=False,
+                    timeout=request["timeout_seconds"] + 5, check=False, **options,
                 )
             except subprocess.TimeoutExpired as exc:
                 raise TimeoutError("retrieval worker exceeded wall-clock budget") from exc
+            finally:
+                if connected is not None:
+                    connected.close()
         if result.returncode != 0:
             raise_worker_error451(result)
         if len(result.stdout) > MAX_BYTES_HARD * 2 + 65_536:
@@ -224,5 +278,9 @@ class ProcessSurfaceTransport451:
         if len(body) > max_bytes:
             raise ValueError("retrieval response exceeds byte budget")
         inspect_response451(body, response["headers"])
+        self.last_scan = self.scanner.scan(body) if self.scanner is not None else None
+        self.security_report = {"profile": self.profile, "kernel_contained": self.profile == "contained",
+                                "content_sha256": hashlib.sha256(body).hexdigest(),
+                                "scanner": self.last_scan, "content_risk_gate_pass": True}
         return FetchResponse(url, int(response["status"]), response["headers"],
                              body, int(response["elapsed_ms"]))

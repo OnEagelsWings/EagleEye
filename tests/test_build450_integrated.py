@@ -1118,10 +1118,10 @@ def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, mon
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_450_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app450 import create_workspace_app450" in (
+    assert "app451 import create_workspace_app451" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
-    assert "EAGLEEYE_PRO_450_0.py" in (ROOT / "START_EAGLEEYE_PRO.sh").read_text()
+    assert "EAGLEEYE_PRO_451_0.py" in (ROOT / "START_EAGLEEYE_PRO.sh").read_text()
     assert (ROOT / "README_BUILD_450_0.md").exists()
     assert (ROOT / "BUILD_450_CASE_TEST.md").exists()
     assert (ROOT / "RELEASE_MANIFEST_BUILD_450_0.json").exists()

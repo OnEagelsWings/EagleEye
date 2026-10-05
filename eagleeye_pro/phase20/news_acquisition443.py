@@ -107,6 +107,10 @@ class CapturingTransport443:
         self.responses.append(response)
         return response
 
+    @property
+    def security_report(self):
+        return getattr(self.inner, "security_report", {})
+
     def latest_for(self, url):
         target = str(url)
         for response in reversed(self.responses):

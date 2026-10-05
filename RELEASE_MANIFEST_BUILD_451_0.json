@@ -1,0 +1,22 @@
+{
+  "build": "451.0",
+  "package": "451.0.0",
+  "phase": 20,
+  "name": "Retrieval Isolation",
+  "hard_checkpoint": false,
+  "next_hard_checkpoint": "455.0",
+  "process_boundary_linux_windows": true,
+  "kernel_profile": "linux451.landlock-seccomp.v1",
+  "kernel_supported_platform": "Linux x86-64, Landlock ABI >=3, seccomp",
+  "kernel_profile_fail_closed": true,
+  "native_windows_kernel_profile_qualified": false,
+  "scanner": "local ClamAV INSTREAM",
+  "signature_max_age_hours": 48,
+  "contained_profile_requires_scanner": true,
+  "raw_quarantine_payload_stored": false,
+  "real_source_qualification": "HOLD",
+  "production_release_ready": false,
+  "github_ci_required": true,
+  "current_head_codex_review_required": true,
+  "full_research_workflow_required_every_fifth_build": true
+}

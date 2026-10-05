@@ -23,8 +23,52 @@ jobs:
       - name: Install runtime and tests
         run: python -m pip install -e '.[test]'
       - name: Worker boundary regressions
-        run: python -m pytest -q tests/test_build451_retrieval_isolation.py
+        run: python -m pytest -q tests/test_build451_retrieval_isolation.py tests/test_build451_operating_profile.py
+      - name: Require actual Linux kernel confinement
+        if: runner.os == 'Linux'
+        env:
+          EAGLEEYE_REQUIRE_KERNEL_TEST: '1'
+        run: python -m pytest -q tests/test_build451_operating_profile.py -k kernel
       - name: Build installable wheel
         run: python -m pip wheel --no-deps . --wheel-dir worker-wheels
       - name: Verify installed worker outside checkout
         run: python tools/check_retrieval451_wheel.py --wheel-dir worker-wheels
+
+  real-scanner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[test]'
+      - name: Install ClamAV and current official signatures
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clamav clamav-daemon
+          sudo systemctl stop clamav-freshclam || true
+          sudo freshclam --stdout
+      - name: Start isolated CI scanner
+        run: |
+          cat > "$RUNNER_TEMP/clamd451.conf" <<EOF
+          LocalSocket $RUNNER_TEMP/clamd451.sock
+          LocalSocketMode 666
+          DatabaseDirectory /var/lib/clamav
+          PidFile $RUNNER_TEMP/clamd451.pid
+          LogFile $RUNNER_TEMP/clamd451.log
+          Foreground no
+          StreamMaxLength 2M
+          EOF
+          sudo clamd --config-file="$RUNNER_TEMP/clamd451.conf"
+          python -c "import os,time; p=os.environ['RUNNER_TEMP']+'/clamd451.sock'; deadline=time.monotonic()+30; exec('while not os.path.exists(p) and time.monotonic()<deadline: time.sleep(0.2)'); assert os.path.exists(p)"
+      - name: Real engine benign and EICAR intake gate
+        env:
+          EAGLEEYE_TEST_CLAMD_SOCKET: ${{ runner.temp }}/clamd451.sock
+        run: python -m pytest -q tests/test_build451_operating_profile.py -k real_clamd
+      - name: Stop CI scanner
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/clamd451.pid" ]; then
+            sudo kill "$(cat "$RUNNER_TEMP/clamd451.pid")" || true
+          fi
