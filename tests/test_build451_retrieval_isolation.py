@@ -156,7 +156,7 @@ def test_content_gate_is_case_insensitive_for_mime():
         module.inspect_response451(b"hidden", {"Content-Type": "APPLICATION/X-MSDOWNLOAD"})
 
 
-@pytest.mark.parametrize("unsafe_body", [b"MZunsafe source content", *archive_samples()[:2]])
+@pytest.mark.parametrize("unsafe_body", [b"MZunsafe source content", *archive_samples()[:2]], ids=["pe", "gzip", "tar"])
 def test_quarantine_blocks_content_and_persists_failure_in_acquisition(tmp_path, monkeypatch, unsafe_body):
     from eagleeye_pro.core.app_context import AppContext
     from test_build441_integrated import ident, case, source_and_task, resolver
@@ -223,7 +223,7 @@ def test_all_public_phase20_live_entrypoints_choose_process_transport():
 
 
 
-@pytest.mark.parametrize("body", archive_samples())
+@pytest.mark.parametrize("body", archive_samples(), ids=["gzip", "tar", "bzip2", "xz", "zstd", "empty-zip"])
 def test_common_archives_quarantined_even_when_mislabeled_text(body):
     with pytest.raises(module.ContentQuarantined451):
         module.inspect_response451(body, {"content-type": "text/plain"})
