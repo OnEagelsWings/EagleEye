@@ -1,0 +1,41 @@
+{
+  "build": "443.0",
+  "package": "443.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 3,
+  "name": "Live News Acquisition",
+  "supported_feed_kinds": [
+    "rss",
+    "atom",
+    "jsonfeed"
+  ],
+  "source_types": [
+    "rss",
+    "news",
+    "api"
+  ],
+  "access_mode": "public",
+  "network_path": "Build 442 hardened public retrieval",
+  "integrations": [
+    "Build 421 source registry",
+    "Build 425 tasks",
+    "Build 422 acquisition provenance",
+    "Build 423 content fingerprint/dedup",
+    "Build 429 normalized news items",
+    "Build 431 provenance/syndication analysis"
+  ],
+  "raw_feed_persisted": false,
+  "automatic_semantic_extraction_430": false,
+  "article_body_fetch": false,
+  "authenticated_feeds": false,
+  "paywall_bypass": false,
+  "javascript_execution": false,
+  "live_confirmation": "NEWS443_LIVE",
+  "live_news_adapter_complete_for_public_feeds": true,
+  "public_social_retrieval_adapter_complete": false,
+  "general_live_collection_complete": false,
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_build": "444.0",
+  "next_hard_checkpoint": "445.0"
+}

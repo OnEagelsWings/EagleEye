@@ -1,0 +1,39 @@
+{
+  "build": "447.0",
+  "package": "447.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 7,
+  "name": "Evidence → Claims → Dossier Closure",
+  "chain": [
+    "Build 421/422/423 acquisition provenance",
+    "Build 429 News metadata",
+    "Build 432 Social metadata",
+    "Build 447 Evidence review",
+    "Build 447 Claim↔Evidence links",
+    "Build 418 hypotheses/counterevidence matrix",
+    "Build 419 synthesis",
+    "Build 447 Living Dossier revision"
+  ],
+  "exports": [
+    "json",
+    "docx",
+    "pdf",
+    "manifest",
+    "zip_case_package"
+  ],
+  "raw_payload_duplicated": false,
+  "counterevidence_preserved": true,
+  "uncertainty_preserved": true,
+  "automatic_claim_creation": false,
+  "automatic_claim_acceptance": false,
+  "automatic_truth_determination": false,
+  "automatic_dossier_publication": false,
+  "human_evidence_review_required": true,
+  "human_claim_review_required": true,
+  "human_dossier_review_required": true,
+  "formal_four_eyes_export_workflow": "Build 449",
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_build": "448.0",
+  "next_hard_checkpoint": "450.0"
+}

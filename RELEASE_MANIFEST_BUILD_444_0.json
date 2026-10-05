@@ -1,0 +1,37 @@
+{
+  "build": "444.0",
+  "package": "444.0.0",
+  "phase": 20,
+  "phase20_builds_completed": 4,
+  "name": "Controlled Public-Social Acquisition",
+  "supported_adapters": [
+    "bluesky_public",
+    "generic_public",
+    "mastodon_public"
+  ],
+  "generic_schema": "eagleeye_public_social_v1",
+  "network_path": "Build 442 hardened public retrieval",
+  "integrations": [
+    "Build 421 source registry",
+    "Build 425 tasks",
+    "Build 422 acquisition provenance",
+    "Build 423 content fingerprint/dedup",
+    "Build 432 public-social observations"
+  ],
+  "single_endpoint_only": true,
+  "automatic_pagination": false,
+  "follower_following_enumeration": false,
+  "social_graph_enumeration": false,
+  "authenticated_social": false,
+  "private_or_direct_content": false,
+  "messaging": false,
+  "javascript_execution": false,
+  "raw_endpoint_response_persisted": false,
+  "live_confirmation": "SOCIAL444_LIVE",
+  "core_public_acquisition_paths_implemented": true,
+  "general_live_collection_complete": false,
+  "real_world_general_research_ready": false,
+  "production_release_ready": false,
+  "next_build": "445.0",
+  "next_hard_checkpoint": "445.0"
+}

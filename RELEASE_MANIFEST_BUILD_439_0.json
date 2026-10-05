@@ -1,0 +1,25 @@
+{
+  "build": "439.0",
+  "phase": 19,
+  "name": "AI Investigation Loop",
+  "production_release_ready": false,
+  "hard_checkpoint": false,
+  "acceptance": [
+    "human-authorized plan-to-synthesis investigation loop",
+    "immutable Build-413 plan and bounded Build-414 wave binding",
+    "Build-415/416 multi-agent continuity",
+    "Phase-19 registered-source allowlist",
+    "bounded Build-425 collection-task planning and Build-426 prioritization",
+    "Build-422/423 evidence-intake awareness",
+    "Build-437 entity-resolution integration",
+    "Build-438 temporal/relationship-fusion integration",
+    "Build-417/418 hypothesis, counterevidence and gap analysis",
+    "Build-419 reviewable synthesis",
+    "no direct Build-439 network authority",
+    "no autonomous scope expansion",
+    "no automatic evidence promotion or truth determination",
+    "case-specific deterministic selftest"
+  ],
+  "next_build": "440.0",
+  "next_hard_checkpoint": "440.0"
+}
