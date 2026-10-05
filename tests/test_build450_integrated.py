@@ -708,6 +708,38 @@ def test_build450_deleting_bound_export_row_retracts_checkpoint_pass(tmp_path):
         assert status["investigation_workflow_checkpoint_pass"] is False
 
 
+def test_build450_deleting_bound_acquisition_execution_retracts_checkpoint_pass(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer, case, _a, reviewer_session = setup_qualification_case(ctx)
+        result = ctx.build450.qualify_investigation_workflow_450(
+            identity=admin,
+            case_id=case["case_id"],
+            reviewer_session_token=reviewer_session.token,
+            reviewer_client_fingerprint=FP_REVIEWER,
+        )
+        workflow = result["report"]["workflow_selftest"]
+        acquisition = workflow["acquisition"]
+        assert acquisition["executions"]
+        execution_id = acquisition["executions"][0]["execution_id"]
+
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_workflow_rows_valid"] is True
+        assert status["investigation_workflow_checkpoint_pass"] is True
+
+        ctx.db.execute(
+            "DELETE FROM live_ai_execution_446 WHERE execution_id=?",
+            (execution_id,),
+        )
+        status = ctx.build450.investigation_workflow_status_450()
+        assert status["qualified_workflow_rows_valid"] is False
+        assert any(
+            x["reason"] == "acquisition_execution_row_missing"
+            and x.get("id") == execution_id
+            for x in status["qualified_workflow_row_violations"]
+        )
+        assert status["investigation_workflow_checkpoint_pass"] is False
+
+
 def test_build450_deleting_bound_review_row_retracts_checkpoint_pass(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, _reviewer, case, _a, reviewer_session = setup_qualification_case(ctx)
