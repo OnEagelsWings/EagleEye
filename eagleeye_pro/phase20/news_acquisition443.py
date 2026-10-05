@@ -9,7 +9,7 @@ import json
 import secrets
 import xml.etree.ElementTree as ET
 
-from eagleeye_pro.phase19.surface_retrieval441 import PinnedSurfaceTransport441
+from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
 
 BUILD = "443.0"
 POLICY_ID = "phase20.live-news-acquisition.v443"
@@ -759,7 +759,7 @@ class LiveNewsAcquisition443:
             identity=identity,
             case_id=case_id,
             task_id=task_id,
-            transport=PinnedSurfaceTransport441(),
+            transport=ProcessSurfaceTransport451(),
             resolver=self.hardening442._default_resolver,
             execution_mode="live_hardened_news_feed",
             authorization_mode="explicit_news_confirmation",

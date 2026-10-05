@@ -854,6 +854,7 @@ class ControlledSurfaceRetrieval441:
                             "build": BUILD,
                             "error_class": type(exc).__name__,
                             "execution_mode": execution_mode,
+                            "content_quarantine": getattr(exc, "quarantine_metadata", {}),
                         },
                         usage={
                             "fail_closed": True,
@@ -903,6 +904,7 @@ class ControlledSurfaceRetrieval441:
         )
 
     def execute_live(self, *, identity, task_id, confirmation):
+        from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
         task = self._task(task_id)
         self._authorize(identity, task)
         if str(confirmation or "").strip().upper() != CONFIRM:
@@ -913,7 +915,7 @@ class ControlledSurfaceRetrieval441:
             return self._execute(
                 identity=identity,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=None,
                 execution_mode="live_pinned_public_get",
                 authorization_mode="explicit_task_confirmation",
@@ -923,6 +925,7 @@ class ControlledSurfaceRetrieval441:
             self._live_lock.release()
 
     def execute_authorized_loop_task(self, *, identity, task_id):
+        from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
         task = self._task(task_id)
         ident = self._authorize(identity, task)
         loop_id = str((task.get("scope") or {}).get("build439_loop_id") or "").strip()
@@ -941,7 +944,7 @@ class ControlledSurfaceRetrieval441:
             return self._execute(
                 identity=ident,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=None,
                 execution_mode="live_pinned_public_get",
                 authorization_mode="authorized_build439_loop",

@@ -1,6 +1,7 @@
 """One request per process; never accepts a case, DB path, identity or GO token."""
 import base64
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -13,6 +14,12 @@ from eagleeye_pro.phase20.retrieval_isolation451 import validate_request451
 
 
 def main():
+    if sys.argv[1:] == ["--probe"]:
+        sys.stdout.write(json.dumps({"protocol": "retrieval451.v1", "pid": os.getpid(),
+                                    "external_network_contacted": False}))
+        return
+    if len(sys.argv) != 1:
+        raise ValueError("unknown worker command")
     payload = sys.stdin.buffer.read(32_769)
     if len(payload) > 32_768:
         raise ValueError("request IPC budget exceeded")

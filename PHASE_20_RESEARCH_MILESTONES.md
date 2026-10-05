@@ -39,17 +39,22 @@ cover security qualification, investigation benchmark and serious beta.
 ## Build 451 foundation delivered in this branch
 
 The hardened live/external/authorized-loop surface paths now use a disposable
-Python process per GET. Only a bounded request crosses IPC; environment,
+Python process per GET. Only a bounded request crosses IPC; user environment,
 session tokens, case IDs and DB paths are not passed. Existing parent-side GO,
 robots, task scope, rate limit and pinned-DNS contracts are retained. The child
 revalidates public IPs, GET, header restrictions and budgets. Executable/archive
 signatures and corresponding MIME types are rejected before acquisition intake.
+Quarantine metadata (hash, size, MIME, reason) is persisted on the existing
+failed acquisition event and survives restart; rejected payload bytes are not
+promoted to the content store.
 
 This is process separation, not a container/OS filesystem or network sandbox.
-It has no qualified malware scanner, and rejected content is withheld rather
-than stored in a persistent quarantine vault. Original Build-441 direct legacy
-routes are outside this first integration; the milestone remains on HOLD until
-all required routes and the chosen operating profile are qualified. Packaging,
-Windows startup and a real-source case must be checked before calling 451
-complete. No model training was performed: the new negative tests contribute
-security evaluation cases, not trained model weights.
+It has no qualified malware scanner or raw-payload quarantine vault. Direct
+Build-441, hardened Build-442, news Build-443 and social Build-444 live paths
+now choose the process transport. Windows inherits only SystemRoot for native
+runtime initialization; no proxy settings, user paths or secrets are inherited.
+The built wheel's worker has an offline startup probe. Linux/Windows CI tests
+the installed wheel outside the checkout and tests the process boundary.
+The milestone remains on HOLD until the chosen operating profile and a real-
+source research case are qualified. No model training was performed: the new
+negative tests contribute security evaluation cases, not trained model weights.
