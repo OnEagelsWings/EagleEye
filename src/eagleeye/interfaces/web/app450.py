@@ -174,11 +174,12 @@ def create_workspace_app450(*, base_dir=None):
         for case_id in marked:
             if case_id in tokens:
                 return case_id
-        # Resolve every current case-bound identifier class that can be
-        # exposed through inherited ID-only operational routes. Qualification
-        # isolation must not depend on the literal case_id being present in the
-        # URL or JSON payload.
-        lookups = (
+        # Resolve current and inherited case-bound identifier classes.
+        # Static lookups cover the core investigation chain; the schema-driven
+        # primary-key fallback additionally covers older ID-only routes (for
+        # example media assets and legacy export/task resources) without relying
+        # on the literal case_id being present in the URL or JSON payload.
+        lookups = {
             ("acquisition_event_422", "event_id"),
             ("content_observation_423", "observation_id"),
             ("crawl_task_425", "task_id"),
@@ -192,11 +193,27 @@ def create_workspace_app450(*, base_dir=None):
             ("dossier_revision_447", "revision_id"),
             ("review_request_449", "review_id"),
             ("review_export_execution_449", "execution_id"),
-        )
-        for table, key in lookups:
+        }
+        for table_row in ctx.db.all(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%'"
+        ):
+            table = str(table_row.get("name") or "")
+            if not table or not table.replace("_", "").isalnum():
+                continue
+            columns = ctx.db.all(f'PRAGMA table_info("{table}")')
+            names = {str(col.get("name") or "") for col in columns}
+            if "case_id" not in names:
+                continue
+            for col in columns:
+                key = str(col.get("name") or "")
+                if int(col.get("pk") or 0) > 0 and key and key != "case_id":
+                    lookups.add((table, key))
+
+        for table, key in sorted(lookups):
             for token in tokens:
                 row = ctx.db.one(
-                    f"SELECT case_id FROM {table} WHERE {key}=?",
+                    f'SELECT case_id FROM "{table}" WHERE "{key}"=? LIMIT 1',
                     (token,),
                 )
                 if row and str(row.get("case_id") or "") in marked:
