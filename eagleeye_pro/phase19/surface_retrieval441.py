@@ -120,7 +120,7 @@ class PinnedSurfaceTransport441:
         method = str(method or "").upper()
         if method != "GET":
             raise PermissionError("Build 441 surface transport is GET-only")
-        timeout = max(1, min(int(timeout_seconds), MAX_TIMEOUT_HARD))
+        timeout = max(0.05, min(float(timeout_seconds), float(MAX_TIMEOUT_HARD)))
         limit = max(1, min(int(max_bytes), MAX_BYTES_HARD))
         host = parsed.hostname.casefold()
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
@@ -151,27 +151,55 @@ class PinnedSurfaceTransport441:
 
         last_error = None
         started = time.monotonic()
+        deadline = started + timeout
+
+        def remaining():
+            value = deadline - time.monotonic()
+            if value <= 0:
+                raise TimeoutError("surface retrieval wall-clock deadline exceeded")
+            return max(0.001, value)
+
         for address in list(resolved_ips or []):
             conn = None
             try:
+                attempt_timeout = remaining()
                 if parsed.scheme == "https":
                     conn = _PinnedHTTPSConnection(
                         address,
                         server_hostname=host,
                         port=port,
-                        timeout=timeout,
+                        timeout=attempt_timeout,
                         context=self._ssl,
                     )
                 else:
-                    conn = http.client.HTTPConnection(address, port=port, timeout=timeout)
+                    conn = http.client.HTTPConnection(address, port=port, timeout=attempt_timeout)
 
                 conn.putrequest("GET", request_target, skip_host=True, skip_accept_encoding=True)
                 conn.putheader("Host", host_header)
                 for key, value in safe_headers.items():
                     conn.putheader(key, value)
                 conn.endheaders()
+                if getattr(conn, "sock", None) is not None:
+                    conn.sock.settimeout(remaining())
                 response = conn.getresponse()
-                body = response.read(limit + 1)
+
+                chunks = []
+                total = 0
+                while total <= limit:
+                    read_timeout = remaining()
+                    sock = getattr(conn, "sock", None)
+                    if sock is not None:
+                        sock.settimeout(read_timeout)
+                    size = min(65536, (limit + 1) - total)
+                    if size <= 0:
+                        break
+                    chunk = response.read(size)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                    remaining()
+                body = b"".join(chunks)
                 if len(body) > limit:
                     raise ValueError("response exceeds configured max_bytes")
                 response_headers = {str(k).casefold(): str(v) for k, v in response.getheaders()}
@@ -184,6 +212,8 @@ class PinnedSurfaceTransport441:
                 )
             except Exception as exc:
                 last_error = exc
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("surface retrieval wall-clock deadline exceeded") from exc
             finally:
                 if conn is not None:
                     try:
@@ -354,6 +384,15 @@ class ControlledSurfaceRetrieval441:
             raise PermissionError("task max_seconds exceeds Build-441 hard limit")
         return {"max_pages": 1, "max_bytes": max_bytes, "max_seconds": max_seconds}
 
+    @staticmethod
+    def _remaining_deadline(deadline, *, cap=None):
+        remaining = float(deadline) - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Build-441 task wall-clock deadline exceeded")
+        if cap is not None:
+            remaining = min(remaining, float(cap))
+        return max(0.001, remaining)
+
     def _transport_fetch(self, transport, url, *, ips, timeout, max_bytes):
         kwargs = {
             "method": "GET",
@@ -373,7 +412,7 @@ class ControlledSurfaceRetrieval441:
         ips = self._resolve_public(host, resolver)
         return clean, ips
 
-    def _robots(self, *, transport, target, expected_host, resolver, timeout):
+    def _robots(self, *, transport, target, expected_host, resolver, deadline, timeout_cap):
         parsed = urlsplit(target)
         robots_url = urlunsplit((parsed.scheme, parsed.netloc, "/robots.txt", "", ""))
         current = robots_url
@@ -384,7 +423,7 @@ class ControlledSurfaceRetrieval441:
                 transport,
                 current,
                 ips=ips,
-                timeout=timeout,
+                timeout=self._remaining_deadline(deadline, cap=timeout_cap),
                 max_bytes=ROBOTS_MAX_BYTES,
             )
             chain.append(current)
@@ -412,7 +451,7 @@ class ControlledSurfaceRetrieval441:
         target,
         expected_host,
         resolver,
-        timeout,
+        deadline,
         max_bytes,
         robots,
     ):
@@ -438,7 +477,7 @@ class ControlledSurfaceRetrieval441:
                 transport,
                 clean,
                 ips=ips,
-                timeout=timeout,
+                timeout=self._remaining_deadline(deadline),
                 max_bytes=max_bytes,
             )
             chain.append(clean)
@@ -576,6 +615,7 @@ class ControlledSurfaceRetrieval441:
             raise ValueError("surface crawl task must be in planned state")
         source, target, host = self._source_and_target(task, live=live)
         budget = self._budget(task)
+        operation_deadline = time.monotonic() + float(budget["max_seconds"])
 
         advice = self.health424.acquisition_advice(task["source_id"])
         if advice["decision"] in {"avoid", "defer"}:
@@ -587,7 +627,8 @@ class ControlledSurfaceRetrieval441:
                 target=target,
                 expected_host=host,
                 resolver=resolver,
-                timeout=min(10, budget["max_seconds"]),
+                deadline=operation_deadline,
+                timeout_cap=min(10, budget["max_seconds"]),
             )
             if robots.fail_closed_state:
                 accepted = self._accept_terminal(
@@ -630,7 +671,7 @@ class ControlledSurfaceRetrieval441:
                 target=target,
                 expected_host=host,
                 resolver=resolver,
-                timeout=budget["max_seconds"],
+                deadline=operation_deadline,
                 max_bytes=budget["max_bytes"],
                 robots=robots,
             )
