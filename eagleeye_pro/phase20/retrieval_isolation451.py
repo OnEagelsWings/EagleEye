@@ -102,6 +102,7 @@ def inspect_response451(body, headers):
     media = str(normalized.get("content-type", "")).split(";", 1)[0].strip().lower()
     blocked = {"application/x-msdownload", "application/x-dosexec",
                "application/x-executable", "application/x-sharedlib",
+               "application/x-mach-binary", "application/x-mach-o",
                "application/zip", "application/x-7z-compressed",
                "application/x-rar-compressed", "application/vnd.rar",
                "application/gzip", "application/x-gzip", "application/x-tar",
@@ -110,7 +111,13 @@ def inspect_response451(body, headers):
                "application/x-compress", "application/x-lzip", "application/x-cpio",
                "application/x-archive", "application/vnd.ms-cab-compressed",
                "application/x-iso9660-image"}
-    signatures = (b"MZ", b"\x7fELF", b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08",
+    # Format constants: https://llvm.org/docs/doxygen/BinaryFormat_2MachO_8h_source.html
+    # Apple Mach-O 32/64-bit and universal 32/64-bit, in both byte orders.
+    # CAFEBABE overlaps Java class magic; conservatively withhold that too.
+    macho = tuple(bytes.fromhex(magic) for magic in (
+        "feedface", "cefaedfe", "feedfacf", "cffaedfe",
+        "cafebabe", "bebafeca", "cafebabf", "bfbafeca"))
+    signatures = macho + (b"MZ", b"\x7fELF", b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08",
                   b"7z\xbc\xaf\x27\x1c", b"Rar!", b"\x1f\x8b", b"\x1f\x9d",
                   b"BZh", b"\xfd7zXZ\x00", b"\x28\xb5\x2f\xfd", b"LZIP",
                   b"MSCF", b"!<arch>\n", b"070701", b"070702", b"070707")

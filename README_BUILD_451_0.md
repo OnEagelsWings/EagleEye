@@ -2,7 +2,10 @@
 
 Build 451 preserves the Build-450 governed investigation workflow and adds a
 separate retrieval process, strict IPC, executable/archive withholding and a
-local ClamAV scanner adapter. Rejected bytes never enter content observations;
+local ClamAV scanner adapter. The conservative content-risk gate recognizes
+PE/ELF/Mach-O (32/64-bit and universal, both byte orders) and the documented
+common archive MIME/signature variants; it is not a universal executable or
+malware detector. Rejected bytes never enter content observations;
 hash, reason and scan metadata remain in the failed acquisition event.
 
 ## Operating profiles

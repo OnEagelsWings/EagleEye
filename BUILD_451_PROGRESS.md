@@ -99,3 +99,14 @@ ClamAV -> acquisition chain: benign bytes become content observations with scan
 provenance, EICAR bytes are withheld with no observations, and metadata survives
 restart. Only the external TCP endpoint is replaced by a controlled socket;
 real kernel containment, scanner, IPC and intake remain active.
+
+## Native executable coverage review fix
+
+The current review found mislabeled Mach-O content was missing from the native
+executable gate. Mach-O 32/64-bit and universal 32/64-bit magic, both byte orders,
+and common Mach-O MIME names are now withheld. All eight magic values and MIME
+variants have negative tests; representative big/little-endian and universal
+bytes also exercise failed acquisition, no content observations and metadata
+persistence after restart. CAFEBABE overlaps Java class magic and is withheld
+conservatively. Documentation specifies recognized native/archive formats rather
+than claiming universal executable or malware detection.

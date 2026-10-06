@@ -156,7 +156,12 @@ def test_content_gate_is_case_insensitive_for_mime():
         module.inspect_response451(b"hidden", {"Content-Type": "APPLICATION/X-MSDOWNLOAD"})
 
 
-@pytest.mark.parametrize("unsafe_body", [b"MZunsafe source content", *archive_samples()[:2]], ids=["pe", "gzip", "tar"])
+@pytest.mark.parametrize("unsafe_body", [
+    b"MZunsafe source content", *archive_samples()[:2],
+    bytes.fromhex("feedface") + b"synthetic executable fixture",
+    bytes.fromhex("cffaedfe") + b"synthetic executable fixture",
+    bytes.fromhex("bfbafeca") + b"synthetic executable fixture",
+], ids=["pe", "gzip", "tar", "mach32-be", "mach64-le", "fat64-le"])
 def test_quarantine_blocks_content_and_persists_failure_in_acquisition(tmp_path, monkeypatch, unsafe_body):
     from eagleeye_pro.core.app_context import AppContext
     from test_build441_integrated import ident, case, source_and_task, resolver
@@ -296,3 +301,17 @@ def test_transient_worker_failure_stops_at_retry_budget(monkeypatch):
     with pytest.raises(ConnectionError):
         retry.fetch(**request())
     assert len(calls) == 3
+
+
+@pytest.mark.parametrize("magic", ["feedface", "cefaedfe", "feedfacf", "cffaedfe",
+                                   "cafebabe", "bebafeca", "cafebabf", "bfbafeca"])
+def test_macho_all_magic_variants_with_safe_mime_are_withheld(magic):
+    with pytest.raises(module.ContentQuarantined451):
+        module.inspect_response451(bytes.fromhex(magic) + b"synthetic header fixture",
+                                   {"Content-Type": "text/plain"})
+
+
+@pytest.mark.parametrize("media", ["application/x-mach-binary", "application/x-mach-o"])
+def test_macho_mime_with_unrecognised_body_is_withheld(media):
+    with pytest.raises(module.ContentQuarantined451):
+        module.inspect_response451(b"content", {"Content-Type": media})
