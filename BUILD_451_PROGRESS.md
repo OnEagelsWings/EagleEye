@@ -110,3 +110,10 @@ bytes also exercise failed acquisition, no content observations and metadata
 persistence after restart. CAFEBABE overlaps Java class magic and is withheld
 conservatively. Documentation specifies recognized native/archive formats rather
 than claiming universal executable or malware detection.
+
+The adjacent scanner timeout path was hardened in the same final review pass:
+VERSION, both socket connections, all INSTREAM chunks and verdict reads share
+one monotonic scan deadline. A slow partial reply or stream cannot repeatedly
+renew per-operation timeouts. Regressions prove trickled version data and a
+scan that exhausts its budget during streaming withhold content, even when an
+unread clean verdict is available.

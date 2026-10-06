@@ -93,6 +93,8 @@ class FakeConnection:
         return self
     def __exit__(self, *args):
         pass
+    def settimeout(self, timeout):
+        self.timeout = timeout
     def sendall(self, data):
         self.sent.extend(data)
     def recv(self, size):
@@ -117,7 +119,7 @@ def test_scanner_bounded_protocol_and_fail_closed(monkeypatch, reply, expected):
     scanner = ClamdScanner451("local-scanner")
     connections = [FakeConnection(version()), FakeConnection(reply)]
     pending = iter(connections)
-    monkeypatch.setattr(scanner, "_connect", lambda: next(pending))
+    monkeypatch.setattr(scanner, "_connect", lambda *args: next(pending))
     if expected == "clean":
         assert scanner.scan(b"benign")["result"] == "clean"
     else:
@@ -133,7 +135,7 @@ def test_scanner_bounded_protocol_and_fail_closed(monkeypatch, reply, expected):
 def test_scanner_stale_or_invalid_database_withholds_before_stream(monkeypatch, reply):
     scanner = ClamdScanner451("local-scanner")
     connection = FakeConnection(reply)
-    monkeypatch.setattr(scanner, "_connect", lambda: connection)
+    monkeypatch.setattr(scanner, "_connect", lambda *args: connection)
     with pytest.raises(ScanWithheld451):
         scanner.scan(b"benign")
     assert connection.sent == b"zVERSION\0"
@@ -414,3 +416,49 @@ def test_real_clamd_contained_acquisition_intake(tmp_path, monkeypatch, detected
     finally:
         for thread in threads:
             thread.join(timeout=10)
+
+
+def test_scanner_trickle_reply_cannot_renew_timeout(monkeypatch):
+    from eagleeye_pro.phase20 import scanner451 as module
+    clock, budgets = [0.0], []
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+    class Trickle(FakeConnection):
+        calls = 0
+        def settimeout(self, timeout):
+            budgets.append(timeout)
+        def recv(self, size):
+            self.calls += 1
+            clock[0] += 6
+            return super().recv(1)
+    connection = Trickle(version())
+    scanner = ClamdScanner451("fixture", timeout=10)
+    monkeypatch.setattr(scanner, "_connect", lambda *a: connection)
+    with pytest.raises(ScanWithheld451) as caught:
+        scanner.scan(b"benign")
+    assert caught.value.quarantine_metadata["reason"] == "scanner_unavailable_or_unqualified"
+    assert connection.calls == 2
+    assert budgets[-1] == 4
+    assert connection.sent == b"zVERSION\0"
+
+
+def test_scanner_version_and_stream_share_one_deadline(monkeypatch):
+    from eagleeye_pro.phase20 import scanner451 as module
+    clock = [0.0]
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+    class Version(FakeConnection):
+        def recv(self, size):
+            clock[0] += 4
+            return super().recv(size)
+    class Stream(FakeConnection):
+        def sendall(self, data):
+            super().sendall(data)
+            clock[0] += 2 if data == b"zINSTREAM\0" else 4
+    connection = Stream(b"stream: OK\0")
+    connections = iter([Version(version()), connection])
+    scanner = ClamdScanner451("fixture", timeout=10)
+    monkeypatch.setattr(scanner, "_connect", lambda *a: next(connections))
+    with pytest.raises(ScanWithheld451) as caught:
+        scanner.scan(b"benign")
+    assert caught.value.quarantine_metadata["reason"] == "scanner_unavailable_or_unqualified"
+    assert connection.reply == b"stream: OK\0"  # no verdict read after expiry
+    assert not connection.sent.endswith(b"\0\0\0\0")  # no additional frame

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import hashlib
 import socket
 import struct
+import time
 
 
 class ScanWithheld451(RuntimeError):
@@ -22,9 +23,20 @@ class ClamdScanner451:
         self.timeout = timeout
         self.max_age = max_signature_age_hours
 
-    def _reply(self, connection):
+    def _remaining(self, deadline):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("scanner exceeded shared wall-clock budget")
+        return remaining
+
+    def _send(self, connection, payload, deadline):
+        connection.settimeout(self._remaining(deadline))
+        connection.sendall(payload)
+
+    def _reply(self, connection, deadline):
         reply = bytearray()
         while len(reply) <= 4096:
+            connection.settimeout(self._remaining(deadline))
             chunk = connection.recv(min(1024, 4097 - len(reply)))
             if not chunk:
                 break
@@ -33,10 +45,10 @@ class ClamdScanner451:
                 return bytes(reply).split(b"\0", 1)[0].decode("ascii", errors="strict")
         raise ValueError("invalid scanner reply")
 
-    def _connect(self):
+    def _connect(self, deadline):
         connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        connection.settimeout(self.timeout)
         try:
+            connection.settimeout(self._remaining(deadline))
             connection.connect(self.socket_path)
         except Exception:
             connection.close()
@@ -45,12 +57,13 @@ class ClamdScanner451:
 
     def scan(self, body):
         version = ""
+        deadline = time.monotonic() + self.timeout
         try:
             if len(body) > 2_000_000:
                 raise ValueError("scanner byte budget exceeded")
-            with self._connect() as connection:
-                connection.sendall(b"zVERSION\0")
-                version = self._reply(connection)
+            with self._connect(deadline) as connection:
+                self._send(connection, b"zVERSION\0", deadline)
+                version = self._reply(connection, deadline)
             # Clamd VERSION: ClamAV engine/database-version/database-date.
             parts = version.split("/", 2)
             if len(parts) != 3 or not parts[0].startswith("ClamAV ") or not parts[1].isdigit():
@@ -59,13 +72,13 @@ class ClamdScanner451:
             age = (datetime.now(timezone.utc) - stamp).total_seconds()
             if not 0 <= age <= self.max_age * 3600:
                 raise ValueError("scanner signatures stale")
-            with self._connect() as connection:
-                connection.sendall(b"zINSTREAM\0")
+            with self._connect(deadline) as connection:
+                self._send(connection, b"zINSTREAM\0", deadline)
                 for offset in range(0, len(body), 65536):
                     chunk = body[offset:offset + 65536]
-                    connection.sendall(struct.pack("!I", len(chunk)) + chunk)
-                connection.sendall(struct.pack("!I", 0))
-                reply = self._reply(connection)
+                    self._send(connection, struct.pack("!I", len(chunk)) + chunk, deadline)
+                self._send(connection, struct.pack("!I", 0), deadline)
+                reply = self._reply(connection, deadline)
             if reply == "stream: OK":
                 return {"scanner": "clamd", "version": version, "result": "clean",
                         "sha256": hashlib.sha256(body).hexdigest()}

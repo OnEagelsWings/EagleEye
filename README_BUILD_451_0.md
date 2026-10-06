@@ -45,7 +45,9 @@ Use a trusted local ClamAV daemon with a private Unix socket, current official
 signature databases, UTC daemon timezone, and INSTREAM support. The adapter
 requires a parseable engine/database version and signatures no older than 48
 hours. It sends at most 2 MB in bounded chunks without writing payload files.
-Only the exact `stream: OK` verdict permits intake. Detection, stale signatures,
+One monotonic scanner deadline covers connection, VERSION, INSTREAM chunks and
+verdict reads; partial replies cannot renew the timeout. Only the exact
+`stream: OK` verdict permits intake. Detection, stale signatures,
 unavailable scanner, malformed responses and limits all withhold the content.
 The contained profile requires a configured scanner. A clean verdict cannot
 establish that every threat is absent.
