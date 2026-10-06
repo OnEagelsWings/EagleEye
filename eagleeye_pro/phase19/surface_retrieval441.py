@@ -193,7 +193,7 @@ class PinnedSurfaceTransport441:
                     size = min(65536, (limit + 1) - total)
                     if size <= 0:
                         break
-                    chunk = response.read(size)
+                    chunk = response.read1(size)
                     if not chunk:
                         break
                     chunks.append(chunk)
@@ -352,24 +352,53 @@ class ControlledSurfaceRetrieval441:
             raise PermissionError("task target escaped the approved task host scope")
         return source, target, target_host
 
-    def _resolve_public(self, host, resolver=None):
-        if resolver is None:
-            infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-            values = sorted({str(item[4][0]) for item in infos})
+    def _resolve_public(self, host, resolver=None, deadline=None):
+        def resolve_now():
+            if resolver is None:
+                infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+                return sorted({str(item[4][0]) for item in infos})
+            return sorted({str(x) for x in resolver(host)})
+
+        if deadline is None:
+            values = resolve_now()
         else:
-            values = sorted({str(x) for x in resolver(host)})
+            remaining = self._remaining_deadline(deadline)
+            done = threading.Event()
+            box = {}
+
+            def worker():
+                try:
+                    box["values"] = resolve_now()
+                except BaseException as exc:
+                    box["error"] = exc
+                finally:
+                    done.set()
+
+            thread = threading.Thread(
+                target=worker,
+                name="eagleeye-surface441-dns",
+                daemon=True,
+            )
+            thread.start()
+            if not done.wait(timeout=remaining):
+                raise TimeoutError("Build-441 DNS resolution exceeded task wall-clock deadline")
+            if "error" in box:
+                raise box["error"]
+            values = box.get("values") or []
+
         if not values:
             raise PermissionError("target hostname did not resolve")
-        parsed = []
+        public = []
         for value in values:
             try:
-                address = ipaddress.ip_address(value)
+                ip = ipaddress.ip_address(value)
             except ValueError as exc:
                 raise PermissionError("resolver returned a non-IP address") from exc
-            if not address.is_global:
-                raise PermissionError("target resolved to a non-public IP address")
-            parsed.append(str(address))
-        return parsed
+            if not ip.is_global:
+                raise PermissionError("target hostname resolved to a non-public IP")
+            public.append(str(ip))
+        return sorted(set(public))
+
 
     def _budget(self, task):
         raw = task.get("budget") or {}
@@ -404,12 +433,16 @@ class ControlledSurfaceRetrieval441:
             kwargs["resolved_ips"] = ips
         return transport.fetch(url, **kwargs)
 
-    def _preflight_url(self, url, *, expected_host, resolver):
+    def _preflight_url(self, url, *, expected_host, resolver, deadline=None):
         clean = _clean_url(url)
         host = urlsplit(clean).hostname.casefold()
         if host != expected_host:
             raise PermissionError("redirect escaped the approved exact host")
-        ips = self._resolve_public(host, resolver)
+        if deadline is not None:
+            self._remaining_deadline(deadline)
+        ips = self._resolve_public(host, resolver, deadline=deadline)
+        if deadline is not None:
+            self._remaining_deadline(deadline)
         return clean, ips
 
     def _robots(self, *, transport, target, expected_host, resolver, deadline, timeout_cap):
@@ -418,7 +451,12 @@ class ControlledSurfaceRetrieval441:
         current = robots_url
         chain = []
         for _ in range(MAX_REDIRECTS + 1):
-            current, ips = self._preflight_url(current, expected_host=expected_host, resolver=resolver)
+            current, ips = self._preflight_url(
+                current,
+                expected_host=expected_host,
+                resolver=resolver,
+                deadline=deadline,
+            )
             response = self._transport_fetch(
                 transport,
                 current,
@@ -459,7 +497,12 @@ class ControlledSurfaceRetrieval441:
         chain = []
         resolution_log = {}
         for _ in range(MAX_REDIRECTS + 1):
-            clean, ips = self._preflight_url(current, expected_host=expected_host, resolver=resolver)
+            clean, ips = self._preflight_url(
+                current,
+                expected_host=expected_host,
+                resolver=resolver,
+                deadline=deadline,
+            )
             path = urlsplit(clean).path or "/"
             query = urlsplit(clean).query
             robots_target = path + (("?" + query) if query else "")
