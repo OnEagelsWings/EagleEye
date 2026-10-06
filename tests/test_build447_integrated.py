@@ -123,6 +123,44 @@ def test_build447_selftest_closes_full_chain_and_exports_package(tmp_path):
             }
 
 
+
+def test_repeated_dossier_exports_use_immutable_unique_directories(tmp_path):
+    with AppContext(base_dir=tmp_path) as c:
+        i = ident(c)
+        cid = case(c, "Immutable exports 447")["case_id"]
+        *_x, ev = seed_evidence(c, i, cid, "immutable-export")
+        ev = review_accept(c, i, ev["evidence_id"])
+        accepted_claim(c, i, cid, ev["evidence_id"])
+        dossier = c.build447.build_dossier_447(identity=i, case_id=cid)
+        dossier = c.build447.review_dossier_447(
+            identity=i,
+            revision_id=dossier["revision_id"],
+            decision="approved_for_export",
+            note="Approved for immutable repeated-export regression.",
+            confirmation="APPROVE DOSSIER 447",
+        )
+        first = c.build447.export_dossier_447(
+            identity=i,
+            revision_id=dossier["revision_id"],
+            confirmation="EXPORT DOSSIER 447",
+        )
+        first_package = Path(first["paths"]["case_package"])
+        first_bytes = first_package.read_bytes()
+        second = c.build447.export_dossier_447(
+            identity=i,
+            revision_id=dossier["revision_id"],
+            confirmation="EXPORT DOSSIER 447",
+        )
+        second_package = Path(second["paths"]["case_package"])
+        assert first["export_id"] != second["export_id"]
+        assert first_package != second_package
+        assert first_package.parent.name == first["export_id"]
+        assert second_package.parent.name == second["export_id"]
+        assert first_package.read_bytes() == first_bytes
+        assert hashlib.sha256(first_package.read_bytes()).hexdigest() == first["package_hash"]
+        assert hashlib.sha256(second_package.read_bytes()).hexdigest() == second["package_hash"]
+
+
 def test_evidence_sync_is_idempotent_and_does_not_break_claim_links(tmp_path):
     with AppContext(base_dir=tmp_path) as c:
         i = ident(c)
