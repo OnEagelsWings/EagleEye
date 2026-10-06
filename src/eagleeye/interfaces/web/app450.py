@@ -12,6 +12,7 @@ from .app448 import COOKIE, render_workspace
 from .app449 import _drop, create_workspace_app449
 
 JSON_PAYLOAD_GUARD_MAX_BYTES = 1024 * 1024
+QUALIFICATION_IDENTIFIER_TOKEN_LIMIT = 256
 MANUAL_JSON_GUARD_PATHS = {"/api/build449/reviews"}
 _MUTATION_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _FORM_MEDIA_TYPES = {"multipart/form-data", "application/x-www-form-urlencoded"}
@@ -199,25 +200,48 @@ def create_workspace_app450(*, base_dir=None):
             names = {str(col.get("name") or "") for col in columns}
             if "case_id" not in names:
                 continue
-            for col in columns:
-                key = str(col.get("name") or "")
-                if int(col.get("pk") or 0) > 0 and key and key != "case_id":
+            primary = [
+                col for col in columns
+                if int(col.get("pk") or 0) > 0
+            ]
+            # Only a single-column primary key is globally unambiguous. A
+            # composite key such as (case_id, source_id) must never cause
+            # source_id alone to be interpreted as a qualification-owned
+            # resource, because that value can be shared by normal cases.
+            if len(primary) == 1:
+                key = str(primary[0].get("name") or "")
+                if key and key != "case_id":
                     lookups.add((table, key))
         return tuple(sorted(lookups))
 
     def qualification_case_for_tokens(tokens, marked):
-        tokens = {str(x) for x in tokens if str(x)}
+        tokens = sorted({str(x) for x in tokens if str(x)})
+        if len(tokens) > QUALIFICATION_IDENTIFIER_TOKEN_LIMIT:
+            raise HTTPException(
+                413,
+                "qualification identifier token limit exceeded",
+            )
+        marked = {str(x) for x in marked if str(x)}
         for case_id in marked:
             if case_id in tokens:
                 return case_id
+        if not tokens or not marked:
+            return ""
+
+        placeholders = ",".join("?" for _ in tokens)
+        # One bounded query per identifier class instead of one query per
+        # token/table pair. With the token cap above, middleware work remains
+        # bounded even before authentication.
         for table, key in case_bound_identifier_lookups():
-            for token in tokens:
-                row = ctx.db.one(
-                    f'SELECT case_id FROM "{table}" WHERE "{key}"=? LIMIT 1',
-                    (token,),
-                )
-                if row and str(row.get("case_id") or "") in marked:
-                    return str(row.get("case_id") or "")
+            rows = ctx.db.all(
+                f'SELECT case_id FROM "{table}" '
+                f'WHERE "{key}" IN ({placeholders})',
+                tuple(tokens),
+            )
+            for row in rows:
+                case_id = str(row.get("case_id") or "")
+                if case_id in marked:
+                    return case_id
         return ""
 
     def qualification_case_for_path(request):
@@ -236,19 +260,19 @@ def create_workspace_app450(*, base_dir=None):
             marked,
         )
 
-    def payload_tokens(value, identifier_keys=None):
+    def payload_tokens(value, identifier_keys=None, out=None):
         # JSON/body-only inherited routes are protected by the exact same
-        # schema-derived identifier set as path tokens. This prevents new or
-        # legacy identifiers (for example plan_id/wave_run_id/media_id) from
-        # bypassing qualification-case isolation merely because the field was
-        # not present in a static whitelist.
+        # schema-derived identifier set as path tokens. Extraction itself is
+        # bounded so an unauthenticated request cannot amplify a small body
+        # into an unbounded number of database probes.
         if identifier_keys is None:
             identifier_keys = {
                 "case_id",
                 "object_id",
                 *(key for _table, key in case_bound_identifier_lookups()),
             }
-        out = set()
+        if out is None:
+            out = set()
         if isinstance(value, dict):
             for key, item in value.items():
                 if (
@@ -256,10 +280,15 @@ def create_workspace_app450(*, base_dir=None):
                     and isinstance(item, (str, int))
                 ):
                     out.add(str(item))
-                out.update(payload_tokens(item, identifier_keys))
+                    if len(out) > QUALIFICATION_IDENTIFIER_TOKEN_LIMIT:
+                        raise HTTPException(
+                            413,
+                            "qualification identifier token limit exceeded",
+                        )
+                payload_tokens(item, identifier_keys, out)
         elif isinstance(value, list):
             for item in value:
-                out.update(payload_tokens(item, identifier_keys))
+                payload_tokens(item, identifier_keys, out)
         return out
 
     @app.middleware("http")
@@ -268,12 +297,12 @@ def create_workspace_app450(*, base_dir=None):
         if not case_id and _route_requires_payload_guard(app, request.scope):
             try:
                 payload = await _guarded_json_payload(request)
+                case_id = qualification_case_for_tokens(
+                    payload_tokens(payload),
+                    qualification_case_ids(),
+                )
             except HTTPException as exc:
                 return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-            case_id = qualification_case_for_tokens(
-                payload_tokens(payload),
-                qualification_case_ids(),
-            )
         if case_id:
             message = "Build-450 qualification cases are isolated from operational and legacy routes"
             if str(request.url.path).startswith("/api/"):
