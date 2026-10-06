@@ -917,13 +917,13 @@ def test_build450_schema_derived_plan_id_is_blocked_in_body_only_inherited_route
         )
         assert response.status_code == 403
         assert "isolated" in response.json()["detail"].lower()
-    after = int(
-        (ctx.db.one(
-            "SELECT COUNT(*) n FROM autonomous_wave_run_414 WHERE case_id=?",
-            (case["case_id"],),
-        ) or {}).get("n") or 0
-    )
-    assert after == before
+        after = int(
+            (app.state.context.db.one(
+                "SELECT COUNT(*) n FROM autonomous_wave_run_414 WHERE case_id=?",
+                (case["case_id"],),
+            ) or {}).get("n") or 0
+        )
+        assert after == before
 
 
 
