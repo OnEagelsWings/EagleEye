@@ -881,6 +881,52 @@ def test_build450_schema_driven_isolation_blocks_inherited_case_bound_primary_ke
 
 
 
+
+def test_build450_schema_derived_plan_id_is_blocked_in_body_only_inherited_route(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    plan = ctx.build413.create_investigation_plan(
+        case_id=case["case_id"],
+        objective="Qualification case plan must stay isolated from inherited body-only routes.",
+        subquestions=["Can a schema-derived plan_id bypass the Build-450 body guard?"],
+        identity=admin,
+    )
+    before = int(
+        (ctx.db.one(
+            "SELECT COUNT(*) n FROM autonomous_wave_run_414 WHERE case_id=?",
+            (case["case_id"],),
+        ) or {}).get("n") or 0
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.post(
+            "/api/build414/waves",
+            headers={"sec-fetch-site": "same-origin"},
+            json={
+                "plan_id": plan["plan_id"],
+                "max_waves": 2,
+                "max_searches_per_wave": 2,
+            },
+        )
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+    after = int(
+        (ctx.db.one(
+            "SELECT COUNT(*) n FROM autonomous_wave_run_414 WHERE case_id=?",
+            (case["case_id"],),
+        ) or {}).get("n") or 0
+    )
+    assert after == before
+
+
+
 def test_build450_malformed_report_json_fails_closed_without_status_exception(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
