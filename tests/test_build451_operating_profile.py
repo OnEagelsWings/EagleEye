@@ -70,7 +70,7 @@ def test_kernel_preconnected_http_still_works():
 @pytest.mark.parametrize("reason", ["no_kernel", "no_scanner"])
 def test_contained_profile_refuses_before_source_contact(monkeypatch, reason):
     transport = ProcessSurfaceTransport451(profile="contained")
-    def probe():
+    def probe(**kwargs):
         if reason == "no_kernel":
             raise RuntimeError("unavailable")
         return {}
@@ -218,3 +218,72 @@ def test_scanner_withheld_content_persists_without_intake(tmp_path, monkeypatch)
     with AppContext(base_dir=tmp_path) as ctx:
         run = ctx.surface_retrieval_441.case_runs(case_id)[-1]
         assert ctx.acquisition_events_422.get(run["event_id"])["provenance"]["content_quarantine"] == quarantine
+
+
+@pytest.mark.parametrize("succeed_on", [None, 2, 3], ids=["exhausted", "remaining-worker-budget", "no-worker-after-expiry"])
+def test_contained_connection_attempts_share_deadline(monkeypatch, succeed_on):
+    import base64
+    import eagleeye_pro.phase20.retrieval_isolation451 as module
+    clock = [0.0]
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+    transport = ProcessSurfaceTransport451(profile="contained", scanner=object())
+    probe_budgets = []
+    monkeypatch.setattr(transport, "containment_probe", lambda **kw: probe_budgets.append(kw["timeout_seconds"]))
+    attempts, worker_budgets, closed = [], [], []
+
+    class Wire:
+        def fileno(self):
+            return 42
+        def close(self):
+            closed.append(True)
+
+    def connect(address, timeout):
+        attempts.append(timeout)
+        clock[0] += 4
+        if len(attempts) == succeed_on:
+            return Wire()
+        raise TimeoutError("simulated unreachable public address")
+
+    def run(command, **kwargs):
+        worker_budgets.append(kwargs["timeout"])
+        assert kwargs["pass_fds"] == (42,)
+        payload = json.loads(kwargs["input"])
+        return subprocess.CompletedProcess(command, 0, json.dumps({
+            "url": payload["url"], "status": 200, "headers": {},
+            "body": base64.b64encode(b"benign").decode(), "elapsed_ms": 0,
+        }).encode(), b"")
+
+    class Scanner:
+        def scan(self, body):
+            return {"result": "clean"}
+    transport.scanner = Scanner()
+    monkeypatch.setattr(module.socket, "create_connection", connect)
+    monkeypatch.setattr(module.subprocess, "run", run)
+    if succeed_on == 2:
+        assert transport.fetch("https://example.org/", resolved_ips=["9.9.9.9"] * 16,
+                               timeout_seconds=10).body == b"benign"
+        assert attempts == [10, 6]
+        assert worker_budgets == [2]
+        assert closed == [True]
+    else:
+        with pytest.raises(TimeoutError, match="shared wall-clock"):
+            transport.fetch("https://example.org/", resolved_ips=["9.9.9.9"] * 16,
+                            timeout_seconds=10)
+        assert attempts == [10, 6, 2]
+        assert worker_budgets == []
+        assert closed == ([True] if succeed_on == 3 else [])
+    assert probe_budgets == [10]
+
+
+def test_containment_probe_consumes_same_deadline(monkeypatch):
+    import eagleeye_pro.phase20.retrieval_isolation451 as module
+    clock = [0.0]
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
+    transport = ProcessSurfaceTransport451(profile="contained", scanner=object())
+    def probe(**kwargs):
+        assert kwargs["timeout_seconds"] == 1
+        clock[0] = 1
+    monkeypatch.setattr(transport, "containment_probe", probe)
+    monkeypatch.setattr(module.socket, "create_connection", lambda *a, **k: pytest.fail("expired request contacted source"))
+    with pytest.raises(TimeoutError, match="shared wall-clock"):
+        transport.fetch("https://example.org/", resolved_ips=["9.9.9.9"], timeout_seconds=1)

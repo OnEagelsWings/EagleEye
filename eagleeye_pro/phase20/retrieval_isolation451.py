@@ -16,10 +16,18 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 from urllib.parse import urlsplit
 
 from eagleeye.crawler.engine import FetchResponse, USER_AGENT
 from eagleeye_pro.phase19.surface_retrieval441 import MAX_BYTES_HARD, MAX_TIMEOUT_HARD
+
+
+def remaining_seconds451(deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("retrieval exceeded shared wall-clock budget")
+    return remaining
 
 
 class ContentQuarantined451(ValueError):
@@ -175,11 +183,11 @@ class ProcessSurfaceTransport451:
         if self.profile == "contained":
             self.transport_kind = "surface451_kernel_contained_pinned_get"
 
-    def containment_probe(self):
+    def containment_probe(self, *, timeout_seconds=10):
         worker = Path(__file__).with_name("retrieval_worker451.py")
         result = subprocess.run([sys.executable, "-I", str(worker), "--containment-probe"],
                                 capture_output=True, env=worker_environment451(),
-                                close_fds=True, timeout=10, check=False)
+                                close_fds=True, timeout=timeout_seconds, check=False)
         if result.returncode or len(result.stdout) > 4096:
             raise RuntimeError("retrieval kernel containment unavailable")
         report = json.loads(result.stdout)
@@ -219,17 +227,20 @@ class ProcessSurfaceTransport451:
         connected = None
         options = {}
         command = [sys.executable, "-I", str(worker)]
+        deadline = None
         if self.profile == "contained":
             # Qualify confinement BEFORE opening any source connection.
-            self.containment_probe()
+            deadline = time.monotonic() + request["timeout_seconds"]
+            self.containment_probe(timeout_seconds=min(10, remaining_seconds451(deadline)))
             if self.scanner is None:
                 raise RuntimeError("contained retrieval requires a configured malware scanner")
             parsed = urlsplit(url)
             port = parsed.port or (443 if parsed.scheme == "https" else 80)
             last_error = None
             for address in request["resolved_ips"]:
+                remaining = remaining_seconds451(deadline)
                 try:
-                    connected = socket.create_connection((address, port), request["timeout_seconds"])
+                    connected = socket.create_connection((address, port), remaining)
                     break
                 except OSError as exc:
                     last_error = exc
@@ -245,7 +256,8 @@ class ProcessSurfaceTransport451:
                     command, input=payload,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     cwd=workdir, env=worker_environment451(), close_fds=True,
-                    timeout=request["timeout_seconds"] + 5, check=False, **options,
+                    timeout=(remaining_seconds451(deadline) if deadline is not None
+                             else request["timeout_seconds"] + 5), check=False, **options,
                 )
             except subprocess.TimeoutExpired as exc:
                 raise TimeoutError("retrieval worker exceeded wall-clock budget") from exc

@@ -71,3 +71,14 @@ qualify the profile. Native Windows remains process-only. A target host and a
 real-source authorized case remain necessary for operational acceptance; those
 facts do not become PASS from deterministic engineering tests. Next planned
 implementation: deployment/recovery/operations through research gate 455.
+
+## Shared deadline review fix
+
+The current-head Codex review identified a valid P2: multiple public-IP TCP
+candidates each received the full timeout. The contained profile now establishes
+one monotonic deadline before its kernel probe. Each connection receives only
+the remaining time; the child also receives only the remaining wall-clock budget.
+Exhaustion stops before another address/worker can start, and a connected socket
+is closed even when the deadline expires before worker startup. Regressions cover
+16 unreachable candidates, shrinking attempt budgets, successful connection with
+only the worker's remaining budget, expired startup cleanup and probe exhaustion.

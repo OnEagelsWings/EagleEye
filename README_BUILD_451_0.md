@@ -27,7 +27,9 @@ child receives only that socket, loads TLS trust before confinement, then
 applies a filesystem ruleset with no allow rules and a syscall filter rejecting
 new network/process/control and io_uring operations. HTTP(S) runs on the existing
 socket with hostname TLS validation; redirects remain governed by the parent.
-CPU, address-space and core-dump limits apply to this child. The filter is
+One monotonic deadline covers the kernel probe, all public-IP connection
+attempts and the worker; exhaustion stops further contact/startup and closes the
+connection. CPU, address-space and core-dump limits apply to this child. The filter is
 specific to x86-64; unsupported platforms are refused.
 
 This is a bounded worker profile, not a general-purpose sandbox or independent
