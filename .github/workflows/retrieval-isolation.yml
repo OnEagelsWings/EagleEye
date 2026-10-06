@@ -68,6 +68,7 @@ jobs:
       - name: Real engine benign and EICAR intake gate
         env:
           EAGLEEYE_TEST_CLAMD_SOCKET: /run/clamav/clamd.ctl
+          EAGLEEYE_REQUIRE_KERNEL_TEST: '1'
         run: python -m pytest -q tests/test_build451_operating_profile.py -k real_clamd
       - name: Stop CI scanner
         if: always()

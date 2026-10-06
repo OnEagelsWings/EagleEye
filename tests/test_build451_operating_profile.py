@@ -34,7 +34,8 @@ def test_kernel_denies_files_network_and_processes():
     assert not report["external_network_contacted"]
 
 
-def test_kernel_preconnected_http_still_works():
+@pytest.mark.parametrize("authority", ["example.org", "example.org:80", "example.org:443"])
+def test_kernel_preconnected_http_still_works(authority):
     require_kernel()
     parent, child = socket.socketpair()
     parent.settimeout(10)
@@ -44,13 +45,16 @@ def test_kernel_preconnected_http_still_works():
         with parent:
             request = b""
             while b"\r\n\r\n" not in request:
-                request += parent.recv(4096)
+                chunk = parent.recv(4096)
+                if not chunk:
+                    return
+                request += chunk
             received.append(request)
             parent.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello")
 
     thread = threading.Thread(target=server, daemon=True)
     thread.start()
-    request = {"url": "http://example.org/item", "resolved_ips": ["9.9.9.9"],
+    request = {"url": f"http://{authority}/item", "resolved_ips": ["9.9.9.9"],
                "method": "GET", "headers": {}, "timeout_seconds": 5, "max_bytes": 100}
     try:
         result = subprocess.run([sys.executable, "-I", str(ROOT / "eagleeye_pro/phase20/retrieval_worker451.py"),
@@ -64,7 +68,9 @@ def test_kernel_preconnected_http_still_works():
     assert response["status"] == 200
     assert response["body"] == "aGVsbG8="
     assert b"GET /item HTTP/1.1" in received[0]
-    assert b"Host: example.org" in received[0]
+    assert (f"Host: {authority}\r\n".encode()) in received[0]
+    assert response["headers"]["content-type"] == "text/plain"
+    assert "Content-Type" not in response["headers"]
 
 
 @pytest.mark.parametrize("reason", ["no_kernel", "no_scanner"])
@@ -287,3 +293,124 @@ def test_containment_probe_consumes_same_deadline(monkeypatch):
     monkeypatch.setattr(module.socket, "create_connection", lambda *a, **k: pytest.fail("expired request contacted source"))
     with pytest.raises(TimeoutError, match="shared wall-clock"):
         transport.fetch("https://example.org/", resolved_ips=["9.9.9.9"], timeout_seconds=1)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="contained worker is Linux-only")
+@pytest.mark.parametrize("url,authority,sni", [
+    ("http://example.org:443/item", "example.org:443", None),
+    ("https://example.org:80/item", "example.org:80", "example.org"),
+    ("https://example.org/item", "example.org", "example.org"),
+])
+def test_contained_worker_authority_header_contract(monkeypatch, url, authority, sni):
+    # HTTP/TLS dispatch contract test; kernel enforcement has separate real probes.
+    import resource
+    from eagleeye_pro.phase20 import retrieval_worker451 as worker
+    parent, child = socket.socketpair()
+    parent.settimeout(10)
+    received, wrapped = [], []
+    monkeypatch.setattr(resource, "setrlimit", lambda *a: None)
+    monkeypatch.setattr(worker, "confine_worker451", lambda: {})
+    class TrustContext:
+        def wrap_socket(self, wire, *, server_hostname):
+            wrapped.append(server_hostname)
+            return wire
+    monkeypatch.setattr(worker.ssl, "create_default_context", lambda: TrustContext())
+    def server():
+        with parent:
+            request = b""
+            while b"\r\n\r\n" not in request:
+                chunk = parent.recv(4096)
+                if not chunk:
+                    return
+                request += chunk
+            received.append(request)
+            parent.sendall(b"HTTP/1.1 200 OK\r\nCoNtEnT-TyPe: text/plain\r\nContent-Length: 5\r\n\r\nhello")
+    thread = threading.Thread(target=server, daemon=True)
+    thread.start()
+    try:
+        response = worker.contained_fetch451({"url": url, "headers": {}, "timeout_seconds": 5,
+                                              "max_bytes": 100}, child.detach())
+    finally:
+        child.close()
+        thread.join(timeout=10)
+    assert response.headers["content-type"] == "text/plain"
+    assert response.body == b"hello"
+    assert f"Host: {authority}\r\n".encode() in received[0]
+    assert wrapped == ([sni] if sni else [])
+
+
+@pytest.mark.parametrize("detected", [False, True], ids=["benign", "eicar"])
+def test_real_clamd_contained_acquisition_intake(tmp_path, monkeypatch, detected):
+    path = os.environ.get("EAGLEEYE_TEST_CLAMD_SOCKET")
+    if not path:
+        pytest.skip("combined real kernel/scanner intake runs in scanner CI")
+    require_kernel()
+    import hashlib
+    from test_build441_integrated import ident, case, resolver
+    body = (b'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
+            if detected else b"benign public source fixture")
+    threads, requested = [], []
+    def connect(address, timeout):
+        # Preserve validation/worker/scanner/intake; replace only external TCP with
+        # a controlled inherited socket. No real source contacts or TLS claim.
+        parent, child = socket.socketpair()
+        parent.settimeout(10)
+        def server():
+            with parent:
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    chunk = parent.recv(4096)
+                    if not chunk:
+                        return
+                    request += chunk
+                requested.append(request)
+                payload = b"User-agent: *\nAllow: /\n" if b"GET /robots.txt " in request else body
+                parent.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: "
+                               + str(len(payload)).encode() + b"\r\n\r\n" + payload)
+        thread = threading.Thread(target=server, daemon=True)
+        threads.append(thread)
+        thread.start()
+        return child
+    monkeypatch.setattr(socket, "create_connection", connect)
+    try:
+        with AppContext(base_dir=tmp_path) as ctx:
+            identity = ident(ctx)
+            case_id = case(ctx, "Contained scanner intake 451")["case_id"]
+            source = ctx.build421.register_source(
+                identity=identity, name="Controlled contained HTTP fixture", source_type="website",
+                access_mode="public", base_url="http://contained451.example.org/",
+                capabilities=["public_pages"], coverage={"fixture_only": True})
+            task = ctx.crawler_core_425.create_task(
+                identity=identity, case_id=case_id, source_id=source["source_id"],
+                target="http://contained451.example.org/page", objective="controlled kernel/scanner intake",
+                scope={"allowed_hosts": ["contained451.example.org"]},
+                budget={"max_pages": 1, "max_bytes": 100000, "max_seconds": 10})
+            transport = ProcessSurfaceTransport451(profile="contained", scanner=ClamdScanner451(path))
+            if detected:
+                with pytest.raises(RuntimeError, match="ScanWithheld451"):
+                    ctx.surface_retrieval_441.execute_replay(identity=identity, task_id=task["task_id"],
+                                                            transport=transport, resolver=resolver)
+                run = ctx.surface_retrieval_441.case_runs(case_id)[-1]
+                event = ctx.acquisition_events_422.get(run["event_id"])
+                persisted_key = "content_quarantine"
+                security = event["provenance"][persisted_key]
+                assert security["reason"] == "scanner_detection"
+                assert security["malware_scan_performed"]
+            else:
+                result = ctx.surface_retrieval_441.execute_replay(identity=identity, task_id=task["task_id"],
+                                                                 transport=transport, resolver=resolver)
+                assert result["run"]["state"] == "completed"
+                event = ctx.acquisition_events_422.get(result["accepted"]["event_id"])
+                persisted_key = "retrieval_security451"
+                security = event["provenance"][persisted_key]
+                assert security["kernel_contained"]
+                assert security["scanner"]["result"] == "clean"
+                assert security["scanner"]["sha256"] == hashlib.sha256(body).hexdigest()
+            assert ctx.db.one("SELECT COUNT(*) n FROM content_observation_423 WHERE case_id=?", (case_id,))["n"] == (0 if detected else 1)
+        with AppContext(base_dir=tmp_path) as ctx:
+            run = ctx.surface_retrieval_441.case_runs(case_id)[-1]
+            assert ctx.acquisition_events_422.get(run["event_id"])["provenance"][persisted_key] == security
+        assert any(b"GET /page " in request for request in requested)
+    finally:
+        for thread in threads:
+            thread.join(timeout=10)

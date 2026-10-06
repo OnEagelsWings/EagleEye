@@ -82,3 +82,20 @@ Exhaustion stops before another address/worker can start, and a connected socket
 is closed even when the deadline expires before worker startup. Regressions cover
 16 unreachable candidates, shrinking attempt budgets, successful connection with
 only the worker's remaining budget, expired startup cleanup and probe exhaustion.
+
+## Contained HTTP/intake review fixes
+
+The renewed review found P1 response-header casing broke safe-media intake, and
+P2 explicit URL ports were missing from the request authority. Contained responses
+now normalize header names like the original pinned transport. HTTPConnection
+uses the reviewed/default port, and the explicit Host header preserves the URL
+authority for both schemes, including explicit standard and cross-scheme ports.
+
+Kernel-backed HTTP fixtures assert lowercase content-type and exact Host values
+for implicit/default/explicit ports. Focused HTTP/TLS-dispatch contract tests cover
+HTTPS on port 80 and HTTP on port 443 without claiming a real TLS handshake. The
+real-scanner CI additionally exercises the complete contained-worker -> real
+ClamAV -> acquisition chain: benign bytes become content observations with scan
+provenance, EICAR bytes are withheld with no observations, and metadata survives
+restart. Only the external TCP endpoint is replaced by a controlled socket;
+real kernel containment, scanner, IPC and intake remain active.

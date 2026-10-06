@@ -36,11 +36,13 @@ def contained_fetch451(request, fd):
     started = time.monotonic()
     if parsed.scheme == "https":
         wire = context.wrap_socket(wire, server_hostname=parsed.hostname)
-    connection = http.client.HTTPConnection(parsed.hostname)
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    connection = http.client.HTTPConnection(parsed.hostname, port=port)
     connection.sock = wire
     try:
         target = (parsed.path or "/") + (("?" + parsed.query) if parsed.query else "")
-        headers = {"User-Agent": USER_AGENT, "Accept-Encoding": "identity", "Connection": "close"}
+        headers = {"Host": parsed.netloc, "User-Agent": USER_AGENT,
+                   "Accept-Encoding": "identity", "Connection": "close"}
         headers.update(request["headers"])
         connection.request("GET", target, headers=headers)
         response = connection.getresponse()
@@ -48,7 +50,7 @@ def contained_fetch451(request, fd):
         if len(body) > request["max_bytes"]:
             raise ValueError("response exceeds byte budget")
         return FetchResponse(request["url"], response.status,
-                             dict(response.getheaders()), body,
+                             {str(key).casefold(): str(value) for key, value in response.getheaders()}, body,
                              int((time.monotonic() - started) * 1000))
     finally:
         connection.close()
