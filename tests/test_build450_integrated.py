@@ -850,6 +850,37 @@ def test_build450_payload_bound_review_request_cannot_target_qualification_case(
         assert "isolated" in response.json()["detail"].lower()
 
 
+
+def test_build450_schema_driven_isolation_blocks_inherited_case_bound_primary_key_resources(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    ctx.db.conn.executescript(
+        """CREATE TABLE IF NOT EXISTS qualification_asset_regression_450(
+        asset_id TEXT PRIMARY KEY,
+        case_id TEXT NOT NULL,
+        payload TEXT NOT NULL
+        );"""
+    )
+    asset_id = "media450_schema_bound_asset"
+    ctx.db.execute(
+        "INSERT INTO qualification_asset_regression_450(asset_id,case_id,payload) VALUES(?,?,?)",
+        (asset_id, case["case_id"], "synthetic inherited-resource isolation regression"),
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.get(f"/api/images/{asset_id}")
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+
+
+
 def test_build450_malformed_report_json_fails_closed_without_status_exception(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
