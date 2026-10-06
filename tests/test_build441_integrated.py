@@ -1,5 +1,6 @@
 from pathlib import Path
 import runpy
+import time
 
 import pytest
 
@@ -272,6 +273,50 @@ def test_active_build439_loop_can_supply_existing_human_authorization(tmp_path, 
         assert result["authorization_mode"] == "authorized_build439_loop"
         assert called["live"] is True
         assert called["task_id"] == task_id
+
+
+
+def test_task_wall_clock_budget_is_shared_across_robots_and_target_fetches(tmp_path):
+    class RecordingTransport:
+        requires_resolved_ips = False
+        transport_kind = "deadline-regression-transport"
+
+        def __init__(self, base, target):
+            self.base = base
+            self.target = target
+            self.timeouts = []
+
+        def fetch(self, url, *, method="GET", headers=None, timeout_seconds=20, max_bytes=100000):
+            self.timeouts.append(float(timeout_seconds))
+            time.sleep(0.03)
+            if url == self.base + "robots.txt":
+                return FetchResponse(
+                    url, 200, {"content-type": "text/plain"},
+                    b"User-agent: *\nAllow: /\n", 1,
+                )
+            return FetchResponse(
+                url, 200, {"content-type": "text/plain"},
+                b"deadline bounded content", 1,
+            )
+
+    with AppContext(base_dir=tmp_path) as c:
+        i = ident(c)
+        cid = case(c, "Shared deadline 441")["case_id"]
+        _source, task, base = source_and_task(
+            c, i, cid, suffix="deadline", media_budget={
+                "max_pages": 1, "max_bytes": 100000, "max_seconds": 1
+            }
+        )
+        transport = RecordingTransport(base, task["target"])
+        result = c.surface_retrieval_441.execute_replay(
+            identity=i,
+            task_id=task["task_id"],
+            transport=transport,
+            resolver=resolver,
+        )
+        assert result["run"]["state"] == "completed"
+        assert len(transport.timeouts) == 2
+        assert 0 < transport.timeouts[1] < transport.timeouts[0] <= 1.0
 
 
 def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
