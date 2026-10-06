@@ -169,16 +169,10 @@ def create_workspace_app450(*, base_dir=None):
             for row in ctx.db.all("SELECT case_id FROM phase20_qualification_case_450")
         }
 
-    def qualification_case_for_tokens(tokens, marked):
-        tokens = {str(x) for x in tokens if str(x)}
-        for case_id in marked:
-            if case_id in tokens:
-                return case_id
-        # Resolve current and inherited case-bound identifier classes.
-        # Static lookups cover the core investigation chain; the schema-driven
-        # primary-key fallback additionally covers older ID-only routes (for
-        # example media assets and legacy export/task resources) without relying
-        # on the literal case_id being present in the URL or JSON payload.
+    def case_bound_identifier_lookups():
+        # Core IDs are explicit for readability; schema discovery extends the
+        # boundary to inherited case-scoped resources without needing a new
+        # hard-coded list every time an older route is surfaced.
         lookups = {
             ("acquisition_event_422", "event_id"),
             ("content_observation_423", "observation_id"),
@@ -209,8 +203,14 @@ def create_workspace_app450(*, base_dir=None):
                 key = str(col.get("name") or "")
                 if int(col.get("pk") or 0) > 0 and key and key != "case_id":
                     lookups.add((table, key))
+        return tuple(sorted(lookups))
 
-        for table, key in sorted(lookups):
+    def qualification_case_for_tokens(tokens, marked):
+        tokens = {str(x) for x in tokens if str(x)}
+        for case_id in marked:
+            if case_id in tokens:
+                return case_id
+        for table, key in case_bound_identifier_lookups():
             for token in tokens:
                 row = ctx.db.one(
                     f'SELECT case_id FROM "{table}" WHERE "{key}"=? LIMIT 1',
@@ -236,20 +236,30 @@ def create_workspace_app450(*, base_dir=None):
             marked,
         )
 
-    def payload_tokens(value):
+    def payload_tokens(value, identifier_keys=None):
+        # JSON/body-only inherited routes are protected by the exact same
+        # schema-derived identifier set as path tokens. This prevents new or
+        # legacy identifiers (for example plan_id/wave_run_id/media_id) from
+        # bypassing qualification-case isolation merely because the field was
+        # not present in a static whitelist.
+        if identifier_keys is None:
+            identifier_keys = {
+                "case_id",
+                "object_id",
+                *(key for _table, key in case_bound_identifier_lookups()),
+            }
         out = set()
         if isinstance(value, dict):
             for key, item in value.items():
-                if str(key).lower() in {
-                    "case_id", "object_id", "review_id", "evidence_id", "claim_id",
-                    "revision_id", "loop_id", "dispatch_id", "execution_id",
-                    "event_id", "observation_id", "task_id", "news_item_id",
-                } and isinstance(item, (str, int)):
+                if (
+                    str(key).lower() in identifier_keys
+                    and isinstance(item, (str, int))
+                ):
                     out.add(str(item))
-                out.update(payload_tokens(item))
+                out.update(payload_tokens(item, identifier_keys))
         elif isinstance(value, list):
             for item in value:
-                out.update(payload_tokens(item))
+                out.update(payload_tokens(item, identifier_keys))
         return out
 
     @app.middleware("http")
