@@ -10,6 +10,7 @@ from eagleeye_pro.core.app_context import AppContext
 from eagleeye.interfaces.web.app448 import render_workspace
 from eagleeye.interfaces.web.app450 import (
     JSON_PAYLOAD_GUARD_MAX_BYTES,
+    QUALIFICATION_IDENTIFIER_TOKEN_LIMIT,
     _route_body_requires_payload_guard,
     create_workspace_app450,
 )
@@ -924,6 +925,65 @@ def test_build450_schema_derived_plan_id_is_blocked_in_body_only_inherited_route
             ) or {}).get("n") or 0
         )
         assert after == before
+
+
+
+
+def test_build450_schema_isolation_token_extraction_is_bounded_before_auth_amplification(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    try:
+        payload = {
+            "items": [
+                {"plan_id": f"untrusted-plan-token-{idx}"}
+                for idx in range(QUALIFICATION_IDENTIFIER_TOKEN_LIMIT + 1)
+            ]
+        }
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/build414/waves",
+                headers={"sec-fetch-site": "same-origin"},
+                json=payload,
+            )
+            assert response.status_code == 413
+            assert "identifier token limit" in response.json()["detail"].lower()
+    finally:
+        app.state.context.close()
+
+
+def test_build450_composite_case_key_is_not_treated_as_globally_unique_resource_id(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, reviewer, qualification_case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    normal_case = ctx.team_governance_359.create_case(
+        identity=admin,
+        title="Normal shared-resource case",
+        client="QA",
+        purpose="Ensure composite case-scoped shared IDs do not over-block normal resources.",
+        legal_basis="public_data",
+    )
+    shared_id = "shared-composite-id-450"
+    ctx.db.conn.executescript(
+        """CREATE TABLE IF NOT EXISTS composite_scope_regression_450(
+        case_id TEXT NOT NULL,
+        shared_id TEXT NOT NULL,
+        note TEXT NOT NULL,
+        PRIMARY KEY(case_id, shared_id)
+        );"""
+    )
+    ctx.db.execute(
+        "INSERT INTO composite_scope_regression_450(case_id,shared_id,note) VALUES(?,?,?)",
+        (qualification_case["case_id"], shared_id, "qualification association"),
+    )
+    ctx.db.execute(
+        "INSERT INTO composite_scope_regression_450(case_id,shared_id,note) VALUES(?,?,?)",
+        (normal_case["case_id"], shared_id, "normal association"),
+    )
+    # The schema-derived isolation layer must skip shared_id because it is only
+    # one component of a composite PK. A nonexistent route therefore remains a
+    # normal 404 instead of being falsely converted into a qualification 403.
+    with TestClient(app) as client:
+        response = client.get(f"/api/nonexistent-shared-resource/{shared_id}")
+        assert response.status_code == 404
 
 
 
