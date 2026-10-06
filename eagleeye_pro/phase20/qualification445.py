@@ -135,6 +135,8 @@ class DataAcquisitionHardCheckpoint445:
                 "bounded_retry": bool(s442.get("bounded_retry")),
                 "per_source_rate_limit": bool(s442.get("per_source_rate_limit")),
                 "process_isolation": bool(s442.get("process_isolation")),
+                "os_sandbox_qualified": bool(s442.get("os_sandbox_qualified")),
+                "malware_scanner_qualified": bool(s442.get("malware_scanner_qualified")),
             },
             "news": {
                 "implemented": bool(s443.get("live_news_acquisition")),
@@ -387,6 +389,10 @@ class DataAcquisitionHardCheckpoint445:
             unresolved.append("build439_specialized_news_social_adapter_dispatch_not_implemented")
         if matrix["hardening"]["process_isolation"] is False:
             unresolved.append("retrieval_process_isolation_not_implemented")
+        if not matrix["hardening"]["os_sandbox_qualified"]:
+            unresolved.append("retrieval_os_sandbox_not_qualified")
+        if not matrix["hardening"]["malware_scanner_qualified"]:
+            unresolved.append("retrieval_malware_scanner_not_qualified")
 
         if engineering_result == "fail":
             overall_result = "fail"

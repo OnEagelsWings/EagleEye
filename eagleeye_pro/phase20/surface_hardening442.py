@@ -10,7 +10,7 @@ import ssl
 import threading
 import time
 
-from eagleeye_pro.phase19.surface_retrieval441 import PinnedSurfaceTransport441
+from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
 
 BUILD = "442.0"
 POLICY_ID = "phase20.surface-hardening-validation.v442"
@@ -121,6 +121,10 @@ class RetryingTransport442:
         self.base_backoff = max(0.0, float(base_backoff))
         self.requires_resolved_ips = bool(getattr(inner, "requires_resolved_ips", False))
         self.attempts = 0
+
+    @property
+    def security_report(self):
+        return getattr(self.inner, "security_report", {})
 
     @property
     def _inner_kind(self):
@@ -524,7 +528,7 @@ class SurfaceRetrievalHardening442:
             return self._execute_hardened(
                 identity=identity,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=self._default_resolver,
                 execution_mode="live_hardened_pinned_public_get",
                 authorization_mode="explicit_task_confirmation",
@@ -552,7 +556,7 @@ class SurfaceRetrievalHardening442:
             return self._execute_hardened(
                 identity=ident,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=self._default_resolver,
                 execution_mode="live_hardened_pinned_public_get",
                 authorization_mode="authorized_build439_loop",
@@ -577,7 +581,7 @@ class SurfaceRetrievalHardening442:
             result = self._execute_hardened(
                 identity=identity,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=self._default_resolver,
                 execution_mode="external_validation_public_get",
                 authorization_mode="explicit_external_validation",
@@ -794,7 +798,11 @@ class SurfaceRetrievalHardening442:
             "single_concurrent_live_worker": True,
             "ephemeral_transport_per_live_run": True,
             "shared_cookie_or_session_state": False,
-            "process_isolation": False,
+            "process_isolation": True,
+            "os_sandbox_qualified": False,
+            "retrieval_worker_inherits_environment": False,
+            "executable_archive_intake_blocked": True,
+            "malware_scanner_qualified": False,
             "failure_telemetry": True,
             "tls_certificate_validation_inherited_from_441_transport": True,
             "robots_fail_closed_inherited_from_441": True,

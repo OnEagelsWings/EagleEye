@@ -1,8 +1,9 @@
-# EagleEye — Build 450
+# EagleEye — Build 451
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 450 is the **Investigation Workflow Hard Checkpoint**.
+Build 451 adds **Retrieval Isolation** and scanner gates to the Build-450 investigation workflow.
+See `README_BUILD_451_0.md` for profiles and qualification limits.
 
 The current governed chain is:
 
@@ -20,7 +21,7 @@ pytest -q tests/test_build450_integrated.py
 ## Start
 
 ```bash
-python EAGLEEYE_PRO_450_0.py
+python EAGLEEYE_PRO_451_0.py
 ```
 
 Current roadmap:
@@ -29,3 +30,6 @@ Current roadmap:
 - next phase is determined from checkpoint findings
 
 See `README_BUILD_450_0.md`, `BUILD_450_CASE_TEST.md`, and `RELEASE_MANIFEST_BUILD_450_0.json`.
+
+The retained checkpoint launcher `EAGLEEYE_PRO_450_0.py` remains available for
+Build-450 workspace compatibility. The default launchers start Build 451.

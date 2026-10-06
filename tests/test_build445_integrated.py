@@ -98,11 +98,15 @@ def test_checkpoint_surfaces_live_ai_dispatch_and_process_isolation_gaps(tmp_pat
         assert "news_external_nonfixture_validation_missing" in unresolved
         assert "social_external_nonfixture_validation_missing" in unresolved
         assert "build439_specialized_news_social_adapter_dispatch_not_implemented" in unresolved
-        assert "retrieval_process_isolation_not_implemented" in unresolved
+        assert "retrieval_process_isolation_not_implemented" not in unresolved
+        assert "retrieval_os_sandbox_not_qualified" in unresolved
+        assert "retrieval_malware_scanner_not_qualified" in unresolved
 
         matrix = report["capability_matrix"]
         assert matrix["ai_investigation_loop"]["specialized_news_social_dispatch_implemented"] is False
-        assert matrix["hardening"]["process_isolation"] is False
+        assert matrix["hardening"]["process_isolation"] is True
+        assert matrix["hardening"]["os_sandbox_qualified"] is False
+        assert matrix["hardening"]["malware_scanner_qualified"] is False
 
 
 def test_checkpoint_retains_authority_boundaries(tmp_path):
@@ -197,7 +201,7 @@ def test_contract_launcher_and_current_server(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_450_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app450 import create_workspace_app450" in (
+    assert "app451 import create_workspace_app451" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_445_CASE_TEST.md").exists()
