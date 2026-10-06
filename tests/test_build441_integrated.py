@@ -6,6 +6,7 @@ import pytest
 
 from eagleeye.crawler.engine import FetchResponse, StaticTransport
 from eagleeye_pro.core.app_context import AppContext
+import eagleeye_pro.phase19.surface_retrieval441 as surface441
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_IP = "93.184.216.34"
@@ -317,6 +318,78 @@ def test_task_wall_clock_budget_is_shared_across_robots_and_target_fetches(tmp_p
         assert result["run"]["state"] == "completed"
         assert len(transport.timeouts) == 2
         assert 0 < transport.timeouts[1] < transport.timeouts[0] <= 1.0
+
+
+
+def test_dns_resolution_is_bounded_by_shared_task_deadline(tmp_path):
+    with AppContext(base_dir=tmp_path) as c:
+        def slow_resolver(_host):
+            time.sleep(0.20)
+            return [PUBLIC_IP]
+
+        deadline = time.monotonic() + 0.05
+        started = time.monotonic()
+        with pytest.raises(TimeoutError, match="DNS resolution"):
+            c.surface_retrieval_441._resolve_public(
+                "deadline-dns.example.org",
+                resolver=slow_resolver,
+                deadline=deadline,
+            )
+        assert time.monotonic() - started < 0.18
+
+
+def test_pinned_transport_uses_single_receive_read1_for_deadline_safe_chunks(monkeypatch):
+    class Sock:
+        def settimeout(self, value):
+            self.timeout = value
+
+    class Response:
+        status = 200
+
+        def __init__(self):
+            self.parts = [b"hello", b""]
+
+        def read(self, _size=-1):
+            raise AssertionError("deadline-safe transport must not call read(size)")
+
+        def read1(self, _size=-1):
+            return self.parts.pop(0)
+
+        def getheaders(self):
+            return [("content-type", "text/plain")]
+
+    class Connection:
+        def __init__(self, host, port=80, timeout=None, **_kwargs):
+            self.host = host
+            self.port = port
+            self.timeout = timeout
+            self.sock = Sock()
+
+        def putrequest(self, *_args, **_kwargs):
+            pass
+
+        def putheader(self, *_args, **_kwargs):
+            pass
+
+        def endheaders(self):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(surface441.http.client, "HTTPConnection", Connection)
+    transport = surface441.PinnedSurfaceTransport441()
+    result = transport.fetch(
+        "http://deadline-read.example.org/page",
+        resolved_ips=[PUBLIC_IP],
+        timeout_seconds=1,
+        max_bytes=1000,
+    )
+    assert result.status == 200
+    assert result.body == b"hello"
 
 
 def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
