@@ -33,11 +33,16 @@ def _hash(value):
 
 
 class RecoveryBasis453:
-    def __init__(self, db, audit, *, recovery_dir, actor="local-analyst"):
+    def __init__(self, db, audit, *, recovery_dir, identity_service=None, actor="local-analyst"):
         self.db = db
         self.audit = audit
+        self.identity_service = identity_service
         self.recovery_dir = Path(recovery_dir).resolve()
         self.recovery_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.recovery_dir.chmod(0o700)
+        except OSError:
+            pass
         self.actor = actor
         self._init_schema()
 
@@ -48,6 +53,7 @@ class RecoveryBasis453:
           label TEXT NOT NULL,
           database_file TEXT NOT NULL,
           manifest_file TEXT NOT NULL,
+          manifest_sha256 TEXT NOT NULL,
           database_sha256 TEXT NOT NULL,
           database_bytes INTEGER NOT NULL,
           sqlite_quick_check TEXT NOT NULL,
@@ -62,10 +68,21 @@ class RecoveryBasis453:
     def _identity(self, identity):
         if not isinstance(identity, dict):
             raise PermissionError("active identity required")
-        actor = str(identity.get("username") or identity.get("user_id") or "").strip()
-        if not actor:
-            raise PermissionError("active identity required")
-        return actor
+        username = str(identity.get("username") or "").strip()
+        user_id = str(identity.get("user_id") or "").strip()
+        if not username or not user_id:
+            raise PermissionError("canonical active identity required")
+        current = identity
+        if self.identity_service is not None:
+            try:
+                current = self.identity_service.public_user(username)
+            except (KeyError, ValueError):
+                raise PermissionError("canonical active identity required") from None
+            if not current.get("active") or str(current.get("user_id") or "") != user_id:
+                raise PermissionError("canonical active identity required")
+        if current.get("global_role") != "system_administrator":
+            raise PermissionError("system administrator role required")
+        return username
 
     def _record_hash(self, record):
         return _hash({k: record[k] for k in record if k != "record_hash"})
@@ -91,6 +108,10 @@ class RecoveryBasis453:
         recovery_id = "rec453_" + secrets.token_hex(10)
         target_dir = self.recovery_dir / recovery_id
         target_dir.mkdir(parents=True, exist_ok=False)
+        try:
+            target_dir.chmod(0o700)
+        except OSError:
+            pass
         temp_db = target_dir / "eagleeye.sqlite.tmp"
         final_db = target_dir / "eagleeye.sqlite"
         manifest_path = target_dir / "manifest.json"
@@ -134,11 +155,13 @@ class RecoveryBasis453:
                 manifest_path.chmod(0o600)
             except OSError:
                 pass
+            manifest_digest = _sha_file(manifest_path)
             record = {
                 "recovery_id": recovery_id,
                 "label": str(label or "").strip()[:200],
                 "database_file": f"{recovery_id}/eagleeye.sqlite",
                 "manifest_file": f"{recovery_id}/manifest.json",
+                "manifest_sha256": manifest_digest,
                 "database_sha256": digest,
                 "database_bytes": size,
                 "sqlite_quick_check": quick,
@@ -147,7 +170,7 @@ class RecoveryBasis453:
                 "created_at": manifest["created_at"],
             }
             record["record_hash"] = self._record_hash(record)
-            self.db.execute("INSERT INTO recovery_point_453 VALUES(?,?,?,?,?,?,?,?,?,?,?)", tuple(record.values()))
+            self.db.execute("INSERT INTO recovery_point_453 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", tuple(record.values()))
             self.audit.log(
                 "recovery_point_created_453", "recovery_point_453", recovery_id, "",
                 {"label": record["label"], "database_sha256": digest, "database_bytes": size},
@@ -184,6 +207,8 @@ class RecoveryBasis453:
             if quick != "ok":
                 errors.append("sqlite_quick_check_failed")
         if manifest_path.is_file():
+            if _sha_file(manifest_path) != record["manifest_sha256"]:
+                errors.append("manifest_file_hash_mismatch")
             try:
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 if manifest.get("database_sha256") != record["database_sha256"]:
@@ -215,6 +240,10 @@ class RecoveryBasis453:
         source = self._inside_root(record["database_file"])
         staged_dir = self.recovery_dir / "staged"
         staged_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            staged_dir.chmod(0o700)
+        except OSError:
+            pass
         staged = staged_dir / f"{recovery_id}.sqlite"
         temp = staged.with_suffix(".tmp")
         shutil.copy2(source, temp)
