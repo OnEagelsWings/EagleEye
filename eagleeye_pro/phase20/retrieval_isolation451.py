@@ -299,7 +299,9 @@ class ProcessSurfaceTransport451:
         if len(body) > max_bytes:
             raise ValueError("retrieval response exceeds byte budget")
         inspect_response451(body, response["headers"])
-        self.last_scan = self.scanner.scan(body) if self.scanner is not None else None
+        # Malware scanning is part of the same absolute retrieval budget.
+        # A slow scanner must never outlive the caller's operation deadline.
+        self.last_scan = self.scanner.scan(body, deadline=deadline) if self.scanner is not None else None
         self.security_report = {"profile": self.profile, "kernel_contained": self.profile == "contained",
                                 "content_sha256": hashlib.sha256(body).hexdigest(),
                                 "scanner": self.last_scan, "content_risk_gate_pass": True}
