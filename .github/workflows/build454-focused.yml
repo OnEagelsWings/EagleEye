@@ -35,3 +35,19 @@ jobs:
       - name: Windows isolated import
         if: runner.os == 'Windows'
         run: .eagleeye-runtime\\Scripts\\python.exe -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '454.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
+      - name: Package tested Build 454 source
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          git archive --format=zip --output EagleEye_Build_454_SOURCE.zip HEAD
+          sha256sum EagleEye_Build_454_SOURCE.zip > EagleEye_Build_454_SOURCE.sha256
+      - name: Upload tested Build 454 source
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EagleEye_Build_454_SOURCE
+          path: |
+            EagleEye_Build_454_SOURCE.zip
+            EagleEye_Build_454_SOURCE.sha256
+          if-no-files-found: error
+          retention-days: 30
