@@ -35,4 +35,4 @@ Current roadmap:
 - 454 Reliability / operational integration
 - 455 Full Operations / real-source research gate
 
-The retained historical launchers remain available for compatibility. The default launchers start Build 452.
+The retained historical launchers remain available for compatibility, including `EAGLEEYE_PRO_450_0.py`. The default launchers start Build 452.
