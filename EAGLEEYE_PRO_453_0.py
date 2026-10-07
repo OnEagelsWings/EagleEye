@@ -1,0 +1,1 @@
+from eagleeye.interfaces.web.app453 import create_workspace_app453\nfrom eagleeye.interfaces.web.server import serve_workspace\n\napp = None\nif __name__ not in {"__main__", "__mp_main__"}:\n    app = create_workspace_app453()\nif __name__ == "__main__":\n    raise SystemExit(serve_workspace())\n
