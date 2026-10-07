@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import difflib
 import hashlib
+import ipaddress
 import json
 import re
 import secrets
@@ -34,8 +35,17 @@ def _public_url(value):
         raise ValueError("historical target must be an absolute public http(s) URL")
     if parsed.username is not None or parsed.password is not None:
         raise ValueError("credentials are forbidden in historical target URLs")
-    if parsed.hostname.casefold().endswith(".onion"):
+    host = parsed.hostname.casefold()
+    if host.endswith(".onion"):
         raise ValueError("onion history requires the isolated Tor path")
+    if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
+        raise ValueError("local/private historical targets are forbidden")
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None and not literal.is_global:
+        raise ValueError("local/private historical targets are forbidden")
     return text
 
 
@@ -250,7 +260,20 @@ class HistoricalWebIntelligence453:
                 })
         return requests
 
-    def _verify_index_provenance(self, *, query, provider, event_id, content_id):
+    def _payload_text(self, payload):
+        if isinstance(payload, bytes):
+            raw = bytes(payload)
+            text = raw.decode("utf-8", errors="strict")
+        elif isinstance(payload, str):
+            text = payload
+            raw = text.encode("utf-8")
+        else:
+            raise ValueError("historical index payload must be UTF-8 text")
+        if len(raw) > 4_000_000:
+            raise ValueError("historical index payload exceeds bounded import size")
+        return text, raw
+
+    def _verify_index_provenance(self, *, query, provider, event_id, content_id, payload_bytes):
         event = self.events422.get(event_id)
         if event["case_id"] != query["case_id"]:
             raise ValueError("index event belongs to another case")
@@ -260,6 +283,11 @@ class HistoricalWebIntelligence453:
         )
         if not observation:
             raise ValueError("index content is not linked to the acquisition event")
+        content = self.db.one(
+            "SELECT sha256 FROM content_object_423 WHERE content_id=?", (content_id,)
+        )
+        if not content or content["sha256"] != hashlib.sha256(payload_bytes).hexdigest():
+            raise ValueError("supplied index payload does not match referenced content hash")
         host = (urlsplit(event["target"]).hostname or "").casefold()
         expected = {
             "internet_archive": {"web.archive.org"},
@@ -299,10 +327,12 @@ class HistoricalWebIntelligence453:
         provider = str(provider or "").strip().lower()
         if provider not in query["providers"]:
             raise ValueError("provider was not authorized by the historical query")
+        payload_text, payload_bytes = self._payload_text(payload)
         self._verify_index_provenance(
-            query=query, provider=provider, event_id=index_event_id, content_id=index_content_id
+            query=query, provider=provider, event_id=index_event_id,
+            content_id=index_content_id, payload_bytes=payload_bytes
         )
-        rows = self._parse_wayback(payload) if provider == "internet_archive" else self._parse_common_crawl(payload)
+        rows = self._parse_wayback(payload_text) if provider == "internet_archive" else self._parse_common_crawl(payload_text)
         created, skipped = [], 0
         lower, upper = query["from_time"], query["to_time"]
         for raw in rows:
