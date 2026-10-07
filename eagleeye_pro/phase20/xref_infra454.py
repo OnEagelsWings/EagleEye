@@ -346,7 +346,7 @@ class InfrastructureIntel454:
 
     def _fact(self, *, lookup, fact_type, value, reliability, source_id, event_id, content_id,
               source_ref, evidence=None):
-        raw = str(value or "").strip()
+        raw = str("" if value is None else value).strip()
         if not raw:
             return None
         normalized = _norm_fact(fact_type, raw)
