@@ -1,0 +1,37 @@
+{
+  "build": "453.0",
+  "package": "453.0.0",
+  "phase": 20,
+  "name": "Historical Web Intelligence 2.0 + Recovery Basis",
+  "hard_checkpoint": false,
+  "development_build": true,
+  "previous_build": "452.0",
+  "next_build": "454.0",
+  "next_build_focus": "Cross-Reference Engine + Domain Infrastructure Intelligence",
+  "next_hard_checkpoint": "455.0",
+  "historical_web_intelligence": {
+    "internet_archive_cdx": true,
+    "common_crawl_index": true,
+    "provider_index_import_requires_acquisition_provenance": true,
+    "capture_candidates_are_not_truth": true,
+    "cross_provider_candidate_ranking": true,
+    "historical_text_disappearance_signal": true,
+    "archive_capture_link_to_build428": true,
+    "direct_network_authority": false
+  },
+  "recovery_basis": {
+    "sqlite_online_backup": true,
+    "sha256_manifest": true,
+    "sqlite_quick_check": true,
+    "staged_restore": true,
+    "automatic_live_database_overwrite": false,
+    "restart_required_for_restore": true
+  },
+  "ci_cadence": {
+    "focused_tests_between_checkpoints": true,
+    "full_research_workflow_every_fifth_build": true,
+    "next_full_gate": "455.0"
+  },
+  "real_source_qualification": "HOLD",
+  "production_release_ready": false
+}

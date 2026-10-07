@@ -1,7 +1,6 @@
 name: EagleEye Deployment 452
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
