@@ -1,36 +1,38 @@
-# EagleEye — Build 453
+# EagleEye — Build 454
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 453 adds **Historical Web Intelligence 2.0** and a **verified Recovery Basis**. See `README_BUILD_453_0.md`.
+Build 454 adds the **Cross-Reference Engine** and **Public Domain Infrastructure Intelligence**. See `README_BUILD_454_0.md`.
 
-The current governed chain remains:
+The governed chain remains:
 
 Acquisition → AI Dispatch → Evidence → Independent Review → Claims → Independent Review → Graph/Timeline/Synthesis → Living Dossier → Independent Dossier Review → Separate Export Approval → Authorized Export.
 
-New in 453:
+New in 454:
 
-- Internet Archive CDX and Common Crawl historical index planning/import with acquisition provenance;
-- ranked historical capture candidates and disappearance/change signals;
-- linkage of retrieved archive pages into Build 428;
-- verified SQLite recovery points and safe staged restore preparation;
-- focused CI between five-build hard checkpoints.
+- RDAP, public DNS, Certificate Transparency, IP-RDAP and RIPEstat lookup planning;
+- payload imports bound to existing acquisition/content provenance and exact SHA-256;
+- Entity ↔ Domain cross references;
+- shared-anchor and shared-public-infrastructure candidates;
+- historical-web ↔ Entity/Domain correlation;
+- explainable candidate paths and next-pivot recommendations;
+- explicit guardrails against interpreting shared hosting/DNS/CDN infrastructure as common ownership.
 
 ## Install / verify
 
 ```bash
-python INSTALL_EAGLEEYE_453.py
-python INSTALL_EAGLEEYE_453.py --check
+python INSTALL_EAGLEEYE_454.py
+python INSTALL_EAGLEEYE_454.py --check
 ```
 
 ## Focused development qualification
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build453_historical_recovery.py
+pytest -q tests/test_build454_xref_infrastructure.py
 ```
 
-The full research workflow is intentionally reserved for 455/460/465/... rather than repeated on every development build.
+The complete research workflow remains on the five-build cadence: 455/460/465/....
 
 Current roadmap:
 
@@ -41,4 +43,4 @@ Current roadmap:
 - 454 Cross-Reference Engine + Domain Infrastructure Intelligence
 - 455 Full Operations / real-source research gate
 
-Historical compatibility assets remain present, including `EAGLEEYE_PRO_450_0.py` and the retained checkpoint regression `test_build450_integrated.py`. The default launchers start Build 453.
+Historical compatibility assets remain present, including `EAGLEEYE_PRO_450_0.py` and the retained checkpoint regression `test_build450_integrated.py`. The default launchers start Build 454.
