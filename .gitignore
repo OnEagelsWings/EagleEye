@@ -11,6 +11,7 @@ htmlcov/
 build/
 dist/
 .venv/
+.eagleeye-runtime/
 venv/
 
 # Runtime / local state
