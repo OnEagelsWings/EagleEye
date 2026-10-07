@@ -161,3 +161,46 @@ def test_build452_version_and_release_contract():
     assert 'BUILD = "452.0"' in (ROOT / "eagleeye_pro/version.py").read_text(encoding="utf-8")
     assert (ROOT / "README_BUILD_452_0.md").exists()
     assert (ROOT / "RELEASE_MANIFEST_BUILD_452_0.json").exists()
+
+
+def test_build452_scanner_receives_absolute_retrieval_deadline(monkeypatch):
+    import base64
+    import json
+    import subprocess
+    import eagleeye_pro.phase20.retrieval_isolation451 as isolation
+
+    seen = {}
+
+    class Scanner:
+        def scan(self, body, *, deadline=None):
+            seen["deadline"] = deadline
+            seen["body"] = body
+            return {"result": "clean"}
+
+    def run(args, **kwargs):
+        payload = json.loads(kwargs["input"])
+        return subprocess.CompletedProcess(
+            args, 0,
+            json.dumps({
+                "url": payload["url"],
+                "status": 200,
+                "headers": {"content-type": "text/plain"},
+                "body": base64.b64encode(b"scanner-deadline").decode(),
+                "elapsed_ms": 1,
+            }).encode(),
+            b"",
+        )
+
+    clock = [100.0]
+    monkeypatch.setattr(isolation.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(isolation.subprocess, "run", run)
+    transport = isolation.ProcessSurfaceTransport451(scanner=Scanner())
+    result = transport.fetch(
+        "https://example.org/",
+        resolved_ips=[PUBLIC_IP],
+        timeout_seconds=2.5,
+        max_bytes=1000,
+    )
+    assert result.body == b"scanner-deadline"
+    assert seen["body"] == b"scanner-deadline"
+    assert seen["deadline"] == pytest.approx(102.5)
