@@ -199,7 +199,8 @@ def test_scanner_withheld_content_persists_without_intake(tmp_path, monkeypatch)
     from test_build441_integrated import ident, case, source_and_task, resolver
 
     class RejectScanner:
-        def scan(self, body):
+        def scan(self, body, *, deadline=None):
+            assert deadline is not None
             if body.startswith(b"User-agent:"):
                 return {"result": "clean"}
             raise ScanWithheld451(body, "scanner_detection", "test-engine")
@@ -262,7 +263,8 @@ def test_contained_connection_attempts_share_deadline(monkeypatch, succeed_on):
         }).encode(), b"")
 
     class Scanner:
-        def scan(self, body):
+        def scan(self, body, *, deadline=None):
+            assert deadline is not None
             return {"result": "clean"}
     transport.scanner = Scanner()
     monkeypatch.setattr(module.socket, "create_connection", connect)
