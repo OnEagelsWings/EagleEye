@@ -198,7 +198,7 @@ def test_recovery_point_verification_staging_and_tamper_detection(tmp_path):
         assert not ctx.recovery_453.verify(point["recovery_id"])["valid"]
 
         forged = dict(identity)
-        forged["global_role"] = "investigator"
+        forged["user_id"] = "fabricated-user"
         with pytest.raises(PermissionError):
             ctx.recovery_453.create_recovery_point(
                 identity=forged,
