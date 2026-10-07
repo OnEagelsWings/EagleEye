@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import http.client
+import math
 import socket
 import ssl
 import time
@@ -27,7 +28,10 @@ def contained_fetch451(request, fd):
     import resource
     import encodings.idna
     context = ssl.create_default_context()  # load trust before denying file reads
-    resource.setrlimit(resource.RLIMIT_CPU, (request["timeout_seconds"] + 5,) * 2)
+    # RLIMIT_CPU accepts integer seconds only. The parent still owns the exact
+    # monotonic wall-clock deadline; this is a secondary CPU fail-safe.
+    cpu_limit = max(1, math.ceil(float(request["timeout_seconds"])))
+    resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit, cpu_limit))
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024,) * 2)
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     wire = socket.socket(fileno=fd)
