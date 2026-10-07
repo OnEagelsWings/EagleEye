@@ -1,0 +1,37 @@
+name: EagleEye Build 454 Focused
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-454:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install focused test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: XRef/infrastructure focused regressions
+        run: python -m pytest -q tests/test_build454_xref_infrastructure.py
+      - name: Install isolated Build 454 runtime
+        run: python INSTALL_EAGLEEYE_454.py
+      - name: Verify isolated Build 454 runtime
+        run: python INSTALL_EAGLEEYE_454.py --check
+      - name: Linux isolated import
+        if: runner.os == 'Linux'
+        run: .eagleeye-runtime/bin/python -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '454.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
+      - name: Windows isolated import
+        if: runner.os == 'Windows'
+        run: .eagleeye-runtime\\Scripts\\python.exe -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '454.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
