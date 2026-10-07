@@ -137,16 +137,49 @@ class RetryingTransport442:
 
     def fetch(self, url, **kwargs):
         last_exc = None
+        raw_timeout = kwargs.get("timeout_seconds")
+        deadline = None
+        if raw_timeout is not None:
+            timeout = float(raw_timeout)
+            if timeout <= 0:
+                raise TimeoutError("retry transport received exhausted wall-clock budget")
+            deadline = time.monotonic() + timeout
+
+        def remaining():
+            if deadline is None:
+                return None
+            value = deadline - time.monotonic()
+            if value <= 0:
+                raise TimeoutError("retry transport exceeded shared wall-clock budget")
+            return max(0.001, value)
+
+        def retry_delay(attempt):
+            delay = self.base_backoff * (2 ** (attempt - 1))
+            if delay <= 0 or deadline is None:
+                return delay
+            available = remaining()
+            if delay >= available:
+                raise TimeoutError("retry backoff would exceed shared wall-clock budget")
+            return delay
+
         for attempt in range(1, self.max_attempts + 1):
             self.attempts += 1
             started = time.monotonic()
+            attempt_kwargs = dict(kwargs)
+            current = remaining()
+            if current is not None:
+                attempt_kwargs["timeout_seconds"] = current
             try:
-                response = self.inner.fetch(url, **kwargs)
+                response = self.inner.fetch(url, **attempt_kwargs)
                 status = int(getattr(response, "status", 0) or 0)
                 transient = status in TRANSIENT_HTTP
                 delay = 0.0
+                retry_budget_error = None
                 if transient and attempt < self.max_attempts:
-                    delay = self.base_backoff * (2 ** (attempt - 1))
+                    try:
+                        delay = retry_delay(attempt)
+                    except TimeoutError as exc:
+                        retry_budget_error = exc
                 self.recorder(
                     attempt=attempt,
                     url=str(url),
@@ -157,16 +190,23 @@ class RetryingTransport442:
                     delay_seconds=delay,
                     elapsed_ms=int((time.monotonic() - started) * 1000),
                 )
+                if retry_budget_error is not None:
+                    raise retry_budget_error
                 if transient and attempt < self.max_attempts:
                     self.sleeper(delay)
+                    remaining()
                     continue
                 return response
             except Exception as exc:
                 last_exc = exc
                 transient = self._transient_exception(exc)
                 delay = 0.0
+                retry_budget_error = None
                 if transient and attempt < self.max_attempts:
-                    delay = self.base_backoff * (2 ** (attempt - 1))
+                    try:
+                        delay = retry_delay(attempt)
+                    except TimeoutError as budget_exc:
+                        retry_budget_error = budget_exc
                 self.recorder(
                     attempt=attempt,
                     url=str(url),
@@ -177,8 +217,11 @@ class RetryingTransport442:
                     delay_seconds=delay,
                     elapsed_ms=int((time.monotonic() - started) * 1000),
                 )
+                if retry_budget_error is not None:
+                    raise retry_budget_error from exc
                 if transient and attempt < self.max_attempts:
                     self.sleeper(delay)
+                    remaining()
                     continue
                 raise
         if last_exc is not None:
