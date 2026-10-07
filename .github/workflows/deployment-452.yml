@@ -1,0 +1,33 @@
+name: EagleEye Deployment 452
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install Build 452 isolated runtime
+        run: python INSTALL_EAGLEEYE_452.py
+      - name: Verify receipt, fingerprint and installed runtime
+        run: python INSTALL_EAGLEEYE_452.py --check
+      - name: Linux isolated import
+        if: runner.os == 'Linux'
+        run: .eagleeye-runtime/bin/python -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '452.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
+      - name: Windows isolated import
+        if: runner.os == 'Windows'
+        run: .eagleeye-runtime\\Scripts\\python.exe -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '452.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
