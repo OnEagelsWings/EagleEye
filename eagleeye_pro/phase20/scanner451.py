@@ -55,9 +55,14 @@ class ClamdScanner451:
             raise
         return connection
 
-    def scan(self, body):
+    def scan(self, body, *, deadline=None):
         version = ""
-        deadline = time.monotonic() + self.timeout
+        if deadline is None:
+            deadline = time.monotonic() + self.timeout
+        else:
+            # The caller supplies the absolute retrieval deadline. Never extend it;
+            # also retain the scanner's own configured maximum as a stricter cap.
+            deadline = min(float(deadline), time.monotonic() + float(self.timeout))
         try:
             if len(body) > 2_000_000:
                 raise ValueError("scanner byte budget exceeded")
