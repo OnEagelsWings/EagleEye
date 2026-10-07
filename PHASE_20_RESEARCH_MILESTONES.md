@@ -30,8 +30,9 @@ The revised Phase-20 plan starts 451–455 with operations and isolation; 456–
 cover security qualification, investigation benchmark and serious beta.
 
 - 451 begins with retrieval worker separation and pre-intake content quarantine.
-- 452–454 complete deployment, recovery and operational integration according
-  to the operations plan, retaining the working research chain.
+- 452 establishes deterministic local deployment and folds in unresolved 450/451 integration hardening.
+- 453 adds recovery, rollback and failed-upgrade recovery paths.
+- 454 focuses on reliability and operational integration while retaining the working research chain.
 - 455 qualifies the entire operational research workflow, not only new modules.
 - 460 repeats the workflow alongside the serious-beta acceptance gates.
 - 465 and later five-build milestones repeat the same operational acceptance.
@@ -58,3 +59,11 @@ the installed wheel outside the checkout and tests the process boundary.
 The milestone remains on HOLD until the chosen operating profile and a real-
 source research case are qualified. No model training was performed: the new
 negative tests contribute security evaluation cases, not trained model weights.
+
+## Build 452 implementation decision
+
+Build 452 is intentionally a consolidation/deployment build rather than another large acquisition feature. It starts from the accepted Build-451 engineering head, incorporates the still-open Build-450 hardening changes and fixes the post-review Build-451 health regression. It also closes the remaining shared wall-clock retrieval budget gap by aborting the originally connected socket at the absolute deadline even after HTTP response detachment.
+
+The deployment contract uses a dedicated `.eagleeye-runtime`, a non-editable package install, source-fingerprint receipt and Python isolated mode at launch. This makes the runtime used by the launcher testable and reproducible instead of silently importing the repository source tree. Native signed application bundles and an offline dependency wheelhouse remain outside Build 452.
+
+Build 453 should not expand OSINT scope. Its acceptance target is recovery: interrupted install/update, corrupt receipt/runtime, rollback to a known working runtime, preserved case data and explicit operator-visible recovery state.
