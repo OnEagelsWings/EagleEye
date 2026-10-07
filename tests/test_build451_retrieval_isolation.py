@@ -37,7 +37,7 @@ def request(**changes):
     {"resolved_ips": ["::1"]}, {"resolved_ips": []}, {"method": "POST"},
     {"url": "https://user:password@example.org/"},
     {"headers": {"Authorization": "secret"}}, {"headers": {"Cookie": "secret"}},
-    {"max_bytes": 0}, {"timeout_seconds": 31},
+    {"max_bytes": 0}, {"timeout_seconds": 0}, {"timeout_seconds": 31},
 ])
 def test_request_rejected_before_process_or_network(changes, monkeypatch):
     def forbidden(*args, **kwargs):
@@ -83,6 +83,33 @@ def test_response_and_process_boundary(monkeypatch):
 def test_mislabelled_risky_content_is_withheld(body, media):
     with pytest.raises(module.ContentQuarantined451):
         module.inspect_response451(body, {"content-type": media})
+
+
+
+
+def test_subsecond_timeout_is_preserved_and_bounds_parent_worker(monkeypatch):
+    seen = {}
+
+    def run(args, **kwargs):
+        payload = json.loads(kwargs["input"])
+        seen["payload_timeout"] = payload["timeout_seconds"]
+        seen["parent_timeout"] = kwargs["timeout"]
+        response = dict(
+            url=payload["url"],
+            status=200,
+            headers={"content-type": "text/plain"},
+            elapsed_ms=1,
+            body=base64.b64encode(b"subsecond-safe").decode(),
+        )
+        return subprocess.CompletedProcess(args, 0, json.dumps(response).encode(), b"")
+
+    monkeypatch.setattr(module.subprocess, "run", run)
+    result = module.ProcessSurfaceTransport451().fetch(
+        **request(timeout_seconds=0.25)
+    )
+    assert result.body == b"subsecond-safe"
+    assert seen["payload_timeout"] == pytest.approx(0.25)
+    assert 0 < seen["parent_timeout"] <= seen["payload_timeout"]
 
 
 def test_worker_timeout_is_fail_closed(monkeypatch):
