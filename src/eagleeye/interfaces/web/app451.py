@@ -14,7 +14,7 @@ def create_workspace_app451(*, base_dir=None):
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "build": "451.0"}
+        return {"ok": True, "status": "ok", "build": "451.0"}
 
     def auth(request):
         material = "|".join((request.headers.get("user-agent", ""),
