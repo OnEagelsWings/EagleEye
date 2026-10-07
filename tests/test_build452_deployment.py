@@ -30,16 +30,16 @@ class _DeadlineSock:
 def test_build452_health_contract_and_context_service(tmp_path):
     app = create_workspace_app452(base_dir=tmp_path)
     try:
-        with TestClient(app) as client:
-            response = client.get("/health")
-            assert response.status_code == 200
-            assert response.json() == {"ok": True, "status": "ok", "build": "452.0"}
         status = app.state.context.build452.deployment_status_452()
         assert status["build"] == "452.0"
         assert status["expected_package_version"] == "452.0.0"
         assert status["non_editable_runtime_expected"] is True
         assert status["next_hard_checkpoint"] == "455.0"
         assert status["production_release_ready"] is False
+        with TestClient(app) as client:
+            response = client.get("/health")
+            assert response.status_code == 200
+            assert response.json() == {"ok": True, "status": "ok", "build": "452.0"}
     finally:
         app.state.context.close()
 
