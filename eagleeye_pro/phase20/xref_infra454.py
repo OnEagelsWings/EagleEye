@@ -379,7 +379,7 @@ class InfrastructureIntel454:
         }
         row["record_hash"] = self._rh(row)
         self.db.execute(
-            "INSERT INTO infra_fact_454 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO infra_fact_454 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             tuple(row.values()),
         )
         return row
@@ -763,7 +763,7 @@ class CrossReferenceEngine454:
         }
         row["record_hash"] = self._rh(row)
         self.db.execute(
-            "INSERT INTO xref_candidate_454 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO xref_candidate_454 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             tuple(row.values()),
         )
         return row
