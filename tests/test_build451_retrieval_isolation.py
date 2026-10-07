@@ -285,7 +285,7 @@ def test_transient_worker_failure_preserves_bounded_retry(monkeypatch, category,
     inner = module.ProcessSurfaceTransport451()
     retry = RetryingTransport442(inner, recorder=lambda **r: records.append(r),
                                 sleeper=lambda _: None, max_attempts=3)
-    assert retry.fetch(**request()).body == b"recovered"
+    assert retry.fetch(**request(timeout_seconds=5)).body == b"recovered"
     assert len(calls) == 3
     assert records[0]["error_class"] == error_type.__name__
     assert records[0]["transient"] is True
@@ -326,7 +326,7 @@ def test_transient_worker_failure_stops_at_retry_budget(monkeypatch):
     retry = RetryingTransport442(module.ProcessSurfaceTransport451(),
                                 recorder=lambda **_: None, sleeper=lambda _: None, max_attempts=3)
     with pytest.raises(ConnectionError):
-        retry.fetch(**request())
+        retry.fetch(**request(timeout_seconds=5))
     assert len(calls) == 3
 
 
