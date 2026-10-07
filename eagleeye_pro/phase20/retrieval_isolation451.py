@@ -65,7 +65,9 @@ def validate_request451(request):
         raise PermissionError("non-public retrieval IP forbidden")
     if not 1 <= request["max_bytes"] <= MAX_BYTES_HARD:
         raise ValueError("invalid retrieval byte budget")
-    if not 1 <= request["timeout_seconds"] <= MAX_TIMEOUT_HARD:
+    timeout = request["timeout_seconds"]
+    if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+            or not 0 < float(timeout) <= float(MAX_TIMEOUT_HARD)):
         raise ValueError("invalid retrieval timeout")
     forbidden = {"authorization", "proxy-authorization", "cookie", "set-cookie",
                  "host", "origin", "referer"}
@@ -224,7 +226,7 @@ class ProcessSurfaceTransport451:
         self.last_scan = None
         self.security_report = {}
         request = {"url": url, "resolved_ips": list(resolved_ips), "method": method,
-                   "headers": dict(headers or {}), "timeout_seconds": int(timeout_seconds),
+                   "headers": dict(headers or {}), "timeout_seconds": float(timeout_seconds),
                    "max_bytes": int(max_bytes)}
         validate_request451(request)
         payload = json.dumps(request).encode("utf-8")
@@ -234,10 +236,11 @@ class ProcessSurfaceTransport451:
         connected = None
         options = {}
         command = [sys.executable, "-I", str(worker)]
-        deadline = None
+        # The caller-supplied timeout is the remaining task budget. It governs
+        # parent startup/import/IPC as well as network work in both profiles.
+        deadline = time.monotonic() + request["timeout_seconds"]
         if self.profile == "contained":
             # Qualify confinement BEFORE opening any source connection.
-            deadline = time.monotonic() + request["timeout_seconds"]
             self.containment_probe(timeout_seconds=min(10, remaining_seconds451(deadline)))
             if self.scanner is None:
                 raise RuntimeError("contained retrieval requires a configured malware scanner")
@@ -263,8 +266,7 @@ class ProcessSurfaceTransport451:
                     command, input=payload,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     cwd=workdir, env=worker_environment451(), close_fds=True,
-                    timeout=(remaining_seconds451(deadline) if deadline is not None
-                             else request["timeout_seconds"] + 5), check=False, **options,
+                    timeout=remaining_seconds451(deadline), check=False, **options,
                 )
             except subprocess.TimeoutExpired as exc:
                 raise TimeoutError("retrieval worker exceeded wall-clock budget") from exc
