@@ -1,7 +1,6 @@
 name: EagleEye Retrieval Isolation
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
