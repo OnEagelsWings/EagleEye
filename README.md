@@ -1,31 +1,38 @@
-# EagleEye — Build 450
+# EagleEye — Build 452
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 450 is the **Investigation Workflow Hard Checkpoint**.
+Build 452 adds **Deterministic Local Deployment** on top of the Build-451 retrieval-isolation work and consolidates the outstanding Build-450 hardening changes. See `README_BUILD_452_0.md` for the installer/runtime contract, deadline fixes and qualification limits.
 
-The current governed chain is:
+The current governed chain remains:
 
 Acquisition → AI Dispatch → Evidence → Independent Review → Claims → Independent Review → Graph/Timeline/Synthesis → Living Dossier → Independent Dossier Review → Separate Export Approval → Authorized Export.
 
-The checkpoint distinguishes engineering qualification from external field validation and production release. A deterministic engineering PASS does not certify factual truth, external endpoint reliability or production readiness.
+Engineering qualification, real-source research usability, independent external validation and production readiness remain separate decisions.
 
-## Qualification
+## Install / verify
+
+```bash
+python INSTALL_EAGLEEYE_452.py
+python INSTALL_EAGLEEYE_452.py --check
+```
+
+The default launchers install into `.eagleeye-runtime` when required and then run the installed package with Python isolated mode.
+
+## Development qualification
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build450_integrated.py
-```
-
-## Start
-
-```bash
-python EAGLEEYE_PRO_450_0.py
+pytest -q tests/test_build452_deployment.py
 ```
 
 Current roadmap:
 
 - 450 Investigation Workflow Hard Checkpoint
-- next phase is determined from checkpoint findings
+- 451 Retrieval isolation and scanner gate
+- 452 Deterministic deployment
+- 453 Recovery and rollback
+- 454 Reliability / operational integration
+- 455 Full Operations / real-source research gate
 
-See `README_BUILD_450_0.md`, `BUILD_450_CASE_TEST.md`, and `RELEASE_MANIFEST_BUILD_450_0.json`.
+The retained historical launchers remain available for compatibility, including `EAGLEEYE_PRO_450_0.py`. The default launchers start Build 452.

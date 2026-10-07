@@ -10,6 +10,7 @@ from eagleeye_pro.core.app_context import AppContext
 from eagleeye.interfaces.web.app448 import render_workspace
 from eagleeye.interfaces.web.app450 import (
     JSON_PAYLOAD_GUARD_MAX_BYTES,
+    QUALIFICATION_IDENTIFIER_TOKEN_LIMIT,
     _route_body_requires_payload_guard,
     create_workspace_app450,
 )
@@ -850,6 +851,142 @@ def test_build450_payload_bound_review_request_cannot_target_qualification_case(
         assert "isolated" in response.json()["detail"].lower()
 
 
+
+def test_build450_schema_driven_isolation_blocks_inherited_case_bound_primary_key_resources(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    ctx.db.conn.executescript(
+        """CREATE TABLE IF NOT EXISTS qualification_asset_regression_450(
+        asset_id TEXT PRIMARY KEY,
+        case_id TEXT NOT NULL,
+        payload TEXT NOT NULL
+        );"""
+    )
+    asset_id = "media450_schema_bound_asset"
+    ctx.db.execute(
+        "INSERT INTO qualification_asset_regression_450(asset_id,case_id,payload) VALUES(?,?,?)",
+        (asset_id, case["case_id"], "synthetic inherited-resource isolation regression"),
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.get(f"/api/images/{asset_id}")
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+
+
+
+
+def test_build450_schema_derived_plan_id_is_blocked_in_body_only_inherited_route(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, _reviewer, case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    plan = ctx.build413.create_investigation_plan(
+        case_id=case["case_id"],
+        objective="Qualification case plan must stay isolated from inherited body-only routes.",
+        subquestions=["Can a schema-derived plan_id bypass the Build-450 body guard?"],
+        identity=admin,
+    )
+    before = int(
+        (ctx.db.one(
+            "SELECT COUNT(*) n FROM autonomous_wave_run_414 WHERE case_id=?",
+            (case["case_id"],),
+        ) or {}).get("n") or 0
+    )
+    fp = hashlib.sha256("testclient||testclient".encode()).hexdigest()
+    issued = ctx.team_identity_359.authenticate(
+        username=admin["username"],
+        password=ADMIN_PASSWORD,
+        client_fingerprint=fp,
+    )
+    with TestClient(app) as client:
+        client.cookies.set("ee_auth_session", issued.token)
+        response = client.post(
+            "/api/build414/waves",
+            headers={"sec-fetch-site": "same-origin"},
+            json={
+                "plan_id": plan["plan_id"],
+                "max_waves": 2,
+                "max_searches_per_wave": 2,
+            },
+        )
+        assert response.status_code == 403
+        assert "isolated" in response.json()["detail"].lower()
+        after = int(
+            (app.state.context.db.one(
+                "SELECT COUNT(*) n FROM autonomous_wave_run_414 WHERE case_id=?",
+                (case["case_id"],),
+            ) or {}).get("n") or 0
+        )
+        assert after == before
+
+
+
+
+def test_build450_schema_isolation_token_extraction_is_bounded_before_auth_amplification(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    try:
+        payload = {
+            "items": [
+                {"plan_id": f"untrusted-plan-token-{idx}"}
+                for idx in range(QUALIFICATION_IDENTIFIER_TOKEN_LIMIT + 1)
+            ]
+        }
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/build414/waves",
+                headers={"sec-fetch-site": "same-origin"},
+                json=payload,
+            )
+            assert response.status_code == 413
+            assert "identifier token limit" in response.json()["detail"].lower()
+    finally:
+        app.state.context.close()
+
+
+def test_build450_composite_case_key_is_not_treated_as_globally_unique_resource_id(tmp_path):
+    app = create_workspace_app450(base_dir=tmp_path)
+    ctx = app.state.context
+    admin, reviewer, qualification_case, _admin_session, _reviewer_session = setup_qualification_case(ctx)
+    normal_case = ctx.team_governance_359.create_case(
+        identity=admin,
+        title="Normal shared-resource case",
+        client="QA",
+        purpose="Ensure composite case-scoped shared IDs do not over-block normal resources.",
+        legal_basis="public_data",
+    )
+    shared_id = "shared-composite-id-450"
+    ctx.db.conn.executescript(
+        """CREATE TABLE IF NOT EXISTS composite_scope_regression_450(
+        case_id TEXT NOT NULL,
+        shared_id TEXT NOT NULL,
+        note TEXT NOT NULL,
+        PRIMARY KEY(case_id, shared_id)
+        );"""
+    )
+    ctx.db.execute(
+        "INSERT INTO composite_scope_regression_450(case_id,shared_id,note) VALUES(?,?,?)",
+        (qualification_case["case_id"], shared_id, "qualification association"),
+    )
+    ctx.db.execute(
+        "INSERT INTO composite_scope_regression_450(case_id,shared_id,note) VALUES(?,?,?)",
+        (normal_case["case_id"], shared_id, "normal association"),
+    )
+    # The schema-derived isolation layer must skip shared_id because it is only
+    # one component of a composite PK. A nonexistent route therefore remains a
+    # normal 404 instead of being falsely converted into a qualification 403.
+    with TestClient(app) as client:
+        response = client.get(f"/api/nonexistent-shared-resource/{shared_id}")
+        assert response.status_code == 404
+
+
+
 def test_build450_malformed_report_json_fails_closed_without_status_exception(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         admin, _reviewer, case, _admin_session, reviewer_session = setup_qualification_case(ctx)
@@ -1118,10 +1255,10 @@ def test_build450_status_launcher_manifest_and_checkpoint_contract(tmp_path, mon
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_450_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app450 import create_workspace_app450" in (
+    assert "app452 import create_workspace_app452" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
-    assert "EAGLEEYE_PRO_450_0.py" in (ROOT / "START_EAGLEEYE_PRO.sh").read_text()
+    assert "INSTALL_EAGLEEYE_452.py" in (ROOT / "START_EAGLEEYE_PRO.sh").read_text()
     assert (ROOT / "README_BUILD_450_0.md").exists()
     assert (ROOT / "BUILD_450_CASE_TEST.md").exists()
     assert (ROOT / "RELEASE_MANIFEST_BUILD_450_0.json").exists()

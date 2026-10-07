@@ -120,7 +120,7 @@ class PinnedSurfaceTransport441:
         method = str(method or "").upper()
         if method != "GET":
             raise PermissionError("Build 441 surface transport is GET-only")
-        timeout = max(1, min(int(timeout_seconds), MAX_TIMEOUT_HARD))
+        timeout = max(0.05, min(float(timeout_seconds), float(MAX_TIMEOUT_HARD)))
         limit = max(1, min(int(max_bytes), MAX_BYTES_HARD))
         host = parsed.hostname.casefold()
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
@@ -151,27 +151,77 @@ class PinnedSurfaceTransport441:
 
         last_error = None
         started = time.monotonic()
+        deadline = started + timeout
+
+        def remaining():
+            value = deadline - time.monotonic()
+            if value <= 0:
+                raise TimeoutError("surface retrieval wall-clock deadline exceeded")
+            return max(0.001, value)
+
         for address in list(resolved_ips or []):
             conn = None
+            deadline_timer = None
+            deadline_sock = None
             try:
+                attempt_timeout = remaining()
                 if parsed.scheme == "https":
                     conn = _PinnedHTTPSConnection(
                         address,
                         server_hostname=host,
                         port=port,
-                        timeout=timeout,
+                        timeout=attempt_timeout,
                         context=self._ssl,
                     )
                 else:
-                    conn = http.client.HTTPConnection(address, port=port, timeout=timeout)
+                    conn = http.client.HTTPConnection(address, port=port, timeout=attempt_timeout)
 
                 conn.putrequest("GET", request_target, skip_host=True, skip_accept_encoding=True)
                 conn.putheader("Host", host_header)
                 for key, value in safe_headers.items():
                     conn.putheader(key, value)
                 conn.endheaders()
+                deadline_sock = getattr(conn, "sock", None)
+                if deadline_sock is not None:
+                    deadline_sock.settimeout(remaining())
+
+                    def abort_at_deadline(sock=deadline_sock):
+                        try:
+                            sock.shutdown(socket.SHUT_RDWR)
+                        except (OSError, AttributeError):
+                            pass
+                        try:
+                            sock.close()
+                        except (OSError, AttributeError):
+                            pass
+
+                    deadline_timer = threading.Timer(remaining(), abort_at_deadline)
+                    deadline_timer.daemon = True
+                    deadline_timer.start()
                 response = conn.getresponse()
-                body = response.read(limit + 1)
+                remaining()
+
+                chunks = []
+                total = 0
+                while total <= limit:
+                    read_timeout = remaining()
+                    sock = getattr(conn, "sock", None)
+                    if sock is None:
+                        fp = getattr(response, "fp", None)
+                        raw = getattr(fp, "raw", None)
+                        sock = getattr(raw, "_sock", None)
+                    if sock is not None:
+                        sock.settimeout(read_timeout)
+                    size = min(65536, (limit + 1) - total)
+                    if size <= 0:
+                        break
+                    chunk = response.read1(size)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                    remaining()
+                body = b"".join(chunks)
                 if len(body) > limit:
                     raise ValueError("response exceeds configured max_bytes")
                 response_headers = {str(k).casefold(): str(v) for k, v in response.getheaders()}
@@ -184,7 +234,11 @@ class PinnedSurfaceTransport441:
                 )
             except Exception as exc:
                 last_error = exc
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("surface retrieval wall-clock deadline exceeded") from exc
             finally:
+                if deadline_timer is not None:
+                    deadline_timer.cancel()
                 if conn is not None:
                     try:
                         conn.close()
@@ -322,24 +376,53 @@ class ControlledSurfaceRetrieval441:
             raise PermissionError("task target escaped the approved task host scope")
         return source, target, target_host
 
-    def _resolve_public(self, host, resolver=None):
-        if resolver is None:
-            infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-            values = sorted({str(item[4][0]) for item in infos})
+    def _resolve_public(self, host, resolver=None, deadline=None):
+        def resolve_now():
+            if resolver is None:
+                infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+                return sorted({str(item[4][0]) for item in infos})
+            return sorted({str(x) for x in resolver(host)})
+
+        if deadline is None:
+            values = resolve_now()
         else:
-            values = sorted({str(x) for x in resolver(host)})
+            remaining = self._remaining_deadline(deadline)
+            done = threading.Event()
+            box = {}
+
+            def worker():
+                try:
+                    box["values"] = resolve_now()
+                except BaseException as exc:
+                    box["error"] = exc
+                finally:
+                    done.set()
+
+            thread = threading.Thread(
+                target=worker,
+                name="eagleeye-surface441-dns",
+                daemon=True,
+            )
+            thread.start()
+            if not done.wait(timeout=remaining):
+                raise TimeoutError("Build-441 DNS resolution exceeded task wall-clock deadline")
+            if "error" in box:
+                raise box["error"]
+            values = box.get("values") or []
+
         if not values:
             raise PermissionError("target hostname did not resolve")
-        parsed = []
+        public = []
         for value in values:
             try:
-                address = ipaddress.ip_address(value)
+                ip = ipaddress.ip_address(value)
             except ValueError as exc:
                 raise PermissionError("resolver returned a non-IP address") from exc
-            if not address.is_global:
-                raise PermissionError("target resolved to a non-public IP address")
-            parsed.append(str(address))
-        return parsed
+            if not ip.is_global:
+                raise PermissionError("target hostname resolved to a non-public IP")
+            public.append(str(ip))
+        return sorted(set(public))
+
 
     def _budget(self, task):
         raw = task.get("budget") or {}
@@ -354,6 +437,15 @@ class ControlledSurfaceRetrieval441:
             raise PermissionError("task max_seconds exceeds Build-441 hard limit")
         return {"max_pages": 1, "max_bytes": max_bytes, "max_seconds": max_seconds}
 
+    @staticmethod
+    def _remaining_deadline(deadline, *, cap=None):
+        remaining = float(deadline) - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Build-441 task wall-clock deadline exceeded")
+        if cap is not None:
+            remaining = min(remaining, float(cap))
+        return max(0.001, remaining)
+
     def _transport_fetch(self, transport, url, *, ips, timeout, max_bytes):
         kwargs = {
             "method": "GET",
@@ -365,26 +457,35 @@ class ControlledSurfaceRetrieval441:
             kwargs["resolved_ips"] = ips
         return transport.fetch(url, **kwargs)
 
-    def _preflight_url(self, url, *, expected_host, resolver):
+    def _preflight_url(self, url, *, expected_host, resolver, deadline=None):
         clean = _clean_url(url)
         host = urlsplit(clean).hostname.casefold()
         if host != expected_host:
             raise PermissionError("redirect escaped the approved exact host")
-        ips = self._resolve_public(host, resolver)
+        if deadline is not None:
+            self._remaining_deadline(deadline)
+        ips = self._resolve_public(host, resolver, deadline=deadline)
+        if deadline is not None:
+            self._remaining_deadline(deadline)
         return clean, ips
 
-    def _robots(self, *, transport, target, expected_host, resolver, timeout):
+    def _robots(self, *, transport, target, expected_host, resolver, deadline, timeout_cap):
         parsed = urlsplit(target)
         robots_url = urlunsplit((parsed.scheme, parsed.netloc, "/robots.txt", "", ""))
         current = robots_url
         chain = []
         for _ in range(MAX_REDIRECTS + 1):
-            current, ips = self._preflight_url(current, expected_host=expected_host, resolver=resolver)
+            current, ips = self._preflight_url(
+                current,
+                expected_host=expected_host,
+                resolver=resolver,
+                deadline=deadline,
+            )
             response = self._transport_fetch(
                 transport,
                 current,
                 ips=ips,
-                timeout=timeout,
+                timeout=self._remaining_deadline(deadline, cap=timeout_cap),
                 max_bytes=ROBOTS_MAX_BYTES,
             )
             chain.append(current)
@@ -412,7 +513,7 @@ class ControlledSurfaceRetrieval441:
         target,
         expected_host,
         resolver,
-        timeout,
+        deadline,
         max_bytes,
         robots,
     ):
@@ -420,7 +521,12 @@ class ControlledSurfaceRetrieval441:
         chain = []
         resolution_log = {}
         for _ in range(MAX_REDIRECTS + 1):
-            clean, ips = self._preflight_url(current, expected_host=expected_host, resolver=resolver)
+            clean, ips = self._preflight_url(
+                current,
+                expected_host=expected_host,
+                resolver=resolver,
+                deadline=deadline,
+            )
             path = urlsplit(clean).path or "/"
             query = urlsplit(clean).query
             robots_target = path + (("?" + query) if query else "")
@@ -438,7 +544,7 @@ class ControlledSurfaceRetrieval441:
                 transport,
                 clean,
                 ips=ips,
-                timeout=timeout,
+                timeout=self._remaining_deadline(deadline),
                 max_bytes=max_bytes,
             )
             chain.append(clean)
@@ -576,6 +682,7 @@ class ControlledSurfaceRetrieval441:
             raise ValueError("surface crawl task must be in planned state")
         source, target, host = self._source_and_target(task, live=live)
         budget = self._budget(task)
+        operation_deadline = time.monotonic() + float(budget["max_seconds"])
 
         advice = self.health424.acquisition_advice(task["source_id"])
         if advice["decision"] in {"avoid", "defer"}:
@@ -587,7 +694,8 @@ class ControlledSurfaceRetrieval441:
                 target=target,
                 expected_host=host,
                 resolver=resolver,
-                timeout=min(10, budget["max_seconds"]),
+                deadline=operation_deadline,
+                timeout_cap=min(10, budget["max_seconds"]),
             )
             if robots.fail_closed_state:
                 accepted = self._accept_terminal(
@@ -630,7 +738,7 @@ class ControlledSurfaceRetrieval441:
                 target=target,
                 expected_host=host,
                 resolver=resolver,
-                timeout=budget["max_seconds"],
+                deadline=operation_deadline,
                 max_bytes=budget["max_bytes"],
                 robots=robots,
             )
@@ -798,6 +906,7 @@ class ControlledSurfaceRetrieval441:
                     "tls_validation": urlsplit(outcome["final_url"]).scheme == "https",
                     "execution_mode": execution_mode,
                     "transport_kind": str(getattr(transport, "transport_kind", type(transport).__name__)),
+                    "retrieval_security451": getattr(transport, "security_report", {}),
                 },
                 usage={
                     "public_only": True,
@@ -854,6 +963,7 @@ class ControlledSurfaceRetrieval441:
                             "build": BUILD,
                             "error_class": type(exc).__name__,
                             "execution_mode": execution_mode,
+                            "content_quarantine": getattr(exc, "quarantine_metadata", {}),
                         },
                         usage={
                             "fail_closed": True,
@@ -903,6 +1013,7 @@ class ControlledSurfaceRetrieval441:
         )
 
     def execute_live(self, *, identity, task_id, confirmation):
+        from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
         task = self._task(task_id)
         self._authorize(identity, task)
         if str(confirmation or "").strip().upper() != CONFIRM:
@@ -913,7 +1024,7 @@ class ControlledSurfaceRetrieval441:
             return self._execute(
                 identity=identity,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=None,
                 execution_mode="live_pinned_public_get",
                 authorization_mode="explicit_task_confirmation",
@@ -923,6 +1034,7 @@ class ControlledSurfaceRetrieval441:
             self._live_lock.release()
 
     def execute_authorized_loop_task(self, *, identity, task_id):
+        from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
         task = self._task(task_id)
         ident = self._authorize(identity, task)
         loop_id = str((task.get("scope") or {}).get("build439_loop_id") or "").strip()
@@ -941,7 +1053,7 @@ class ControlledSurfaceRetrieval441:
             return self._execute(
                 identity=ident,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=None,
                 execution_mode="live_pinned_public_get",
                 authorization_mode="authorized_build439_loop",
