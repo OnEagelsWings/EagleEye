@@ -156,7 +156,7 @@ def test_real_clamd_clean_and_eicar():
 
 def test_build451_version_launcher_status_and_auth(tmp_path):
     from eagleeye_pro.version import BUILD, SCHEMA_VERSION
-    assert BUILD == SCHEMA_VERSION == "451.0"
+    assert BUILD == SCHEMA_VERSION == "452.0"
     with AppContext(base_dir=tmp_path / "ctx") as ctx:
         status = ctx.build451.retrieval_isolation_status_451()
         assert status["next_hard_checkpoint"] == "455.0"
@@ -170,8 +170,8 @@ def test_build451_version_launcher_status_and_auth(tmp_path):
             assert client.post("/api/build451/diagnose").status_code == 401
     finally:
         app.state.context.close()
-    assert 'app451 import create_workspace_app451' in (ROOT / "src/eagleeye/interfaces/web/server.py").read_text()
-    assert 'EAGLEEYE_PRO_451_0.py' in (ROOT / "START_EAGLEEYE_PRO.sh").read_text()
+    assert 'app452 import create_workspace_app452' in (ROOT / "src/eagleeye/interfaces/web/server.py").read_text()
+    assert 'INSTALL_EAGLEEYE_452.py' in (ROOT / "START_EAGLEEYE_PRO.sh").read_text()
 
 
 def test_admin_diagnostics_require_role_and_same_origin(tmp_path, monkeypatch):
