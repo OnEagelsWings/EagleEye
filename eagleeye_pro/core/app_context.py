@@ -532,6 +532,9 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('build450', lambda r: r.construct('eagleeye.application.build450.service:Build450InvestigationWorkflowQualificationService', r.get('db'), r.get('audit'), build449=r.get('build449'), qualification450=r.get('investigation_workflow_qualification_450'), actor=owner.actor), import_path='eagleeye.application.build450.service:Build450InvestigationWorkflowQualificationService', status='active', group='phase20')
     registry.register('build451', lambda r: r.construct('eagleeye.application.build451.service:Build451RetrievalIsolationService', r.get('db'), r.get('audit'), build450=r.get('build450'), actor=owner.actor), import_path='eagleeye.application.build451.service:Build451RetrievalIsolationService', status='active', group='phase20')
     registry.register('build452', lambda r: r.construct('eagleeye.application.build452.service:Build452DeploymentService', r.get('db'), r.get('audit'), build451=r.get('build451'), actor=owner.actor), import_path='eagleeye.application.build452.service:Build452DeploymentService', status='active', group='phase20')
+    registry.register('historical_web_453', lambda r: r.construct('eagleeye_pro.phase20.historical_web453:HistoricalWebIntelligence453', r.get('db'), r.get('audit'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), archive428=r.get('archive_history_428'), actor=owner.actor), import_path='eagleeye_pro.phase20.historical_web453:HistoricalWebIntelligence453', status='active', group='phase20')
+    registry.register('recovery_453', lambda r: r.construct('eagleeye_pro.phase20.recovery453:RecoveryBasis453', r.get('db'), r.get('audit'), recovery_dir=owner.paths.base_dir / 'recovery_453', actor=owner.actor), import_path='eagleeye_pro.phase20.recovery453:RecoveryBasis453', status='active', group='reliability')
+    registry.register('build453', lambda r: r.construct('eagleeye.application.build453.service:Build453HistoricalRecoveryService', r.get('db'), r.get('audit'), build452=r.get('build452'), historical=r.get('historical_web_453'), recovery=r.get('recovery_453'), actor=owner.actor), import_path='eagleeye.application.build453.service:Build453HistoricalRecoveryService', status='active', group='phase20')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1302,6 +1305,9 @@ class AppContext:
         'build450',
         'build451',
         'build452',
+        'historical_web_453',
+        'recovery_453',
+        'build453',
         'command_bus'
     )
 
