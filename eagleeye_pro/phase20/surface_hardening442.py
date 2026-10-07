@@ -169,44 +169,19 @@ class RetryingTransport442:
             current = remaining()
             if current is not None:
                 attempt_kwargs["timeout_seconds"] = current
+
             try:
                 response = self.inner.fetch(url, **attempt_kwargs)
-                status = int(getattr(response, "status", 0) or 0)
-                transient = status in TRANSIENT_HTTP
-                delay = 0.0
-                retry_budget_error = None
-                if transient and attempt < self.max_attempts:
-                    try:
-                        delay = retry_delay(attempt)
-                    except TimeoutError as exc:
-                        retry_budget_error = exc
-                self.recorder(
-                    attempt=attempt,
-                    url=str(url),
-                    transport=self._inner_kind,
-                    http_status=status,
-                    error_class="",
-                    transient=transient,
-                    delay_seconds=delay,
-                    elapsed_ms=int((time.monotonic() - started) * 1000),
-                )
-                if retry_budget_error is not None:
-                    raise retry_budget_error
-                if transient and attempt < self.max_attempts:
-                    self.sleeper(delay)
-                    remaining()
-                    continue
-                return response
             except Exception as exc:
                 last_exc = exc
                 transient = self._transient_exception(exc)
                 delay = 0.0
-                retry_budget_error = None
+                budget_exc = None
                 if transient and attempt < self.max_attempts:
                     try:
                         delay = retry_delay(attempt)
-                    except TimeoutError as budget_exc:
-                        retry_budget_error = budget_exc
+                    except TimeoutError as caught:
+                        budget_exc = caught
                 self.recorder(
                     attempt=attempt,
                     url=str(url),
@@ -217,17 +192,44 @@ class RetryingTransport442:
                     delay_seconds=delay,
                     elapsed_ms=int((time.monotonic() - started) * 1000),
                 )
-                if retry_budget_error is not None:
-                    raise retry_budget_error from exc
+                if budget_exc is not None:
+                    raise budget_exc from exc
                 if transient and attempt < self.max_attempts:
                     self.sleeper(delay)
                     remaining()
                     continue
                 raise
+
+            status = int(getattr(response, "status", 0) or 0)
+            transient = status in TRANSIENT_HTTP
+            delay = 0.0
+            budget_exc = None
+            if transient and attempt < self.max_attempts:
+                try:
+                    delay = retry_delay(attempt)
+                except TimeoutError as caught:
+                    budget_exc = caught
+            self.recorder(
+                attempt=attempt,
+                url=str(url),
+                transport=self._inner_kind,
+                http_status=status,
+                error_class="",
+                transient=transient,
+                delay_seconds=delay,
+                elapsed_ms=int((time.monotonic() - started) * 1000),
+            )
+            if budget_exc is not None:
+                raise budget_exc
+            if transient and attempt < self.max_attempts:
+                self.sleeper(delay)
+                remaining()
+                continue
+            return response
+
         if last_exc is not None:
             raise last_exc
         raise RuntimeError("retry transport exhausted without response")
-
 
 class SurfaceRetrievalHardening442:
     def __init__(
