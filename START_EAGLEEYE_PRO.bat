@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 451
+title EagleEye Build 452
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -20,31 +20,21 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist ".venv\Scripts\python.exe" (
-    echo.
-    echo First start: creating the local EagleEye Python environment...
-    %PYTHON% -m venv .venv
-    if errorlevel 1 goto :failed
-)
+%PYTHON% INSTALL_EAGLEEYE_452.py
+if errorlevel 1 goto :failed
 
-set "VENV_PY=.venv\Scripts\python.exe"
-%VENV_PY% -c "import fastapi, uvicorn, sqlalchemy, pydantic" >nul 2>nul
-if errorlevel 1 (
-    echo.
-    echo Installing EagleEye runtime dependencies. This is required only on first setup...
-    %VENV_PY% -m pip install -e .
-    if errorlevel 1 goto :failed
-)
+set "RUNTIME_PY=.eagleeye-runtime\Scripts\python.exe"
+if not exist "%RUNTIME_PY%" goto :failed
 
-%VENV_PY% EAGLEEYE_PRO_451_0.py
+set "EAGLEEYE_WORKSPACE_ROOT=%CD%"
+"%RUNTIME_PY%" -I -c "import os; from eagleeye.interfaces.web.server import serve_workspace; raise SystemExit(serve_workspace(base_dir=os.environ['EAGLEEYE_WORKSPACE_ROOT']))"
 if errorlevel 1 goto :failed
 exit /b 0
 
 :failed
 echo.
-echo EagleEye did not start successfully.
-echo Check logs\startup_latest.log if it was created.
-echo You can also run: .venv\Scripts\python.exe -m pip install -e .
+echo EagleEye Build 452 did not install or start successfully.
+echo Run: %PYTHON% INSTALL_EAGLEEYE_452.py --check
 echo.
 pause
 exit /b 1
