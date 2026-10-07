@@ -1,10 +1,12 @@
 from pathlib import Path
 import runpy
+import time
 
 import pytest
 
 from eagleeye.crawler.engine import FetchResponse, StaticTransport
 from eagleeye_pro.core.app_context import AppContext
+import eagleeye_pro.phase19.surface_retrieval441 as surface441
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_IP = "93.184.216.34"
@@ -274,6 +276,122 @@ def test_active_build439_loop_can_supply_existing_human_authorization(tmp_path, 
         assert called["task_id"] == task_id
 
 
+
+def test_task_wall_clock_budget_is_shared_across_robots_and_target_fetches(tmp_path):
+    class RecordingTransport:
+        requires_resolved_ips = False
+        transport_kind = "deadline-regression-transport"
+
+        def __init__(self, base, target):
+            self.base = base
+            self.target = target
+            self.timeouts = []
+
+        def fetch(self, url, *, method="GET", headers=None, timeout_seconds=20, max_bytes=100000):
+            self.timeouts.append(float(timeout_seconds))
+            time.sleep(0.03)
+            if url == self.base + "robots.txt":
+                return FetchResponse(
+                    url, 200, {"content-type": "text/plain"},
+                    b"User-agent: *\nAllow: /\n", 1,
+                )
+            return FetchResponse(
+                url, 200, {"content-type": "text/plain"},
+                b"deadline bounded content", 1,
+            )
+
+    with AppContext(base_dir=tmp_path) as c:
+        i = ident(c)
+        cid = case(c, "Shared deadline 441")["case_id"]
+        _source, task, base = source_and_task(
+            c, i, cid, suffix="deadline", media_budget={
+                "max_pages": 1, "max_bytes": 100000, "max_seconds": 1
+            }
+        )
+        transport = RecordingTransport(base, task["target"])
+        result = c.surface_retrieval_441.execute_replay(
+            identity=i,
+            task_id=task["task_id"],
+            transport=transport,
+            resolver=resolver,
+        )
+        assert result["run"]["state"] == "completed"
+        assert len(transport.timeouts) == 2
+        assert 0 < transport.timeouts[1] < transport.timeouts[0] <= 1.0
+
+
+
+def test_dns_resolution_is_bounded_by_shared_task_deadline(tmp_path):
+    with AppContext(base_dir=tmp_path) as c:
+        def slow_resolver(_host):
+            time.sleep(0.20)
+            return [PUBLIC_IP]
+
+        deadline = time.monotonic() + 0.05
+        started = time.monotonic()
+        with pytest.raises(TimeoutError, match="DNS resolution"):
+            c.surface_retrieval_441._resolve_public(
+                "deadline-dns.example.org",
+                resolver=slow_resolver,
+                deadline=deadline,
+            )
+        assert time.monotonic() - started < 0.18
+
+
+def test_pinned_transport_uses_single_receive_read1_for_deadline_safe_chunks(monkeypatch):
+    class Sock:
+        def settimeout(self, value):
+            self.timeout = value
+
+    class Response:
+        status = 200
+
+        def __init__(self):
+            self.parts = [b"hello", b""]
+
+        def read(self, _size=-1):
+            raise AssertionError("deadline-safe transport must not call read(size)")
+
+        def read1(self, _size=-1):
+            return self.parts.pop(0)
+
+        def getheaders(self):
+            return [("content-type", "text/plain")]
+
+    class Connection:
+        def __init__(self, host, port=80, timeout=None, **_kwargs):
+            self.host = host
+            self.port = port
+            self.timeout = timeout
+            self.sock = Sock()
+
+        def putrequest(self, *_args, **_kwargs):
+            pass
+
+        def putheader(self, *_args, **_kwargs):
+            pass
+
+        def endheaders(self):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(surface441.http.client, "HTTPConnection", Connection)
+    transport = surface441.PinnedSurfaceTransport441()
+    result = transport.fetch(
+        "http://deadline-read.example.org/page",
+        resolved_ips=[PUBLIC_IP],
+        timeout_seconds=1,
+        max_bytes=1000,
+    )
+    assert result.status == 200
+    assert result.body == b"hello"
+
+
 def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
     with AppContext(base_dir=tmp_path) as c:
         status = c.build441.surface_retrieval_status_441()
@@ -305,7 +423,7 @@ def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_441_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app451 import create_workspace_app451" in (
+    assert "app452 import create_workspace_app452" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_441_CASE_TEST.md").exists()
