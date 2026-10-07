@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 
 from eagleeye_pro.core.app_context import AppContext
@@ -74,6 +75,22 @@ def test_historical_query_import_ranking_and_disappearance_signal(tmp_path):
             ["20230101000000", "https://example.org/page", "200", "text/html", "D2"],
         ])
         event, content = index_observation(ctx, identity, "case453-history", source, payload)
+        with pytest.raises(ValueError, match="does not match referenced content hash"):
+            ctx.historical_web_453.import_index_payload(
+                identity=identity,
+                query_id=query["query_id"],
+                provider="internet_archive",
+                payload=payload + " ",
+                index_event_id=event["event_id"],
+                index_content_id=content["content_id"],
+            )
+        with pytest.raises(ValueError, match="local/private"):
+            ctx.historical_web_453.create_query(
+                identity=identity,
+                case_id="case453-history",
+                original_url="http://127.0.0.1/private",
+                providers=["internet_archive"],
+            )
         imported = ctx.historical_web_453.import_index_payload(
             identity=identity,
             query_id=query["query_id"],
@@ -179,6 +196,15 @@ def test_recovery_point_verification_staging_and_tamper_detection(tmp_path):
         with database_path.open("ab") as handle:
             handle.write(b"tamper")
         assert not ctx.recovery_453.verify(point["recovery_id"])["valid"]
+
+        forged = dict(identity)
+        forged["global_role"] = "investigator"
+        with pytest.raises(PermissionError):
+            ctx.recovery_453.create_recovery_point(
+                identity=forged,
+                label="forged role",
+                confirmation="RECOVERY 453 CREATE",
+            )
 
 
 def test_build453_status_health_and_runtime_contract(tmp_path):
