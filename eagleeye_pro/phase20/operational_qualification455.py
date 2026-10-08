@@ -51,6 +51,7 @@ class OperationalResearchQualification455:
         infrastructure454,
         xref454,
         governance,
+        context_instance_id,
         actor="local-analyst",
     ):
         self.db = db
@@ -69,9 +70,13 @@ class OperationalResearchQualification455:
         self.xref454 = xref454
         self.governance = governance
         self.actor = actor
-        self.instance_id = "instance455_" + secrets.token_hex(16)
+        self.context_instance_id = str(context_instance_id or "").strip()
+        if not self.context_instance_id:
+            raise ValueError("Build-455 AppContext instance id required")
+        self.instance_id = self.context_instance_id
         self.instance_started_at = _now()
         self._schema()
+        self._register_context_instance()
 
     def _schema(self):
         self.db.conn.executescript("""
@@ -108,11 +113,94 @@ class OperationalResearchQualification455:
         );
         CREATE INDEX IF NOT EXISTS idx_or455_qualification
           ON phase20_operational_restart_455(qualification_id, verified_at);
+
+
+        CREATE TABLE IF NOT EXISTS phase20_runtime_context_455(
+          context_instance_id TEXT PRIMARY KEY,
+          opened_at TEXT NOT NULL,
+          closed_at TEXT NOT NULL,
+          state TEXT NOT NULL,
+          record_hash TEXT NOT NULL
+        );
         """)
         self.db.conn.commit()
 
     def _rh(self, row):
         return _sha({k: row[k] for k in row if k != "record_hash"})
+
+    def _register_context_instance(self):
+        existing = self.db.one(
+            "SELECT * FROM phase20_runtime_context_455 WHERE context_instance_id=?",
+            (self.context_instance_id,),
+        )
+        if existing:
+            raise RuntimeError("Build-455 AppContext instance id already registered")
+        row = {
+            "context_instance_id": self.context_instance_id,
+            "opened_at": self.instance_started_at,
+            "closed_at": "",
+            "state": "open",
+        }
+        row["record_hash"] = self._rh(row)
+        self.db.execute(
+            "INSERT INTO phase20_runtime_context_455 VALUES(?,?,?,?,?)",
+            tuple(row.values()),
+        )
+
+    def _mark_context_closed(self, context_instance_id):
+        context_id = str(context_instance_id or "").strip()
+        if context_id != self.context_instance_id:
+            return False
+        row = self.db.one(
+            "SELECT * FROM phase20_runtime_context_455 WHERE context_instance_id=?",
+            (context_id,),
+        )
+        if not row:
+            return False
+        item = dict(row)
+        if self._rh(item) != item.get("record_hash"):
+            return False
+        if item.get("state") == "closed":
+            return True
+        item["closed_at"] = _now()
+        item["state"] = "closed"
+        item["record_hash"] = self._rh(item)
+        self.db.execute(
+            "UPDATE phase20_runtime_context_455 SET closed_at=?,state=?,record_hash=? "
+            "WHERE context_instance_id=?",
+            (item["closed_at"], item["state"], item["record_hash"], context_id),
+        )
+        return True
+
+    def _context_lifecycle_checks(self, qualification_context_id):
+        old_id = str(qualification_context_id or "").strip()
+        old = self.db.one(
+            "SELECT * FROM phase20_runtime_context_455 WHERE context_instance_id=?",
+            (old_id,),
+        )
+        current = self.db.one(
+            "SELECT * FROM phase20_runtime_context_455 WHERE context_instance_id=?",
+            (self.context_instance_id,),
+        )
+        old_item = dict(old) if old else {}
+        current_item = dict(current) if current else {}
+        return {
+            "context_instance_changed": bool(old_id and old_id != self.context_instance_id),
+            "qualification_context_record_present": bool(old_item),
+            "qualification_context_record_hash_valid": bool(
+                old_item and self._rh(old_item) == old_item.get("record_hash")
+            ),
+            "qualification_context_closed": bool(
+                old_item and old_item.get("state") == "closed" and old_item.get("closed_at")
+            ),
+            "current_context_record_present": bool(current_item),
+            "current_context_record_hash_valid": bool(
+                current_item and self._rh(current_item) == current_item.get("record_hash")
+            ),
+            "current_context_open": bool(
+                current_item and current_item.get("state") == "open" and not current_item.get("closed_at")
+            ),
+        }
 
     def _identity(self, identity, *, admin=False):
         if not isinstance(identity, dict) or not identity.get("username") or not identity.get("user_id"):
@@ -526,8 +614,6 @@ class OperationalResearchQualification455:
             "recovery_point_valid": bool(recovery.get("valid")),
             "recovery_state_bound_to_qualified_case": bool(recovery_binding.get("valid")),
             "recovery_did_not_overwrite_live_db": recovery.get("active_database_overwritten") is False,
-            "real_infrastructure_facts_present": len(infra_facts) >= 1,
-            "xref_candidates_present": len(xref_candidates) >= 1,
         }
 
         report = {
@@ -560,10 +646,16 @@ class OperationalResearchQualification455:
             "export_relationship_checks": export_relationships,
             "recovery_id": str(recovery_id),
             "recovery_state_binding": recovery_binding,
-            "qualification_instance_id": self.instance_id,
-            "qualification_instance_started_at": self.instance_started_at,
+            "qualification_context_instance_id": self.context_instance_id,
+            "qualification_context_opened_at": self.instance_started_at,
             "infrastructure_fact_count": len(infra_facts),
             "xref_candidate_count": len(xref_candidates),
+            "supplemental_build454_checks": {
+                "infrastructure_facts_present": len(infra_facts) >= 1,
+                "xref_candidates_present": len(xref_candidates) >= 1,
+                "infrastructure_external_validation": "HOLD",
+                "counts_do_not_contribute_to_operational_pass": True
+            },
             "restart_verified": False,
             "all_connector_families_external_validation": "HOLD",
             "live_news_external_validation": "NOT_REQUIRED_FOR_THIS_BOUNDED_CASE",
@@ -641,7 +733,8 @@ class OperationalResearchQualification455:
         export_files = self._verify_export_files(export or {})
         integrity = self.verify_integrity()
         report = run.get("report") or {}
-        qualification_instance_id = str(report.get("qualification_instance_id") or "")
+        qualification_context_id = str(report.get("qualification_context_instance_id") or "")
+        lifecycle_checks = self._context_lifecycle_checks(qualification_context_id)
         recovery_binding = self._recovery_state_binding(
             recovery_id=run["recovery_id"],
             case_id=run["case_id"],
@@ -660,9 +753,7 @@ class OperationalResearchQualification455:
         )
 
         checks = {
-            "runtime_instance_changed": bool(
-                qualification_instance_id and qualification_instance_id != self.instance_id
-            ),
+            "appcontext_close_reopen_boundary": all(lifecycle_checks.values()),
             "qualification_record_integrity": bool(integrity["valid"]),
             "support_reference_reopens": support["evidence"]["evidence_id"] == run["support_evidence_id"],
             "counter_reference_reopens": counter["evidence"]["evidence_id"] == run["counter_evidence_id"],
@@ -681,7 +772,10 @@ class OperationalResearchQualification455:
             "infrastructure_integrity": self.infrastructure454.verify_integrity()["valid"],
             "xref_integrity": self.xref454.verify_integrity()["valid"],
         }
-        passed = all(checks.values())
+        checks["context_lifecycle"] = lifecycle_checks
+        passed = all(
+            bool(value) for key, value in checks.items() if key != "context_lifecycle"
+        ) and all(lifecycle_checks.values())
 
         restart = {
             "restart_id": "restart455_" + secrets.token_hex(10),
@@ -756,6 +850,7 @@ class OperationalResearchQualification455:
         for table, key in (
             ("phase20_operational_qualification_run_455", "qualification_id"),
             ("phase20_operational_restart_455", "restart_id"),
+            ("phase20_runtime_context_455", "context_instance_id"),
         ):
             for row in self.db.all("SELECT * FROM " + table):
                 item = dict(row)
