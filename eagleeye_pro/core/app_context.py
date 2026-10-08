@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import secrets
 import weakref
 
 from eagleeye.bootstrap.paths import RuntimePaths
@@ -1331,6 +1332,7 @@ class AppContext:
         for field_name in paths.__dataclass_fields__:
             setattr(self, field_name, getattr(paths, field_name))
         self._closed = False
+        self.runtime_context_id = "appctx455_" + secrets.token_hex(16)
         self.service_registry = build_service_registry(self)
         self._bootstrap_defaults()
 
@@ -1353,6 +1355,14 @@ class AppContext:
         self._closed = True
         registry = self.__dict__.get("service_registry")
         if registry is not None:
+            qualifier = registry.peek("operational_qualification_455")
+            if qualifier is not None:
+                try:
+                    qualifier._mark_context_closed(self.runtime_context_id)
+                except Exception:
+                    # Fail closed for Build 455: an unrecorded shutdown leaves the
+                    # qualification context open and restart verification cannot PASS.
+                    pass
             registry.close(preferred_order=("collection_engine_105", "build143", "build142", "build141", "build140", "build139", "build138", "build137", "build136", "build135", "phase4_operations_134", "phase3_production_candidate_133", "collaboration_governance_132", "investigative_synthesis_131", "graph_hypothesis_130", "capture_identity_129", "research_strategy_128", "intelligence_orchestrator_127", "production_candidate_126", "reliability_quality_125", "core_recomposition_104_1", "db"))
 
     def __enter__(self) -> "AppContext":
