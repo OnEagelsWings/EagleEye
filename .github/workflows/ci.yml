@@ -8,7 +8,7 @@ on:
 jobs:
   build-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,14 +32,14 @@ jobs:
           print(f"Build {BUILD}: {'full checkpoint' if full else 'focused development'} test cadence")
           PY
       - name: Current import smoke
-        run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye.interfaces.web.app454 import create_workspace_app454; from eagleeye_pro.version import BUILD; assert BUILD == '454.0'; print(BUILD)"
-      - name: Build 454 focused XRef/infrastructure tests
-        run: pytest -q tests/test_build454_xref_infrastructure.py
+        run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye.interfaces.web.app455 import create_workspace_app455; from eagleeye_pro.version import BUILD; assert BUILD == '455.0'; print(BUILD)"
+      - name: Build 455 hard-checkpoint integration tests
+        run: pytest -q tests/test_build455_operational_checkpoint.py
       - name: Compile current web and phase20 surfaces
-        run: python -m compileall -q src/eagleeye/interfaces/web src/eagleeye/application/build454 eagleeye_pro/phase20
+        run: python -m compileall -q src/eagleeye/interfaces/web src/eagleeye/application/build455 eagleeye_pro/phase20
       - name: Full repository checkpoint regression
         if: steps.cadence.outputs.full == 'true'
         run: pytest -q tests --ignore=tests/test_build360.py --ignore=tests/test_build361.py --ignore=tests/test_build362.py --ignore=tests/test_build363.py --ignore=tests/test_build364.py
       - name: Phase 18-20 checkpoint chain
         if: steps.cadence.outputs.full == 'true'
-        run: pytest -q tests/test_build413_integrated.py tests/test_build414_integrated.py tests/test_build415_integrated.py tests/test_build416_integrated.py tests/test_build417_integrated.py tests/test_build418_integrated.py tests/test_build419_integrated.py tests/test_build420_integrated.py tests/test_build421_integrated.py tests/test_build422_integrated.py tests/test_build423_integrated.py tests/test_build424_integrated.py tests/test_build425_integrated.py tests/test_build426_integrated.py tests/test_build427_integrated.py tests/test_build428_integrated.py tests/test_build429_integrated.py tests/test_build430_integrated.py tests/test_build431_integrated.py tests/test_build432_integrated.py tests/test_build433_integrated.py tests/test_build434_integrated.py tests/test_build435_integrated.py tests/test_build436_integrated.py tests/test_build437_integrated.py tests/test_build438_integrated.py tests/test_build439_integrated.py tests/test_build440_integrated.py tests/test_build441_integrated.py tests/test_build442_integrated.py tests/test_build443_integrated.py tests/test_build444_integrated.py tests/test_build445_integrated.py tests/test_build446_integrated.py tests/test_build447_integrated.py tests/test_build448_integrated.py tests/test_build449_integrated.py tests/test_build450_integrated.py
+        run: pytest -q tests/test_build413_integrated.py tests/test_build414_integrated.py tests/test_build415_integrated.py tests/test_build416_integrated.py tests/test_build417_integrated.py tests/test_build418_integrated.py tests/test_build419_integrated.py tests/test_build420_integrated.py tests/test_build421_integrated.py tests/test_build422_integrated.py tests/test_build423_integrated.py tests/test_build424_integrated.py tests/test_build425_integrated.py tests/test_build426_integrated.py tests/test_build427_integrated.py tests/test_build428_integrated.py tests/test_build429_integrated.py tests/test_build430_integrated.py tests/test_build431_integrated.py tests/test_build432_integrated.py tests/test_build433_integrated.py tests/test_build434_integrated.py tests/test_build435_integrated.py tests/test_build436_integrated.py tests/test_build437_integrated.py tests/test_build438_integrated.py tests/test_build439_integrated.py tests/test_build440_integrated.py tests/test_build441_integrated.py tests/test_build442_integrated.py tests/test_build443_integrated.py tests/test_build444_integrated.py tests/test_build445_integrated.py tests/test_build446_integrated.py tests/test_build447_integrated.py tests/test_build448_integrated.py tests/test_build449_integrated.py tests/test_build450_integrated.py tests/test_build451_retrieval_isolation.py tests/test_build452_deployment.py tests/test_build453_historical_recovery.py tests/test_build454_xref_infrastructure.py tests/test_build455_operational_checkpoint.py

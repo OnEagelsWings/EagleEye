@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import secrets
 import weakref
 
 from eagleeye.bootstrap.paths import RuntimePaths
@@ -538,6 +539,8 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('infrastructure_454', lambda r: r.construct('eagleeye_pro.phase20.xref_infra454:InfrastructureIntel454', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.xref_infra454:InfrastructureIntel454', status='active', group='phase20')
     registry.register('xref_454', lambda r: r.construct('eagleeye_pro.phase20.xref_infra454:CrossReferenceEngine454', r.get('db'), r.get('audit'), infra454=r.get('infrastructure_454'), historical453=r.get('historical_web_453'), entity437=r.get('entity_resolution_437'), base115=r.get('entity_resolution_115'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.xref_infra454:CrossReferenceEngine454', status='active', group='phase20')
     registry.register('build454', lambda r: r.construct('eagleeye.application.build454.service:Build454CrossReferenceInfrastructureService', r.get('db'), r.get('audit'), build453=r.get('build453'), infrastructure=r.get('infrastructure_454'), xref=r.get('xref_454'), actor=owner.actor), import_path='eagleeye.application.build454.service:Build454CrossReferenceInfrastructureService', status='active', group='phase20')
+    registry.register('operational_qualification_455', lambda r: r.construct('eagleeye_pro.phase20.operational_qualification455:OperationalResearchQualification455', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), closure447=r.get('evidence_claims_dossier_447'), review449=r.get('human_review_449'), build450=r.get('build450'), build451=r.get('build451'), surface441=r.get('surface_retrieval_441'), hardening442=r.get('surface_hardening_442'), recovery453=r.get('recovery_453'), infrastructure454=r.get('infrastructure_454'), xref454=r.get('xref_454'), governance=r.get('team_governance_359'), context_instance_id=owner.runtime_context_id, actor=owner.actor), import_path='eagleeye_pro.phase20.operational_qualification455:OperationalResearchQualification455', status='active', group='phase20_release')
+    registry.register('build455', lambda r: r.construct('eagleeye.application.build455.service:Build455FullOperationsQualificationService', r.get('db'), r.get('audit'), build454=r.get('build454'), qualification455=r.get('operational_qualification_455'), actor=owner.actor), import_path='eagleeye.application.build455.service:Build455FullOperationsQualificationService', status='active', group='phase20')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1314,6 +1317,8 @@ class AppContext:
         'infrastructure_454',
         'xref_454',
         'build454',
+        'operational_qualification_455',
+        'build455',
         'command_bus'
     )
 
@@ -1327,6 +1332,7 @@ class AppContext:
         for field_name in paths.__dataclass_fields__:
             setattr(self, field_name, getattr(paths, field_name))
         self._closed = False
+        self.runtime_context_id = "appctx455_" + secrets.token_hex(16)
         self.service_registry = build_service_registry(self)
         self._bootstrap_defaults()
 
@@ -1349,6 +1355,14 @@ class AppContext:
         self._closed = True
         registry = self.__dict__.get("service_registry")
         if registry is not None:
+            qualifier = registry.peek("operational_qualification_455")
+            if qualifier is not None:
+                try:
+                    qualifier._mark_context_closed(self.runtime_context_id)
+                except Exception:
+                    # Fail closed for Build 455: an unrecorded shutdown leaves the
+                    # qualification context open and restart verification cannot PASS.
+                    pass
             registry.close(preferred_order=("collection_engine_105", "build143", "build142", "build141", "build140", "build139", "build138", "build137", "build136", "build135", "phase4_operations_134", "phase3_production_candidate_133", "collaboration_governance_132", "investigative_synthesis_131", "graph_hypothesis_130", "capture_identity_129", "research_strategy_128", "intelligence_orchestrator_127", "production_candidate_126", "reliability_quality_125", "core_recomposition_104_1", "db"))
 
     def __enter__(self) -> "AppContext":

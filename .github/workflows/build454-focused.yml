@@ -1,7 +1,6 @@
 name: EagleEye Build 454 Focused
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
