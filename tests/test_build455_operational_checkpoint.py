@@ -71,6 +71,7 @@ def test_build455_retains_450_and_preflight_integrity(tmp_path):
         checks = ctx.operational_qualification_455._engineering_checks()
         assert checks["build450_checkpoint_pass"] is True
         assert checks["build450_integrity_valid"] is True
+        assert checks["surface_retrieval_integrity"] is True
         assert checks["surface_hardening_integrity"] is True
         assert checks["retrieval_process_isolation"] is True
         assert checks["retrieval_content_risk_gate"] is True
@@ -126,3 +127,35 @@ def test_build455_status_health_version_and_full_test_contract(tmp_path):
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     assert "build_number % 5 == 0" in ci
     assert "test_build455_operational_checkpoint.py" in ci
+
+
+def test_build455_surface441_tamper_breaks_engineering_preflight(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        admin, _reviewer = run_retained_450(ctx)
+        case = ctx.team_governance_359.create_case(
+            identity=admin,
+            title="Build 455 provenance tamper fixture",
+            client="Internal QA",
+            purpose="Verify Build-441 provenance tamper closes the 455 gate.",
+            legal_basis="public_data",
+        )
+        result = ctx.build441.run_surface_retrieval_case_selftest(
+            identity=admin, case_id=case["case_id"]
+        )
+        run_id = result["run"]["run_id"]
+        ctx.db.execute(
+            "UPDATE surface_retrieval_run_441 SET event_id='forged_event' WHERE run_id=?",
+            (run_id,),
+        )
+        checks = ctx.operational_qualification_455._engineering_checks()
+        assert checks["surface_retrieval_integrity"] is False
+
+
+def test_build455_runtime_instance_changes_across_appcontext_reopen(tmp_path):
+    with AppContext(base_dir=tmp_path) as first:
+        first_id = first.operational_qualification_455.instance_id
+    with AppContext(base_dir=tmp_path) as second:
+        second_id = second.operational_qualification_455.instance_id
+    assert first_id
+    assert second_id
+    assert first_id != second_id
