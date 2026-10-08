@@ -44,6 +44,7 @@ class OperationalResearchQualification455:
         review449,
         build450,
         build451,
+        hardening442,
         recovery453,
         infrastructure454,
         xref454,
@@ -59,6 +60,7 @@ class OperationalResearchQualification455:
         self.review449 = review449
         self.build450 = build450
         self.build451 = build451
+        self.hardening442 = hardening442
         self.recovery453 = recovery453
         self.infrastructure454 = infrastructure454
         self.xref454 = xref454
@@ -158,6 +160,20 @@ class OperationalResearchQualification455:
         observation = self._row(
             "content_observation_423", "observation_id", evidence["observation_id"], "observation"
         )
+        surface = self.db.one(
+            "SELECT * FROM surface_retrieval_run_441 WHERE event_id=? AND content_id=? "
+            "AND case_id=? AND source_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1",
+            (evidence["event_id"], evidence["content_id"], str(expected_case_id), evidence["source_id"]),
+        )
+        surface = dict(surface) if surface else None
+        hardening = None
+        if surface:
+            hard = self.db.one(
+                "SELECT * FROM surface_hardening_run_442 WHERE surface441_run_id=? "
+                "AND case_id=? AND source_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1",
+                (surface["run_id"], str(expected_case_id), evidence["source_id"]),
+            )
+            hardening = dict(hard) if hard else None
         checks = {
             **source_checks,
             "event_retrieved": event.get("status") == "retrieved",
@@ -168,6 +184,10 @@ class OperationalResearchQualification455:
             "content_hash_bound": content.get("sha256") == evidence.get("content_sha256"),
             "evidence_human_reviewed": evidence.get("review_state") in {"accepted", "context_only"},
             "evidence_reviewer_present": bool(evidence.get("reviewed_by")),
+            "surface_external_run_present": surface is not None,
+            "surface_external_run_completed": bool(surface and surface.get("state") == "completed"),
+            "hardening_external_validation_present": bool(hardening and int(hardening.get("external_validation") or 0) == 1),
+            "hardening_external_validation_completed": bool(hardening and hardening.get("state") == "completed"),
         }
         return {
             "evidence": evidence,
@@ -175,6 +195,8 @@ class OperationalResearchQualification455:
             "source": source,
             "content": content,
             "observation": observation,
+            "surface": surface,
+            "hardening": hardening,
             "checks": checks,
         }
 
@@ -255,6 +277,7 @@ class OperationalResearchQualification455:
         return {
             "build450_checkpoint_pass": bool(status450.get("investigation_workflow_checkpoint_pass")),
             "build450_integrity_valid": bool(status450.get("integrity_valid")),
+            "surface_hardening_integrity": bool(self.hardening442.verify_integrity().get("valid")),
             "retrieval_process_isolation": bool(retrieval.get("process_isolation")),
             "retrieval_content_risk_gate": bool(retrieval.get("content_risk_gate")),
             "retrieval_unsupported_profile_fails_closed": bool(retrieval.get("unsupported_profile_fails_closed")),
