@@ -28,7 +28,7 @@ The two Evidence items must originate from Build-442 external-validation runs. A
 
 Real public acquisition → Build-422 event → Build-423 content observation → Build-447 Evidence → independent Build-449 Evidence review → Claim with support and counterevidence → independent Claim review → Living Dossier → independent Dossier review → separate export approval → authorized export executor → JSON/DOCX/PDF/manifest/ZIP hash verification → Build-453 recovery point → actual close/reopen → reference and artifact revalidation.
 
-Build 454 is also exercised with a real public DNS provider response, exact payload-hash binding and an XRef run.
+Build 454 is also exercised with a supplemental real public DNS smoke and an XRef run. These observations are deliberately **non-gating** for the Build-455 operational PASS because Build-454 provider imports do not yet carry the same Build-442 external-validation proof used for the two Evidence sources. Full external provider qualification therefore remains HOLD and moves into the post-455 connector/security qualification work.
 
 ## What PASS means
 
