@@ -151,11 +151,27 @@ def test_build455_surface441_tamper_breaks_engineering_preflight(tmp_path):
         assert checks["surface_retrieval_integrity"] is False
 
 
-def test_build455_runtime_instance_changes_across_appcontext_reopen(tmp_path):
-    with AppContext(base_dir=tmp_path) as first:
-        first_id = first.operational_qualification_455.instance_id
-    with AppContext(base_dir=tmp_path) as second:
-        second_id = second.operational_qualification_455.instance_id
-    assert first_id
-    assert second_id
-    assert first_id != second_id
+def test_build455_appcontext_lifecycle_requires_actual_close(tmp_path):
+    first = AppContext(base_dir=tmp_path)
+    second = None
+    try:
+        first_service = first.operational_qualification_455
+        first_id = first_service.context_instance_id
+        second = AppContext(base_dir=tmp_path)
+        second_service = second.operational_qualification_455
+        before = second_service._context_lifecycle_checks(first_id)
+        assert before["context_instance_changed"] is True
+        assert before["qualification_context_record_present"] is True
+        assert before["qualification_context_closed"] is False
+        assert all(
+            bool(v) for k, v in before.items()
+            if k != "qualification_context_closed"
+        )
+
+        first.close()
+        after = second_service._context_lifecycle_checks(first_id)
+        assert all(after.values())
+    finally:
+        first.close()
+        if second is not None:
+            second.close()
