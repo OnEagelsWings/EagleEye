@@ -43,7 +43,7 @@ class OperationalResearchQualification455:
         closure447,
         review449,
         build450,
-        retrieval451,
+        build451,
         recovery453,
         infrastructure454,
         xref454,
@@ -58,7 +58,7 @@ class OperationalResearchQualification455:
         self.closure447 = closure447
         self.review449 = review449
         self.build450 = build450
-        self.retrieval451 = retrieval451
+        self.build451 = build451
         self.recovery453 = recovery453
         self.infrastructure454 = infrastructure454
         self.xref454 = xref454
@@ -249,14 +249,15 @@ class OperationalResearchQualification455:
 
     def _engineering_checks(self):
         status450 = self.build450.investigation_workflow_status_450()
-        retrieval = self.retrieval451.status()
+        retrieval = self.build451.retrieval_isolation_status_451()
         infra = self.infrastructure454.status()
         xref = self.xref454.status()
         return {
             "build450_checkpoint_pass": bool(status450.get("investigation_workflow_checkpoint_pass")),
             "build450_integrity_valid": bool(status450.get("integrity_valid")),
             "retrieval_process_isolation": bool(retrieval.get("process_isolation")),
-            "retrieval_generic_network_authority_false": retrieval.get("generic_network_authority") is False,
+            "retrieval_content_risk_gate": bool(retrieval.get("content_risk_gate")),
+            "retrieval_unsupported_profile_fails_closed": bool(retrieval.get("unsupported_profile_fails_closed")),
             "infrastructure_integrity": bool(infra.get("integrity_valid")),
             "infrastructure_active_scanning_false": infra.get("active_scanning") is False,
             "xref_integrity": bool(xref.get("integrity_valid")),
