@@ -6,6 +6,7 @@ from zipfile import ZipFile
 import hashlib
 import json
 import secrets
+import sqlite3
 
 BUILD = "455.0"
 POLICY_ID = "phase20.full-operations-real-source-gate.v455"
@@ -44,6 +45,7 @@ class OperationalResearchQualification455:
         review449,
         build450,
         build451,
+        surface441,
         hardening442,
         recovery453,
         infrastructure454,
@@ -60,12 +62,15 @@ class OperationalResearchQualification455:
         self.review449 = review449
         self.build450 = build450
         self.build451 = build451
+        self.surface441 = surface441
         self.hardening442 = hardening442
         self.recovery453 = recovery453
         self.infrastructure454 = infrastructure454
         self.xref454 = xref454
         self.governance = governance
         self.actor = actor
+        self.instance_id = "instance455_" + secrets.token_hex(16)
+        self.instance_started_at = _now()
         self._schema()
 
     def _schema(self):
@@ -174,6 +179,14 @@ class OperationalResearchQualification455:
                 (surface["run_id"], str(expected_case_id), evidence["source_id"]),
             )
             hardening = dict(hard) if hard else None
+        surface_hash_valid = bool(
+            surface and surface.get("record_hash")
+            and self.surface441._rh(surface) == surface.get("record_hash")
+        )
+        hardening_hash_valid = bool(
+            hardening and hardening.get("record_hash")
+            and self.hardening442._rh(hardening) == hardening.get("record_hash")
+        )
         checks = {
             **source_checks,
             "event_retrieved": event.get("status") == "retrieved",
@@ -186,8 +199,10 @@ class OperationalResearchQualification455:
             "evidence_reviewer_present": bool(evidence.get("reviewed_by")),
             "surface_external_run_present": surface is not None,
             "surface_external_run_completed": bool(surface and surface.get("state") == "completed"),
+            "surface_run_record_hash_valid": surface_hash_valid,
             "hardening_external_validation_present": bool(hardening and int(hardening.get("external_validation") or 0) == 1),
             "hardening_external_validation_completed": bool(hardening and hardening.get("state") == "completed"),
+            "hardening_run_record_hash_valid": hardening_hash_valid,
         }
         return {
             "evidence": evidence,
@@ -269,6 +284,115 @@ class OperationalResearchQualification455:
             ),
         }
 
+    def _export_relationship_checks(self, *, revision_id, export, export_review, export_execution):
+        return {
+            "export_revision_bound": bool(
+                export and str(export.get("revision_id") or "") == str(revision_id)
+            ),
+            "export_review_bound": bool(
+                export_review
+                and str(export_review.get("object_type") or "") == "dossier_export"
+                and str(export_review.get("object_id") or "") == str(revision_id)
+                and str(export_review.get("state") or "") == "completed"
+                and str(export_review.get("decision") or "") == "approve"
+            ),
+            "execution_review_bound": bool(
+                export_execution and export_review
+                and str(export_execution.get("review_id") or "") == str(export_review.get("review_id") or "")
+            ),
+            "execution_revision_bound": bool(
+                export_execution
+                and str(export_execution.get("revision_id") or "") == str(revision_id)
+            ),
+            "execution_export_bound": bool(
+                export_execution and export
+                and str(export_execution.get("export_id") or "") == str(export.get("export_id") or "")
+            ),
+            "execution_package_hash_bound": bool(
+                export_execution and export
+                and str(export_execution.get("package_hash") or "") == str(export.get("package_hash") or "")
+            ),
+        }
+
+    def _recovery_state_binding(
+        self, *, recovery_id, case_id, support_evidence, counter_evidence,
+        claim, dossier, export, export_execution,
+    ):
+        verified = self.recovery453.verify(recovery_id)
+        result = {
+            "recovery_point_valid": bool(verified.get("valid")),
+            "snapshot_database_present": False,
+            "case_present": False,
+            "support_evidence_hash_bound": False,
+            "counter_evidence_hash_bound": False,
+            "claim_hash_bound": False,
+            "dossier_hash_bound": False,
+            "export_hash_bound": False,
+            "export_package_hash_bound": False,
+            "export_execution_hash_bound": False,
+        }
+        if not result["recovery_point_valid"]:
+            result["valid"] = False
+            return result
+        try:
+            record = self.recovery453.get(recovery_id)
+            database_path = self.recovery453._inside_root(record["database_file"])
+            result["snapshot_database_present"] = database_path.is_file()
+            if not result["snapshot_database_present"]:
+                result["valid"] = False
+                return result
+            connection = sqlite3.connect(f"file:{database_path.as_posix()}?mode=ro", uri=True)
+            connection.row_factory = sqlite3.Row
+            try:
+                result["case_present"] = connection.execute(
+                    "SELECT 1 FROM cases WHERE case_id=?", (str(case_id),)
+                ).fetchone() is not None
+
+                def hash_bound(table, key, object_id, expected_hash):
+                    row = connection.execute(
+                        f"SELECT record_hash FROM {table} WHERE {key}=?", (str(object_id),)
+                    ).fetchone()
+                    return bool(row and str(row["record_hash"] or "") == str(expected_hash or ""))
+
+                result["support_evidence_hash_bound"] = hash_bound(
+                    "evidence_item_447", "evidence_id",
+                    support_evidence["evidence_id"], support_evidence.get("record_hash"),
+                )
+                result["counter_evidence_hash_bound"] = hash_bound(
+                    "evidence_item_447", "evidence_id",
+                    counter_evidence["evidence_id"], counter_evidence.get("record_hash"),
+                )
+                result["claim_hash_bound"] = hash_bound(
+                    "claim_447", "claim_id", claim["claim_id"], claim.get("record_hash"),
+                )
+                result["dossier_hash_bound"] = hash_bound(
+                    "dossier_revision_447", "revision_id",
+                    dossier["revision_id"], dossier.get("record_hash"),
+                )
+                result["export_hash_bound"] = hash_bound(
+                    "dossier_export_447", "export_id",
+                    export["export_id"], export.get("record_hash"),
+                )
+                export_row = connection.execute(
+                    "SELECT package_hash FROM dossier_export_447 WHERE export_id=?",
+                    (str(export["export_id"]),),
+                ).fetchone()
+                result["export_package_hash_bound"] = bool(
+                    export_row and str(export_row["package_hash"] or "") == str(export.get("package_hash") or "")
+                )
+                if export_execution:
+                    result["export_execution_hash_bound"] = hash_bound(
+                        "review_export_execution_449", "execution_id",
+                        export_execution["execution_id"], export_execution.get("record_hash"),
+                    )
+            finally:
+                connection.close()
+        except (OSError, sqlite3.Error, KeyError, ValueError):
+            result["valid"] = False
+            return result
+        result["valid"] = all(result.values())
+        return result
+
     def _engineering_checks(self):
         status450 = self.build450.investigation_workflow_status_450()
         retrieval = self.build451.retrieval_isolation_status_451()
@@ -277,6 +401,7 @@ class OperationalResearchQualification455:
         return {
             "build450_checkpoint_pass": bool(status450.get("investigation_workflow_checkpoint_pass")),
             "build450_integrity_valid": bool(status450.get("integrity_valid")),
+            "surface_retrieval_integrity": bool(self.surface441.verify_integrity().get("valid")),
             "surface_hardening_integrity": bool(self.hardening442.verify_integrity().get("valid")),
             "retrieval_process_isolation": bool(retrieval.get("process_isolation")),
             "retrieval_content_risk_gate": bool(retrieval.get("content_risk_gate")),
@@ -349,6 +474,22 @@ class OperationalResearchQualification455:
         }
         creator = str(claim.get("created_by") or "")
         export_files = self._verify_export_files(export)
+        export_relationships = self._export_relationship_checks(
+            revision_id=revision_id,
+            export=export,
+            export_review=export_review,
+            export_execution=export_execution,
+        )
+        recovery_binding = self._recovery_state_binding(
+            recovery_id=recovery_id,
+            case_id=case_id,
+            support_evidence=support["evidence"],
+            counter_evidence=counter["evidence"],
+            claim=claim,
+            dossier=dossier,
+            export=export,
+            export_execution=export_execution,
+        )
 
         infra_facts = self.infrastructure454.facts(case_id)
         xref_candidates = self.xref454.candidates(case_id, min_score=0.20, limit=500)
@@ -375,6 +516,7 @@ class OperationalResearchQualification455:
             "export_review_completed": export_review is not None,
             "independent_reviewer_present": bool(reviewers) and creator not in reviewers,
             "export_execution_present": export_execution is not None,
+            "export_relationships_bound": all(export_relationships.values()),
             "export_executor_differs_from_approver": bool(
                 export_execution and export_review
                 and str(export_execution.get("executed_by") or "")
@@ -382,6 +524,7 @@ class OperationalResearchQualification455:
             ),
             "physical_export_hashes_valid": export_files["valid"],
             "recovery_point_valid": bool(recovery.get("valid")),
+            "recovery_state_bound_to_qualified_case": bool(recovery_binding.get("valid")),
             "recovery_did_not_overwrite_live_db": recovery.get("active_database_overwritten") is False,
             "real_infrastructure_facts_present": len(infra_facts) >= 1,
             "xref_candidates_present": len(xref_candidates) >= 1,
@@ -414,7 +557,11 @@ class OperationalResearchQualification455:
             "export_id": str(export_id),
             "package_hash": str(export.get("package_hash") or ""),
             "export_verification": export_files,
+            "export_relationship_checks": export_relationships,
             "recovery_id": str(recovery_id),
+            "recovery_state_binding": recovery_binding,
+            "qualification_instance_id": self.instance_id,
+            "qualification_instance_started_at": self.instance_started_at,
             "infrastructure_fact_count": len(infra_facts),
             "xref_candidate_count": len(xref_candidates),
             "restart_verified": False,
@@ -493,8 +640,29 @@ class OperationalResearchQualification455:
         recovery = self.recovery453.verify(run["recovery_id"])
         export_files = self._verify_export_files(export or {})
         integrity = self.verify_integrity()
+        report = run.get("report") or {}
+        qualification_instance_id = str(report.get("qualification_instance_id") or "")
+        recovery_binding = self._recovery_state_binding(
+            recovery_id=run["recovery_id"],
+            case_id=run["case_id"],
+            support_evidence=support["evidence"],
+            counter_evidence=counter["evidence"],
+            claim=claim,
+            dossier=dossier,
+            export=export or {},
+            export_execution=(
+                dict(self.db.one(
+                    "SELECT * FROM review_export_execution_449 WHERE case_id=? AND export_id=? "
+                    "ORDER BY executed_at DESC,rowid DESC LIMIT 1",
+                    (str(run["case_id"]), str(run["export_id"])),
+                ) or {})
+            ),
+        )
 
         checks = {
+            "runtime_instance_changed": bool(
+                qualification_instance_id and qualification_instance_id != self.instance_id
+            ),
             "qualification_record_integrity": bool(integrity["valid"]),
             "support_reference_reopens": support["evidence"]["evidence_id"] == run["support_evidence_id"],
             "counter_reference_reopens": counter["evidence"]["evidence_id"] == run["counter_evidence_id"],
@@ -503,6 +671,9 @@ class OperationalResearchQualification455:
             "export_reference_reopens": bool(export and export["export_id"] == run["export_id"]),
             "physical_export_hashes_still_valid": export_files["valid"],
             "recovery_still_valid": bool(recovery.get("valid")),
+            "recovery_snapshot_still_contains_qualified_state": bool(recovery_binding.get("valid")),
+            "surface_retrieval_integrity": self.surface441.verify_integrity()["valid"],
+            "surface_hardening_integrity": self.hardening442.verify_integrity()["valid"],
             "acquisition_integrity": self.events422.verify_integrity()["valid"],
             "content_integrity": self.content423.verify_integrity()["valid"],
             "dossier_integrity": self.closure447.verify_integrity()["valid"],
