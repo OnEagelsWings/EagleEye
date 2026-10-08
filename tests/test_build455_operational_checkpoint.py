@@ -8,8 +8,8 @@ from eagleeye_pro.core.app_context import AppContext
 from eagleeye.interfaces.web.app455 import create_workspace_app455
 
 ROOT = Path(__file__).resolve().parents[1]
-ADMIN_PASSWORD = "Build455TestAdminPassword!2026"
-REVIEWER_PASSWORD = "Build455TestReviewerPassword!2026"
+ADMIN_PASSWORD = "Quartz!Harbor_7621_Admin"
+REVIEWER_PASSWORD = "Cedar!Orbit_5834_Review"
 FP_ADMIN = "build455-test-admin"
 FP_REVIEWER = "build455-test-reviewer"
 
