@@ -22,8 +22,8 @@ jobs:
       - name: Install EagleEye
         run: python -m pip install -e '.[test]'
       - name: Current UI import smoke
-        run: python -c "from eagleeye.interfaces.web.app454 import create_workspace_app454; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '454.0'; print(BUILD)"
-      - name: Build 454 current health/status UI contract
-        run: pytest -q tests/test_build454_xref_infrastructure.py -k 'status_health'
+        run: python -c "from eagleeye.interfaces.web.app455 import create_workspace_app455; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '455.0'; print(BUILD)"
+      - name: Build 455 current health/status UI contract
+        run: pytest -q tests/test_build455_operational_checkpoint.py -k 'status_health'
       - name: Compile current web surface
         run: python -m compileall -q src/eagleeye/interfaces/web eagleeye_pro/phase20
