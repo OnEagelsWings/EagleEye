@@ -312,11 +312,21 @@ def test_build455_latest_review_denial_supersedes_older_approval(tmp_path):
                 "updated_at": "2026-10-11T18:03:00+00:00",
             },
         ]
+        columns = [
+            "review_id", "case_id", "object_type", "object_id", "object_hash_at_request",
+            "requested_by", "assigned_to", "state", "request_note", "requested_at",
+            "claimed_by", "claimed_at", "decision", "completed_by", "completed_at",
+            "review_note", "updated_at", "record_hash",
+        ]
         for row in rows:
             row["record_hash"] = ctx.human_review_449._rh(row)
             ctx.db.execute(
-                "INSERT INTO review_request_449 VALUES(" + ",".join("?" for _ in row) + ")",
-                tuple(row.values()),
+                "INSERT INTO review_request_449("
+                + ",".join(columns)
+                + ") VALUES("
+                + ",".join("?" for _ in columns)
+                + ")",
+                tuple(row[name] for name in columns),
             )
         latest = ctx.operational_qualification_455._latest_review(
             base["case_id"], base["object_type"], base["object_id"]
