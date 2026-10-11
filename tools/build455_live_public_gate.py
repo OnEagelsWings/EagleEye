@@ -371,6 +371,34 @@ def main():
             raise RuntimeError("Build-455 operational research gate status is not PASS")
         latest = ctx.build455.operational_research_latest_455()
 
+        # Current PASS must be revocable when a required physical artifact vanishes.
+        export = next(
+            x for x in ctx.evidence_claims_dossier_447.exports(case_id)
+            if x["export_id"] == latest["export_id"]
+        )
+        package_path = Path(export["paths"]["case_package"])
+        package_hold = package_path.with_suffix(package_path.suffix + ".build455-hold")
+        package_path.replace(package_hold)
+        try:
+            if ctx.build455.build455_status()["operational_research_gate_pass"]:
+                raise RuntimeError("Build-455 status did not revoke PASS after export package removal")
+        finally:
+            package_hold.replace(package_path)
+        if not ctx.build455.build455_status()["operational_research_gate_pass"]:
+            raise RuntimeError("Build-455 status did not recover after export package restoration")
+
+        recovery_record = ctx.recovery_453.get(latest["recovery_id"])
+        recovery_db = ctx.recovery_453._inside_root(recovery_record["database_file"])
+        recovery_hold = recovery_db.with_suffix(recovery_db.suffix + ".build455-hold")
+        recovery_db.replace(recovery_hold)
+        try:
+            if ctx.build455.build455_status()["operational_research_gate_pass"]:
+                raise RuntimeError("Build-455 status did not revoke PASS after recovery snapshot removal")
+        finally:
+            recovery_hold.replace(recovery_db)
+        if not ctx.build455.build455_status()["operational_research_gate_pass"]:
+            raise RuntimeError("Build-455 status did not recover after recovery snapshot restoration")
+
     result = {
         "build": "455.0",
         "result": "PASS",
@@ -386,6 +414,7 @@ def main():
         "infrastructure_fact_count": latest["report"]["infrastructure_fact_count"],
         "xref_candidate_count": latest["report"]["xref_candidate_count"],
         "all_connector_families_external_validation": latest["report"]["all_connector_families_external_validation"],
+        "dynamic_pass_revocation_checks": True,
         "production_release_ready": False,
     }
     RESULT.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
