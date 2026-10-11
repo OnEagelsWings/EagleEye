@@ -248,3 +248,28 @@ def test_build455_counterevidence_requires_distinct_content_payload():
     assert OperationalResearchQualification455._distinct_evidence_payloads(
         support, distinct
     )
+
+
+def test_build455_evidence_review_must_be_independent_from_acquisition_actor():
+    qualifier = object.__new__(OperationalResearchQualification455)
+
+    class Identity:
+        @staticmethod
+        def public_user(username):
+            assert username == "reviewer"
+            return {"username": "reviewer", "user_id": "user-reviewer"}
+
+    class Governance:
+        identity = Identity()
+
+    qualifier.governance = Governance()
+    review = {"completed_by": "reviewer"}
+    assert not qualifier._reviewer_independent_from_acquisition(
+        review, {"created_by": "user-reviewer"}
+    )
+    assert not qualifier._reviewer_independent_from_acquisition(
+        review, {"created_by": "reviewer"}
+    )
+    assert qualifier._reviewer_independent_from_acquisition(
+        review, {"created_by": "user-acquirer"}
+    )
