@@ -122,6 +122,16 @@ class OperationalResearchQualification455:
           state TEXT NOT NULL,
           record_hash TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS phase20_runtime_context_event_455(
+          event_id TEXT PRIMARY KEY,
+          context_instance_id TEXT NOT NULL,
+          event_type TEXT NOT NULL,
+          recorded_at TEXT NOT NULL,
+          record_hash TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_runtime_context_event_455
+          ON phase20_runtime_context_event_455(context_instance_id,event_type);
         """)
         self.db.conn.commit()
 
@@ -145,6 +155,17 @@ class OperationalResearchQualification455:
         self.db.execute(
             "INSERT INTO phase20_runtime_context_455 VALUES(?,?,?,?,?)",
             tuple(row.values()),
+        )
+        event = {
+            "event_id": "ctxevent455_" + secrets.token_hex(10),
+            "context_instance_id": self.context_instance_id,
+            "event_type": "open",
+            "recorded_at": self.instance_started_at,
+        }
+        event["record_hash"] = self._rh(event)
+        self.db.execute(
+            "INSERT INTO phase20_runtime_context_event_455 VALUES(?,?,?,?,?)",
+            tuple(event.values()),
         )
 
     def _mark_context_closed(self, context_instance_id):
@@ -170,6 +191,17 @@ class OperationalResearchQualification455:
             "WHERE context_instance_id=?",
             (item["closed_at"], item["state"], item["record_hash"], context_id),
         )
+        event = {
+            "event_id": "ctxevent455_" + secrets.token_hex(10),
+            "context_instance_id": context_id,
+            "event_type": "close",
+            "recorded_at": item["closed_at"],
+        }
+        event["record_hash"] = self._rh(event)
+        self.db.execute(
+            "INSERT INTO phase20_runtime_context_event_455 VALUES(?,?,?,?,?)",
+            tuple(event.values()),
+        )
         return True
 
     def _context_lifecycle_checks(self, qualification_context_id):
@@ -182,8 +214,38 @@ class OperationalResearchQualification455:
             "SELECT * FROM phase20_runtime_context_455 WHERE context_instance_id=?",
             (self.context_instance_id,),
         )
+        old_open = self.db.one(
+            "SELECT rowid AS lifecycle_seq,* FROM phase20_runtime_context_event_455 "
+            "WHERE context_instance_id=? AND event_type='open' ORDER BY rowid ASC LIMIT 1",
+            (old_id,),
+        )
+        old_close = self.db.one(
+            "SELECT rowid AS lifecycle_seq,* FROM phase20_runtime_context_event_455 "
+            "WHERE context_instance_id=? AND event_type='close' ORDER BY rowid DESC LIMIT 1",
+            (old_id,),
+        )
+        current_open = self.db.one(
+            "SELECT rowid AS lifecycle_seq,* FROM phase20_runtime_context_event_455 "
+            "WHERE context_instance_id=? AND event_type='open' ORDER BY rowid ASC LIMIT 1",
+            (self.context_instance_id,),
+        )
+        current_close = self.db.one(
+            "SELECT rowid AS lifecycle_seq,* FROM phase20_runtime_context_event_455 "
+            "WHERE context_instance_id=? AND event_type='close' ORDER BY rowid DESC LIMIT 1",
+            (self.context_instance_id,),
+        )
+
+        def event_valid(row):
+            if not row:
+                return False
+            item = dict(row)
+            item.pop("lifecycle_seq", None)
+            return self._rh(item) == item.get("record_hash")
+
         old_item = dict(old) if old else {}
         current_item = dict(current) if current else {}
+        old_close_seq = int(old_close["lifecycle_seq"]) if old_close else 0
+        current_open_seq = int(current_open["lifecycle_seq"]) if current_open else 0
         return {
             "context_instance_changed": bool(old_id and old_id != self.context_instance_id),
             "qualification_context_record_present": bool(old_item),
@@ -193,12 +255,22 @@ class OperationalResearchQualification455:
             "qualification_context_closed": bool(
                 old_item and old_item.get("state") == "closed" and old_item.get("closed_at")
             ),
+            "qualification_open_event_present": bool(old_open),
+            "qualification_open_event_hash_valid": event_valid(old_open),
+            "qualification_close_event_present": bool(old_close),
+            "qualification_close_event_hash_valid": event_valid(old_close),
             "current_context_record_present": bool(current_item),
             "current_context_record_hash_valid": bool(
                 current_item and self._rh(current_item) == current_item.get("record_hash")
             ),
             "current_context_open": bool(
                 current_item and current_item.get("state") == "open" and not current_item.get("closed_at")
+            ),
+            "current_open_event_present": bool(current_open),
+            "current_open_event_hash_valid": event_valid(current_open),
+            "current_context_has_no_close_event": current_close is None,
+            "current_context_opened_after_qualification_close": bool(
+                old_close_seq and current_open_seq and current_open_seq > old_close_seq
             ),
         }
 
@@ -958,12 +1030,12 @@ class OperationalResearchQualification455:
         if case_id:
             row = self.db.one(
                 "SELECT qualification_id FROM phase20_operational_qualification_run_455 "
-                "WHERE case_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1", (str(case_id),)
+                "WHERE case_id=? ORDER BY rowid DESC LIMIT 1", (str(case_id),)
             )
         else:
             row = self.db.one(
                 "SELECT qualification_id FROM phase20_operational_qualification_run_455 "
-                "ORDER BY created_at DESC,rowid DESC LIMIT 1"
+                "ORDER BY rowid DESC LIMIT 1"
             )
         return self._run(row["qualification_id"]) if row else None
 
@@ -973,6 +1045,7 @@ class OperationalResearchQualification455:
             ("phase20_operational_qualification_run_455", "qualification_id"),
             ("phase20_operational_restart_455", "restart_id"),
             ("phase20_runtime_context_455", "context_instance_id"),
+            ("phase20_runtime_context_event_455", "event_id"),
         ):
             for row in self.db.all("SELECT * FROM " + table):
                 item = dict(row)
