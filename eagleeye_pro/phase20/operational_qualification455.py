@@ -751,10 +751,18 @@ class OperationalResearchQualification455:
                 ) or {})
             ),
         )
+        restart_engineering_checks = self._engineering_checks()
 
         checks = {
             "appcontext_close_reopen_boundary": all(lifecycle_checks.values()),
             "qualification_record_integrity": bool(integrity["valid"]),
+            "engineering_preflight_still_valid": all(restart_engineering_checks.values()),
+            "build450_checkpoint_still_valid": bool(
+                restart_engineering_checks.get("build450_checkpoint_pass")
+            ),
+            "build450_integrity_still_valid": bool(
+                restart_engineering_checks.get("build450_integrity_valid")
+            ),
             "support_reference_reopens": support["evidence"]["evidence_id"] == run["support_evidence_id"],
             "counter_reference_reopens": counter["evidence"]["evidence_id"] == run["counter_evidence_id"],
             "claim_reference_reopens": claim["claim_id"] == run["claim_id"],
@@ -773,9 +781,12 @@ class OperationalResearchQualification455:
             "xref_integrity": self.xref454.verify_integrity()["valid"],
         }
         checks["context_lifecycle"] = lifecycle_checks
+        checks["restart_engineering_checks"] = restart_engineering_checks
         passed = all(
-            bool(value) for key, value in checks.items() if key != "context_lifecycle"
-        ) and all(lifecycle_checks.values())
+            bool(value)
+            for key, value in checks.items()
+            if key not in {"context_lifecycle", "restart_engineering_checks"}
+        ) and all(lifecycle_checks.values()) and all(restart_engineering_checks.values())
 
         restart = {
             "restart_id": "restart455_" + secrets.token_hex(10),
@@ -858,9 +869,140 @@ class OperationalResearchQualification455:
                     bad.append({key: item[key], "table": table, "reason": "record_hash_mismatch"})
         return {"build": BUILD, "valid": not bad, "violations": bad}
 
+    def _current_gate_revalidation(self, last):
+        """Re-evaluate the artifacts and upstream state required for a current PASS.
+
+        A prior successful restart is historical evidence, not a permanent lease on
+        PASS. Deleting/corrupting an export, recovery snapshot, Evidence row or a
+        retained Build-450 prerequisite must immediately make current status HOLD.
+        """
+        if not last:
+            return {"valid": False, "checks": {"qualification_present": False}}
+        checks = {}
+        try:
+            engineering = self._engineering_checks()
+            checks["engineering_current"] = all(engineering.values())
+            checks["build450_checkpoint_current"] = bool(
+                engineering.get("build450_checkpoint_pass")
+            )
+            checks["build450_integrity_current"] = bool(
+                engineering.get("build450_integrity_valid")
+            )
+
+            support = self._evidence_chain(last["support_evidence_id"], last["case_id"])
+            counter = self._evidence_chain(last["counter_evidence_id"], last["case_id"])
+            checks["support_chain_current"] = all(support["checks"].values())
+            checks["counter_chain_current"] = all(counter["checks"].values())
+
+            claim = self.closure447.claim(last["claim_id"])
+            dossier = self.closure447.dossier(last["revision_id"])
+            export = next(
+                (
+                    x for x in self.closure447.exports(last["case_id"])
+                    if x["export_id"] == last["export_id"]
+                ),
+                None,
+            )
+            checks["claim_current"] = bool(
+                claim.get("case_id") == str(last["case_id"])
+                and claim.get("state") == "accepted_for_dossier"
+            )
+            claim_links = list(claim.get("links") or [])
+            checks["claim_support_link_current"] = any(
+                x.get("evidence_id") == last["support_evidence_id"]
+                and x.get("stance") == "support"
+                for x in claim_links
+            )
+            checks["claim_counter_link_current"] = any(
+                x.get("evidence_id") == last["counter_evidence_id"]
+                and x.get("stance") == "contradict"
+                for x in claim_links
+            )
+            checks["claim_uncertainty_current"] = len(
+                str(claim.get("uncertainty_note") or "").strip()
+            ) >= 12
+            checks["dossier_current"] = bool(
+                dossier.get("case_id") == str(last["case_id"])
+                and dossier.get("state") == "approved_for_export"
+                and any(
+                    x.get("claim_id") == last["claim_id"]
+                    for x in (dossier.get("snapshot") or {}).get("claims", [])
+                )
+            )
+            checks["export_row_current"] = bool(export)
+            export_files = self._verify_export_files(export or {})
+            checks["physical_export_current"] = bool(export_files.get("valid"))
+
+            export_review = self._completed_review(
+                last["case_id"], "dossier_export", last["revision_id"]
+            )
+            export_execution_row = self.db.one(
+                "SELECT * FROM review_export_execution_449 WHERE case_id=? AND export_id=? "
+                "ORDER BY executed_at DESC,rowid DESC LIMIT 1",
+                (str(last["case_id"]), str(last["export_id"])),
+            )
+            export_execution = dict(export_execution_row) if export_execution_row else None
+            relationships = self._export_relationship_checks(
+                revision_id=last["revision_id"],
+                export=export or {},
+                export_review=export_review,
+                export_execution=export_execution,
+            )
+            checks["export_relationships_current"] = all(relationships.values())
+
+            recovery = self.recovery453.verify(last["recovery_id"])
+            checks["recovery_current"] = bool(recovery.get("valid"))
+            recovery_binding = self._recovery_state_binding(
+                recovery_id=last["recovery_id"],
+                case_id=last["case_id"],
+                support_evidence=support["evidence"],
+                counter_evidence=counter["evidence"],
+                claim=claim,
+                dossier=dossier,
+                export=export or {},
+                export_execution=export_execution or {},
+            )
+            checks["recovery_state_binding_current"] = bool(
+                recovery_binding.get("valid")
+            )
+
+            report = last.get("report") or {}
+            lifecycle = self._context_lifecycle_checks(
+                str(report.get("qualification_context_instance_id") or "")
+            )
+            checks["restart_lifecycle_current"] = all(lifecycle.values())
+
+            checks["acquisition_integrity_current"] = bool(
+                self.events422.verify_integrity().get("valid")
+            )
+            checks["content_integrity_current"] = bool(
+                self.content423.verify_integrity().get("valid")
+            )
+            checks["dossier_integrity_current"] = bool(
+                self.closure447.verify_integrity().get("valid")
+            )
+            checks["review_integrity_current"] = bool(
+                self.review449.verify_integrity().get("valid")
+            )
+            checks["infrastructure_integrity_current"] = bool(
+                self.infrastructure454.verify_integrity().get("valid")
+            )
+            checks["xref_integrity_current"] = bool(
+                self.xref454.verify_integrity().get("valid")
+            )
+        except Exception as exc:
+            checks["revalidation_exception"] = False
+            return {
+                "valid": False,
+                "checks": checks,
+                "error_class": type(exc).__name__,
+            }
+        return {"valid": all(checks.values()), "checks": checks}
+
     def status(self):
         last = self.latest()
         integrity = self.verify_integrity()
+        current = self._current_gate_revalidation(last)
         return {
             "build": BUILD,
             "policy": POLICY_ID,
@@ -870,7 +1012,13 @@ class OperationalResearchQualification455:
             "last_engineering_result": last["engineering_result"] if last else None,
             "last_live_case_result": last["live_case_result"] if last else None,
             "last_restart_result": last["restart_result"] if last else None,
-            "operational_research_gate_pass": bool(last and last["overall_result"] == "pass" and integrity["valid"]),
+            "current_qualification_revalidation": current,
+            "operational_research_gate_pass": bool(
+                last
+                and last["overall_result"] == "pass"
+                and integrity["valid"]
+                and current["valid"]
+            ),
             "requires_real_nonfixture_public_sources": True,
             "requires_support_and_counterevidence": True,
             "requires_independent_review": True,
