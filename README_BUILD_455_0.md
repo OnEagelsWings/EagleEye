@@ -53,3 +53,24 @@ python INSTALL_EAGLEEYE_455.py --check
 ```
 
 The complete checkpoint source ZIP is generated only after the Linux real-source qualification succeeds. Windows separately verifies the installer and isolated runtime.
+
+
+## Checkpoint regression semantics
+
+A five-build checkpoint must test retained behavior, but a historical test must not require its own build number to remain the current application forever. Build 455 therefore uses `tools/run_checkpoint_regression455.py`.
+
+The runner executes the repository regression and the explicit Phase-18–20 chain while deselecting only exact node IDs listed in `tools/CHECKPOINT_REGRESSION_EXCLUSIONS_455.json`. These exclusions are limited to superseded historical contracts such as “Build 413 must still be the current server”, exact historical package-version assertions, and pre-canonical-identity write semantics. The rest of each historical test file remains active. The policy validates that no Build-455 test is excluded.
+
+This makes the every-fifth-build gate forward-compatible without weakening current authentication, provenance or release boundaries.
+
+## Post-455 direction
+
+Builds 456–459 should prioritize canonical integration rather than adding parallel legacy subsystems:
+
+- 456: multilingual entity/alias resolution and source-lineage independence in the current case path;
+- 457: Document Intelligence 2.0 with page/paragraph/table/footnote Evidence anchors;
+- 458: organization/ownership/registry intelligence plus external qualification of public infrastructure connectors;
+- 459: graph analytics, source-independence weighting, red-team/falsification and real local-AI co-investigator integration;
+- 460: serious-beta checkpoint with a substantially more complex real investigation, local-model benchmark, soak/restart/export and usability evaluation.
+
+The detailed gap analysis is retained in `BUILD_455_GOAL_GAP_AUDIT.md`.
