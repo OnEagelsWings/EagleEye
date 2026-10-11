@@ -213,6 +213,8 @@ def test_build455_restart_and_status_revalidate_current_prerequisites():
     assert "def _current_gate_revalidation" in text
     assert '"physical_export_current"' in text
     assert '"recovery_state_binding_current"' in text
+    assert "current_live_case = self._current_gate_revalidation(run)" in text
+    assert '"current_live_case_revalidation"' in text
 
 
 def test_build455_completed_review_must_match_current_artifact_reviewer_and_decision():
