@@ -306,10 +306,10 @@ def test_build455_latest_review_denial_supersedes_older_approval(tmp_path):
                 **base,
                 "review_id": "review455_new_deny",
                 "state": "denied",
-                "requested_at": "2026-10-11T18:02:00+00:00",
+                "requested_at": "2026-10-11T17:55:00+00:00",
                 "decision": "deny",
-                "completed_at": "2026-10-11T18:03:00+00:00",
-                "updated_at": "2026-10-11T18:03:00+00:00",
+                "completed_at": "2026-10-11T17:56:00+00:00",
+                "updated_at": "2026-10-11T17:56:00+00:00",
             },
         ]
         columns = [
@@ -334,3 +334,45 @@ def test_build455_latest_review_denial_supersedes_older_approval(tmp_path):
         assert latest["review_id"] == "review455_new_deny"
         assert latest["state"] == "denied"
         assert latest["decision"] == "deny"
+
+
+def test_build455_status_fails_closed_on_malformed_report_json(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        service = ctx.operational_qualification_455
+        row = {
+            "qualification_id": "ops455_malformed_report_fixture",
+            "case_id": "case455_malformed_report_fixture",
+            "support_evidence_id": "ev_support_missing",
+            "counter_evidence_id": "ev_counter_missing",
+            "claim_id": "claim_missing",
+            "revision_id": "revision_missing",
+            "export_id": "export_missing",
+            "recovery_id": "recovery_missing",
+            "engineering_result": "pass",
+            "live_case_result": "pass",
+            "restart_result": "pass",
+            "overall_result": "pass",
+            "report_json": "{}",
+            "created_by": "fixture",
+            "created_at": "2026-10-11T19:00:00+00:00",
+            "updated_at": "2026-10-11T19:00:00+00:00",
+        }
+        row["record_hash"] = service._rh(row)
+        columns = list(row)
+        ctx.db.execute(
+            "INSERT INTO phase20_operational_qualification_run_455("
+            + ",".join(columns)
+            + ") VALUES("
+            + ",".join("?" for _ in columns)
+            + ")",
+            tuple(row[name] for name in columns),
+        )
+        ctx.db.execute(
+            "UPDATE phase20_operational_qualification_run_455 "
+            "SET report_json='{malformed' WHERE qualification_id=?",
+            (row["qualification_id"],),
+        )
+        status = service.status()
+        assert status["last_report_decode_valid"] is False
+        assert status["integrity_valid"] is False
+        assert status["operational_research_gate_pass"] is False
