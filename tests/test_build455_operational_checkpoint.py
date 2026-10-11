@@ -192,3 +192,23 @@ def test_build455_checkpoint_regression_exclusions_are_exact_and_never_exclude_c
     runner = (ROOT / "tools" / "run_checkpoint_regression455.py").read_text(encoding="utf-8")
     assert "--deselect" in runner
     assert "current_build_tests_excluded" in runner
+
+
+def test_build455_case_qualification_api_requires_case_read_authorization():
+    text = (
+        ROOT / "src" / "eagleeye" / "interfaces" / "web" / "app455.py"
+    ).read_text(encoding="utf-8")
+    assert 'capability="case.read"' in text
+    assert 'HTTPException(403' in text
+    assert "operational_research_latest_455(case_id)" in text
+
+
+def test_build455_restart_and_status_revalidate_current_prerequisites():
+    text = (
+        ROOT / "eagleeye_pro" / "phase20" / "operational_qualification455.py"
+    ).read_text(encoding="utf-8")
+    assert "restart_engineering_checks = self._engineering_checks()" in text
+    assert '"build450_checkpoint_still_valid"' in text
+    assert "def _current_gate_revalidation" in text
+    assert '"physical_export_current"' in text
+    assert '"recovery_state_binding_current"' in text
