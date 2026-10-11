@@ -313,7 +313,7 @@ class OperationalResearchQualification455:
         """
         row = self.db.one(
             "SELECT * FROM review_request_449 WHERE case_id=? AND object_type=? AND object_id=? "
-            "ORDER BY requested_at DESC,rowid DESC LIMIT 1",
+            "ORDER BY rowid DESC LIMIT 1",
             (str(case_id), str(object_type), str(object_id)),
         )
         return dict(row) if row else None
@@ -796,7 +796,18 @@ class OperationalResearchQualification455:
         if not row:
             raise KeyError("Build-455 qualification not found")
         item = dict(row)
-        item["report"] = json.loads(item.pop("report_json"))
+        raw_report = item.pop("report_json")
+        try:
+            decoded = json.loads(raw_report)
+            if not isinstance(decoded, dict):
+                raise ValueError("qualification report must be an object")
+            item["report"] = decoded
+            item["report_decode_valid"] = True
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Status and recovery diagnostics must remain available under corruption.
+            # Integrity/current-state revalidation will keep the gate fail-closed.
+            item["report"] = {}
+            item["report_decode_valid"] = False
         return item
 
     def verify_after_restart(self, *, identity, qualification_id):
@@ -1145,10 +1156,12 @@ class OperationalResearchQualification455:
             "last_engineering_result": last["engineering_result"] if last else None,
             "last_live_case_result": last["live_case_result"] if last else None,
             "last_restart_result": last["restart_result"] if last else None,
+            "last_report_decode_valid": bool(last and last.get("report_decode_valid")),
             "current_qualification_revalidation": current,
             "operational_research_gate_pass": bool(
                 last
                 and last["overall_result"] == "pass"
+                and bool(last.get("report_decode_valid"))
                 and integrity["valid"]
                 and current["valid"]
             ),
