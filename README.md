@@ -31,11 +31,14 @@ python INSTALL_EAGLEEYE_455.py --check
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests
+python tools/run_checkpoint_regression455.py
+python tools/run_checkpoint_regression455.py --phase18-20
 python tools/build455_live_public_gate.py
 ```
 
 The live qualification is intentionally bounded to stable public reference sources. It is not a general-purpose autonomous collection command.
+
+The five-build regression runner keeps historical functional tests active while deselecting only exact legacy assertions that require an old build to remain the current runtime/server/installer, or predate the canonical case-identity boundary. Every exclusion is enumerated with a reason in `tools/CHECKPOINT_REGRESSION_EXCLUSIONS_455.json`; no Build-455 test can be excluded by that policy.
 
 Current roadmap:
 
@@ -45,7 +48,12 @@ Current roadmap:
 - 453 Historical Web Intelligence 2.0 + Recovery Basis
 - 454 Cross-Reference Engine + Domain Infrastructure Intelligence
 - 455 Full Operations / Real-Source Research Gate
-- 456–459 hardening, usability, connector qualification and beta work
+- 456 Multilingual Entity/Alias Resolution + canonical Source-Lineage
+- 457 Document Intelligence 2.0 + precise Evidence anchors
+- 458 Organization/Ownership/Registry Intelligence + connector qualification
+- 459 Graph Analytics 2.0 + Red-Team/Local-AI integration
 - 460 Serious Beta / repeated full operational gate
+- 461–464 product/security packaging, external connector/media/team qualification
+- 465 Release-Candidate / external-beta hard checkpoint
 
 Production release remains separate from operational research usability.
