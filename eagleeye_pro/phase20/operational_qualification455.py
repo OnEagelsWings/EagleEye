@@ -303,10 +303,17 @@ class OperationalResearchQualification455:
             "checks": checks,
         }
 
-    def _completed_review(self, case_id, object_type, object_id):
+    def _latest_review(self, case_id, object_type, object_id):
+        """Return the newest review request, regardless of its terminal outcome.
+
+        Review currency is fail-closed: a newer denial, stale review, pending
+        re-review or claimed re-review must supersede an older approval. Callers
+        then explicitly require the latest row to be the expected completed,
+        positive decision.
+        """
         row = self.db.one(
             "SELECT * FROM review_request_449 WHERE case_id=? AND object_type=? AND object_id=? "
-            "AND state='completed' ORDER BY completed_at DESC,rowid DESC LIMIT 1",
+            "ORDER BY requested_at DESC,rowid DESC LIMIT 1",
             (str(case_id), str(object_type), str(object_id)),
         )
         return dict(row) if row else None
@@ -596,12 +603,12 @@ class OperationalResearchQualification455:
         )
 
         evidence_reviews = {
-            "support": self._completed_review(case_id, "evidence", support_evidence_id),
-            "counter": self._completed_review(case_id, "evidence", counter_evidence_id),
+            "support": self._latest_review(case_id, "evidence", support_evidence_id),
+            "counter": self._latest_review(case_id, "evidence", counter_evidence_id),
         }
-        claim_review = self._completed_review(case_id, "claim", claim_id)
-        dossier_review = self._completed_review(case_id, "dossier", revision_id)
-        export_review = self._completed_review(case_id, "dossier_export", revision_id)
+        claim_review = self._latest_review(case_id, "claim", claim_id)
+        dossier_review = self._latest_review(case_id, "dossier", revision_id)
+        export_review = self._latest_review(case_id, "dossier_export", revision_id)
         export_execution = self.db.one(
             "SELECT * FROM review_export_execution_449 WHERE case_id=? AND export_id=? "
             "ORDER BY executed_at DESC,rowid DESC LIMIT 1",
@@ -1025,16 +1032,16 @@ class OperationalResearchQualification455:
                     for x in (dossier.get("snapshot") or {}).get("claims", [])
                 )
             )
-            support_review = self._completed_review(
+            support_review = self._latest_review(
                 last["case_id"], "evidence", last["support_evidence_id"]
             )
-            counter_review = self._completed_review(
+            counter_review = self._latest_review(
                 last["case_id"], "evidence", last["counter_evidence_id"]
             )
-            claim_review = self._completed_review(
+            claim_review = self._latest_review(
                 last["case_id"], "claim", last["claim_id"]
             )
-            dossier_review = self._completed_review(
+            dossier_review = self._latest_review(
                 last["case_id"], "dossier", last["revision_id"]
             )
             checks["support_review_current"] = self._review_matches_current_artifact(
@@ -1059,7 +1066,7 @@ class OperationalResearchQualification455:
             export_files = self._verify_export_files(export or {})
             checks["physical_export_current"] = bool(export_files.get("valid"))
 
-            export_review = self._completed_review(
+            export_review = self._latest_review(
                 last["case_id"], "dossier_export", last["revision_id"]
             )
             export_execution_row = self.db.one(
