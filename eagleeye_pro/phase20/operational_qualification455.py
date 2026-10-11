@@ -347,6 +347,24 @@ class OperationalResearchQualification455:
             and left_hash and right_hash and left_hash != right_hash
         )
 
+    def _reviewer_independent_from_acquisition(self, review, event):
+        if not review or not event:
+            return False
+        reviewer = str(review.get("completed_by") or "").strip()
+        acquisition_actor = str(event.get("created_by") or "").strip()
+        if not reviewer or not acquisition_actor:
+            return False
+        try:
+            user = self.governance.identity.public_user(reviewer)
+        except (KeyError, ValueError):
+            return False
+        reviewer_ids = {
+            reviewer.casefold(),
+            str(user.get("username") or "").casefold(),
+            str(user.get("user_id") or "").casefold(),
+        }
+        return acquisition_actor.casefold() not in reviewer_ids
+
     def _verify_export_files(self, export):
         paths = dict(export.get("paths") or {})
         hashes = dict(export.get("hashes") or {})
@@ -643,6 +661,12 @@ class OperationalResearchQualification455:
             ),
             "counter_review_matches_current_artifact": self._review_matches_current_artifact(
                 evidence_reviews["counter"], "evidence", counter["evidence"]
+            ),
+            "support_review_independent_from_acquisition": self._reviewer_independent_from_acquisition(
+                evidence_reviews["support"], support["event"]
+            ),
+            "counter_review_independent_from_acquisition": self._reviewer_independent_from_acquisition(
+                evidence_reviews["counter"], counter["event"]
             ),
             "claim_review_completed": claim_review is not None,
             "claim_review_matches_current_artifact": self._review_matches_current_artifact(
@@ -1000,6 +1024,12 @@ class OperationalResearchQualification455:
             )
             checks["counter_review_current"] = self._review_matches_current_artifact(
                 counter_review, "evidence", counter["evidence"]
+            )
+            checks["support_review_acquisition_independence_current"] = self._reviewer_independent_from_acquisition(
+                support_review, support["event"]
+            )
+            checks["counter_review_acquisition_independence_current"] = self._reviewer_independent_from_acquisition(
+                counter_review, counter["event"]
             )
             checks["claim_review_current"] = self._review_matches_current_artifact(
                 claim_review, "claim", claim
