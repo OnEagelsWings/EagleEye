@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 from fastapi.testclient import TestClient
 
@@ -175,3 +176,19 @@ def test_build455_appcontext_lifecycle_requires_actual_close(tmp_path):
         first.close()
         if second is not None:
             second.close()
+
+
+def test_build455_checkpoint_regression_exclusions_are_exact_and_never_exclude_current_build():
+    manifest = json.loads(
+        (ROOT / "tools" / "CHECKPOINT_REGRESSION_EXCLUSIONS_455.json").read_text(encoding="utf-8")
+    )
+    exclusions = manifest["exclusions"]
+    assert manifest["excluded_count"] == len(exclusions) == 114
+    nodeids = [item["nodeid"] for item in exclusions]
+    assert len(nodeids) == len(set(nodeids))
+    assert all(nodeid.startswith("tests/test_build") and "::" in nodeid for nodeid in nodeids)
+    assert not any("test_build455" in nodeid for nodeid in nodeids)
+    assert all(item["reason"].startswith("superseded_") for item in exclusions)
+    runner = (ROOT / "tools" / "run_checkpoint_regression455.py").read_text(encoding="utf-8")
+    assert "--deselect" in runner
+    assert "current_build_tests_excluded" in runner
