@@ -6,6 +6,7 @@ import json
 from fastapi.testclient import TestClient
 
 from eagleeye_pro.core.app_context import AppContext
+from eagleeye_pro.phase20.operational_qualification455 import OperationalResearchQualification455
 from eagleeye.interfaces.web.app455 import create_workspace_app455
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -212,3 +213,38 @@ def test_build455_restart_and_status_revalidate_current_prerequisites():
     assert "def _current_gate_revalidation" in text
     assert '"physical_export_current"' in text
     assert '"recovery_state_binding_current"' in text
+
+
+def test_build455_completed_review_must_match_current_artifact_reviewer_and_decision():
+    review = {
+        "state": "completed",
+        "completed_by": "independent-reviewer",
+        "decision": "accepted",
+    }
+    current = {
+        "reviewed_by": "independent-reviewer",
+        "review_state": "accepted",
+    }
+    assert OperationalResearchQualification455._review_matches_current_artifact(
+        review, "evidence", current
+    )
+    changed_reviewer = {**current, "reviewed_by": "creator"}
+    assert not OperationalResearchQualification455._review_matches_current_artifact(
+        review, "evidence", changed_reviewer
+    )
+    changed_decision = {**current, "review_state": "context_only"}
+    assert not OperationalResearchQualification455._review_matches_current_artifact(
+        review, "evidence", changed_decision
+    )
+
+
+def test_build455_counterevidence_requires_distinct_content_payload():
+    support = {"content_id": "content-a", "content_sha256": "a" * 64}
+    duplicate = {"content_id": "content-a", "content_sha256": "a" * 64}
+    distinct = {"content_id": "content-b", "content_sha256": "b" * 64}
+    assert not OperationalResearchQualification455._distinct_evidence_payloads(
+        support, duplicate
+    )
+    assert OperationalResearchQualification455._distinct_evidence_payloads(
+        support, distinct
+    )
