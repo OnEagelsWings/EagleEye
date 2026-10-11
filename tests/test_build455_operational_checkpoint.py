@@ -156,28 +156,45 @@ def test_build455_surface441_tamper_breaks_engineering_preflight(tmp_path):
 def test_build455_appcontext_lifecycle_requires_actual_close(tmp_path):
     first = AppContext(base_dir=tmp_path)
     second = None
+    third = None
     try:
         first_service = first.operational_qualification_455
         first_id = first_service.context_instance_id
+
+        # A verifier opened before shutdown must never qualify as a restart.
         second = AppContext(base_dir=tmp_path)
         second_service = second.operational_qualification_455
         before = second_service._context_lifecycle_checks(first_id)
         assert before["context_instance_changed"] is True
         assert before["qualification_context_record_present"] is True
+        assert before["qualification_open_event_present"] is True
+        assert before["qualification_open_event_hash_valid"] is True
         assert before["qualification_context_closed"] is False
-        assert all(
-            bool(v) for k, v in before.items()
-            if k != "qualification_context_closed"
-        )
+        assert before["qualification_close_event_present"] is False
+        assert before["current_context_open"] is True
+        assert before["current_open_event_present"] is True
+        assert before["current_context_opened_after_qualification_close"] is False
 
         first.close()
-        after = second_service._context_lifecycle_checks(first_id)
+        overlapping = second_service._context_lifecycle_checks(first_id)
+        assert overlapping["qualification_context_closed"] is True
+        assert overlapping["qualification_close_event_present"] is True
+        assert overlapping["qualification_close_event_hash_valid"] is True
+        assert overlapping["current_context_open"] is True
+        assert overlapping["current_context_opened_after_qualification_close"] is False
+
+        # Only a context opened after the close event proves close -> reopen.
+        second.close()
+        third = AppContext(base_dir=tmp_path)
+        third_service = third.operational_qualification_455
+        after = third_service._context_lifecycle_checks(first_id)
         assert all(after.values())
     finally:
         first.close()
         if second is not None:
             second.close()
-
+        if third is not None:
+            third.close()
 
 def test_build455_checkpoint_regression_exclusions_are_exact_and_never_exclude_current_build():
     manifest = json.loads(
@@ -376,3 +393,59 @@ def test_build455_status_fails_closed_on_malformed_report_json(tmp_path):
         assert status["last_report_decode_valid"] is False
         assert status["integrity_valid"] is False
         assert status["operational_research_gate_pass"] is False
+
+
+def test_build455_latest_qualification_uses_monotonic_rowid(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        service = ctx.operational_qualification_455
+        columns = [
+            "qualification_id", "case_id", "support_evidence_id", "counter_evidence_id",
+            "claim_id", "revision_id", "export_id", "recovery_id", "engineering_result",
+            "live_case_result", "restart_result", "overall_result", "report_json",
+            "created_by", "created_at", "updated_at", "record_hash",
+        ]
+        base = {
+            "case_id": "case455_rowid_currency",
+            "support_evidence_id": "support_missing",
+            "counter_evidence_id": "counter_missing",
+            "claim_id": "claim_missing",
+            "revision_id": "revision_missing",
+            "export_id": "export_missing",
+            "recovery_id": "recovery_missing",
+            "live_case_result": "hold",
+            "restart_result": "hold",
+            "report_json": "{}",
+            "created_by": "fixture",
+        }
+        rows = [
+            {
+                **base,
+                "qualification_id": "ops455_old_pass",
+                "engineering_result": "pass",
+                "overall_result": "pass",
+                "created_at": "2026-10-11T20:00:00+00:00",
+                "updated_at": "2026-10-11T20:00:00+00:00",
+            },
+            {
+                **base,
+                "qualification_id": "ops455_new_hold",
+                "engineering_result": "hold",
+                "overall_result": "hold",
+                # Deliberately older wall-clock time; insertion order is authoritative.
+                "created_at": "2026-10-11T19:00:00+00:00",
+                "updated_at": "2026-10-11T19:00:00+00:00",
+            },
+        ]
+        for row in rows:
+            row["record_hash"] = service._rh(row)
+            ctx.db.execute(
+                "INSERT INTO phase20_operational_qualification_run_455("
+                + ",".join(columns)
+                + ") VALUES("
+                + ",".join("?" for _ in columns)
+                + ")",
+                tuple(row[name] for name in columns),
+            )
+        latest = service.latest(base["case_id"])
+        assert latest["qualification_id"] == "ops455_new_hold"
+        assert latest["overall_result"] == "hold"
