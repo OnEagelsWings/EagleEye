@@ -1,0 +1,469 @@
+{
+  "policy": "build455.checkpoint-regression-exclusions.v1",
+  "purpose": "Exact historical tests whose assertion is intentionally incompatible with a later current build. Functional tests in the same files remain active.",
+  "rules": [
+    "No Build-455 test may be excluded.",
+    "Only exact node ids are excluded; entire historical test files remain in the regression unless separately ignored for the retired Build-360-364 suites.",
+    "Launcher/version exclusions cover assertions that a historical build is still the current runtime/server/installer.",
+    "Build-407-409 pre-canonical-identity write tests are superseded by later fail-closed identity requirements and must not weaken current authorization."
+  ],
+  "excluded_count": 114,
+  "exclusions": [
+    {
+      "nodeid": "tests/test_build365.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build366.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build367.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build368.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build369.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build370.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build371.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build372.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build373.py::test_version_schema",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build373.py::test_server_points_to_app373",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build373.py::test_generic_launchers_point_to_373",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build374.py::test_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build374.py::test_server_points_to_app374",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build374.py::test_generic_launchers_point_to_374",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build375.py::test_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build376.py::test_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build377.py::test_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build378.py::test_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build379.py::test_001_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build380.py::test_001_version",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build384_integrated.py::test_integrated_version_and_registry",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build384_integrated.py::test_current_launchers_and_server_point_to_384",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build385_integrated.py::test_version_schema_and_capabilities",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build385_integrated.py::test_current_launchers_and_server_point_to_385",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build386_integrated.py::test_version_schema_and_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build386_integrated.py::test_current_launchers_and_server_point_to_386",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build387_integrated.py::test_version_schema_and_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build387_integrated.py::test_current_launchers_and_server_point_to_387",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build388_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build388_integrated.py::test_current_launchers_server_point_388",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build389_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build389_integrated.py::test_current_launchers_server_point_389",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build390_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build390_integrated.py::test_current_launchers_server_point_390",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build391_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build391_integrated.py::test_current_launchers_server_point_391",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build392_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build392_integrated.py::test_current_launchers_server_point_392",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build393_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build393_integrated.py::test_current_launchers_server_point_393",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build394_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build395_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build396_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build397_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build398_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build399_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build400_integrated.py::test_version_schema_status",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build400_integrated.py::test_server_and_launchers_point_to_400",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build401_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build402_integrated.py::test_version_and_authorization_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build403_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build404_integrated.py::test_version_and_gate_empty_ledger_passes",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build405_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build406_integrated.py::test_build406_version_and_remediation_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build406_integrated.py::test_server_entrypoint_points_to_app406",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build407_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build407_integrated.py::test_plan_is_review_first_and_network_silent",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build407_integrated.py::test_import_requires_provenance_and_is_not_evidence",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build407_integrated.py::test_payload_limit_fails_closed",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build407_integrated.py::test_integrity_detects_tamper",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build407_integrated.py::test_app407_health_and_routes",
+      "reason": "superseded_historical_health_gate_depends_on_exact_version"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_search_plan_is_federated_but_network_silent",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_disabled_source_excluded",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_import_normalizes_dedupes_and_never_promotes",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_import_requires_provenance",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_federated_integrity_detects_tamper",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build408_integrated.py::test_app408_health_and_route",
+      "reason": "superseded_historical_health_gate_depends_on_exact_version"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_version_gate_and_feedback",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_empty_search_reports_gap_not_truth",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_diverse_results_improve_coverage",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_single_source_gap_detected",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_host_concentration_gap",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_comparison_never_ranks_truth",
+      "reason": "superseded_pre_canonical_identity_write_contract"
+    },
+    {
+      "nodeid": "tests/test_build409_integrated.py::test_app409_health_and_route",
+      "reason": "superseded_historical_health_gate_depends_on_exact_version"
+    },
+    {
+      "nodeid": "tests/test_build410_integrated.py::test_version_and_feedback_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build410_integrated.py::test_app410_health_and_route",
+      "reason": "superseded_historical_health_gate_depends_on_exact_version"
+    },
+    {
+      "nodeid": "tests/test_build411_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build412_integrated.py::test_version_and_relationship_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build412_integrated.py::test_app412_health_and_routes",
+      "reason": "superseded_historical_health_gate_depends_on_exact_version"
+    },
+    {
+      "nodeid": "tests/test_build413_integrated.py::test_version_and_planner_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build413_integrated.py::test_app413_health_and_routes",
+      "reason": "superseded_historical_health_gate_depends_on_exact_version"
+    },
+    {
+      "nodeid": "tests/test_build413_integrated.py::test_server_launcher_targets_413",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build414_integrated.py::test_version_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build414_integrated.py::test_app414_and_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build415_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build415_integrated.py::test_app_and_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build416_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build416_integrated.py::test_app_and_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build417_integrated.py::test_version_and_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build417_integrated.py::test_app_and_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build418_integrated.py::test_version_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build418_integrated.py::test_app_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build419_integrated.py::test_version_gate",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build419_integrated.py::test_app_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build420_integrated.py::test_app_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build438_integrated.py::test_contract_and_launcher",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build439_integrated.py::test_contract_launcher_and_checkpoint_position",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build440_integrated.py::test_contract_launcher_and_current_server",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build441_integrated.py::test_contract_version_launcher_and_phase20_position",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build442_integrated.py::test_contract_version_launcher_and_phase20_position",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build443_integrated.py::test_contract_version_launcher_and_phase20_position",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build444_integrated.py::test_contract_version_launcher_and_checkpoint_position",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build445_integrated.py::test_contract_launcher_and_current_server",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build446_integrated.py::test_contract_launcher_and_current_server",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build447_integrated.py::test_contract_launcher_and_current_server",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build448_integrated.py::test_status_and_launcher_contract",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build449_integrated.py::test_status_launcher_and_checkpoint_contract",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build450_integrated.py::test_build450_status_launcher_manifest_and_checkpoint_contract",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build451_operating_profile.py::test_build451_version_launcher_status_and_auth",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build452_deployment.py::test_build452_installer_and_launchers_use_isolated_non_editable_runtime",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build452_deployment.py::test_build452_version_and_release_contract",
+      "reason": "superseded_historical_exact_version_contract"
+    },
+    {
+      "nodeid": "tests/test_build453_historical_recovery.py::test_build453_version_launcher_and_five_build_ci_contract",
+      "reason": "superseded_historical_current_launcher_contract"
+    },
+    {
+      "nodeid": "tests/test_build454_xref_infrastructure.py::test_build454_status_health_version_and_test_cadence",
+      "reason": "superseded_historical_exact_version_contract"
+    }
+  ]
+}

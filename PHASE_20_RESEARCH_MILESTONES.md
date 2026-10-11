@@ -31,11 +31,13 @@ cover security qualification, investigation benchmark and serious beta.
 
 - 451 begins with retrieval worker separation and pre-intake content quarantine.
 - 452 establishes deterministic local deployment and folds in unresolved 450/451 integration hardening.
-- 453 adds recovery, rollback and failed-upgrade recovery paths.
-- 454 focuses on reliability and operational integration while retaining the working research chain.
-- 455 qualifies the entire operational research workflow, not only new modules.
-- 460 repeats the workflow alongside the serious-beta acceptance gates.
-- 465 and later five-build milestones repeat the same operational acceptance.
+- 453 delivers Historical Web Intelligence 2.0 plus a verified recovery/staged-restore basis.
+- 454 delivers the explainable Cross-Reference Engine plus public Domain/Infrastructure Intelligence.
+- 455 qualifies the entire operational research workflow, including a bounded real public-source case, counterevidence, four-eyes export, recovery and actual close/reopen reference verification.
+- 456–459 canonicalize multilingual entity resolution, source lineage, document intelligence, organization/registry intelligence, graph/red-team analysis and real local-AI participation.
+- 460 repeats the complete workflow as the Serious-Beta acceptance gate using a materially more complex investigation and usability/soak evidence.
+- 461–464 focus on distribution/security packaging, external connector/media/team qualification and defect burn-down.
+- 465 is the Release-Candidate hard checkpoint; later five-build milestones repeat the same operational acceptance discipline.
 
 ## Build 451 foundation delivered in this branch
 
@@ -67,3 +69,12 @@ Build 452 is intentionally a consolidation/deployment build rather than another 
 The deployment contract uses a dedicated `.eagleeye-runtime`, a non-editable package install, source-fingerprint receipt and Python isolated mode at launch. This makes the runtime used by the launcher testable and reproducible instead of silently importing the repository source tree. Native signed application bundles and an offline dependency wheelhouse remain outside Build 452.
 
 Build 453 should not expand OSINT scope. Its acceptance target is recovery: interrupted install/update, corrupt receipt/runtime, rollback to a known working runtime, preserved case data and explicit operator-visible recovery state.
+
+
+## Build 455 checkpoint outcome and test semantics
+
+Build 455 introduces a real-source gate rather than treating the deterministic Build-450 qualification as sufficient. The bounded qualification requires two non-fixture public Evidence sources acquired through Build-442 external validation, independent review, an accepted Claim with explicit counterevidence and uncertainty, a reviewed Dossier, separate export approval/execution, physical artifact-hash verification, a verified Build-453 recovery point, and an actual AppContext close/reopen with reference revalidation.
+
+Historical regression tests are retained, but exact assertions that require an old build to remain the current runtime/server/installer are not valid forward checkpoint criteria. Build 455 therefore enumerates those exact superseded node IDs in `tools/CHECKPOINT_REGRESSION_EXCLUSIONS_455.json`; all other tests in the same files remain active, and current Build-455 tests cannot be excluded by that policy.
+
+The detailed remaining-distance assessment and timeboxed plan are in `BUILD_455_GOAL_GAP_AUDIT.md`.

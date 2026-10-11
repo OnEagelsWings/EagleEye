@@ -1,0 +1,38 @@
+{
+  "build": "455.0",
+  "package": "455.0.0",
+  "phase": 20,
+  "name": "Full Operations / Real-Source Research Gate",
+  "hard_checkpoint": true,
+  "development_build": false,
+  "previous_build": "454.0",
+  "next_build": "456.0",
+  "next_checkpoint": "460.0",
+  "qualification": {
+    "retained_build450_governed_workflow": true,
+    "retrieval_isolation_451": true,
+    "deterministic_deployment_452": true,
+    "recovery_453": true,
+    "xref_infrastructure_454": true,
+    "real_nonfixture_public_sources_required": true,
+    "support_and_counterevidence_required": true,
+    "independent_review_required": true,
+    "physical_export_hash_verification": true,
+    "recovery_point_verification": true,
+    "actual_close_reopen_reference_verification": true
+  },
+  "full_test_cadence": {
+    "full_repository_regression": true,
+    "phase_18_20_chain": true,
+    "linux_checkpoint": true,
+    "windows_checkpoint": true,
+    "real_public_source_gate": true
+  },
+  "field_scope": {
+    "bounded_public_surface_case": true,
+    "public_dns_infrastructure_case": true,
+    "all_connector_families_external_validation": false,
+    "external_beta_validation": false
+  },
+  "production_release_ready": false
+}
