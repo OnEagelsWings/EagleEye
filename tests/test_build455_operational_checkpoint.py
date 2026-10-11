@@ -275,3 +275,52 @@ def test_build455_evidence_review_must_be_independent_from_acquisition_actor():
     assert qualifier._reviewer_independent_from_acquisition(
         review, {"created_by": "user-acquirer"}
     )
+
+
+def test_build455_latest_review_denial_supersedes_older_approval(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        base = {
+            "case_id": "case-review-currency-455",
+            "object_type": "dossier_export",
+            "object_id": "revision-review-currency-455",
+            "object_hash_at_request": "hash-review-currency-455",
+            "requested_by": "requester455",
+            "assigned_to": "reviewer455",
+            "request_note": "Build 455 review currency regression",
+            "claimed_by": "reviewer455",
+            "claimed_at": "2026-10-11T18:00:00+00:00",
+            "completed_by": "reviewer455",
+            "review_note": "Build 455 review currency regression",
+        }
+        rows = [
+            {
+                **base,
+                "review_id": "review455_old_approve",
+                "state": "completed",
+                "requested_at": "2026-10-11T18:00:00+00:00",
+                "decision": "approve",
+                "completed_at": "2026-10-11T18:01:00+00:00",
+                "updated_at": "2026-10-11T18:01:00+00:00",
+            },
+            {
+                **base,
+                "review_id": "review455_new_deny",
+                "state": "denied",
+                "requested_at": "2026-10-11T18:02:00+00:00",
+                "decision": "deny",
+                "completed_at": "2026-10-11T18:03:00+00:00",
+                "updated_at": "2026-10-11T18:03:00+00:00",
+            },
+        ]
+        for row in rows:
+            row["record_hash"] = ctx.human_review_449._rh(row)
+            ctx.db.execute(
+                "INSERT INTO review_request_449 VALUES(" + ",".join("?" for _ in row) + ")",
+                tuple(row.values()),
+            )
+        latest = ctx.operational_qualification_455._latest_review(
+            base["case_id"], base["object_type"], base["object_id"]
+        )
+        assert latest["review_id"] == "review455_new_deny"
+        assert latest["state"] == "denied"
+        assert latest["decision"] == "deny"
