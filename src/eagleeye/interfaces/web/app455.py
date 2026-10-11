@@ -42,7 +42,17 @@ def create_workspace_app455(*, base_dir=None):
 
     @app.get("/api/build455/cases/{case_id}/qualification")
     def case_qualification(case_id: str, request: Request):
-        auth(request)
+        identity = auth(request)
+        try:
+            ctx.team_governance_359.authorize(
+                identity,
+                case_id=case_id,
+                capability="case.read",
+                object_type="operational_research_qualification_455",
+                object_id=case_id,
+            )
+        except PermissionError as exc:
+            raise HTTPException(403, "Keine Berechtigung für diesen Fall") from exc
         item = ctx.build455.operational_research_latest_455(case_id)
         return {"case_id": case_id, "qualification": item}
 
