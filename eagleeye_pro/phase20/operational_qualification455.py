@@ -857,11 +857,29 @@ class OperationalResearchQualification455:
         }
         checks["context_lifecycle"] = lifecycle_checks
         checks["restart_engineering_checks"] = restart_engineering_checks
-        passed = all(
-            bool(value)
-            for key, value in checks.items()
-            if key not in {"context_lifecycle", "restart_engineering_checks"}
-        ) and all(lifecycle_checks.values()) and all(restart_engineering_checks.values())
+
+        # Restart PASS must validate the live case *now*, not only reference
+        # reopenability or cached qualification-time predicates. This catches a
+        # deleted/replaced review, changed reviewer, duplicated counterevidence,
+        # or any other condition that would make current status HOLD.
+        current_live_case = self._current_gate_revalidation(run)
+        checks["current_live_case_revalidation"] = bool(current_live_case.get("valid"))
+        checks["current_live_case_checks"] = current_live_case.get("checks") or {}
+
+        passed = (
+            all(
+                bool(value)
+                for key, value in checks.items()
+                if key not in {
+                    "context_lifecycle",
+                    "restart_engineering_checks",
+                    "current_live_case_checks",
+                }
+            )
+            and all(lifecycle_checks.values())
+            and all(restart_engineering_checks.values())
+            and bool(current_live_case.get("valid"))
+        )
 
         restart = {
             "restart_id": "restart455_" + secrets.token_hex(10),
