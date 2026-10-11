@@ -311,6 +311,42 @@ class OperationalResearchQualification455:
         )
         return dict(row) if row else None
 
+    @staticmethod
+    def _review_matches_current_artifact(review, object_type, artifact):
+        """Bind a completed Build-449 review to the artifact's current review state.
+
+        A historical independent review must not remain usable after the object is
+        subsequently re-reviewed or changed. Build-447 stores the current reviewer
+        and decision/state on Evidence, Claims and Dossiers, so require exact
+        agreement with the latest completed review selected for Build 455.
+        """
+        if not review or not artifact:
+            return False
+        if str(review.get("state") or "") != "completed":
+            return False
+        completed_by = str(review.get("completed_by") or "")
+        if not completed_by or completed_by != str(artifact.get("reviewed_by") or ""):
+            return False
+        decision = str(review.get("decision") or "")
+        if object_type == "evidence":
+            return decision == str(artifact.get("review_state") or "")
+        if object_type in {"claim", "dossier"}:
+            return decision == str(artifact.get("state") or "")
+        return False
+
+    @staticmethod
+    def _distinct_evidence_payloads(left, right):
+        if not left or not right:
+            return False
+        left_content = str(left.get("content_id") or "")
+        right_content = str(right.get("content_id") or "")
+        left_hash = str(left.get("content_sha256") or "")
+        right_hash = str(right.get("content_sha256") or "")
+        return bool(
+            left_content and right_content and left_content != right_content
+            and left_hash and right_hash and left_hash != right_hash
+        )
+
     def _verify_export_files(self, export):
         paths = dict(export.get("paths") or {})
         hashes = dict(export.get("hashes") or {})
@@ -586,6 +622,9 @@ class OperationalResearchQualification455:
             "support_real_public_provenance": all(support["checks"].values()),
             "counter_real_public_provenance": all(counter["checks"].values()),
             "distinct_evidence_items": support_evidence_id != counter_evidence_id,
+            "distinct_evidence_payloads": self._distinct_evidence_payloads(
+                support["evidence"], counter["evidence"]
+            ),
             "claim_case_bound": claim.get("case_id") == str(case_id),
             "claim_accepted_for_dossier": claim.get("state") == "accepted_for_dossier",
             "claim_support_linked": support_linked,
@@ -599,8 +638,20 @@ class OperationalResearchQualification455:
             ),
             "support_review_completed": evidence_reviews["support"] is not None,
             "counter_review_completed": evidence_reviews["counter"] is not None,
+            "support_review_matches_current_artifact": self._review_matches_current_artifact(
+                evidence_reviews["support"], "evidence", support["evidence"]
+            ),
+            "counter_review_matches_current_artifact": self._review_matches_current_artifact(
+                evidence_reviews["counter"], "evidence", counter["evidence"]
+            ),
             "claim_review_completed": claim_review is not None,
+            "claim_review_matches_current_artifact": self._review_matches_current_artifact(
+                claim_review, "claim", claim
+            ),
             "dossier_review_completed": dossier_review is not None,
+            "dossier_review_matches_current_artifact": self._review_matches_current_artifact(
+                dossier_review, "dossier", dossier
+            ),
             "export_review_completed": export_review is not None,
             "independent_reviewer_present": bool(reviewers) and creator not in reviewers,
             "export_execution_present": export_execution is not None,
@@ -893,6 +944,9 @@ class OperationalResearchQualification455:
             counter = self._evidence_chain(last["counter_evidence_id"], last["case_id"])
             checks["support_chain_current"] = all(support["checks"].values())
             checks["counter_chain_current"] = all(counter["checks"].values())
+            checks["distinct_evidence_payloads_current"] = self._distinct_evidence_payloads(
+                support["evidence"], counter["evidence"]
+            )
 
             claim = self.closure447.claim(last["claim_id"])
             dossier = self.closure447.dossier(last["revision_id"])
@@ -928,6 +982,30 @@ class OperationalResearchQualification455:
                     x.get("claim_id") == last["claim_id"]
                     for x in (dossier.get("snapshot") or {}).get("claims", [])
                 )
+            )
+            support_review = self._completed_review(
+                last["case_id"], "evidence", last["support_evidence_id"]
+            )
+            counter_review = self._completed_review(
+                last["case_id"], "evidence", last["counter_evidence_id"]
+            )
+            claim_review = self._completed_review(
+                last["case_id"], "claim", last["claim_id"]
+            )
+            dossier_review = self._completed_review(
+                last["case_id"], "dossier", last["revision_id"]
+            )
+            checks["support_review_current"] = self._review_matches_current_artifact(
+                support_review, "evidence", support["evidence"]
+            )
+            checks["counter_review_current"] = self._review_matches_current_artifact(
+                counter_review, "evidence", counter["evidence"]
+            )
+            checks["claim_review_current"] = self._review_matches_current_artifact(
+                claim_review, "claim", claim
+            )
+            checks["dossier_review_current"] = self._review_matches_current_artifact(
+                dossier_review, "dossier", dossier
             )
             checks["export_row_current"] = bool(export)
             export_files = self._verify_export_files(export or {})
