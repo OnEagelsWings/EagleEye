@@ -63,14 +63,20 @@ def create_workspace_app456(*, base_dir=None):
         identity = auth(request)
         authorize_case(identity, case_id, "research.run")
         payload = await request.json()
-        with ctx.audit.actor_scope(identity["username"]):
-            return ctx.build456.scan_multilingual_entities_456(
-                identity=identity,
-                case_id=case_id,
-                min_pair_score=float(payload.get("min_pair_score", 0.72)),
-                max_entities=int(payload.get("max_entities", 250)),
-                max_pairs=int(payload.get("max_pairs", 5000)),
-            )
+        try:
+            min_pair_score = float(payload.get("min_pair_score", 0.72))
+            max_entities = int(payload.get("max_entities", 250))
+            max_pairs = int(payload.get("max_pairs", 5000))
+            with ctx.audit.actor_scope(identity["username"]):
+                return ctx.build456.scan_multilingual_entities_456(
+                    identity=identity,
+                    case_id=case_id,
+                    min_pair_score=min_pair_score,
+                    max_entities=max_entities,
+                    max_pairs=max_pairs,
+                )
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @app.get("/api/build456/cases/{case_id}/claims/{claim_id}/source-lineage")
     def claim_lineage(case_id: str, claim_id: str, request: Request):
