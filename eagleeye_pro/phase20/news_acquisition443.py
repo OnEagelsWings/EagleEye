@@ -456,18 +456,27 @@ class LiveNewsAcquisition443:
         )
 
     def _publication_text_fingerprint(self, item):
-        """Source-neutral exact fingerprint of the publication text visible in the feed.
+        """Source-neutral fingerprint for substantive publication text visible in a feed.
 
-        The Build-423 content digest intentionally fingerprints the full provenance
-        envelope and therefore differs across publishers/URLs. Corroboration
-        deduplication needs a separate text-derived fingerprint. Prefer the feed
-        summary/content; fall back to title only when no summary is available.
+        The Build-423 content digest fingerprints the provenance envelope and cannot
+        deduplicate syndication across publisher/URL changes. This fingerprint uses
+        normalized feed summary text only when it is substantive enough to be useful.
+        Title-only and boilerplate-only feed records intentionally remain unavailable.
         """
         summary = _plain(item.get("summary", ""))
-        if not summary:
-            return ""
         normalized = " ".join(summary.casefold().split())
-        return hashlib.sha256(normalized.encode("utf-8")).hexdigest() if normalized else ""
+        if not normalized:
+            return ""
+        boilerplate = {
+            "read more", "read more.", "continue reading", "continue reading.",
+            "click here", "click here.", "learn more", "learn more.",
+            "full story", "full story.", "view article", "view article.",
+            "read full article", "read full article.", "more", "more.",
+        }
+        words = re.findall(r"[\w'-]+", normalized, flags=re.UNICODE)
+        if normalized in boilerplate or len(normalized) < 48 or len(words) < 8:
+            return ""
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     def _item_payload(self, source, item):
         return (
@@ -653,6 +662,7 @@ class LiveNewsAcquisition443:
 
             payload = self._item_payload(source, item)
             digest = hashlib.sha256(payload).hexdigest()
+            publication_fingerprint = self._publication_text_fingerprint(item)
             method = "rss" if feed_kind in {"rss", "atom"} else "api"
             event = self.events422.record(
                 identity=ident,
@@ -711,8 +721,8 @@ class LiveNewsAcquisition443:
                     "feed_url": final_url,
                     "feed_kind": feed_kind,
                     "summary_from_feed": bool(item["summary"]),
-                    "publication_text_fingerprint_sha256": self._publication_text_fingerprint(item),
-                    "publication_text_fingerprint_basis": "feed_summary" if item["summary"] else "unavailable",
+                    "publication_text_fingerprint_sha256": publication_fingerprint,
+                    "publication_text_fingerprint_basis": "feed_summary" if publication_fingerprint else "unavailable",
                     "article_body_fetched": False,
                     "semantic_extraction_performed": False,
                 },
