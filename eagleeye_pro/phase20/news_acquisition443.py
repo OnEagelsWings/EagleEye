@@ -455,6 +455,20 @@ class LiveNewsAcquisition443:
             )
         )
 
+    def _publication_text_fingerprint(self, item):
+        """Source-neutral exact fingerprint of the publication text visible in the feed.
+
+        The Build-423 content digest intentionally fingerprints the full provenance
+        envelope and therefore differs across publishers/URLs. Corroboration
+        deduplication needs a separate text-derived fingerprint. Prefer the feed
+        summary/content; fall back to title only when no summary is available.
+        """
+        summary = _plain(item.get("summary", ""))
+        title = _plain(item.get("title", ""))
+        material = summary if summary else title
+        normalized = " ".join(material.casefold().split())
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest() if normalized else ""
+
     def _item_payload(self, source, item):
         return (
             f"TITLE: {item['title']}\n"
@@ -697,6 +711,8 @@ class LiveNewsAcquisition443:
                     "feed_url": final_url,
                     "feed_kind": feed_kind,
                     "summary_from_feed": bool(item["summary"]),
+                    "publication_text_fingerprint_sha256": self._publication_text_fingerprint(item),
+                    "publication_text_fingerprint_basis": "feed_summary" if item["summary"] else "feed_title",
                     "article_body_fetched": False,
                     "semantic_extraction_performed": False,
                 },
