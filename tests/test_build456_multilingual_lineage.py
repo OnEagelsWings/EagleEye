@@ -347,6 +347,12 @@ def test_build456_news_publication_fingerprint_uses_substantive_text_not_title()
     assert service._publication_text_fingerprint(
         {"title": "Live updates", "summary": ""}
     ) == ""
+    assert service._publication_text_fingerprint(
+        {"title": "Different article", "summary": "Read more"}
+    ) == ""
+    assert service._publication_text_fingerprint(
+        {"title": "Different article", "summary": "Click here to continue reading."}
+    ) == ""
 
 
 def test_build456_reviewed_pair_inputs_are_immutable_after_terminal_decision(tmp_path):
@@ -597,6 +603,19 @@ def test_build456_invalid_cross_stance_link_cannot_suppress_valid_origin(tmp_pat
             "UPDATE evidence_item_447 SET review_state=?,updated_at=?,record_hash=? WHERE evidence_id=?",
             (stale["review_state"], stale["updated_at"], stale["record_hash"], stale_id),
         )
+        stale_current = ctx.evidence_claims_dossier_447.evidence(stale_id)
+        ctx.build456.review_source_lineage_456(
+            identity=identity,
+            evidence_id=stale_id,
+            source_family="publisher:stale",
+            independence_group="origin:conflicting-stale",
+            origin_key="conflicting-stale",
+            source_role="publisher",
+            countable=True,
+            rationale="Rejected Evidence may have reviewed lineage but cannot affect corroboration.",
+            confirmation="REVIEW SOURCE LINEAGE 456",
+            expected_evidence_hash=stale_current["record_hash"],
+        )
 
         report = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
         assert report["summary"]["support"]["reviewed_independent_origins"] == 1
@@ -651,3 +670,44 @@ def test_build456_forwarding_preserves_terminal_canonical_comparison(tmp_path):
         assert after["reviewed_by"] == before["reviewed_by"]
         assert after["reviewed_at"] == before["reviewed_at"]
         assert after["review_reason"] == before["review_reason"]
+
+
+def test_build456_pair_cap_preflight_is_atomic(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        case_id = case["case_id"]
+        for idx, name in enumerate(("محمد", "محمود", "احمد", "خالد")):
+            ctx.entity_resolution_115.register_entity(
+                case_id,
+                "person",
+                name,
+                "admin456",
+                source_entity_id=f"build456:cap-{idx}",
+            )
+        try:
+            ctx.build456.scan_multilingual_entities_456(
+                identity=identity,
+                case_id=case_id,
+                min_pair_score=0.55,
+                max_pairs=2,
+            )
+            assert False, "pair-cap preflight must reject before mutation"
+        except ValueError as exc:
+            assert "max_pairs" in str(exc)
+
+        db = ctx.entity_lineage_456.db
+        aliases = db.one(
+            "SELECT COUNT(*) AS n FROM phase20_alias_candidate_456 WHERE case_id=?",
+            (case_id,),
+        )
+        pairs = db.one(
+            "SELECT COUNT(*) AS n FROM phase20_entity_pair_candidate_456 WHERE case_id=?",
+            (case_id,),
+        )
+        runs = db.one(
+            "SELECT COUNT(*) AS n FROM phase20_entity_lineage_run_456 WHERE case_id=?",
+            (case_id,),
+        )
+        assert int(aliases["n"]) == 0
+        assert int(pairs["n"]) == 0
+        assert int(runs["n"]) == 0
