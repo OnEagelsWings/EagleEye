@@ -170,18 +170,22 @@ def _overview(snapshot):
 def _research(snapshot):
     loop = snapshot["latest_loop"] or {}
     sources = snapshot["sources"]
-    dispatches = snapshot["dispatches"]
+    dispatches = snapshot.get("current_cycle_dispatches") or []
     loop_id = loop.get("loop_id", "")
+    budget = snapshot.get("dispatch_budget") or {}
     prepare = ""
     recommended = snapshot.get("recommended_dispatch_source_ids") or []
     recommended_text = "\n".join(recommended)
     if loop and loop.get("state") == "active":
-        prepare = f"""
+        if int(budget.get("remaining") or 0) > 0:
+            prepare = f"""
 <form data-json-form data-endpoint="/api/build446/loops/{_e(loop_id)}/dispatches/prepare" data-success="Dispatch-Tickets vorbereitet.">
-<div class="field"><label>Source-IDs für diesen Zyklus. Vorauswahl ist auf das autorisierte Zyklusbudget begrenzt.</label><textarea name="source_ids" data-array="true" rows="3">{_e(recommended_text)}</textarea></div>
-<p class="muted">{len(recommended)} Quelle(n) vorausgewählt; Auswahl kann innerhalb des autorisierten Loop-Scopes geändert werden.</p>
+<div class="field"><label>Source-IDs für diesen Zyklus. Vorauswahl ist auf das verbleibende autorisierte Zyklusbudget begrenzt.</label><textarea name="source_ids" data-array="true" rows="3">{_e(recommended_text)}</textarea></div>
+<p class="muted">{len(recommended)} Quelle(n) vorausgewählt · Budget: {_e(budget.get("reserved",0))}/{_e(budget.get("authorized",0))} reserviert, {_e(budget.get("remaining",0))} verbleibend.</p>
 <p><button type="submit">Dispatch vorbereiten</button></p>
 </form>"""
+        else:
+            prepare = '<div class="empty">Das autorisierte Dispatch-Budget dieses Zyklus ist ausgeschöpft. Ergebnisse prüfen oder den Loop regelkonform fortschreiben.</div>'
     rows = []
     for d in dispatches:
         action = ""
