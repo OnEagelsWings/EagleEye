@@ -456,7 +456,7 @@ class LiveNewsAcquisition443:
             )
         )
 
-    def _publication_text_fingerprint(self, item):
+    def _publication_text_fingerprint(self, item, repeated_summaries=None):
         """Source-neutral fingerprint for substantive publication text visible in a feed.
 
         The Build-423 content digest fingerprints the provenance envelope and cannot
@@ -475,7 +475,8 @@ class LiveNewsAcquisition443:
             "read full article", "read full article.", "more", "more.",
         }
         words = re.findall(r"[\w'-]+", normalized, flags=re.UNICODE)
-        if normalized in boilerplate or len(normalized) < 48 or len(words) < 8:
+        repeated = set(repeated_summaries or ())
+        if normalized in boilerplate or normalized in repeated or len(normalized) < 48 or len(words) < 8:
             return ""
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
@@ -635,6 +636,14 @@ class LiveNewsAcquisition443:
         duplicates = 0
         skipped = 0
         created = []
+        normalized_summaries = [
+            " ".join(_plain(raw.get("summary", "")).casefold().split())
+            for raw in parsed[:MAX_ITEMS_PER_RUN]
+        ]
+        repeated_summaries = {
+            value for value in normalized_summaries
+            if value and normalized_summaries.count(value) > 1
+        }
 
         for raw_item in parsed[:MAX_ITEMS_PER_RUN]:
             item, reason = self._normalize_item(source, raw_item)
@@ -663,7 +672,7 @@ class LiveNewsAcquisition443:
 
             payload = self._item_payload(source, item)
             digest = hashlib.sha256(payload).hexdigest()
-            publication_fingerprint = self._publication_text_fingerprint(item)
+            publication_fingerprint = self._publication_text_fingerprint(item, repeated_summaries)
             method = "rss" if feed_kind in {"rss", "atom"} else "api"
             event = self.events422.record(
                 identity=ident,
