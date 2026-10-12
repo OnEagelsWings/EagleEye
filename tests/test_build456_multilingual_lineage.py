@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 import json
 import secrets
 
@@ -38,7 +39,7 @@ def setup_case(ctx):
     return identity, case
 
 
-def insert_evidence(ctx, *, case_id, title, url, publisher, content_sha):
+def insert_evidence(ctx, *, case_id, title, url, publisher, content_sha, publication_text):
     evidence_id = "ev456_" + secrets.token_hex(6)
     now = "2026-10-12T09:00:00+00:00"
     row = {
@@ -58,7 +59,15 @@ def insert_evidence(ctx, *, case_id, title, url, publisher, content_sha):
         "source_snapshot_json": json.dumps({"access_mode": "public"}),
         "provenance_json": json.dumps({"public_only": True}),
         "usage_json": json.dumps({}),
-        "descriptive_json": json.dumps({"publisher": publisher}),
+        "descriptive_json": json.dumps({
+            "publisher": publisher,
+            "metadata": {
+                "publication_text_fingerprint_sha256": hashlib.sha256(
+                    " ".join(publication_text.casefold().split()).encode("utf-8")
+                ).hexdigest(),
+                "publication_text_fingerprint_basis": "feed_summary",
+            },
+        }),
         "source_record_hash": "s" * 64,
         "event_record_hash": "e" * 64,
         "content_record_hash": "c" * 64,
@@ -189,50 +198,128 @@ def test_build456_entity_scan_generates_candidates_without_auto_merge(tmp_path):
         assert {pairs[0]["left_entity_id"], pairs[0]["right_entity_id"]} == {left, right}
 
 
-def test_build456_source_lineage_counts_origins_not_mentions(tmp_path):
+def test_build456_source_lineage_counts_reviewed_origins_not_republication_envelopes(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
         identity, case = setup_case(ctx)
         case_id = case["case_id"]
-        duplicate_sha = "a" * 64
+        syndicated_text = "The same normalized wire text appears in two different publisher envelopes."
         ev1 = insert_evidence(
             ctx, case_id=case_id, title="Wire copy A",
             url="https://example-one.invalid/story", publisher="Reuters",
-            content_sha=duplicate_sha,
+            content_sha="a" * 64, publication_text=syndicated_text,
         )
         ev2 = insert_evidence(
             ctx, case_id=case_id, title="Wire copy B",
-            url="https://example-two.invalid/republication", publisher="Reuters",
-            content_sha=duplicate_sha,
+            url="https://example-two.invalid/republication", publisher="Local Outlet",
+            content_sha="b" * 64, publication_text=syndicated_text,
         )
         ev3 = insert_evidence(
             ctx, case_id=case_id, title="Independent report",
             url="https://example-three.invalid/report", publisher="Associated Press",
-            content_sha="b" * 64,
+            content_sha="c" * 64,
+            publication_text="A genuinely different publication text for the bounded test.",
         )
         claim_id = insert_claim(ctx, case_id=case_id, evidence_ids=[ev1, ev2, ev3])
-        report = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
-        support = report["summary"]["support"]
-        assert support["mentions"] == 3
-        assert support["unique_payloads"] == 2
-        assert support["source_families"] == 2
-        assert support["independent_origins"] == 2
-        assert "duplicate_payloads_do_not_add_corroboration" in report["warnings"]
-        assert report["source_independence_determines_truth"] is False
 
+        inferred = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
+        support = inferred["summary"]["support"]
+        assert support["mentions"] == 3
+        assert support["unique_publication_payloads"] == 2
+        assert support["source_families"] == 3
+        assert support["inferred_origin_candidates"] == 3
+        assert support["reviewed_independent_origins"] == 0
+        assert "unreviewed_lineage_excluded_from_independent_origin_count" in inferred["warnings"]
+        assert "duplicate_publication_payloads_collapsed" in inferred["warnings"]
+
+        for evidence_id, family, group in (
+            (ev1, "publisher:reuters", "origin:wire-reuters"),
+            (ev2, "publisher:local-outlet", "origin:wire-reuters"),
+            (ev3, "publisher:associated-press", "origin:associated-press"),
+        ):
+            evidence = ctx.evidence_claims_dossier_447.evidence(evidence_id)
+            ctx.build456.review_source_lineage_456(
+                identity=identity,
+                evidence_id=evidence_id,
+                source_family=family,
+                independence_group=group,
+                origin_key=group.removeprefix("origin:"),
+                source_role="publisher",
+                countable=True,
+                rationale="Human-reviewed source-lineage decision for the Build 456 regression.",
+                confirmation="REVIEW SOURCE LINEAGE 456",
+                expected_evidence_hash=evidence["record_hash"],
+            )
+
+        reviewed = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
+        assert reviewed["summary"]["support"]["mentions"] == 3
+        assert reviewed["summary"]["support"]["unique_publication_payloads"] == 2
+        assert reviewed["summary"]["support"]["reviewed_independent_origins"] == 2
+        assert reviewed["source_independence_determines_truth"] is False
+
+        ap = ctx.evidence_claims_dossier_447.evidence(ev3)
         ctx.build456.review_source_lineage_456(
             identity=identity,
             evidence_id=ev3,
             source_family="publisher:associated-press",
-            independence_group="origin:publisher:associated-press",
-            origin_key="publisher:associated-press",
+            independence_group="origin:associated-press",
+            origin_key="associated-press",
             source_role="publisher",
             countable=False,
-            rationale="Treat this item as non-countable for this bounded test scenario.",
+            rationale="Analyst now marks this source non-countable for the bounded scenario.",
             confirmation="REVIEW SOURCE LINEAGE 456",
+            expected_evidence_hash=ap["record_hash"],
         )
-        reviewed = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
-        assert reviewed["summary"]["support"]["independent_origins"] == 1
+        reduced = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
+        assert reduced["summary"]["support"]["reviewed_independent_origins"] == 1
 
+
+def test_build456_lineage_review_is_bound_to_visible_evidence_hash_and_boolean(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        evidence_id = insert_evidence(
+            ctx,
+            case_id=case["case_id"],
+            title="Evidence version binding",
+            url="https://binding.invalid/item",
+            publisher="Binding Publisher",
+            content_sha="d" * 64,
+            publication_text="Stable publication text for expected Evidence hash validation.",
+        )
+        evidence = ctx.evidence_claims_dossier_447.evidence(evidence_id)
+
+        try:
+            ctx.build456.review_source_lineage_456(
+                identity=identity,
+                evidence_id=evidence_id,
+                source_family="publisher:binding",
+                independence_group="origin:binding",
+                origin_key="binding",
+                source_role="publisher",
+                countable="false",
+                rationale="String booleans must never become reviewer decisions.",
+                confirmation="REVIEW SOURCE LINEAGE 456",
+                expected_evidence_hash=evidence["record_hash"],
+            )
+            assert False, "non-boolean countable must fail"
+        except ValueError:
+            pass
+
+        try:
+            ctx.build456.review_source_lineage_456(
+                identity=identity,
+                evidence_id=evidence_id,
+                source_family="publisher:binding",
+                independence_group="origin:binding",
+                origin_key="binding",
+                source_role="publisher",
+                countable=False,
+                rationale="Stale UI state must never create a current lineage override.",
+                confirmation="REVIEW SOURCE LINEAGE 456",
+                expected_evidence_hash="0" * 64,
+            )
+            assert False, "stale expected Evidence hash must fail"
+        except PermissionError:
+            pass
 
 def test_build456_integrity_and_no_automatic_authority(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
