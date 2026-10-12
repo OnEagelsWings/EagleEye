@@ -8,7 +8,9 @@ import secrets
 from fastapi.testclient import TestClient
 
 from eagleeye_pro.core.app_context import AppContext
+from eagleeye_pro.phase20.news_acquisition443 import LiveNewsAcquisition443
 from eagleeye.interfaces.web.app456 import create_workspace_app456
+from eagleeye.interfaces.web.app448 import COOKIE
 
 ROOT = Path(__file__).resolve().parents[1]
 PASSWORD = "Build456!Admin_7781"
@@ -328,3 +330,189 @@ def test_build456_integrity_and_no_automatic_authority(tmp_path):
         assert status["automatic_identity_confirmation"] is False
         assert status["automatic_entity_merge"] is False
         assert status["automatic_truth_determination"] is False
+
+
+def test_build456_news_publication_fingerprint_uses_substantive_text_not_title():
+    service = object.__new__(LiveNewsAcquisition443)
+    left = {
+        "title": "Outlet-specific headline",
+        "summary": "The same substantive wire summary is republished by two outlets.",
+    }
+    right = {
+        "title": "Completely different headline",
+        "summary": "The same substantive wire summary is republished by two outlets.",
+    }
+    assert service._publication_text_fingerprint(left)
+    assert service._publication_text_fingerprint(left) == service._publication_text_fingerprint(right)
+    assert service._publication_text_fingerprint(
+        {"title": "Live updates", "summary": ""}
+    ) == ""
+
+
+def test_build456_reviewed_pair_inputs_are_immutable_after_terminal_decision(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        case_id = case["case_id"]
+        left = ctx.entity_resolution_115.register_entity(
+            case_id, "person", "محمد", "admin456", source_entity_id="build456:pair-left"
+        )
+        right = ctx.entity_resolution_115.register_entity(
+            case_id, "person", "Mohammed", "admin456", source_entity_id="build456:pair-right"
+        )
+        ctx.build456.scan_multilingual_entities_456(
+            identity=identity, case_id=case_id, min_pair_score=0.65
+        )
+        pair = ctx.build456.multilingual_pair_candidates_456(
+            identity=identity, case_id=case_id
+        )[0]
+        before = dict(
+            ctx.db.one(
+                "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
+                (pair["pair_id"],),
+            )
+        )
+        reviewed = ctx.build456.review_multilingual_pair_456(
+            identity=identity,
+            pair_id=pair["pair_id"],
+            decision="likely_distinct",
+            rationale="Keep these records distinct until stronger identity evidence exists.",
+            confirmation="REVIEW ENTITY PAIR 456",
+        )
+        assert reviewed["state"] == "analyst_marked_distinct"
+
+        ctx.entity_resolution_115.add_alias(
+            right, "محمد", "manual", "admin456", "build456:post-review-alias"
+        )
+        ctx.build456.scan_multilingual_entities_456(
+            identity=identity, case_id=case_id, min_pair_score=0.65
+        )
+        after = dict(
+            ctx.db.one(
+                "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
+                (pair["pair_id"],),
+            )
+        )
+        assert after["state"] == "analyst_marked_distinct"
+        assert after["similarity_score"] == reviewed["similarity_score"]
+        assert after["signals_json"] == reviewed["signals_json"]
+        assert after["reviewed_by"] == reviewed["reviewed_by"]
+        assert before["pair_id"] == after["pair_id"]
+
+
+def test_build456_stale_or_rejected_claim_evidence_never_counts_as_independent(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        evidence_id = insert_evidence(
+            ctx,
+            case_id=case["case_id"],
+            title="Accepted then changed",
+            url="https://stale.invalid/item",
+            publisher="Reviewed Publisher",
+            content_sha="e" * 64,
+            publication_text="Substantive publication text used for a reviewed lineage record.",
+        )
+        claim_id = insert_claim(ctx, case_id=case["case_id"], evidence_ids=[evidence_id])
+        original = ctx.evidence_claims_dossier_447.evidence(evidence_id)
+        ctx.build456.review_source_lineage_456(
+            identity=identity,
+            evidence_id=evidence_id,
+            source_family="publisher:reviewed",
+            independence_group="origin:reviewed",
+            origin_key="reviewed",
+            source_role="publisher",
+            countable=True,
+            rationale="Initial lineage review while the Claim link is current.",
+            confirmation="REVIEW SOURCE LINEAGE 456",
+            expected_evidence_hash=original["record_hash"],
+        )
+        assert (
+            ctx.build456.claim_source_lineage_456(
+                identity=identity, claim_id=claim_id
+            )["summary"]["support"]["reviewed_independent_origins"]
+            == 1
+        )
+
+        raw = dict(
+            ctx.db.one(
+                "SELECT * FROM evidence_item_447 WHERE evidence_id=?", (evidence_id,)
+            )
+        )
+        raw["review_state"] = "rejected"
+        raw["review_note"] = "Rejected after the Claim linked the prior Evidence version."
+        raw["reviewed_at"] = "2026-10-12T10:00:00+00:00"
+        raw["updated_at"] = raw["reviewed_at"]
+        raw["record_hash"] = ctx.evidence_claims_dossier_447._rh(raw)
+        ctx.db.execute(
+            "UPDATE evidence_item_447 SET review_state=?,review_note=?,reviewed_at=?,"
+            "updated_at=?,record_hash=? WHERE evidence_id=?",
+            (
+                raw["review_state"], raw["review_note"], raw["reviewed_at"],
+                raw["updated_at"], raw["record_hash"], evidence_id,
+            ),
+        )
+        changed = ctx.evidence_claims_dossier_447.evidence(evidence_id)
+        ctx.build456.review_source_lineage_456(
+            identity=identity,
+            evidence_id=evidence_id,
+            source_family="publisher:reviewed",
+            independence_group="origin:reviewed",
+            origin_key="reviewed",
+            source_role="publisher",
+            countable=True,
+            rationale="Lineage itself is reviewed again, but Claim link is now stale.",
+            confirmation="REVIEW SOURCE LINEAGE 456",
+            expected_evidence_hash=changed["record_hash"],
+        )
+        report = ctx.build456.claim_source_lineage_456(
+            identity=identity, claim_id=claim_id
+        )
+        assert report["summary"]["support"]["reviewed_independent_origins"] == 0
+        assert "nonaccepted_evidence_excluded_from_independent_origin_count" in report["warnings"]
+        assert "stale_claim_evidence_link_excluded_from_independent_origin_count" in report["warnings"]
+
+
+def test_build456_mutation_api_audit_actor_is_authenticated_user(tmp_path):
+    app = create_workspace_app456(base_dir=tmp_path)
+    try:
+        ctx = app.state.context
+        ctx.team_identity_359.create_initial_admin(
+            username="webadmin456",
+            display_name="Build 456 Web Admin",
+            password="Build456!WebAdmin_8821",
+        )
+        ua = "build456-web-audit-test"
+        lang = "en"
+        fingerprint = hashlib.sha256(f"{ua}|{lang}|testclient".encode()).hexdigest()
+        issued = ctx.team_identity_359.authenticate(
+            username="webadmin456",
+            password="Build456!WebAdmin_8821",
+            client_fingerprint=fingerprint,
+        )
+        identity = ctx.team_identity_359.validate_session(
+            issued.token, client_fingerprint=fingerprint, touch=False
+        )
+        case = ctx.team_governance_359.create_case(
+            identity=identity,
+            title="Build 456 audit actor",
+            client="Internal QA",
+            purpose="Verify authenticated mutation audit attribution.",
+            legal_basis="public_data",
+        )
+        with TestClient(
+            app, headers={"user-agent": ua, "accept-language": lang}
+        ) as client:
+            client.cookies.set(COOKIE, issued.token)
+            response = client.post(
+                f"/api/build456/cases/{case['case_id']}/entity-scan",
+                json={"min_pair_score": 0.72},
+            )
+            assert response.status_code == 200
+        event = ctx.db.one(
+            "SELECT * FROM audit_events WHERE case_id=? AND action=? "
+            "ORDER BY rowid DESC LIMIT 1",
+            (case["case_id"], "multilingual_entity_scan_456"),
+        )
+        assert event is not None
+        assert event["actor"] == "webadmin456"
+    finally:
+        app.state.context.close()
