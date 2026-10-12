@@ -687,7 +687,7 @@ class MultilingualEntitySourceLineage456:
         )
         return row
 
-    def review_pair_candidate(self, *, identity, pair_id, decision, rationale, confirmation):
+    def review_pair_candidate(self, *, identity, pair_id, decision, rationale, confirmation, expected_pair_hash):
         raw = self.db.one(
             "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
             (str(pair_id),),
@@ -696,6 +696,8 @@ class MultilingualEntitySourceLineage456:
             raise KeyError("Build-456 pair candidate not found")
         row = dict(raw)
         ident = self._authorize(identity, row["case_id"], "dossier.review", pair_id)
+        if str(expected_pair_hash or "") != str(row.get("record_hash") or ""):
+            raise PermissionError("entity pair changed after review was opened")
         if str(confirmation or "").strip().upper() != PAIR_CONFIRM:
             raise PermissionError(f"explicit {PAIR_CONFIRM} confirmation required")
         decision = str(decision or "").strip().lower()
