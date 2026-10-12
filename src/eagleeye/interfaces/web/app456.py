@@ -103,6 +103,9 @@ def create_workspace_app456(*, base_dir=None):
     async def pair_review(pair_id: str, request: Request):
         identity = auth(request)
         payload = await request.json()
+        expected_hash = payload.get("expected_pair_hash")
+        if not isinstance(expected_hash, str) or not expected_hash:
+            raise HTTPException(422, "expected_pair_hash ist erforderlich")
         try:
             with ctx.audit.actor_scope(identity["username"]):
                 return ctx.build456.review_multilingual_pair_456(
@@ -111,6 +114,7 @@ def create_workspace_app456(*, base_dir=None):
                     decision=payload.get("decision", ""),
                     rationale=payload.get("rationale", ""),
                     confirmation=payload.get("confirmation", ""),
+                    expected_pair_hash=expected_hash,
                 )
         except (KeyError, ValueError) as exc:
             raise HTTPException(400, str(exc)) from exc
