@@ -32,17 +32,18 @@ Each Build-447 Evidence item can now be mapped to a conservative source lineage:
 - source role;
 - countable/non-countable status.
 
-The default inference uses an explicit publisher when available, otherwise the canonical host and finally the registered source ID. Archive/mirror evidence is non-countable by default. An analyst can override lineage only through an explicit reviewed record bound to the current Evidence hash.
+The default inference uses an explicit publisher when available, otherwise the canonical host and finally the registered source ID. Archive/mirror evidence is non-countable by default. An analyst can override lineage only through an explicit reviewed record bound to the exact Evidence hash visible when the review was opened; stale review submissions are rejected.
 
 Claim lineage reports distinguish:
 
 - raw mentions;
-- unique payloads;
+- unique publication-text payloads;
 - source families;
-- independent origins;
+- inferred origin candidates;
+- **human-reviewed independent origins**;
 - duplicates/non-countable observations.
 
-Thus EagleEye can display results such as **"20 mentions / 3 independent origins"** instead of treating 20 republications as 20 corroborating sources. Exact duplicate payloads never add corroboration.
+Thus EagleEye can display results such as **"20 mentions / 3 reviewed independent origins"**. Unreviewed publisher/host inference never enters the independent-origin count. For governed Build-443 news acquisition, Build 456 adds a source-neutral fingerprint derived from normalized feed publication text rather than the publisher/URL provenance envelope. Exact known republication payloads therefore collapse before corroboration is counted. Legacy news items without this fingerprint are excluded from the reviewed-independent count until they are reacquired or otherwise reviewed with sufficient provenance.
 
 Source independence is not a truth probability and does not automatically accept a Claim.
 
