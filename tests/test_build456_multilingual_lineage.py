@@ -383,6 +383,7 @@ def test_build456_reviewed_pair_inputs_are_immutable_after_terminal_decision(tmp
             decision="likely_distinct",
             rationale="Keep these records distinct until stronger identity evidence exists.",
             confirmation="REVIEW ENTITY PAIR 456",
+            expected_pair_hash=pair["record_hash"],
         )
         assert reviewed["state"] == "analyst_marked_distinct"
 
@@ -657,6 +658,7 @@ def test_build456_forwarding_preserves_terminal_canonical_comparison(tmp_path):
             decision="investigate_same",
             rationale="Forward only if canonical resolution is still unresolved.",
             confirmation="REVIEW ENTITY PAIR 456",
+            expected_pair_hash=pair["record_hash"],
         )
         after = dict(
             ctx.entity_lineage_456.db.one(
@@ -711,3 +713,52 @@ def test_build456_pair_cap_preflight_is_atomic(tmp_path):
         assert int(aliases["n"]) == 0
         assert int(pairs["n"]) == 0
         assert int(runs["n"]) == 0
+
+
+def test_build456_pair_review_rejects_stale_display_hash(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        case_id = case["case_id"]
+        left = ctx.entity_resolution_115.register_entity(
+            case_id, "person", "محمد", "admin456", source_entity_id="build456:stale-pair-left"
+        )
+        right = ctx.entity_resolution_115.register_entity(
+            case_id, "person", "Mohammed", "admin456", source_entity_id="build456:stale-pair-right"
+        )
+        ctx.build456.scan_multilingual_entities_456(
+            identity=identity, case_id=case_id, min_pair_score=0.65
+        )
+        pair = ctx.build456.multilingual_pair_candidates_456(
+            identity=identity, case_id=case_id
+        )[0]
+        displayed_hash = pair["record_hash"]
+
+        ctx.entity_resolution_115.add_alias(
+            right, "Muhammad", "manual", "admin456", "build456:stale-pair-alias"
+        )
+        ctx.build456.scan_multilingual_entities_456(
+            identity=identity, case_id=case_id, min_pair_score=0.65
+        )
+        current = ctx.build456.multilingual_pair_candidates_456(
+            identity=identity, case_id=case_id
+        )[0]
+        assert current["record_hash"] != displayed_hash
+
+        try:
+            ctx.build456.review_multilingual_pair_456(
+                identity=identity,
+                pair_id=pair["pair_id"],
+                decision="likely_distinct",
+                rationale="A stale analyst view must never authorize the changed candidate.",
+                confirmation="REVIEW ENTITY PAIR 456",
+                expected_pair_hash=displayed_hash,
+            )
+            assert False, "stale pair review must fail"
+        except PermissionError:
+            pass
+
+        unchanged = ctx.build456.multilingual_pair_candidates_456(
+            identity=identity, case_id=case_id
+        )[0]
+        assert unchanged["state"] == "review_required"
+        assert unchanged["reviewed_by"] == ""
