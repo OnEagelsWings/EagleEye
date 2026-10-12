@@ -228,3 +228,187 @@ def test_build457_holdout_fixture_is_declared_as_package_data():
 def test_build457_retains_checkpoint_readme_contract():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "test_build450_integrated.py" in readme
+
+
+def historical_archive_source(ctx, identity, name="Historical 457 fixture"):
+    return ctx.build421.register_source(
+        identity=identity,
+        name=name,
+        source_type="archive",
+        base_url="https://web.archive.org",
+        capabilities=["historical_web", "cdx_index"],
+        coverage={"fixture_only": True},
+    )
+
+
+def historical_index_event(ctx, identity, case_id, source, target, payload, media_type="application/json"):
+    event = ctx.build422.record_event(
+        identity=identity,
+        case_id=case_id,
+        source_id=source["source_id"],
+        target=target,
+        method="archive",
+        status="retrieved",
+    )
+    content = ctx.build423.ingest_content(
+        identity=identity,
+        event_id=event["event_id"],
+        content=payload,
+        media_type=media_type,
+        metadata={"build": "457.0", "fixture": True},
+    )
+    return event, content
+
+
+def test_build457_historical_index_requires_exact_authorized_request(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        source = historical_archive_source(ctx, identity)
+        query = ctx.historical_web_453.create_query(
+            identity=identity,
+            case_id=case["case_id"],
+            original_url="https://example.org/history",
+            providers=["internet_archive"],
+            from_time="2020-01-01T00:00:00Z",
+            to_time="2024-12-31T23:59:59Z",
+        )
+        payload = json.dumps([
+            ["timestamp", "original", "statuscode", "mimetype", "digest"],
+            ["20220101000000", "https://example.org/history", "200", "text/html", "D457"],
+        ])
+        wrong_target = "https://web.archive.org/cdx/search/cdx?url=another.example"
+        event, content = historical_index_event(
+            ctx, identity, case["case_id"], source, wrong_target, payload
+        )
+        with pytest.raises(ValueError, match="exact historical provider request"):
+            ctx.historical_web_453.import_index_payload(
+                identity=identity,
+                query_id=query["query_id"],
+                provider="internet_archive",
+                payload=payload,
+                index_event_id=event["event_id"],
+                index_content_id=content["content_id"],
+            )
+
+        expected = query["requests"][0]["url"]
+        good_event, good_content = historical_index_event(
+            ctx, identity, case["case_id"], source, expected, payload
+        )
+        imported = ctx.historical_web_453.import_index_payload(
+            identity=identity,
+            query_id=query["query_id"],
+            provider="internet_archive",
+            payload=payload,
+            index_event_id=good_event["event_id"],
+            index_content_id=good_content["content_id"],
+        )
+        assert imported["created"] == 1
+
+
+def test_build457_common_crawl_requires_valid_range_metadata(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        source = historical_archive_source(ctx, identity, "Common Crawl 457 fixture")
+        query = ctx.historical_web_453.create_query(
+            identity=identity,
+            case_id=case["case_id"],
+            original_url="https://example.org/history",
+            providers=["common_crawl"],
+            common_crawl_index="CC-MAIN-2026-39",
+            from_time="2026-01-01T00:00:00Z",
+            to_time="2026-12-31T23:59:59Z",
+        )
+        payload = "\n".join([
+            json.dumps({
+                "timestamp": "20260101000000",
+                "url": "https://example.org/history",
+                "status": "200",
+                "mime": "text/html",
+                "digest": "CC-INCOMPLETE",
+                "filename": "crawl-data/segment/incomplete.warc.gz",
+            }),
+            json.dumps({
+                "timestamp": "20260201000000",
+                "url": "https://example.org/history",
+                "status": "200",
+                "mime": "text/html",
+                "digest": "CC-COMPLETE",
+                "filename": "crawl-data/segment/complete.warc.gz",
+                "offset": "100",
+                "length": "50",
+            }),
+        ])
+        expected = query["requests"][0]["url"]
+        event, content = historical_index_event(
+            ctx, identity, case["case_id"], source, expected, payload,
+            media_type="application/x-ndjson",
+        )
+        ctx.historical_web_453.import_index_payload(
+            identity=identity,
+            query_id=query["query_id"],
+            provider="common_crawl",
+            payload=payload,
+            index_event_id=event["event_id"],
+            index_content_id=content["content_id"],
+        )
+        candidates = ctx.historical_web_453.candidates(query["query_id"])
+        by_digest = {item["provider_digest"]: item for item in candidates}
+        assert by_digest["CC-INCOMPLETE"]["retrieval_ready"] is False
+        assert by_digest["CC-COMPLETE"]["retrieval_ready"] is True
+        assert by_digest["CC-COMPLETE"]["provider_metadata"]["range_header"] == "bytes=100-149"
+
+
+def test_build457_duplicate_historical_link_does_not_orphan_capture(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        source = historical_archive_source(ctx, identity)
+        query = ctx.historical_web_453.create_query(
+            identity=identity,
+            case_id=case["case_id"],
+            original_url="https://example.org/history",
+            providers=["internet_archive"],
+        )
+        payload = json.dumps([
+            ["timestamp", "original", "statuscode", "mimetype", "digest"],
+            ["20220101000000", "https://example.org/history", "200", "text/html", "D-LINK"],
+        ])
+        event, content = historical_index_event(
+            ctx, identity, case["case_id"], source, query["requests"][0]["url"], payload
+        )
+        imported = ctx.historical_web_453.import_index_payload(
+            identity=identity,
+            query_id=query["query_id"],
+            provider="internet_archive",
+            payload=payload,
+            index_event_id=event["event_id"],
+            index_content_id=content["content_id"],
+        )
+        candidate = ctx.historical_web_453.candidates(query["query_id"])[0]
+        capture_event = ctx.build422.record_event(
+            identity=identity,
+            case_id=case["case_id"],
+            source_id=source["source_id"],
+            target=candidate["archive_url"],
+            method="archive",
+            status="retrieved",
+        )
+        capture_content = ctx.build423.ingest_content(
+            identity=identity,
+            event_id=capture_event["event_id"],
+            content="<html>historical fixture</html>",
+            media_type="text/html",
+            metadata={"fixture": True},
+        )
+        kwargs = dict(
+            identity=identity,
+            candidate_id=imported["candidate_ids"][0],
+            archive_source_id=source["source_id"],
+            retrieved_event_id=capture_event["event_id"],
+            content_id=capture_content["content_id"],
+        )
+        ctx.historical_web_453.link_retrieved_capture(**kwargs)
+        before = ctx.db.one("SELECT COUNT(*) AS n FROM archive_capture_428")["n"]
+        with pytest.raises(ValueError, match="already linked"):
+            ctx.historical_web_453.link_retrieved_capture(**kwargs)
+        after = ctx.db.one("SELECT COUNT(*) AS n FROM archive_capture_428")["n"]
+        assert after == before
