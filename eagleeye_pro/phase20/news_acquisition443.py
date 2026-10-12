@@ -464,9 +464,9 @@ class LiveNewsAcquisition443:
         summary/content; fall back to title only when no summary is available.
         """
         summary = _plain(item.get("summary", ""))
-        title = _plain(item.get("title", ""))
-        material = summary if summary else title
-        normalized = " ".join(material.casefold().split())
+        if not summary:
+            return ""
+        normalized = " ".join(summary.casefold().split())
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest() if normalized else ""
 
     def _item_payload(self, source, item):
@@ -712,7 +712,7 @@ class LiveNewsAcquisition443:
                     "feed_kind": feed_kind,
                     "summary_from_feed": bool(item["summary"]),
                     "publication_text_fingerprint_sha256": self._publication_text_fingerprint(item),
-                    "publication_text_fingerprint_basis": "feed_summary" if item["summary"] else "feed_title",
+                    "publication_text_fingerprint_basis": "feed_summary" if item["summary"] else "unavailable",
                     "article_body_fetched": False,
                     "semantic_extraction_performed": False,
                 },
