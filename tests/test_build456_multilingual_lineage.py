@@ -507,12 +507,12 @@ def test_build456_mutation_api_audit_actor_is_authenticated_user(tmp_path):
                 json={"min_pair_score": 0.72},
             )
             assert response.status_code == 200
-        event = ctx.audit.db.one(
-            "SELECT * FROM audit_events WHERE case_id=? AND action=? "
-            "ORDER BY rowid DESC LIMIT 1",
-            (case["case_id"], "multilingual_entity_scan_456"),
-        )
-        assert event is not None
-        assert event["actor"] == "webadmin456"
+            event = ctx.entity_lineage_456.db.one(
+                "SELECT * FROM audit_events WHERE case_id=? AND action=? "
+                "ORDER BY rowid DESC LIMIT 1",
+                (case["case_id"], "multilingual_entity_scan_456"),
+            )
+            assert event is not None
+            assert event["actor"] == "webadmin456"
     finally:
         app.state.context.close()
