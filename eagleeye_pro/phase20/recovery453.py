@@ -105,6 +105,8 @@ class RecoveryBasis453:
         if confirmation != "RECOVERY 453 CREATE":
             raise PermissionError("explicit recovery-point confirmation required")
         actor = self._identity(identity)
+        if self.db.in_transaction:
+            raise RuntimeError("recovery snapshot cannot start inside an active database transaction")
         recovery_id = "rec453_" + secrets.token_hex(10)
         target_dir = self.recovery_dir / recovery_id
         target_dir.mkdir(parents=True, exist_ok=False)
