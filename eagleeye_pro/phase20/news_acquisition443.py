@@ -5,6 +5,7 @@ from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 import hashlib
+import re
 import json
 import secrets
 import xml.etree.ElementTree as ET
