@@ -516,3 +516,138 @@ def test_build456_mutation_api_audit_actor_is_authenticated_user(tmp_path):
             assert event["actor"] == "webadmin456"
     finally:
         app.state.context.close()
+
+
+def test_build456_invalid_cross_stance_link_cannot_suppress_valid_origin(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        case_id = case["case_id"]
+        text_payload = "Shared publication text for cross-stance eligibility regression."
+        support_id = insert_evidence(
+            ctx, case_id=case_id, title="Valid support",
+            url="https://valid-support.invalid/item", publisher="Valid Publisher",
+            content_sha="1" * 64, publication_text=text_payload,
+        )
+        stale_id = insert_evidence(
+            ctx, case_id=case_id, title="Stale contradiction",
+            url="https://stale-contradict.invalid/item", publisher="Stale Publisher",
+            content_sha="2" * 64, publication_text=text_payload,
+        )
+        claim_id = "claim456_crossstance"
+        now = "2026-10-12T11:00:00+00:00"
+        claim = {
+            "claim_id": claim_id,
+            "case_id": case_id,
+            "statement": "A stale contradicting link must not suppress a valid reviewed origin.",
+            "state": "accepted_for_dossier",
+            "uncertainty_note": "Regression fixture.",
+            "created_by": "admin456",
+            "created_at": now,
+            "reviewed_by": "admin456",
+            "reviewed_at": now,
+            "review_note": "Regression fixture.",
+            "updated_at": now,
+        }
+        claim["record_hash"] = ctx.evidence_claims_dossier_447._rh(claim)
+        ctx.entity_lineage_456.db.execute(
+            "INSERT INTO claim_447 VALUES(" + ",".join("?" for _ in claim) + ")",
+            tuple(claim.values()),
+        )
+        for evidence_id, stance in ((support_id, "support"), (stale_id, "contradict")):
+            ev = ctx.evidence_claims_dossier_447.evidence(evidence_id)
+            link = {
+                "link_id": "link456_" + secrets.token_hex(5),
+                "claim_id": claim_id,
+                "case_id": case_id,
+                "evidence_id": evidence_id,
+                "stance": stance,
+                "note": "",
+                "evidence_hash_at_link": ev["record_hash"],
+                "created_by": "admin456",
+                "created_at": now,
+            }
+            link["record_hash"] = ctx.evidence_claims_dossier_447._rh(link)
+            ctx.entity_lineage_456.db.execute(
+                "INSERT INTO claim_evidence_link_447 VALUES(" + ",".join("?" for _ in link) + ")",
+                tuple(link.values()),
+            )
+
+        support = ctx.evidence_claims_dossier_447.evidence(support_id)
+        ctx.build456.review_source_lineage_456(
+            identity=identity,
+            evidence_id=support_id,
+            source_family="publisher:valid",
+            independence_group="origin:valid",
+            origin_key="valid",
+            source_role="publisher",
+            countable=True,
+            rationale="Valid supporting Evidence is reviewed and current.",
+            confirmation="REVIEW SOURCE LINEAGE 456",
+            expected_evidence_hash=support["record_hash"],
+        )
+        stale = dict(
+            ctx.entity_lineage_456.db.one(
+                "SELECT * FROM evidence_item_447 WHERE evidence_id=?", (stale_id,)
+            )
+        )
+        stale["review_state"] = "rejected"
+        stale["updated_at"] = "2026-10-12T11:05:00+00:00"
+        stale["record_hash"] = ctx.evidence_claims_dossier_447._rh(stale)
+        ctx.entity_lineage_456.db.execute(
+            "UPDATE evidence_item_447 SET review_state=?,updated_at=?,record_hash=? WHERE evidence_id=?",
+            (stale["review_state"], stale["updated_at"], stale["record_hash"], stale_id),
+        )
+
+        report = ctx.build456.claim_source_lineage_456(identity=identity, claim_id=claim_id)
+        assert report["summary"]["support"]["reviewed_independent_origins"] == 1
+        assert "same_publication_payload_crosses_claim_stances" not in report["warnings"]
+
+
+def test_build456_forwarding_preserves_terminal_canonical_comparison(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, case = setup_case(ctx)
+        case_id = case["case_id"]
+        left = ctx.entity_resolution_115.register_entity(
+            case_id, "person", "محمد", "admin456", source_entity_id="build456:terminal-left"
+        )
+        right = ctx.entity_resolution_115.register_entity(
+            case_id, "person", "Mohammed", "admin456", source_entity_id="build456:terminal-right"
+        )
+        comparison = ctx.entity_resolution_115.compare(left, right, "admin456")
+        ctx.entity_lineage_456.db.execute(
+            "UPDATE resolution_comparisons_115 SET state='approved_distinct',reviewed_by=?,"
+            "reviewed_at=?,review_reason=? WHERE comparison_id=?",
+            ("canonical-reviewer", "2026-10-12T11:10:00+00:00",
+             "Previously reviewed canonical distinct decision.", comparison["comparison_id"]),
+        )
+        before = dict(
+            ctx.entity_lineage_456.db.one(
+                "SELECT * FROM resolution_comparisons_115 WHERE comparison_id=?",
+                (comparison["comparison_id"],),
+            )
+        )
+        ctx.build456.scan_multilingual_entities_456(
+            identity=identity, case_id=case_id, min_pair_score=0.65
+        )
+        pair = ctx.build456.multilingual_pair_candidates_456(
+            identity=identity, case_id=case_id
+        )[0]
+        reviewed = ctx.build456.review_multilingual_pair_456(
+            identity=identity,
+            pair_id=pair["pair_id"],
+            decision="investigate_same",
+            rationale="Forward only if canonical resolution is still unresolved.",
+            confirmation="REVIEW ENTITY PAIR 456",
+        )
+        after = dict(
+            ctx.entity_lineage_456.db.one(
+                "SELECT * FROM resolution_comparisons_115 WHERE comparison_id=?",
+                (comparison["comparison_id"],),
+            )
+        )
+        assert reviewed["state"] == "canonical_resolution_already_reviewed"
+        assert reviewed["resolution_comparison_id"] == comparison["comparison_id"]
+        assert after["state"] == "approved_distinct"
+        assert after["reviewed_by"] == before["reviewed_by"]
+        assert after["reviewed_at"] == before["reviewed_at"]
+        assert after["review_reason"] == before["review_reason"]
