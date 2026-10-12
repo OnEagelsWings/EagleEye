@@ -239,3 +239,40 @@ def test_build457_status_preserves_authority_boundaries(tmp_path):
         assert status["automatic_truth_determination"] is False
         assert status["full_research_gate_this_build"] is False
         assert status["next_checkpoint"] == "460.0"
+
+
+def test_build457_health_retains_build456_integrity_failure(tmp_path):
+    app = create_workspace_app457(base_dir=tmp_path)
+    ctx = app.state.context
+    try:
+        identity = admin(ctx)
+        cid = make_case(ctx, identity, "Retained integrity 457")["case_id"]
+        ctx.entity_resolution_115.register_entity(
+            cid,
+            "person",
+            "محمد",
+            "analyst457",
+            source_entity_id="build457:integrity-fixture",
+        )
+        scan = ctx.build456.scan_multilingual_entities_456(
+            identity=identity,
+            case_id=cid,
+            min_pair_score=0.72,
+        )
+        assert scan["alias_candidates_total"] >= 1
+        row = ctx.entity_lineage_456.db.one(
+            "SELECT candidate_id FROM phase20_alias_candidate_456 WHERE case_id=? LIMIT 1",
+            (cid,),
+        )
+        assert row is not None
+        ctx.entity_lineage_456.db.execute(
+            "UPDATE phase20_alias_candidate_456 SET method='tampered' WHERE candidate_id=?",
+            (row["candidate_id"],),
+        )
+        assert ctx.build456.build456_status()["integrity_valid"] is False
+        status = ctx.build457.build457_status()
+        assert status["retained_build456_integrity_valid"] is False
+        assert status["integrity_valid"] is False
+        assert ctx.build457.build457_status()["integrity_valid"] is False
+    finally:
+        ctx.close()
