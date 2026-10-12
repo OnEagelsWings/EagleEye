@@ -288,13 +288,16 @@ class HistoricalWebIntelligence453:
         )
         if not content or content["sha256"] != hashlib.sha256(payload_bytes).hexdigest():
             raise ValueError("supplied index payload does not match referenced content hash")
-        host = (urlsplit(event["target"]).hostname or "").casefold()
-        expected = {
-            "internet_archive": {"web.archive.org"},
-            "common_crawl": {"index.commoncrawl.org"},
-        }[provider]
-        if host not in expected:
-            raise ValueError("index event target does not match historical provider")
+        expected_requests = {
+            item["provider"]: item
+            for item in self.provider_requests(query["query_id"])
+            if item.get("url")
+        }
+        expected_request = expected_requests.get(provider)
+        if not expected_request:
+            raise ValueError("historical provider request is not fully specified")
+        if str(event["target"]) != str(expected_request["url"]):
+            raise ValueError("index event target does not match exact historical provider request")
         return event
 
     def _parse_wayback(self, payload):
@@ -355,8 +358,24 @@ class HistoricalWebIntelligence453:
                     offset = str(raw.get("offset") or "")
                     length = str(raw.get("length") or "")
                     archive_url = ("https://data.commoncrawl.org/" + filename) if filename else ""
-                    meta = {"filename": filename, "offset": offset, "length": length,
-                            "warc_range_required": bool(filename and offset and length)}
+                    range_valid = False
+                    range_header = ""
+                    try:
+                        offset_value = int(offset)
+                        length_value = int(length)
+                        range_valid = bool(filename) and offset_value >= 0 and length_value > 0
+                        if range_valid:
+                            range_header = f"bytes={offset_value}-{offset_value + length_value - 1}"
+                    except (TypeError, ValueError):
+                        range_valid = False
+                    meta = {
+                        "filename": filename,
+                        "offset": offset,
+                        "length": length,
+                        "warc_range_required": bool(filename),
+                        "warc_range_valid": range_valid,
+                        "range_header": range_header,
+                    }
                 if not (lower <= captured <= upper):
                     skipped += 1
                     continue
@@ -423,7 +442,14 @@ class HistoricalWebIntelligence453:
             item["last_seen"] = idx == len(rows) - 1
             item["content_digest_changed"] = bool(previous_digest and digest and previous_digest != digest)
             previous_digest = digest or previous_digest
-            item["retrieval_ready"] = bool(item["archive_url"]) and not item["provider_metadata"].get("warc_range_required", False)
+            if item["provider"] == "common_crawl":
+                item["retrieval_ready"] = (
+                    bool(item["archive_url"])
+                    and bool(item["provider_metadata"].get("warc_range_required"))
+                    and bool(item["provider_metadata"].get("warc_range_valid"))
+                )
+            else:
+                item["retrieval_ready"] = bool(item["archive_url"])
             out.append(item)
         return out
 
@@ -460,6 +486,11 @@ class HistoricalWebIntelligence453:
         )
         if not candidate:
             raise KeyError("historical candidate not found")
+        if self.db.one(
+            "SELECT link_id FROM historical_capture_link_453 WHERE candidate_id=?",
+            (candidate_id,),
+        ):
+            raise ValueError("historical candidate is already linked")
         event = self.events422.get(retrieved_event_id)
         if event["case_id"] != candidate["case_id"] or event["source_id"] != archive_source_id:
             raise ValueError("retrieved archive event does not match candidate case/source")
@@ -472,39 +503,45 @@ class HistoricalWebIntelligence453:
         target = str(event["target"])
         if candidate["archive_url"] and target.rstrip("/") != candidate["archive_url"].rstrip("/"):
             raise ValueError("retrieved event target does not match candidate archive URL")
-        archive = self.archive428.register_capture(
-            identity=identity,
-            case_id=candidate["case_id"],
-            source_id=archive_source_id,
-            original_url=candidate["original_url"],
-            archive_url=candidate["archive_url"],
-            captured_at=candidate["captured_at"],
-            retrieved_event_id=retrieved_event_id,
-            content_id=content_id,
-            archive_provider=candidate["provider"],
-            metadata={"build": BUILD, "historical_candidate_id": candidate_id,
-                      "index_event_id": candidate["index_event_id"],
-                      "index_content_id": candidate["index_content_id"]},
-        )
-        link = {
-            "link_id": "histl453_" + secrets.token_hex(10),
-            "candidate_id": candidate_id,
-            "archive_capture_id": archive["archive_capture_id"],
-            "retrieved_event_id": retrieved_event_id,
-            "content_id": content_id,
-            "linked_by": actor,
-            "linked_at": _now(),
-        }
-        link["record_hash"] = self._record_hash(link)
-        self.db.execute(
-            "INSERT INTO historical_capture_link_453 VALUES(?,?,?,?,?,?,?,?)",
-            tuple(link.values()),
-        )
-        self.audit.log(
-            "historical_capture_linked_453", "historical_capture_link_453",
-            link["link_id"], candidate["case_id"],
-            {"candidate_id": candidate_id, "archive_capture_id": archive["archive_capture_id"]},
-        )
+        with self.db.transaction(immediate=True):
+            if self.db.one(
+                "SELECT link_id FROM historical_capture_link_453 WHERE candidate_id=?",
+                (candidate_id,),
+            ):
+                raise ValueError("historical candidate is already linked")
+            archive = self.archive428.register_capture(
+                identity=identity,
+                case_id=candidate["case_id"],
+                source_id=archive_source_id,
+                original_url=candidate["original_url"],
+                archive_url=candidate["archive_url"],
+                captured_at=candidate["captured_at"],
+                retrieved_event_id=retrieved_event_id,
+                content_id=content_id,
+                archive_provider=candidate["provider"],
+                metadata={"build": BUILD, "historical_candidate_id": candidate_id,
+                          "index_event_id": candidate["index_event_id"],
+                          "index_content_id": candidate["index_content_id"]},
+            )
+            link = {
+                "link_id": "histl453_" + secrets.token_hex(10),
+                "candidate_id": candidate_id,
+                "archive_capture_id": archive["archive_capture_id"],
+                "retrieved_event_id": retrieved_event_id,
+                "content_id": content_id,
+                "linked_by": actor,
+                "linked_at": _now(),
+            }
+            link["record_hash"] = self._record_hash(link)
+            self.db.execute(
+                "INSERT INTO historical_capture_link_453 VALUES(?,?,?,?,?,?,?,?)",
+                tuple(link.values()),
+            )
+            self.audit.log(
+                "historical_capture_linked_453", "historical_capture_link_453",
+                link["link_id"], candidate["case_id"],
+                {"candidate_id": candidate_id, "archive_capture_id": archive["archive_capture_id"]},
+            )
         return {**link, "archive_capture": archive}
 
     def compare_texts(self, *, older_text, newer_text):
