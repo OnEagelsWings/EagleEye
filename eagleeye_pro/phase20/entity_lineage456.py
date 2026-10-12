@@ -703,11 +703,21 @@ class MultilingualEntitySourceLineage456:
             raise ValueError("pair review rationale must be documented")
         comparison_id = ""
         if decision == "investigate_same":
-            comparison = self.base115.compare(
-                row["left_entity_id"], row["right_entity_id"], str(ident["username"])
+            left_id, right_id = sorted([row["left_entity_id"], row["right_entity_id"]])
+            existing = self.db.one(
+                "SELECT * FROM resolution_comparisons_115 WHERE case_id=? "
+                "AND left_entity_id=? AND right_entity_id=?",
+                (row["case_id"], left_id, right_id),
             )
-            comparison_id = str(comparison["comparison_id"])
-            state = "forwarded_to_resolution_review"
+            if existing and existing["state"] in {"approved_same", "approved_distinct"}:
+                comparison_id = str(existing["comparison_id"])
+                state = "canonical_resolution_already_reviewed"
+            else:
+                comparison = self.base115.compare(
+                    row["left_entity_id"], row["right_entity_id"], str(ident["username"])
+                )
+                comparison_id = str(comparison["comparison_id"])
+                state = "forwarded_to_resolution_review"
         elif decision == "likely_distinct":
             state = "analyst_marked_distinct"
         else:
@@ -944,7 +954,12 @@ class MultilingualEntitySourceLineage456:
 
         cross_stance_fingerprints = {
             fp for fp, items in by_fingerprint.items()
-            if len({x["stance"] for x in items}) > 1
+            if len({
+                x["stance"]
+                for x in items
+                if x["evidence_review_state"] == "accepted"
+                and x["evidence_link_current"]
+            }) > 1
         }
         conflicting_lineage_fingerprints = set()
         for fp, items in by_fingerprint.items():
