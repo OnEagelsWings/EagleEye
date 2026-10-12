@@ -175,6 +175,15 @@ def _research(snapshot):
     prepare = ""
     recommended = snapshot.get("recommended_dispatch_source_ids") or []
     recommended_text = "\n".join(recommended)
+    budget = snapshot.get("dispatch_budget") or {}
+    budget_note = (
+        f'<div class="metrics">'
+        f'{_metric("Zyklusbudget",budget.get("max_per_cycle",0))}'
+        f'{_metric("Verbraucht / reserviert",budget.get("reserved_or_consumed",0))}'
+        f'{_metric("Verbleibend",budget.get("remaining",0))}'
+        f'</div>'
+        if loop else ""
+    )
     if loop and loop.get("state") == "active":
         prepare = f"""
 <form data-json-form data-endpoint="/api/build446/loops/{_e(loop_id)}/dispatches/prepare" data-success="Dispatch-Tickets vorbereitet.">
@@ -209,7 +218,7 @@ def _research(snapshot):
     ) + '</tbody></table></div>'
     return f"""
 <section class="panel"><h2>Quellenlage</h2><p class="muted">Nur registrierte und freigegebene Quellen. Live-Ausführung bleibt pro Quelle bestätigt.</p>{_table(sources,[("name","Quelle"),("source_type","Typ"),("access_mode","Zugriff"),("source_id","Source-ID")])}</section>
-<section class="panel"><h2>AI-Loop → Acquisition</h2>{prepare or '<div class="empty">Ein aktiver AI-Loop ist erforderlich.</div>'}</section>
+<section class="panel"><h2>AI-Loop → Acquisition</h2>{budget_note}{prepare or '<div class="empty">Ein aktiver AI-Loop ist erforderlich.</div>'}</section>
 <section class="panel"><h2>Dispatches</h2>{dispatch_html}</section>
 <section class="panel"><h2>Acquisition-Verlauf</h2>{_table(snapshot["executions"],[("created_at","Zeit"),("route","Route"),("source_id","Quelle"),("state","Status"),("external_network","Extern")])}</section>
 """
@@ -570,9 +579,12 @@ def render_workspace(snapshot, *, view, cases, audits):
     }[view](snapshot)
     team449 = bool(snapshot.get("team_review449"))
     checkpoint450 = bool(snapshot.get("checkpoint450"))
-    ui_build = "450" if checkpoint450 else ("449" if team449 else "448")
+    workspace_build = str(snapshot.get("workspace_build") or "")
+    ui_build = workspace_build or ("450" if checkpoint450 else ("449" if team449 else "448"))
     ui_name = (
-        "Investigation Workflow Hard Checkpoint"
+        "Workspace Reliability"
+        if workspace_build == "457.0"
+        else "Investigation Workflow Hard Checkpoint"
         if checkpoint450
         else ("Human Review & Team Workflow" if team449 else "Investigator Workspace")
     )
