@@ -63,13 +63,14 @@ def create_workspace_app456(*, base_dir=None):
         identity = auth(request)
         authorize_case(identity, case_id, "research.run")
         payload = await request.json()
-        return ctx.build456.scan_multilingual_entities_456(
-            identity=identity,
-            case_id=case_id,
-            min_pair_score=float(payload.get("min_pair_score", 0.72)),
-            max_entities=int(payload.get("max_entities", 250)),
-            max_pairs=int(payload.get("max_pairs", 5000)),
-        )
+        with ctx.audit.actor_scope(identity["username"]):
+            return ctx.build456.scan_multilingual_entities_456(
+                identity=identity,
+                case_id=case_id,
+                min_pair_score=float(payload.get("min_pair_score", 0.72)),
+                max_entities=int(payload.get("max_entities", 250)),
+                max_pairs=int(payload.get("max_pairs", 5000)),
+            )
 
     @app.get("/api/build456/cases/{case_id}/claims/{claim_id}/source-lineage")
     def claim_lineage(case_id: str, claim_id: str, request: Request):
@@ -85,13 +86,14 @@ def create_workspace_app456(*, base_dir=None):
         identity = auth(request)
         payload = await request.json()
         try:
-            return ctx.build456.review_multilingual_alias_456(
-                identity=identity,
-                candidate_id=candidate_id,
-                decision=payload.get("decision", ""),
-                rationale=payload.get("rationale", ""),
-                confirmation=payload.get("confirmation", ""),
-            )
+            with ctx.audit.actor_scope(identity["username"]):
+                return ctx.build456.review_multilingual_alias_456(
+                    identity=identity,
+                    candidate_id=candidate_id,
+                    decision=payload.get("decision", ""),
+                    rationale=payload.get("rationale", ""),
+                    confirmation=payload.get("confirmation", ""),
+                )
         except (KeyError, ValueError) as exc:
             raise HTTPException(400, str(exc)) from exc
         except PermissionError as exc:
@@ -102,13 +104,14 @@ def create_workspace_app456(*, base_dir=None):
         identity = auth(request)
         payload = await request.json()
         try:
-            return ctx.build456.review_multilingual_pair_456(
-                identity=identity,
-                pair_id=pair_id,
-                decision=payload.get("decision", ""),
-                rationale=payload.get("rationale", ""),
-                confirmation=payload.get("confirmation", ""),
-            )
+            with ctx.audit.actor_scope(identity["username"]):
+                return ctx.build456.review_multilingual_pair_456(
+                    identity=identity,
+                    pair_id=pair_id,
+                    decision=payload.get("decision", ""),
+                    rationale=payload.get("rationale", ""),
+                    confirmation=payload.get("confirmation", ""),
+                )
         except (KeyError, ValueError) as exc:
             raise HTTPException(400, str(exc)) from exc
         except PermissionError as exc:
@@ -124,18 +127,19 @@ def create_workspace_app456(*, base_dir=None):
         if not isinstance(expected_hash, str) or not expected_hash:
             raise HTTPException(422, "expected_evidence_hash ist erforderlich")
         try:
-            return ctx.build456.review_source_lineage_456(
-                identity=identity,
-                evidence_id=evidence_id,
-                source_family=payload.get("source_family", ""),
-                independence_group=payload.get("independence_group", ""),
-                origin_key=payload.get("origin_key", ""),
-                source_role=payload.get("source_role", "unknown"),
-                countable=payload["countable"],
-                rationale=payload.get("rationale", ""),
-                confirmation=payload.get("confirmation", ""),
-                expected_evidence_hash=expected_hash,
-            )
+            with ctx.audit.actor_scope(identity["username"]):
+                return ctx.build456.review_source_lineage_456(
+                    identity=identity,
+                    evidence_id=evidence_id,
+                    source_family=payload.get("source_family", ""),
+                    independence_group=payload.get("independence_group", ""),
+                    origin_key=payload.get("origin_key", ""),
+                    source_role=payload.get("source_role", "unknown"),
+                    countable=payload["countable"],
+                    rationale=payload.get("rationale", ""),
+                    confirmation=payload.get("confirmation", ""),
+                    expected_evidence_hash=expected_hash,
+                )
         except (KeyError, ValueError) as exc:
             raise HTTPException(400, str(exc)) from exc
         except PermissionError as exc:
