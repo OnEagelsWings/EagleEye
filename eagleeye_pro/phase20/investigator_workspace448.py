@@ -160,7 +160,17 @@ class InvestigatorWorkspace448:
             (str(case_id),),
         )
         loops = [self.loop439.loop(row["loop_id"]) for row in loop_rows]
-        latest_loop = loops[-1] if loops else None
+        latest_historical_loop = loops[-1] if loops else None
+        active_loops = [loop for loop in loops if loop.get("state") == "active"]
+        awaiting_loops = [
+            loop for loop in loops
+            if loop.get("state") == "awaiting_human_authorization"
+        ]
+        latest_loop = (
+            active_loops[-1]
+            if active_loops
+            else (awaiting_loops[-1] if awaiting_loops else latest_historical_loop)
+        )
         dispatches = []
         executions = []
         for loop in loops:
@@ -169,7 +179,15 @@ class InvestigatorWorkspace448:
         dispatches.sort(key=lambda x: (str(x.get("created_at") or ""), str(x.get("dispatch_id") or "")))
         executions.sort(key=lambda x: (str(x.get("created_at") or ""), str(x.get("execution_id") or "")))
 
+        current_cycle_dispatches = []
         recommended_dispatch_source_ids = []
+        dispatch_budget = {
+            "authorized": 0,
+            "reserved": 0,
+            "remaining": 0,
+            "cycle_number": 0,
+            "loop_id": "",
+        }
         if latest_loop and latest_loop.get("state") == "active":
             allowed = sorted({
                 str(x) for x in (latest_loop.get("scope") or {}).get("allowed_source_ids", [])
@@ -177,16 +195,26 @@ class InvestigatorWorkspace448:
             })
             maxn = int((latest_loop.get("scope") or {}).get("max_collection_tasks_per_cycle") or 4)
             current_cycle = int(latest_loop.get("current_cycle") or 0)
-            already = {
-                str(x.get("source_id") or "")
-                for x in dispatches
+            current_cycle_dispatches = [
+                x for x in dispatches
                 if str(x.get("loop_id") or "") == str(latest_loop.get("loop_id"))
                 and int(x.get("cycle_number") or 0) == current_cycle
-                and str(x.get("state") or "") != "failed"
+            ]
+            already = {
+                str(x.get("source_id") or "")
+                for x in current_cycle_dispatches
+                if str(x.get("state") or "") != "failed"
             }
             pending = [source_id for source_id in allowed if source_id not in already]
             remaining = max(0, maxn - len(already))
             recommended_dispatch_source_ids = pending[:remaining]
+            dispatch_budget = {
+                "authorized": maxn,
+                "reserved": len(already),
+                "remaining": remaining,
+                "cycle_number": current_cycle,
+                "loop_id": str(latest_loop.get("loop_id") or ""),
+            }
 
         evidence = self.closure447.case_evidence(str(case_id))
         claims = self.closure447.case_claims(str(case_id))
@@ -266,13 +294,14 @@ class InvestigatorWorkspace448:
         elif latest_loop and latest_loop["state"] == "awaiting_human_authorization":
             next_actions.append({"view": "ai", "priority": "high", "label": "AI-Ermittlung freigeben"})
         elif latest_loop and latest_loop["state"] == "active":
-            latest_loop_dispatches = [
-                x for x in dispatches
-                if str(x.get("loop_id") or "") == str(latest_loop.get("loop_id") or "")
-                and str(x.get("state") or "") != "failed"
+            current_nonfailed_dispatches = [
+                x for x in current_cycle_dispatches
+                if str(x.get("state") or "") != "failed"
             ]
-            if not latest_loop_dispatches and recommended_dispatch_source_ids:
+            if not current_nonfailed_dispatches and recommended_dispatch_source_ids:
                 next_actions.append({"view": "research", "priority": "high", "label": "Quellen-Dispatch vorbereiten"})
+            elif dispatch_budget["remaining"] == 0:
+                next_actions.append({"view": "ai", "priority": "medium", "label": "Zyklusbudget ausgeschöpft · Ergebnisse prüfen"})
         if metrics["evidence_unreviewed"]:
             next_actions.append({"view": "evidence", "priority": "high", "label": f"{metrics['evidence_unreviewed']} Evidence-Items prüfen"})
         if metrics["claims_review_required"]:
@@ -294,7 +323,11 @@ class InvestigatorWorkspace448:
             "sources": sources,
             "loops": loops,
             "latest_loop": latest_loop,
+            "active_loop": active_loops[-1] if active_loops else None,
+            "latest_historical_loop": latest_historical_loop,
             "dispatches": dispatches,
+            "current_cycle_dispatches": current_cycle_dispatches,
+            "dispatch_budget": dispatch_budget,
             "executions": executions,
             "recommended_dispatch_source_ids": recommended_dispatch_source_ids,
             "evidence": evidence,
