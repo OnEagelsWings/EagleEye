@@ -1,37 +1,38 @@
-# EagleEye — Build 456
+# EagleEye — Build 457
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 456 is the **Multilingual Entity Resolution + Source Lineage** focused development build. It retains the passed Build-455 hard checkpoint and begins the integration cycle toward Build 460. See `README_BUILD_456_0.md`.
+Build 457 is the **Workspace Reliability + UI Functional Closure** focused development build. It retains the passed Build-455 hard checkpoint and the Build-456 multilingual/entity-lineage layer while closing operator-workspace cycle and dispatch-budget correctness gaps. See `ROADMAP_457_460_CONSOLIDATED.md`.
 
 The governed chain is:
 
 Acquisition → AI Dispatch → Evidence → Independent Review → Claims → Independent Review → Graph/Timeline/Synthesis → Living Dossier → Independent Dossier Review → Separate Export Approval → Authorized Export → Recovery/Restart Verification.
 
-Build 455 remains the retained operational baseline. Build 456 adds:
+Build 455 remains the retained operational hard-checkpoint baseline. Build 457 adds:
 
-- review-only Hebrew/Arabic/Cyrillic/Latin entity and alias candidates;
-- conservative cross-script similarity with no automatic identity confirmation;
-- human-reviewed source-family and independence-group overrides;
-- Claim-level raw-mention vs independent-origin reporting;
-- exact-payload deduplication so republications do not inflate corroboration;
+- review-only Hebrew/Arabic/Cyrillic/Latin entity and alias candidates inherited from Build 456;
+- active-loop selection that is independent of the newest historical/terminal loop;
+- current-cycle-only dispatch recommendations and operator actions;
+- enforcement of the **remaining** authorized per-cycle dispatch budget;
+- repeated per-feed boilerplate suppression for publication fingerprints;
+- actionable client errors for bounded entity-scan validation;
 - retention of the Build-455 governed live-research/recovery baseline.
 
 ## Install / verify
 
 ```bash
-python INSTALL_EAGLEEYE_456.py
-python INSTALL_EAGLEEYE_456.py --check
+python INSTALL_EAGLEEYE_457.py
+python INSTALL_EAGLEEYE_457.py --check
 ```
 
-## Focused Build-456 qualification
+## Focused Build-457 qualification
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build456_multilingual_lineage.py
+pytest -q tests/test_build457_workspace_reliability.py
 ```
 
-Build 456 intentionally does not rerun the complete repository or live operational gate. The full five-build regression remains scheduled for Build 460.
+Build 457 intentionally does not rerun the complete repository or live operational gate. The full five-build regression remains scheduled for Build 460.
 
 Current roadmap:
 
@@ -42,11 +43,20 @@ Current roadmap:
 - 454 Cross-Reference Engine + Domain Infrastructure Intelligence
 - 455 Full Operations / Real-Source Research Gate
 - 456 Multilingual Entity/Alias Resolution + canonical Source-Lineage
-- 457 Document Intelligence 2.0 + precise Evidence anchors
-- 458 Organization/Ownership/Registry Intelligence + connector qualification
-- 459 Graph Analytics 2.0 + Red-Team/Local-AI integration
-- 460 Serious Beta / repeated full operational gate
+- 457 Workspace Reliability + UI Functional Closure
+- 458 Document Intelligence 2.0 + precise Evidence anchors
+- 459 Integration Burn-in + Field Workflow Readiness
+- 460 Complete Real-Research / UI / Recovery Hard Checkpoint
 - 461–464 product/security packaging, external connector/media/team qualification
 - 465 Release-Candidate / external-beta hard checkpoint
 
 Production release remains separate from operational research usability.
+
+
+## Retained checkpoint regression contract
+
+The retained Phase-20 checkpoint reference remains available for compatibility checks:
+
+```bash
+pytest -q tests/test_build450_integrated.py
+```
