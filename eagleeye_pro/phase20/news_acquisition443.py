@@ -456,7 +456,7 @@ class LiveNewsAcquisition443:
             )
         )
 
-    def _publication_text_fingerprint(self, item):
+    def _publication_text_fingerprint(self, item, repeated_summaries=None):
         """Source-neutral fingerprint for substantive publication text visible in a feed.
 
         The Build-423 content digest fingerprints the provenance envelope and cannot
@@ -475,7 +475,13 @@ class LiveNewsAcquisition443:
             "read full article", "read full article.", "more", "more.",
         }
         words = re.findall(r"[\w'-]+", normalized, flags=re.UNICODE)
-        if normalized in boilerplate or len(normalized) < 48 or len(words) < 8:
+        repeated_summaries = set(repeated_summaries or ())
+        if (
+            normalized in boilerplate
+            or normalized in repeated_summaries
+            or len(normalized) < 48
+            or len(words) < 8
+        ):
             return ""
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
@@ -628,6 +634,16 @@ class LiveNewsAcquisition443:
 
         final_url, media, body = self._feed_response(capture, surface, task)
         feed_kind, parsed = self._parse_feed(media, body)
+        summary_counts = {}
+        for raw in parsed[:MAX_ITEMS_PER_RUN]:
+            normalized_summary = " ".join(
+                _plain(raw.get("summary", "")).casefold().split()
+            )
+            if normalized_summary:
+                summary_counts[normalized_summary] = summary_counts.get(normalized_summary, 0) + 1
+        repeated_summaries = {
+            summary for summary, count in summary_counts.items() if count > 1
+        }
         run_id = "news443_" + secrets.token_hex(10)
         parent_event_id = str((surface.get("accepted") or {}).get("event_id") or "")
         hardening_run_id = str((surface.get("hardening") or {}).get("hardening_run_id") or "")
@@ -663,7 +679,9 @@ class LiveNewsAcquisition443:
 
             payload = self._item_payload(source, item)
             digest = hashlib.sha256(payload).hexdigest()
-            publication_fingerprint = self._publication_text_fingerprint(item)
+            publication_fingerprint = self._publication_text_fingerprint(
+                item, repeated_summaries=repeated_summaries
+            )
             method = "rss" if feed_kind in {"rss", "atom"} else "api"
             event = self.events422.record(
                 identity=ident,
