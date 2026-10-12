@@ -1,0 +1,32 @@
+{
+  "build": "457.0",
+  "package": "457.0.0",
+  "phase": 20,
+  "name": "Workspace Reliability + UI Functional Closure",
+  "hard_checkpoint": false,
+  "development_build": true,
+  "previous_build": "456.0",
+  "next_build": "458.0",
+  "next_checkpoint": "460.0",
+  "capabilities": {
+    "newest_active_loop_preferred_over_newer_terminal_loop": true,
+    "loop_scoped_next_actions": true,
+    "current_cycle_dispatch_recommendations": true,
+    "remaining_dispatch_budget_enforced_backend": true,
+    "current_cycle_dispatch_actions_only_in_primary_workspace": true,
+    "repeated_per_feed_boilerplate_fingerprint_suppression": true,
+    "entity_scan_limit_validation_client_error": true,
+    "legacy_expert_workspace_preserved": true,
+    "automatic_scope_expansion": false,
+    "automatic_truth_determination": false
+  },
+  "test_cadence": {
+    "focused_build457_regression": true,
+    "ui_contract_audit": true,
+    "isolated_linux_runtime": true,
+    "isolated_windows_runtime": true,
+    "full_repository_regression": false,
+    "next_full_regression": "460.0"
+  },
+  "production_release_ready": false
+}
