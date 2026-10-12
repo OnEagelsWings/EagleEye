@@ -81,7 +81,7 @@ def create_workspace_app457(*, base_dir=None):
             "full_research_gate_this_build": False,
             "next_checkpoint": "460.0",
             "production_release_ready": False,
-            "integrity_valid": status.get("integrity_valid", True),
+            "integrity_valid": bool(status.get("integrity_valid")),
         }
 
     @app.get("/api/build457/status")
