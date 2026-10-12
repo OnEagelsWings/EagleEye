@@ -232,7 +232,7 @@ def test_contract_launcher_and_checkpoint_position(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_439_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app450 import create_workspace_app450" in (
+    assert "app452 import create_workspace_app452" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_439_CASE_TEST.md").exists()

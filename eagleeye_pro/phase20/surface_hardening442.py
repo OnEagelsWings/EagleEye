@@ -10,7 +10,7 @@ import ssl
 import threading
 import time
 
-from eagleeye_pro.phase19.surface_retrieval441 import PinnedSurfaceTransport441
+from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
 
 BUILD = "442.0"
 POLICY_ID = "phase20.surface-hardening-validation.v442"
@@ -123,6 +123,10 @@ class RetryingTransport442:
         self.attempts = 0
 
     @property
+    def security_report(self):
+        return getattr(self.inner, "security_report", {})
+
+    @property
     def _inner_kind(self):
         return str(getattr(self.inner, "transport_kind", type(self.inner).__name__))
 
@@ -133,36 +137,51 @@ class RetryingTransport442:
 
     def fetch(self, url, **kwargs):
         last_exc = None
+        raw_timeout = kwargs.get("timeout_seconds")
+        deadline = None
+        if raw_timeout is not None:
+            timeout = float(raw_timeout)
+            if timeout <= 0:
+                raise TimeoutError("retry transport received exhausted wall-clock budget")
+            deadline = time.monotonic() + timeout
+
+        def remaining():
+            if deadline is None:
+                return None
+            value = deadline - time.monotonic()
+            if value <= 0:
+                raise TimeoutError("retry transport exceeded shared wall-clock budget")
+            return max(0.001, value)
+
+        def retry_delay(attempt):
+            delay = self.base_backoff * (2 ** (attempt - 1))
+            if delay <= 0 or deadline is None:
+                return delay
+            available = remaining()
+            if delay >= available:
+                raise TimeoutError("retry backoff would exceed shared wall-clock budget")
+            return delay
+
         for attempt in range(1, self.max_attempts + 1):
             self.attempts += 1
             started = time.monotonic()
+            attempt_kwargs = dict(kwargs)
+            current = remaining()
+            if current is not None:
+                attempt_kwargs["timeout_seconds"] = current
+
             try:
-                response = self.inner.fetch(url, **kwargs)
-                status = int(getattr(response, "status", 0) or 0)
-                transient = status in TRANSIENT_HTTP
-                delay = 0.0
-                if transient and attempt < self.max_attempts:
-                    delay = self.base_backoff * (2 ** (attempt - 1))
-                self.recorder(
-                    attempt=attempt,
-                    url=str(url),
-                    transport=self._inner_kind,
-                    http_status=status,
-                    error_class="",
-                    transient=transient,
-                    delay_seconds=delay,
-                    elapsed_ms=int((time.monotonic() - started) * 1000),
-                )
-                if transient and attempt < self.max_attempts:
-                    self.sleeper(delay)
-                    continue
-                return response
+                response = self.inner.fetch(url, **attempt_kwargs)
             except Exception as exc:
                 last_exc = exc
                 transient = self._transient_exception(exc)
                 delay = 0.0
+                budget_exc = None
                 if transient and attempt < self.max_attempts:
-                    delay = self.base_backoff * (2 ** (attempt - 1))
+                    try:
+                        delay = retry_delay(attempt)
+                    except TimeoutError as caught:
+                        budget_exc = caught
                 self.recorder(
                     attempt=attempt,
                     url=str(url),
@@ -173,14 +192,44 @@ class RetryingTransport442:
                     delay_seconds=delay,
                     elapsed_ms=int((time.monotonic() - started) * 1000),
                 )
+                if budget_exc is not None:
+                    raise budget_exc from exc
                 if transient and attempt < self.max_attempts:
                     self.sleeper(delay)
+                    remaining()
                     continue
                 raise
+
+            status = int(getattr(response, "status", 0) or 0)
+            transient = status in TRANSIENT_HTTP
+            delay = 0.0
+            budget_exc = None
+            if transient and attempt < self.max_attempts:
+                try:
+                    delay = retry_delay(attempt)
+                except TimeoutError as caught:
+                    budget_exc = caught
+            self.recorder(
+                attempt=attempt,
+                url=str(url),
+                transport=self._inner_kind,
+                http_status=status,
+                error_class="",
+                transient=transient,
+                delay_seconds=delay,
+                elapsed_ms=int((time.monotonic() - started) * 1000),
+            )
+            if budget_exc is not None:
+                raise budget_exc
+            if transient and attempt < self.max_attempts:
+                self.sleeper(delay)
+                remaining()
+                continue
+            return response
+
         if last_exc is not None:
             raise last_exc
         raise RuntimeError("retry transport exhausted without response")
-
 
 class SurfaceRetrievalHardening442:
     def __init__(
@@ -524,7 +573,7 @@ class SurfaceRetrievalHardening442:
             return self._execute_hardened(
                 identity=identity,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=self._default_resolver,
                 execution_mode="live_hardened_pinned_public_get",
                 authorization_mode="explicit_task_confirmation",
@@ -552,7 +601,7 @@ class SurfaceRetrievalHardening442:
             return self._execute_hardened(
                 identity=ident,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=self._default_resolver,
                 execution_mode="live_hardened_pinned_public_get",
                 authorization_mode="authorized_build439_loop",
@@ -577,7 +626,7 @@ class SurfaceRetrievalHardening442:
             result = self._execute_hardened(
                 identity=identity,
                 task_id=task_id,
-                transport=PinnedSurfaceTransport441(),
+                transport=ProcessSurfaceTransport451(),
                 resolver=self._default_resolver,
                 execution_mode="external_validation_public_get",
                 authorization_mode="explicit_external_validation",
@@ -794,7 +843,11 @@ class SurfaceRetrievalHardening442:
             "single_concurrent_live_worker": True,
             "ephemeral_transport_per_live_run": True,
             "shared_cookie_or_session_state": False,
-            "process_isolation": False,
+            "process_isolation": True,
+            "os_sandbox_qualified": False,
+            "retrieval_worker_inherits_environment": False,
+            "executable_archive_intake_blocked": True,
+            "malware_scanner_qualified": False,
             "failure_telemetry": True,
             "tls_certificate_validation_inherited_from_441_transport": True,
             "robots_fail_closed_inherited_from_441": True,

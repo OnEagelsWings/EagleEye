@@ -1,0 +1,43 @@
+{
+  "build": "454.0",
+  "package": "454.0.0",
+  "phase": 20,
+  "name": "Cross-Reference Engine + Domain Infrastructure Intelligence",
+  "hard_checkpoint": false,
+  "development_build": true,
+  "previous_build": "453.0",
+  "next_build": "455.0",
+  "next_build_focus": "Full Operations / real-source research gate",
+  "next_hard_checkpoint": "455.0",
+  "infrastructure_intelligence": {
+    "rdap_domain": true,
+    "dns_over_https": ["A", "AAAA", "MX", "NS"],
+    "certificate_transparency": true,
+    "rdap_ip": true,
+    "ripestat_network_info": true,
+    "provenance_bound_imports": true,
+    "payload_hash_match_required": true,
+    "direct_network_authority": false,
+    "active_scanning": false,
+    "port_scanning": false,
+    "ownership_or_control_determination": false
+  },
+  "cross_reference_engine": {
+    "entity_domain_anchor_correlation": true,
+    "shared_entity_anchor_candidates": true,
+    "shared_public_infrastructure_candidates": true,
+    "historical_web_correlation": true,
+    "explainable_candidate_paths": true,
+    "pivot_recommendations": true,
+    "automatic_identity_merge": false,
+    "automatic_ownership_determination": false,
+    "human_review_required": true
+  },
+  "ci_cadence": {
+    "focused_tests_between_checkpoints": true,
+    "full_research_workflow_every_fifth_build": true,
+    "next_full_gate": "455.0"
+  },
+  "real_source_qualification": "HOLD",
+  "production_release_ready": false
+}

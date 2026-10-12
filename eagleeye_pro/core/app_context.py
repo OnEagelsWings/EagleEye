@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import secrets
 import weakref
 
 from eagleeye.bootstrap.paths import RuntimePaths
@@ -530,6 +531,20 @@ def build_service_registry(owner: "AppContext") -> ServiceRegistry:
     registry.register('build449', lambda r: r.construct('eagleeye.application.build449.service:Build449HumanReviewTeamWorkflowService', r.get('db'), r.get('audit'), build448=r.get('build448'), review449=r.get('human_review_449'), actor=owner.actor), import_path='eagleeye.application.build449.service:Build449HumanReviewTeamWorkflowService', status='active', group='phase20')
     registry.register('investigation_workflow_qualification_450', lambda r: r.construct('eagleeye_pro.phase20.qualification450:InvestigationWorkflowHardCheckpoint450', r.get('db'), r.get('audit'), services={'surface441':r.get('surface_retrieval_441'),'hardening442':r.get('surface_hardening_442'),'news443':r.get('live_news_443'),'social444':r.get('public_social_444'),'qualification445':r.get('data_acquisition_qualification_445'),'dispatcher446':r.get('live_investigation_dispatcher_446'),'closure447':r.get('evidence_claims_dossier_447'),'workspace448':r.get('investigator_workspace_448'),'review449':r.get('human_review_449')}, governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.qualification450:InvestigationWorkflowHardCheckpoint450', status='active', group='phase20_release')
     registry.register('build450', lambda r: r.construct('eagleeye.application.build450.service:Build450InvestigationWorkflowQualificationService', r.get('db'), r.get('audit'), build449=r.get('build449'), qualification450=r.get('investigation_workflow_qualification_450'), actor=owner.actor), import_path='eagleeye.application.build450.service:Build450InvestigationWorkflowQualificationService', status='active', group='phase20')
+    registry.register('build451', lambda r: r.construct('eagleeye.application.build451.service:Build451RetrievalIsolationService', r.get('db'), r.get('audit'), build450=r.get('build450'), actor=owner.actor), import_path='eagleeye.application.build451.service:Build451RetrievalIsolationService', status='active', group='phase20')
+    registry.register('build452', lambda r: r.construct('eagleeye.application.build452.service:Build452DeploymentService', r.get('db'), r.get('audit'), build451=r.get('build451'), actor=owner.actor), import_path='eagleeye.application.build452.service:Build452DeploymentService', status='active', group='phase20')
+    registry.register('historical_web_453', lambda r: r.construct('eagleeye_pro.phase20.historical_web453:HistoricalWebIntelligence453', r.get('db'), r.get('audit'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), archive428=r.get('archive_history_428'), actor=owner.actor), import_path='eagleeye_pro.phase20.historical_web453:HistoricalWebIntelligence453', status='active', group='phase20')
+    registry.register('recovery_453', lambda r: r.construct('eagleeye_pro.phase20.recovery453:RecoveryBasis453', r.get('db'), r.get('audit'), recovery_dir=owner.paths.base_dir / 'recovery_453', identity_service=r.get('team_identity_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.recovery453:RecoveryBasis453', status='active', group='reliability')
+    registry.register('build453', lambda r: r.construct('eagleeye.application.build453.service:Build453HistoricalRecoveryService', r.get('db'), r.get('audit'), build452=r.get('build452'), historical=r.get('historical_web_453'), recovery=r.get('recovery_453'), actor=owner.actor), import_path='eagleeye.application.build453.service:Build453HistoricalRecoveryService', status='active', group='phase20')
+    registry.register('infrastructure_454', lambda r: r.construct('eagleeye_pro.phase20.xref_infra454:InfrastructureIntel454', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.xref_infra454:InfrastructureIntel454', status='active', group='phase20')
+    registry.register('xref_454', lambda r: r.construct('eagleeye_pro.phase20.xref_infra454:CrossReferenceEngine454', r.get('db'), r.get('audit'), infra454=r.get('infrastructure_454'), historical453=r.get('historical_web_453'), entity437=r.get('entity_resolution_437'), base115=r.get('entity_resolution_115'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.xref_infra454:CrossReferenceEngine454', status='active', group='phase20')
+    registry.register('build454', lambda r: r.construct('eagleeye.application.build454.service:Build454CrossReferenceInfrastructureService', r.get('db'), r.get('audit'), build453=r.get('build453'), infrastructure=r.get('infrastructure_454'), xref=r.get('xref_454'), actor=owner.actor), import_path='eagleeye.application.build454.service:Build454CrossReferenceInfrastructureService', status='active', group='phase20')
+    registry.register('operational_qualification_455', lambda r: r.construct('eagleeye_pro.phase20.operational_qualification455:OperationalResearchQualification455', r.get('db'), r.get('audit'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), closure447=r.get('evidence_claims_dossier_447'), review449=r.get('human_review_449'), build450=r.get('build450'), build451=r.get('build451'), surface441=r.get('surface_retrieval_441'), hardening442=r.get('surface_hardening_442'), recovery453=r.get('recovery_453'), infrastructure454=r.get('infrastructure_454'), xref454=r.get('xref_454'), governance=r.get('team_governance_359'), context_instance_id=owner.runtime_context_id, actor=owner.actor), import_path='eagleeye_pro.phase20.operational_qualification455:OperationalResearchQualification455', status='active', group='phase20_release')
+    registry.register('build455', lambda r: r.construct('eagleeye.application.build455.service:Build455FullOperationsQualificationService', r.get('db'), r.get('audit'), build454=r.get('build454'), qualification455=r.get('operational_qualification_455'), actor=owner.actor), import_path='eagleeye.application.build455.service:Build455FullOperationsQualificationService', status='active', group='phase20')
+    registry.register('entity_lineage_456', lambda r: r.construct('eagleeye_pro.phase20.entity_lineage456:MultilingualEntitySourceLineage456', r.get('db'), r.get('audit'), resolution437=r.get('entity_resolution_437'), base115=r.get('entity_resolution_115'), closure447=r.get('evidence_claims_dossier_447'), registry421=r.get('acquisition_source_registry_421'), events422=r.get('acquisition_events_422'), content423=r.get('content_store_423'), governance=r.get('team_governance_359'), actor=owner.actor), import_path='eagleeye_pro.phase20.entity_lineage456:MultilingualEntitySourceLineage456', status='active', group='phase20')
+    registry.register('build456', lambda r: r.construct('eagleeye.application.build456.service:Build456MultilingualEntityLineageService', r.get('db'), r.get('audit'), build455=r.get('build455'), entity_lineage456=r.get('entity_lineage_456'), actor=owner.actor), import_path='eagleeye.application.build456.service:Build456MultilingualEntityLineageService', status='active', group='phase20')
+    registry.register('workspace_reliability_457', lambda r: r.construct('eagleeye_pro.phase20.workspace_reliability457:WorkspaceReliability457', r.get('db'), r.get('audit'), workspace448=r.get('investigator_workspace_448'), matrix418=r.get('evidence_hypothesis_matrix_418'), synthesis419=r.get('investigation_synthesis_419'), actor=owner.actor), import_path='eagleeye_pro.phase20.workspace_reliability457:WorkspaceReliability457', status='active', group='phase20')
+    registry.register('build457', lambda r: r.construct('eagleeye.application.build457.service:Build457WorkspaceReliabilityService', r.get('db'), r.get('audit'), build456=r.get('build456'), workspace457=r.get('workspace_reliability_457'), actor=owner.actor), import_path='eagleeye.application.build457.service:Build457WorkspaceReliabilityService', status='active', group='phase20')
     registry.register('investigation_flow_1222', lambda r: r.construct('eagleeye.application.workspace.flow:InvestigationFlow1222Service', r.get('db'), r.get('audit'), cases=r.get('cases'), targets=r.get('targets'), entities=r.get('entity_resolution_115'), workflows=r.get('research_workflow_113'), search_workbench=r.get('search_workbench'), intake_console=r.get('intake_console_101'), local_ai=r.get('local_ai_agent_101'), ai_search=r.get('ai_analyst_107'), scale=r.get('scale_performance_123')), import_path='eagleeye.application.workspace.flow:InvestigationFlow1222Service', status='active', group='workspace')
     registry.register('provider_integration', lambda r: r.construct('eagleeye_pro.providers.integration:ProviderIntegrationService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.providers.integration:ProviderIntegrationService', status='compatibility_only', group='legacy')
     registry.register('review', lambda r: r.construct('eagleeye_pro.review.service:ReviewService', r.get('db'), r.get('audit')), import_path='eagleeye_pro.review.service:ReviewService', status='compatibility_only', group='legacy')
@@ -1298,6 +1313,16 @@ class AppContext:
         'build449',
         'investigation_workflow_qualification_450',
         'build450',
+        'build451',
+        'build452',
+        'historical_web_453',
+        'recovery_453',
+        'build453',
+        'infrastructure_454',
+        'xref_454',
+        'build454',
+        'operational_qualification_455',
+        'build455',
         'command_bus'
     )
 
@@ -1311,6 +1336,7 @@ class AppContext:
         for field_name in paths.__dataclass_fields__:
             setattr(self, field_name, getattr(paths, field_name))
         self._closed = False
+        self.runtime_context_id = "appctx455_" + secrets.token_hex(16)
         self.service_registry = build_service_registry(self)
         self._bootstrap_defaults()
 
@@ -1333,6 +1359,14 @@ class AppContext:
         self._closed = True
         registry = self.__dict__.get("service_registry")
         if registry is not None:
+            qualifier = registry.peek("operational_qualification_455")
+            if qualifier is not None:
+                try:
+                    qualifier._mark_context_closed(self.runtime_context_id)
+                except Exception:
+                    # Fail closed for Build 455: an unrecorded shutdown leaves the
+                    # qualification context open and restart verification cannot PASS.
+                    pass
             registry.close(preferred_order=("collection_engine_105", "build143", "build142", "build141", "build140", "build139", "build138", "build137", "build136", "build135", "phase4_operations_134", "phase3_production_candidate_133", "collaboration_governance_132", "investigative_synthesis_131", "graph_hypothesis_130", "capture_identity_129", "research_strategy_128", "intelligence_orchestrator_127", "production_candidate_126", "reliability_quality_125", "core_recomposition_104_1", "db"))
 
     def __enter__(self) -> "AppContext":

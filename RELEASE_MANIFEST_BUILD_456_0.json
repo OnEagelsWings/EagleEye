@@ -1,0 +1,38 @@
+{
+  "build": "456.0",
+  "package": "456.0.0",
+  "phase": 20,
+  "name": "Multilingual Entity Resolution + Source Lineage",
+  "hard_checkpoint": false,
+  "development_build": true,
+  "previous_build": "455.0",
+  "next_build": "457.0",
+  "next_checkpoint": "460.0",
+  "capabilities": {
+    "multilingual_scripts": [
+      "Hebrew",
+      "Arabic",
+      "Cyrillic",
+      "Latin"
+    ],
+    "reviewed_alias_candidates": true,
+    "reviewed_entity_pair_candidates": true,
+    "automatic_identity_merge": false,
+    "source_lineage_reviews": true,
+    "claim_raw_mentions_vs_independent_origins": false,
+    "exact_duplicate_payloads_add_corroboration": false,
+    "automatic_truth_determination": false,
+    "claim_raw_mentions_vs_reviewed_independent_origins": true,
+    "source_neutral_publication_text_fingerprint": true,
+    "unreviewed_lineage_counts_as_independent": false,
+    "lineage_review_bound_to_expected_evidence_hash": true
+  },
+  "test_cadence": {
+    "focused_build456_regression": true,
+    "isolated_linux_runtime": true,
+    "isolated_windows_runtime": true,
+    "full_repository_regression": false,
+    "next_full_regression": "460.0"
+  },
+  "production_release_ready": false
+}

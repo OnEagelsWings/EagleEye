@@ -1,3 +1,3 @@
-BUILD = "450.0"
-SCHEMA_VERSION = "450.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 450.0 Investigation Workflow Hard Checkpoint"
+BUILD = "457.0"
+SCHEMA_VERSION = "457.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 457.0 Workspace Reliability + UI Functional Closure"

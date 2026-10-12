@@ -8,7 +8,7 @@ import ipaddress
 import json
 import secrets
 
-from eagleeye_pro.phase19.surface_retrieval441 import PinnedSurfaceTransport441
+from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
 
 BUILD = "444.0"
 POLICY_ID = "phase20.controlled-public-social.v444"
@@ -128,6 +128,10 @@ class CapturingTransport444:
         response = self.inner.fetch(url, **kwargs)
         self.responses.append(response)
         return response
+
+    @property
+    def security_report(self):
+        return getattr(self.inner, "security_report", {})
 
     def latest_for(self, url):
         target = str(url)
@@ -854,7 +858,7 @@ class ControlledPublicSocial444:
             identity=identity,
             case_id=case_id,
             task_id=task_id,
-            transport=PinnedSurfaceTransport441(),
+            transport=ProcessSurfaceTransport451(),
             resolver=self.hardening442._default_resolver,
             execution_mode="live_hardened_public_social_get",
             authorization_mode="explicit_social_confirmation",

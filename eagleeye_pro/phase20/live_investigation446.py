@@ -316,10 +316,22 @@ class LiveAIInvestigationDispatcher446:
             )
 
         maxn = int(loop["scope"].get("max_collection_tasks_per_cycle") or 4)
-        if len(requested) > maxn:
-            raise PermissionError("requested dispatch count exceeds authorized per-cycle collection budget")
-
         cycle = int(loop.get("current_cycle") or 0)
+        existing_rows = [
+            x for x in self.dispatches(loop_id)
+            if int(x.get("cycle_number") or 0) == cycle
+            and str(x.get("state") or "") != "failed"
+        ]
+        existing_sources = {
+            str(x.get("source_id") or "") for x in existing_rows if str(x.get("source_id") or "")
+        }
+        remaining = max(0, maxn - len(existing_sources))
+        new_sources = [source_id for source_id in requested if source_id not in existing_sources]
+        if len(new_sources) > remaining:
+            raise PermissionError(
+                "requested dispatch count exceeds remaining authorized per-cycle collection budget"
+            )
+
         prepared = []
         for source_id in requested:
             existing = self._existing_dispatch(loop_id, cycle, source_id)

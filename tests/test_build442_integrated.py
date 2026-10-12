@@ -258,7 +258,9 @@ def test_status_truthfully_distinguishes_logical_from_process_isolation(tmp_path
         assert status["single_concurrent_live_worker"]
         assert status["ephemeral_transport_per_live_run"]
         assert status["shared_cookie_or_session_state"] is False
-        assert status["process_isolation"] is False
+        assert status["process_isolation"] is True
+        assert status["os_sandbox_qualified"] is False
+        assert status["malware_scanner_qualified"] is False
         assert status["external_validation_requires_explicit_confirmation"]
         assert status["automatic_external_validation"] is False
         assert status["production_release_ready"] is False
@@ -288,7 +290,7 @@ def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
     namespace = runpy.run_path(str(ROOT / "EAGLEEYE_PRO_442_0.py"), run_name="__mp_main__")
     assert calls == []
     assert namespace["app"] is None
-    assert "app450 import create_workspace_app450" in (
+    assert "app452 import create_workspace_app452" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text()
     assert (ROOT / "BUILD_442_CASE_TEST.md").exists()
@@ -296,3 +298,71 @@ def test_contract_version_launcher_and_phase20_position(tmp_path, monkeypatch):
     readme = (ROOT / "README.md").read_text()
     assert "EAGLEEYE_PRO_450_0.py" in readme
     assert "test_build450_integrated.py" in readme
+
+def test_retry_wrapper_recomputes_remaining_timeout_after_attempts_and_backoff(monkeypatch):
+    from eagleeye_pro.phase20 import surface_hardening442 as hardening
+
+    clock = {"now": 100.0}
+    calls = []
+    records = []
+
+    monkeypatch.setattr(hardening.time, "monotonic", lambda: clock["now"])
+
+    class Inner:
+        transport_kind = "deadline-fixture"
+        requires_resolved_ips = False
+
+        def fetch(self, url, **kwargs):
+            calls.append(float(kwargs["timeout_seconds"]))
+            clock["now"] += 0.20
+            if len(calls) < 3:
+                raise ConnectionError("transient")
+            return FetchResponse(url, 200, {"content-type": "text/plain"}, b"ok", 1)
+
+    def sleeper(seconds):
+        clock["now"] += float(seconds)
+
+    wrapped = hardening.RetryingTransport442(
+        Inner(),
+        recorder=lambda **row: records.append(row),
+        sleeper=sleeper,
+        max_attempts=3,
+        base_backoff=0.10,
+    )
+    response = wrapped.fetch("https://example.org/", timeout_seconds=1.0)
+    assert response.status == 200
+    assert len(calls) == 3
+    assert calls[0] == pytest.approx(1.0)
+    assert calls[1] == pytest.approx(0.70)
+    assert calls[2] == pytest.approx(0.30)
+    assert calls[2] < calls[1] < calls[0]
+    assert len(records) == 3
+
+
+def test_retry_wrapper_refuses_backoff_that_would_cross_deadline(monkeypatch):
+    from eagleeye_pro.phase20 import surface_hardening442 as hardening
+
+    clock = {"now": 200.0}
+    calls = []
+    monkeypatch.setattr(hardening.time, "monotonic", lambda: clock["now"])
+
+    class Inner:
+        transport_kind = "deadline-exhaustion-fixture"
+        requires_resolved_ips = False
+
+        def fetch(self, url, **kwargs):
+            calls.append(float(kwargs["timeout_seconds"]))
+            clock["now"] += 0.08
+            raise ConnectionError("transient")
+
+    wrapped = hardening.RetryingTransport442(
+        Inner(),
+        recorder=lambda **_row: None,
+        sleeper=lambda seconds: clock.__setitem__("now", clock["now"] + float(seconds)),
+        max_attempts=3,
+        base_backoff=0.50,
+    )
+    with pytest.raises(TimeoutError, match="backoff"):
+        wrapped.fetch("https://example.org/", timeout_seconds=0.10)
+    assert len(calls) == 1
+

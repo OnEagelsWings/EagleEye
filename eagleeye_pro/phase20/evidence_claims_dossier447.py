@@ -1098,14 +1098,16 @@ class EvidenceClaimsDossier447:
         if not integrity["valid"]:
             raise PermissionError("Build-447 integrity must be valid before export")
 
+        export_id = "dexp447_" + secrets.token_hex(10)
         outdir = (
             self.base_dir
             / "exports"
             / "build447"
             / dossier["case_id"]
             / dossier["revision_id"]
+            / export_id
         )
-        outdir.mkdir(parents=True, exist_ok=True)
+        outdir.mkdir(parents=True, exist_ok=False)
         base = outdir / "EagleEye_Living_Dossier"
         snapshot = {
             "revision": {
@@ -1173,7 +1175,7 @@ class EvidenceClaimsDossier447:
             "case_package": str(package_path),
         }
         export = {
-            "export_id": "dexp447_" + secrets.token_hex(10),
+            "export_id": export_id,
             "revision_id": revision_id,
             "case_id": dossier["case_id"],
             "paths_json": _canon(paths),

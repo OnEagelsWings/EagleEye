@@ -5,11 +5,12 @@ from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 import hashlib
+import re
 import json
 import secrets
 import xml.etree.ElementTree as ET
 
-from eagleeye_pro.phase19.surface_retrieval441 import PinnedSurfaceTransport441
+from eagleeye_pro.phase20.retrieval_isolation451 import ProcessSurfaceTransport451
 
 BUILD = "443.0"
 POLICY_ID = "phase20.live-news-acquisition.v443"
@@ -106,6 +107,10 @@ class CapturingTransport443:
         response = self.inner.fetch(url, **kwargs)
         self.responses.append(response)
         return response
+
+    @property
+    def security_report(self):
+        return getattr(self.inner, "security_report", {})
 
     def latest_for(self, url):
         target = str(url)
@@ -451,6 +456,35 @@ class LiveNewsAcquisition443:
             )
         )
 
+    def _publication_text_fingerprint(self, item, repeated_summaries=None):
+        """Source-neutral fingerprint for substantive publication text visible in a feed.
+
+        The Build-423 content digest fingerprints the provenance envelope and cannot
+        deduplicate syndication across publisher/URL changes. This fingerprint uses
+        normalized feed summary text only when it is substantive enough to be useful.
+        Title-only and boilerplate-only feed records intentionally remain unavailable.
+        """
+        summary = _plain(item.get("summary", ""))
+        normalized = " ".join(summary.casefold().split())
+        if not normalized:
+            return ""
+        boilerplate = {
+            "read more", "read more.", "continue reading", "continue reading.",
+            "click here", "click here.", "learn more", "learn more.",
+            "full story", "full story.", "view article", "view article.",
+            "read full article", "read full article.", "more", "more.",
+        }
+        words = re.findall(r"[\w'-]+", normalized, flags=re.UNICODE)
+        repeated_summaries = set(repeated_summaries or ())
+        if (
+            normalized in boilerplate
+            or normalized in repeated_summaries
+            or len(normalized) < 48
+            or len(words) < 8
+        ):
+            return ""
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
     def _item_payload(self, source, item):
         return (
             f"TITLE: {item['title']}\n"
@@ -600,6 +634,16 @@ class LiveNewsAcquisition443:
 
         final_url, media, body = self._feed_response(capture, surface, task)
         feed_kind, parsed = self._parse_feed(media, body)
+        summary_counts = {}
+        for raw in parsed[:MAX_ITEMS_PER_RUN]:
+            normalized_summary = " ".join(
+                _plain(raw.get("summary", "")).casefold().split()
+            )
+            if normalized_summary:
+                summary_counts[normalized_summary] = summary_counts.get(normalized_summary, 0) + 1
+        repeated_summaries = {
+            summary for summary, count in summary_counts.items() if count > 1
+        }
         run_id = "news443_" + secrets.token_hex(10)
         parent_event_id = str((surface.get("accepted") or {}).get("event_id") or "")
         hardening_run_id = str((surface.get("hardening") or {}).get("hardening_run_id") or "")
@@ -635,6 +679,9 @@ class LiveNewsAcquisition443:
 
             payload = self._item_payload(source, item)
             digest = hashlib.sha256(payload).hexdigest()
+            publication_fingerprint = self._publication_text_fingerprint(
+                item, repeated_summaries=repeated_summaries
+            )
             method = "rss" if feed_kind in {"rss", "atom"} else "api"
             event = self.events422.record(
                 identity=ident,
@@ -693,6 +740,8 @@ class LiveNewsAcquisition443:
                     "feed_url": final_url,
                     "feed_kind": feed_kind,
                     "summary_from_feed": bool(item["summary"]),
+                    "publication_text_fingerprint_sha256": publication_fingerprint,
+                    "publication_text_fingerprint_basis": "feed_summary" if publication_fingerprint else "unavailable",
                     "article_body_fetched": False,
                     "semantic_extraction_performed": False,
                 },
@@ -759,7 +808,7 @@ class LiveNewsAcquisition443:
             identity=identity,
             case_id=case_id,
             task_id=task_id,
-            transport=PinnedSurfaceTransport441(),
+            transport=ProcessSurfaceTransport451(),
             resolver=self.hardening442._default_resolver,
             execution_mode="live_hardened_news_feed",
             authorization_mode="explicit_news_confirmation",
