@@ -20,9 +20,13 @@ class Build457WorkspaceReliabilityService:
         return self.workspace457.snapshot(**kwargs)
 
     def build457_status(self):
+        retained = self.build456.build456_status()
+        current = self.workspace457.status()
         return {
-            **self.workspace457.status(),
+            **current,
             "phase": 20,
+            "integrity_valid": bool(retained.get("integrity_valid")) and bool(current.get("integrity_valid", True)),
+            "retained_build456_integrity_valid": bool(retained.get("integrity_valid")),
             "focused_development_build": True,
             "build456_multilingual_lineage_retained": True,
             "next_build_focus": "Document Intelligence 2.0 / precise Evidence anchors",
