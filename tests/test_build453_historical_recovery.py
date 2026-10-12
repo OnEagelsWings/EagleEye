@@ -31,12 +31,12 @@ def archive_source(ctx, identity):
     )
 
 
-def index_observation(ctx, identity, case_id, source, payload):
+def index_observation(ctx, identity, case_id, source, payload, target):
     event = ctx.build422.record_event(
         identity=identity,
         case_id=case_id,
         source_id=source["source_id"],
-        target="https://web.archive.org/cdx/search/cdx?url=example.org",
+        target=target,
         method="archive",
         status="retrieved",
     )
@@ -74,7 +74,10 @@ def test_historical_query_import_ranking_and_disappearance_signal(tmp_path):
             ["20210101000000", "https://example.org/page", "200", "text/html", "D1"],
             ["20230101000000", "https://example.org/page", "200", "text/html", "D2"],
         ])
-        event, content = index_observation(ctx, identity, "case453-history", source, payload)
+        event, content = index_observation(
+            ctx, identity, "case453-history", source, payload,
+            requests["internet_archive"]["url"],
+        )
         with pytest.raises(ValueError, match="does not match referenced content hash"):
             ctx.historical_web_453.import_index_payload(
                 identity=identity,
@@ -129,7 +132,10 @@ def test_historical_candidate_links_to_build428_archive_chain(tmp_path):
             original_url="https://example.org/page",
             providers=["internet_archive"],
         )
-        index_event, index_content = index_observation(ctx, identity, "case453-link", source, payload)
+        index_event, index_content = index_observation(
+            ctx, identity, "case453-link", source, payload,
+            query["requests"][0]["url"],
+        )
         imported = ctx.historical_web_453.import_index_payload(
             identity=identity,
             query_id=query["query_id"],
