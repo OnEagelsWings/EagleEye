@@ -19,9 +19,13 @@
     "reviewed_entity_pair_candidates": true,
     "automatic_identity_merge": false,
     "source_lineage_reviews": true,
-    "claim_raw_mentions_vs_independent_origins": true,
+    "claim_raw_mentions_vs_independent_origins": false,
     "exact_duplicate_payloads_add_corroboration": false,
-    "automatic_truth_determination": false
+    "automatic_truth_determination": false,
+    "claim_raw_mentions_vs_reviewed_independent_origins": true,
+    "source_neutral_publication_text_fingerprint": true,
+    "unreviewed_lineage_counts_as_independent": false,
+    "lineage_review_bound_to_expected_evidence_hash": true
   },
   "test_cadence": {
     "focused_build456_regression": true,
