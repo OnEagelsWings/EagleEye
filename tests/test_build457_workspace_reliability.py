@@ -211,11 +211,10 @@ def test_build457_http_current_workspace_and_version_contract(tmp_path):
             api = client.get(f"/api/build457/cases/{cid}/snapshot")
             assert api.status_code == 200
             assert api.json()["workspace_build"] == "457.0"
-
-        health = TestClient(app).get("/health")
-        assert health.status_code == 200
-        assert health.json()["build"] == "457.0"
-        assert health.json()["full_research_gate_this_build"] is False
+            health = client.get("/health")
+            assert health.status_code == 200
+            assert health.json()["build"] == "457.0"
+            assert health.json()["full_research_gate_this_build"] is False
     finally:
         ctx.close()
 
