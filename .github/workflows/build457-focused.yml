@@ -34,10 +34,10 @@ jobs:
         run: python INSTALL_EAGLEEYE_457.py --check
       - name: Linux isolated import
         if: runner.os == 'Linux'
-        run: .eagleeye-runtime/bin/python -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '457.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
+        run: .eagleeye-runtime/bin/python -I -c "import importlib.metadata, importlib.resources, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '457.0.0'; assert '.eagleeye-runtime' in s.__file__; assert importlib.resources.files('eagleeye_pro.phase17').joinpath('fixtures/holdout398_cases.json').is_file(); print(s.__file__)"
       - name: Windows isolated import
         if: runner.os == 'Windows'
-        run: .eagleeye-runtime\\Scripts\\python.exe -I -c "import importlib.metadata, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '457.0.0'; assert '.eagleeye-runtime' in s.__file__; print(s.__file__)"
+        run: .eagleeye-runtime\\Scripts\\python.exe -I -c "import importlib.metadata, importlib.resources, eagleeye.interfaces.web.server as s; assert importlib.metadata.version('eagleeye-personosint-pro') == '457.0.0'; assert '.eagleeye-runtime' in s.__file__; assert importlib.resources.files('eagleeye_pro.phase17').joinpath('fixtures/holdout398_cases.json').is_file(); print(s.__file__)"
       - name: Package tested Build 457 source
         if: runner.os == 'Linux'
         shell: bash
