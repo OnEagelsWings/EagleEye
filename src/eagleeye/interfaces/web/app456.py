@@ -118,6 +118,11 @@ def create_workspace_app456(*, base_dir=None):
     async def lineage_review(evidence_id: str, request: Request):
         identity = auth(request)
         payload = await request.json()
+        if "countable" not in payload or type(payload.get("countable")) is not bool:
+            raise HTTPException(422, "countable muss ein JSON-Boolean sein")
+        expected_hash = payload.get("expected_evidence_hash")
+        if not isinstance(expected_hash, str) or not expected_hash:
+            raise HTTPException(422, "expected_evidence_hash ist erforderlich")
         try:
             return ctx.build456.review_source_lineage_456(
                 identity=identity,
@@ -126,9 +131,10 @@ def create_workspace_app456(*, base_dir=None):
                 independence_group=payload.get("independence_group", ""),
                 origin_key=payload.get("origin_key", ""),
                 source_role=payload.get("source_role", "unknown"),
-                countable=bool(payload.get("countable", False)),
+                countable=payload["countable"],
                 rationale=payload.get("rationale", ""),
                 confirmation=payload.get("confirmation", ""),
+                expected_evidence_hash=expected_hash,
             )
         except (KeyError, ValueError) as exc:
             raise HTTPException(400, str(exc)) from exc
