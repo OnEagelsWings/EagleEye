@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   focused-456:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'build-456-') }}
     strategy:
       fail-fast: false
       matrix:
