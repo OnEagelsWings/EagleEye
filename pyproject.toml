@@ -53,6 +53,7 @@ exclude = ["tests*", "archive*", "tools*"]
 
 [tool.setuptools.package-data]
 "eagleeye.interfaces.web" = ["assets/*.js"]
+"eagleeye_pro.phase17" = ["fixtures/*.json"]
 
 [tool.pytest.ini_options]
 minversion = "9.0"
