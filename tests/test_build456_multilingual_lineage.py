@@ -734,7 +734,7 @@ def test_build456_pair_review_rejects_stale_display_hash(tmp_path):
         displayed_hash = pair["record_hash"]
 
         ctx.entity_resolution_115.add_alias(
-            right, "Muhammad", "manual", "admin456", "build456:stale-pair-alias"
+            right, "محمد", "manual", "admin456", "build456:stale-pair-alias"
         )
         ctx.build456.scan_multilingual_entities_456(
             identity=identity, case_id=case_id, min_pair_score=0.65
