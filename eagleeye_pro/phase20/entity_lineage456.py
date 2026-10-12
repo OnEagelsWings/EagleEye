@@ -825,9 +825,14 @@ class MultilingualEntitySourceLineage456:
         countable,
         rationale,
         confirmation,
+        expected_evidence_hash,
     ):
         evidence = self.closure447.evidence(evidence_id)
         ident = self._authorize(identity, evidence["case_id"], "source.review", evidence_id)
+        if str(expected_evidence_hash or "") != str(evidence.get("record_hash") or ""):
+            raise PermissionError("evidence changed after lineage review was opened")
+        if type(countable) is not bool:
+            raise ValueError("countable must be a JSON boolean")
         if str(confirmation or "").strip().upper() != LINEAGE_CONFIRM:
             raise PermissionError(f"explicit {LINEAGE_CONFIRM} confirmation required")
         family = _clean(source_family, 300)
@@ -875,19 +880,30 @@ class MultilingualEntitySourceLineage456:
         )
         return {**row, "countable": bool(row["countable"])}
 
+    def _publication_fingerprint(self, evidence):
+        descriptive = evidence.get("descriptive") or {}
+        metadata = descriptive.get("metadata") or {}
+        published = str(metadata.get("publication_text_fingerprint_sha256") or "").strip().lower()
+        if re.fullmatch(r"[0-9a-f]{64}", published):
+            return published, str(metadata.get("publication_text_fingerprint_basis") or "publication_text")
+        # Build-443 news content_sha256 fingerprints a provenance envelope (URL,
+        # publisher, timestamp, author), so it is not safe for cross-publisher
+        # republication deduplication. Older news without the source-neutral
+        # publication fingerprint remains uncountable until reviewed/reacquired.
+        if evidence.get("evidence_kind") == "news":
+            return "", "unavailable_for_legacy_news"
+        raw = str(evidence.get("content_sha256") or "").strip().lower()
+        return (raw, "content_payload") if re.fullmatch(r"[0-9a-f]{64}", raw) else ("", "unavailable")
+
     def claim_source_lineage(self, *, identity, claim_id):
         claim = self.closure447.claim(claim_id)
         self._authorize(identity, claim["case_id"], "case.read", claim_id)
         rows = []
-        seen_payloads = set()
         stale_overrides = 0
         for link in claim.get("links") or []:
             evidence = self.closure447.evidence(link["evidence_id"])
             lineage = self.evidence_lineage(identity=identity, evidence_id=evidence["evidence_id"])
-            payload = str(evidence.get("content_sha256") or "")
-            payload_duplicate = bool(payload and payload in seen_payloads)
-            if payload:
-                seen_payloads.add(payload)
+            fingerprint, fingerprint_basis = self._publication_fingerprint(evidence)
             if lineage.get("stale_review_ignored"):
                 stale_overrides += 1
             rows.append(
@@ -896,44 +912,97 @@ class MultilingualEntitySourceLineage456:
                     "evidence_id": evidence["evidence_id"],
                     "title": evidence["title"],
                     "canonical_url": evidence["canonical_url"],
-                    "content_sha256": payload,
+                    "content_sha256": str(evidence.get("content_sha256") or ""),
+                    "publication_fingerprint_sha256": fingerprint,
+                    "publication_fingerprint_basis": fingerprint_basis,
                     "source_family": lineage["source_family"],
                     "independence_group": lineage["independence_group"],
                     "origin_key": lineage["origin_key"],
                     "source_role": lineage["source_role"],
                     "lineage_reviewed": bool(lineage.get("reviewed")),
                     "lineage_countable": bool(lineage.get("countable")),
-                    "payload_duplicate": payload_duplicate,
-                    "effective_countable": bool(lineage.get("countable")) and not payload_duplicate,
                 }
+            )
+
+        by_fingerprint = {}
+        for item in rows:
+            fp = item["publication_fingerprint_sha256"]
+            if fp:
+                by_fingerprint.setdefault(fp, []).append(item)
+
+        cross_stance_fingerprints = {
+            fp for fp, items in by_fingerprint.items()
+            if len({x["stance"] for x in items}) > 1
+        }
+        conflicting_lineage_fingerprints = set()
+        for fp, items in by_fingerprint.items():
+            reviewed_groups = {
+                x["independence_group"]
+                for x in items
+                if x["lineage_reviewed"] and x["lineage_countable"] and x["independence_group"]
+            }
+            if len(reviewed_groups) > 1:
+                conflicting_lineage_fingerprints.add(fp)
+
+        for item in rows:
+            fp = item["publication_fingerprint_sha256"]
+            group_items = by_fingerprint.get(fp, []) if fp else []
+            item["publication_duplicate"] = bool(fp and len(group_items) > 1)
+            item["cross_stance_duplicate"] = bool(fp and fp in cross_stance_fingerprints)
+            item["lineage_conflict_same_payload"] = bool(
+                fp and fp in conflicting_lineage_fingerprints
+            )
+            item["effective_countable"] = bool(
+                item["lineage_reviewed"]
+                and item["lineage_countable"]
+                and fp
+                and fp not in cross_stance_fingerprints
+                and fp not in conflicting_lineage_fingerprints
             )
 
         summary = {}
         for stance in ("support", "contradict", "context"):
             subset = [x for x in rows if x["stance"] == stance]
+            unique_fps = {
+                x["publication_fingerprint_sha256"]
+                for x in subset if x["publication_fingerprint_sha256"]
+            }
+            inferred_groups = {
+                x["independence_group"]
+                for x in subset
+                if x["lineage_countable"] and x["independence_group"]
+            }
+            reviewed_units = {}
+            for item in subset:
+                if not item["effective_countable"]:
+                    continue
+                fp = item["publication_fingerprint_sha256"]
+                reviewed_units.setdefault(fp, item["independence_group"])
+            reviewed_origins = set(reviewed_units.values())
             summary[stance] = {
                 "mentions": len(subset),
-                "unique_payloads": len({x["content_sha256"] for x in subset if x["content_sha256"]}),
+                "unique_publication_payloads": len(unique_fps),
                 "source_families": len({x["source_family"] for x in subset if x["source_family"]}),
-                "independent_origins": len(
-                    {
-                        x["independence_group"]
-                        for x in subset
-                        if x["effective_countable"] and x["independence_group"]
-                    }
+                "inferred_origin_candidates": len(inferred_groups),
+                "reviewed_independent_origins": len(reviewed_origins),
+                "unreviewed_or_non_countable": sum(
+                    1 for x in subset if not x["effective_countable"]
                 ),
-                "non_countable_or_duplicate": sum(1 for x in subset if not x["effective_countable"]),
             }
 
         warnings = []
-        if summary["support"]["mentions"] > summary["support"]["independent_origins"]:
-            warnings.append("support_mentions_exceed_independent_origins")
+        if any(x["publication_duplicate"] for x in rows):
+            warnings.append("duplicate_publication_payloads_collapsed")
+        if cross_stance_fingerprints:
+            warnings.append("same_publication_payload_crosses_claim_stances")
+        if conflicting_lineage_fingerprints:
+            warnings.append("reviewed_lineage_conflict_for_same_publication_payload")
         if stale_overrides:
             warnings.append("stale_source_lineage_review_ignored")
-        if any(x["payload_duplicate"] for x in rows):
-            warnings.append("duplicate_payloads_do_not_add_corroboration")
         if any(not x["lineage_reviewed"] for x in rows):
-            warnings.append("some_source_lineage_is_inferred_not_human_reviewed")
+            warnings.append("unreviewed_lineage_excluded_from_independent_origin_count")
+        if any(not x["publication_fingerprint_sha256"] for x in rows):
+            warnings.append("publication_fingerprint_unavailable_excluded_from_independent_count")
 
         return {
             "build": BUILD,
@@ -946,9 +1015,9 @@ class MultilingualEntitySourceLineage456:
             "warnings": warnings,
             "display": {
                 "support": f"{summary['support']['mentions']} mentions / "
-                f"{summary['support']['independent_origins']} independent origins",
+                f"{summary['support']['reviewed_independent_origins']} reviewed independent origins",
                 "contradict": f"{summary['contradict']['mentions']} mentions / "
-                f"{summary['contradict']['independent_origins']} independent origins",
+                f"{summary['contradict']['reviewed_independent_origins']} reviewed independent origins",
             },
             "source_independence_is_truth_probability": False,
             "source_independence_determines_truth": False,
