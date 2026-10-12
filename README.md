@@ -1,8 +1,8 @@
-# EagleEye — Build 456
+# EagleEye — Build 457
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 456 is the **Multilingual Entity Resolution + Source Lineage** focused development build. It retains the passed Build-455 hard checkpoint and begins the integration cycle toward Build 460. See `README_BUILD_456_0.md`.
+Build 457 is the **Workspace Reliability + UI Functional Closure** focused development build. It retains Build-456 multilingual/source-lineage work while fixing current-loop selection and remaining cycle-budget enforcement before Document Intelligence. See `README_BUILD_457_0.md`.
 
 The governed chain is:
 
@@ -20,15 +20,15 @@ Build 455 remains the retained operational baseline. Build 456 adds:
 ## Install / verify
 
 ```bash
-python INSTALL_EAGLEEYE_456.py
-python INSTALL_EAGLEEYE_456.py --check
+python INSTALL_EAGLEEYE_457.py
+python INSTALL_EAGLEEYE_457.py --check
 ```
 
 ## Focused Build-456 qualification
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build456_multilingual_lineage.py
+pytest -q tests/test_build457_workspace_reliability.py
 ```
 
 Build 456 intentionally does not rerun the complete repository or live operational gate. The full five-build regression remains scheduled for Build 460.
