@@ -205,3 +205,26 @@ def test_build457_workspace_render_is_responsive_and_budget_fail_closed(tmp_path
         assert "dispatch-budget dieses zyklus ist ausgeschöpft" in lower
         assert "dispatch vorbereiten" not in lower
         assert "/legacy" in markup
+
+
+def test_build457_recovery_rejects_snapshot_inside_active_transaction(tmp_path):
+    with AppContext(base_dir=tmp_path) as ctx:
+        identity, _case = setup_case(ctx)
+        with ctx.db.transaction(immediate=True):
+            with pytest.raises(RuntimeError, match="active database transaction"):
+                ctx.recovery_453.create_recovery_point(
+                    identity=identity,
+                    label="must-fail",
+                    confirmation="RECOVERY 453 CREATE",
+                )
+
+
+def test_build457_holdout_fixture_is_declared_as_package_data():
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert '"eagleeye_pro.phase17" = ["fixtures/*.json"]' in text
+    assert (ROOT / "eagleeye_pro" / "phase17" / "fixtures" / "holdout398_cases.json").is_file()
+
+
+def test_build457_retains_checkpoint_readme_contract():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "test_build450_integrated.py" in readme
