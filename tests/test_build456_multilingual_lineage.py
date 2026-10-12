@@ -353,6 +353,14 @@ def test_build456_news_publication_fingerprint_uses_substantive_text_not_title()
     assert service._publication_text_fingerprint(
         {"title": "Different article", "summary": "Click here to continue reading."}
     ) == ""
+    long_boilerplate = (
+        "This is the publisher's standard site description repeated on every feed item "
+        "and it is not article-specific publication text."
+    )
+    assert service._publication_text_fingerprint(
+        {"title": "Article A", "summary": long_boilerplate},
+        repeated_summaries={" ".join(long_boilerplate.casefold().split())},
+    ) == ""
 
 
 def test_build456_reviewed_pair_inputs_are_immutable_after_terminal_decision(tmp_path):
@@ -762,3 +770,56 @@ def test_build456_pair_review_rejects_stale_display_hash(tmp_path):
         )[0]
         assert unchanged["state"] == "review_required"
         assert unchanged["reviewed_by"] == ""
+
+
+def test_build456_entity_scan_limit_errors_are_http_422(tmp_path):
+    app = create_workspace_app456(base_dir=tmp_path)
+    try:
+        ctx = app.state.context
+        ctx.team_identity_359.create_initial_admin(
+            username="scanadmin456",
+            display_name="Build 456 Scan Admin",
+            password="Build456!ScanAdmin_6631",
+        )
+        ua = "build456-scan-limit-test"
+        lang = "en"
+        fingerprint = hashlib.sha256(f"{ua}|{lang}|testclient".encode()).hexdigest()
+        issued = ctx.team_identity_359.authenticate(
+            username="scanadmin456",
+            password="Build456!ScanAdmin_6631",
+            client_fingerprint=fingerprint,
+        )
+        identity = ctx.team_identity_359.validate_session(
+            issued.token, client_fingerprint=fingerprint, touch=False
+        )
+        case = ctx.team_governance_359.create_case(
+            identity=identity,
+            title="Build 456 scan validation",
+            client="Internal QA",
+            purpose="Verify bounded scan validation maps to a client error.",
+            legal_basis="public_data",
+        )
+        for idx in range(4):
+            ctx.entity_resolution_115.register_entity(
+                case["case_id"],
+                "person",
+                f"Person {idx}",
+                "scanadmin456",
+                source_entity_id=f"scan-limit:{idx}",
+            )
+        with TestClient(
+            app, headers={"user-agent": ua, "accept-language": lang}
+        ) as client:
+            client.cookies.set(COOKIE, issued.token)
+            response = client.post(
+                f"/api/build456/cases/{case['case_id']}/entity-scan",
+                json={"min_pair_score": 0.72, "max_pairs": 2},
+            )
+            assert response.status_code == 422
+            malformed = client.post(
+                f"/api/build456/cases/{case['case_id']}/entity-scan",
+                json={"max_entities": "not-an-int"},
+            )
+            assert malformed.status_code == 422
+    finally:
+        app.state.context.close()
