@@ -514,6 +514,13 @@ class MultilingualEntitySourceLineage456:
         ]
         if len(entities) > int(max_entities):
             raise ValueError("entity set exceeds max_entities; narrow the case scope")
+        counts_by_type = {}
+        for entity in entities:
+            typ = entity["entity_type"]
+            counts_by_type[typ] = counts_by_type.get(typ, 0) + 1
+        pair_capacity = sum((n * (n - 1)) // 2 for n in counts_by_type.values())
+        if pair_capacity > int(max_pairs):
+            raise ValueError("candidate pair set exceeds max_pairs; narrow the case scope")
 
         alias_added = 0
         for entity in entities:
@@ -537,8 +544,6 @@ class MultilingualEntitySourceLineage456:
                 if left["entity_type"] != right["entity_type"]:
                     continue
                 pairs_considered += 1
-                if pairs_considered > int(max_pairs):
-                    raise ValueError("candidate pair set exceeds max_pairs; narrow the case scope")
                 result = self._best_entity_pair(left, right)
                 if result["score"] < threshold:
                     continue
@@ -966,7 +971,11 @@ class MultilingualEntitySourceLineage456:
             reviewed_groups = {
                 x["independence_group"]
                 for x in items
-                if x["lineage_reviewed"] and x["lineage_countable"] and x["independence_group"]
+                if x["lineage_reviewed"]
+                and x["lineage_countable"]
+                and x["evidence_review_state"] == "accepted"
+                and x["evidence_link_current"]
+                and x["independence_group"]
             }
             if len(reviewed_groups) > 1:
                 conflicting_lineage_fingerprints.add(fp)
