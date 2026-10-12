@@ -460,6 +460,11 @@ class MultilingualEntitySourceLineage456:
         band = "high" if result["score"] >= 0.88 else "medium" if result["score"] >= 0.72 else "low"
         if existing:
             row = dict(existing)
+            # A terminal analyst decision is bound to the exact score/signals the
+            # analyst saw. Later alias changes must not silently rewrite those
+            # inputs under the old decision/rationale.
+            if row.get("state") != "review_required":
+                return row, False
             row["similarity_score"] = result["score"]
             row["confidence_band"] = band
             row["signals_json"] = _canon(result)
@@ -921,6 +926,13 @@ class MultilingualEntitySourceLineage456:
                     "source_role": lineage["source_role"],
                     "lineage_reviewed": bool(lineage.get("reviewed")),
                     "lineage_countable": bool(lineage.get("countable")),
+                    "evidence_review_state": str(evidence.get("review_state") or ""),
+                    "evidence_hash_current": str(evidence.get("record_hash") or ""),
+                    "evidence_hash_at_claim_link": str(link.get("evidence_hash_at_link") or ""),
+                    "evidence_link_current": bool(
+                        link.get("evidence_hash_at_link")
+                        and str(link.get("evidence_hash_at_link")) == str(evidence.get("record_hash") or "")
+                    ),
                 }
             )
 
@@ -955,6 +967,8 @@ class MultilingualEntitySourceLineage456:
             item["effective_countable"] = bool(
                 item["lineage_reviewed"]
                 and item["lineage_countable"]
+                and item["evidence_review_state"] == "accepted"
+                and item["evidence_link_current"]
                 and fp
                 and fp not in cross_stance_fingerprints
                 and fp not in conflicting_lineage_fingerprints
@@ -1001,6 +1015,10 @@ class MultilingualEntitySourceLineage456:
             warnings.append("stale_source_lineage_review_ignored")
         if any(not x["lineage_reviewed"] for x in rows):
             warnings.append("unreviewed_lineage_excluded_from_independent_origin_count")
+        if any(x["evidence_review_state"] != "accepted" for x in rows):
+            warnings.append("nonaccepted_evidence_excluded_from_independent_origin_count")
+        if any(not x["evidence_link_current"] for x in rows):
+            warnings.append("stale_claim_evidence_link_excluded_from_independent_origin_count")
         if any(not x["publication_fingerprint_sha256"] for x in rows):
             warnings.append("publication_fingerprint_unavailable_excluded_from_independent_count")
 
@@ -1069,7 +1087,8 @@ class MultilingualEntitySourceLineage456:
             "source_lineage_reviews": lineage,
             "languages_scripts": ["Hebrew", "Arabic", "Cyrillic", "Latin"],
             "source_independence_metrics": True,
-            "raw_mentions_vs_independent_origins": True,
+            "raw_mentions_vs_independent_origins": False,
+            "raw_mentions_vs_reviewed_independent_origins": True,
             "automatic_identity_confirmation": False,
             "automatic_entity_merge": False,
             "automatic_truth_determination": False,
