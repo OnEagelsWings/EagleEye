@@ -21,6 +21,88 @@ ALIAS_DECISIONS = {"approve", "reject"}
 SOURCE_ROLES = {"publisher", "primary", "mirror", "archive", "aggregator", "unknown"}
 
 
+HEBREW = {
+    "א":"a","ב":"v","ג":"g","ד":"d","ה":"h","ו":"v","ז":"z","ח":"h","ט":"t","י":"y",
+    "כ":"kh","ך":"kh","ל":"l","מ":"m","ם":"m","נ":"n","ן":"n","ס":"s","ע":"a","פ":"f",
+    "ף":"f","צ":"ts","ץ":"ts","ק":"k","ר":"r","ש":"sh","ת":"t"
+}
+ARABIC = {
+    "ا":"a","أ":"a","إ":"i","آ":"a","ب":"b","ت":"t","ث":"th","ج":"j","ح":"h","خ":"kh",
+    "د":"d","ذ":"dh","ر":"r","ز":"z","س":"s","ش":"sh","ص":"s","ض":"d","ط":"t","ظ":"z",
+    "ع":"a","غ":"gh","ف":"f","ق":"q","ك":"k","ل":"l","م":"m","ن":"n","ه":"h","و":"w",
+    "ي":"y","ى":"a","ة":"a","ء":""
+}
+CYRILLIC = {
+    "а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"e","ж":"zh","з":"z","и":"i",
+    "й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t",
+    "у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"y",
+    "ь":"","э":"e","ю":"yu","я":"ya","і":"i","ї":"yi","є":"ye","ґ":"g"
+}
+PARTICLES = {"de","del","della","di","da","van","von","der","den","al","el","bin","ibn","bat","ben","bar"}
+
+
+def _script(ch):
+    name = unicodedata.name(ch, "")
+    if "HEBREW" in name:
+        return "Hebrew"
+    if "ARABIC" in name:
+        return "Arabic"
+    if "CYRILLIC" in name:
+        return "Cyrillic"
+    if "LATIN" in name:
+        return "Latin"
+    return "Common" if not ch.isalpha() else "Other"
+
+
+def _transliterate(value):
+    out = []
+    for ch in unicodedata.normalize("NFKD", str(value or "")):
+        if unicodedata.combining(ch):
+            continue
+        low = ch.casefold()
+        if ch in HEBREW:
+            out.append(HEBREW[ch])
+        elif ch in ARABIC:
+            out.append(ARABIC[ch])
+        elif low in CYRILLIC:
+            out.append(CYRILLIC[low])
+        else:
+            out.append(low)
+    return re.sub(r"\s+", " ", "".join(out)).strip()
+
+
+def _normalize_name(value):
+    original = _clean(value, 500)
+    nfkc = unicodedata.normalize("NFKC", original)
+    folded = nfkc.casefold()
+    cleaned = re.sub(r"[^\w\s'\-]+", " ", folded, flags=re.UNICODE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    markless = "".join(
+        ch for ch in unicodedata.normalize("NFKD", cleaned)
+        if not unicodedata.combining(ch)
+    )
+    scripts = sorted({_script(ch) for ch in original if ch.isalpha()})
+    latin = _transliterate(original)
+    tokens = [x for x in markless.split() if x]
+    core = [x for x in tokens if x not in PARTICLES] or tokens
+    variants = sorted({
+        markless,
+        " ".join(tokens),
+        " ".join(reversed(tokens)) if len(tokens) > 1 else markless,
+        latin,
+        " ".join(core),
+        " ".join(reversed(core)) if len(core) > 1 else " ".join(core),
+    })
+    return {
+        "original": original,
+        "comparison_key": markless,
+        "tokens": tokens,
+        "scripts": scripts,
+        "latin_transliteration": latin,
+        "variants": variants,
+    }
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -103,7 +185,6 @@ class MultilingualEntitySourceLineage456:
         db,
         audit,
         *,
-        multilingual158,
         resolution437,
         base115,
         closure447,
@@ -115,7 +196,6 @@ class MultilingualEntitySourceLineage456:
     ):
         self.db = db
         self.audit = audit
-        self.multilingual158 = multilingual158
         self.resolution437 = resolution437
         self.base115 = base115
         self.closure447 = closure447
@@ -249,7 +329,7 @@ class MultilingualEntitySourceLineage456:
         ]
 
     def preview_name(self, name):
-        normalized = self.multilingual158.normalize_name(str(name))
+        normalized = _normalize_name(str(name))
         latin = _fold(normalized.get("latin_transliteration") or "")
         return {
             **normalized,
