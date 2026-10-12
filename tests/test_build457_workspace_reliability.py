@@ -167,7 +167,7 @@ def test_build457_dispatcher_counts_existing_reservations_against_budget(tmp_pat
 
 def test_build457_repeated_long_feed_boilerplate_is_not_fingerprinted(tmp_path):
     with AppContext(base_dir=tmp_path) as ctx:
-        service = ctx.news_acquisition_443
+        service = ctx.live_news_443
         summary = (
             "This website provides independent reporting and analysis. "
             "Visit our homepage for the latest updates and more information."
