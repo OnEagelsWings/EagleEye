@@ -742,6 +742,86 @@ class EvidenceClaimsDossier447:
             "links": links,
         }
 
+    def _document_anchor_snapshot_458(self, case_id, claim_snapshots):
+        """Read current Build-458 precise citations without introducing a constructor cycle."""
+        table = self.db.one(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name='phase20_claim_document_anchor_458'"
+        )
+        if not table:
+            return {"current": [], "warnings": []}
+        allowed_claims = {str(x.get("claim_id")) for x in claim_snapshots}
+        current = []
+        warnings = []
+        for raw in self.db.all(
+            "SELECT * FROM phase20_claim_document_anchor_458 WHERE case_id=? ORDER BY created_at,link_id",
+            (str(case_id),),
+        ):
+            link = dict(raw)
+            if link["claim_id"] not in allowed_claims:
+                continue
+            claim = self.db.one("SELECT * FROM claim_447 WHERE claim_id=?", (link["claim_id"],))
+            evidence = self.db.one(
+                "SELECT * FROM evidence_item_447 WHERE evidence_id=?", (link["evidence_id"],)
+            )
+            anchor = self.db.one(
+                "SELECT * FROM phase20_document_anchor_458 WHERE anchor_id=?", (link["anchor_id"],)
+            )
+            build447_link = self.db.one(
+                "SELECT * FROM claim_evidence_link_447 WHERE claim_id=? AND evidence_id=? AND stance=? "
+                "ORDER BY rowid DESC LIMIT 1",
+                (link["claim_id"], link["evidence_id"], link["stance"]),
+            )
+            reasons = []
+            if self._rh(link) != link.get("record_hash"):
+                reasons.append("anchor_link_record_hash_invalid")
+            if not claim or str(claim["record_hash"]) != str(link["claim_hash_at_link"]):
+                reasons.append("claim_changed_or_missing")
+            if (
+                not evidence
+                or evidence["review_state"] != "accepted"
+                or str(evidence["record_hash"]) != str(link["evidence_hash_at_link"])
+            ):
+                reasons.append("evidence_changed_rejected_or_missing")
+            if not anchor or str(anchor["record_hash"]) != str(link["anchor_hash_at_link"]):
+                reasons.append("anchor_changed_or_missing")
+            if (
+                not build447_link
+                or str(build447_link["evidence_hash_at_link"])
+                != str(link["evidence_hash_at_link"])
+            ):
+                reasons.append("build447_claim_evidence_link_stale_or_missing")
+            if reasons:
+                warnings.append({"link_id": link["link_id"], "reasons": reasons})
+                continue
+            bbox = {}
+            try:
+                bbox = json.loads(anchor.get("bbox_json") or "{}")
+            except Exception:
+                bbox = {}
+            current.append(
+                {
+                    "link_id": link["link_id"],
+                    "claim_id": link["claim_id"],
+                    "stance": link["stance"],
+                    "evidence_id": link["evidence_id"],
+                    "anchor_id": anchor["anchor_id"],
+                    "document_id": anchor["document_id"],
+                    "page_number": int(anchor["page_number"]),
+                    "anchor_type": anchor["anchor_type"],
+                    "locator": anchor["locator"],
+                    "text": anchor["text"],
+                    "text_sha256": anchor["text_sha256"],
+                    "extraction_mode": anchor["extraction_mode"],
+                    "bbox": bbox,
+                    "anchor_record_hash": anchor["record_hash"],
+                    "evidence_record_hash": evidence["record_hash"],
+                    "claim_record_hash": claim["record_hash"],
+                    "note": link["note"],
+                }
+            )
+        return {"current": current, "warnings": warnings}
+
     def _latest_synthesis(self, session_id):
         row = self.db.one(
             "SELECT * FROM investigation_synthesis_419 "
@@ -805,6 +885,10 @@ class EvidenceClaimsDossier447:
             for conflict in matrix.get("conflicts") or []:
                 open_uncertainties.append({"type": "matrix_conflict", "detail": conflict})
 
+        document_anchor_state = self._document_anchor_snapshot_458(
+            case_id, claim_snapshots
+        )
+
         prior = self.db.one(
             "SELECT MAX(revision_no) n FROM dossier_revision_447 WHERE case_id=?",
             (str(case_id),),
@@ -834,6 +918,8 @@ class EvidenceClaimsDossier447:
             "claims": claim_snapshots,
             "evidence_ids": evidence_ids,
             "counterevidence": counter_links,
+            "document_anchors": document_anchor_state["current"],
+            "document_anchor_warnings": document_anchor_state["warnings"],
             "open_uncertainties": open_uncertainties,
             "hypothesis_matrix": matrix,
             "latest_synthesis": (
@@ -864,6 +950,8 @@ class EvidenceClaimsDossier447:
                 "automatic_truth_determination": False,
                 "automatic_claim_acceptance": False,
                 "human_review_required": True,
+                "document_anchor_links_hash_bound": True,
+                "stale_document_anchor_links_excluded": True,
             },
         }
         now = _now()
@@ -1023,6 +1111,24 @@ class EvidenceClaimsDossier447:
                 )
         sections.append(("3. Claim ↔ Evidence Matrix", link_rows))
 
+        document_rows = [[
+            "Claim", "Stance", "Evidence", "Page", "Type", "Locator", "Excerpt", "Anchor SHA-256"
+        ]]
+        for item in snap.get("document_anchors") or []:
+            document_rows.append(
+                [
+                    item.get("claim_id", ""),
+                    item.get("stance", ""),
+                    item.get("evidence_id", ""),
+                    item.get("page_number", ""),
+                    item.get("anchor_type", ""),
+                    item.get("locator", ""),
+                    item.get("text", ""),
+                    item.get("text_sha256", ""),
+                ]
+            )
+        sections.append(("3a. Precise Document Anchors", document_rows))
+
         counter_rows = [["Claim", "Evidence", "Source", "URL"]]
         for link in snap.get("counterevidence") or []:
             counter_rows.append(
@@ -1152,6 +1258,8 @@ class EvidenceClaimsDossier447:
             "raw_source_payloads_included": False,
             "counterevidence_preserved": True,
             "uncertainty_preserved": True,
+            "document_anchor_links_in_snapshot": len(dossier["snapshot"].get("document_anchors") or []),
+            "stale_document_anchor_links_excluded": True,
             "truth_determined": False,
             "created_at": _now(),
         }
