@@ -821,5 +821,31 @@ def test_build456_entity_scan_limit_errors_are_http_422(tmp_path):
                 json={"max_entities": "not-an-int"},
             )
             assert malformed.status_code == 422
+            non_object = client.post(
+                f"/api/build456/cases/{case['case_id']}/entity-scan",
+                json=[],
+            )
+            assert non_object.status_code == 422
+            malformed_json = client.post(
+                f"/api/build456/cases/{case['case_id']}/entity-scan",
+                content="{",
+                headers={"content-type": "application/json"},
+            )
+            assert malformed_json.status_code == 422
     finally:
         app.state.context.close()
+
+
+def test_build456_pair_review_uses_immediate_transaction_and_compare_swap():
+    service_text = (
+        ROOT / "eagleeye_pro" / "phase20" / "entity_lineage456.py"
+    ).read_text(encoding="utf-8")
+    assert "with self.db.transaction(immediate=True):" in service_text
+    assert "WHERE pair_id=? AND state='review_required' AND record_hash=?" in service_text
+    assert "cursor.rowcount != 1" in service_text
+
+    app_text = (
+        ROOT / "src" / "eagleeye" / "interfaces" / "web" / "app456.py"
+    ).read_text(encoding="utf-8")
+    assert "from starlette.concurrency import run_in_threadpool" in app_text
+    assert "return await run_in_threadpool(run_scan)" in app_text
