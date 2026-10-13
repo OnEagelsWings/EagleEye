@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from fastapi import HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 
 from .app455 import create_workspace_app455
 from .app448 import COOKIE
@@ -62,11 +63,19 @@ def create_workspace_app456(*, base_dir=None):
     async def entity_scan(case_id: str, request: Request):
         identity = auth(request)
         authorize_case(identity, case_id, "research.run")
-        payload = await request.json()
         try:
+            payload = await request.json()
+            if not isinstance(payload, dict):
+                raise ValueError("request body must be a JSON object")
             min_pair_score = float(payload.get("min_pair_score", 0.72))
             max_entities = int(payload.get("max_entities", 250))
             max_pairs = int(payload.get("max_pairs", 5000))
+        except Exception as exc:
+            if isinstance(exc, HTTPException):
+                raise
+            raise HTTPException(422, "Ungültige Build-456 Scan-Parameter") from exc
+
+        def run_scan():
             with ctx.audit.actor_scope(identity["username"]):
                 return ctx.build456.scan_multilingual_entities_456(
                     identity=identity,
@@ -75,8 +84,12 @@ def create_workspace_app456(*, base_dir=None):
                     max_entities=max_entities,
                     max_pairs=max_pairs,
                 )
+
+        try:
+            return await run_in_threadpool(run_scan)
         except (TypeError, ValueError) as exc:
             raise HTTPException(422, str(exc)) from exc
+
 
     @app.get("/api/build456/cases/{case_id}/claims/{claim_id}/source-lineage")
     def claim_lineage(case_id: str, claim_id: str, request: Request):
