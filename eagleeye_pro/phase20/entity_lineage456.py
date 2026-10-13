@@ -687,62 +687,92 @@ class MultilingualEntitySourceLineage456:
         )
         return row
 
-    def review_pair_candidate(self, *, identity, pair_id, decision, rationale, confirmation, expected_pair_hash):
-        raw = self.db.one(
-            "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
-            (str(pair_id),),
-        )
-        if not raw:
-            raise KeyError("Build-456 pair candidate not found")
-        row = dict(raw)
-        ident = self._authorize(identity, row["case_id"], "dossier.review", pair_id)
-        if str(expected_pair_hash or "") != str(row.get("record_hash") or ""):
-            raise PermissionError("entity pair changed after review was opened")
-        if str(confirmation or "").strip().upper() != PAIR_CONFIRM:
-            raise PermissionError(f"explicit {PAIR_CONFIRM} confirmation required")
+    def review_pair_candidate(
+        self,
+        *,
+        identity,
+        pair_id,
+        decision,
+        rationale,
+        confirmation,
+        expected_pair_hash,
+    ):
         decision = str(decision or "").strip().lower()
         if decision not in PAIR_DECISIONS:
             raise ValueError("unsupported pair review decision")
-        if row["state"] != "review_required":
-            raise ValueError("pair candidate already reviewed")
+        if str(confirmation or "").strip().upper() != PAIR_CONFIRM:
+            raise PermissionError(f"explicit {PAIR_CONFIRM} confirmation required")
         why = _clean(rationale, 4000)
         if len(why) < 8:
             raise ValueError("pair review rationale must be documented")
-        comparison_id = ""
-        if decision == "investigate_same":
-            left_id, right_id = sorted([row["left_entity_id"], row["right_entity_id"]])
-            existing = self.db.one(
-                "SELECT * FROM resolution_comparisons_115 WHERE case_id=? "
-                "AND left_entity_id=? AND right_entity_id=?",
-                (row["case_id"], left_id, right_id),
+
+        # The candidate-version check and terminal decision are one serialized
+        # SQLite write unit. A concurrent entity scan cannot rewrite score/signals
+        # between the analyst-visible hash check and the decision update.
+        with self.db.transaction(immediate=True):
+            raw = self.db.one(
+                "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
+                (str(pair_id),),
             )
-            if existing and existing["state"] in {"approved_same", "approved_distinct"}:
-                comparison_id = str(existing["comparison_id"])
-                state = "canonical_resolution_already_reviewed"
-            else:
-                comparison = self.base115.compare(
-                    row["left_entity_id"], row["right_entity_id"], str(ident["username"])
+            if not raw:
+                raise KeyError("Build-456 pair candidate not found")
+            row = dict(raw)
+            ident = self._authorize(identity, row["case_id"], "dossier.review", pair_id)
+            if str(expected_pair_hash or "") != str(row.get("record_hash") or ""):
+                raise PermissionError("entity pair changed after review was opened")
+            if row["state"] != "review_required":
+                raise ValueError("pair candidate already reviewed")
+
+            comparison_id = ""
+            if decision == "investigate_same":
+                left_id, right_id = sorted([row["left_entity_id"], row["right_entity_id"]])
+                existing = self.db.one(
+                    "SELECT * FROM resolution_comparisons_115 WHERE case_id=? "
+                    "AND left_entity_id=? AND right_entity_id=?",
+                    (row["case_id"], left_id, right_id),
                 )
-                comparison_id = str(comparison["comparison_id"])
-                state = "forwarded_to_resolution_review"
-        elif decision == "likely_distinct":
-            state = "analyst_marked_distinct"
-        else:
-            state = "dismissed"
-        row["state"] = state
-        row["resolution_comparison_id"] = comparison_id
-        row["reviewed_by"] = str(ident["username"])
-        row["reviewed_at"] = _now()
-        row["review_reason"] = why
-        row["record_hash"] = self._rh(row)
-        self.db.execute(
-            "UPDATE phase20_entity_pair_candidate_456 SET state=?,resolution_comparison_id=?,"
-            "reviewed_by=?,reviewed_at=?,review_reason=?,record_hash=? WHERE pair_id=?",
-            (
-                row["state"], row["resolution_comparison_id"], row["reviewed_by"],
-                row["reviewed_at"], row["review_reason"], row["record_hash"], row["pair_id"],
-            ),
-        )
+                if existing and existing["state"] in {"approved_same", "approved_distinct"}:
+                    comparison_id = str(existing["comparison_id"])
+                    state = "canonical_resolution_already_reviewed"
+                else:
+                    comparison = self.base115.compare(
+                        row["left_entity_id"],
+                        row["right_entity_id"],
+                        str(ident["username"]),
+                    )
+                    comparison_id = str(comparison["comparison_id"])
+                    state = "forwarded_to_resolution_review"
+            elif decision == "likely_distinct":
+                state = "analyst_marked_distinct"
+            else:
+                state = "dismissed"
+
+            row["state"] = state
+            row["resolution_comparison_id"] = comparison_id
+            row["reviewed_by"] = str(ident["username"])
+            row["reviewed_at"] = _now()
+            row["review_reason"] = why
+            row["record_hash"] = self._rh(row)
+
+            cursor = self.db.execute(
+                "UPDATE phase20_entity_pair_candidate_456 "
+                "SET state=?,resolution_comparison_id=?,reviewed_by=?,reviewed_at=?,"
+                "review_reason=?,record_hash=? "
+                "WHERE pair_id=? AND state='review_required' AND record_hash=?",
+                (
+                    row["state"],
+                    row["resolution_comparison_id"],
+                    row["reviewed_by"],
+                    row["reviewed_at"],
+                    row["review_reason"],
+                    row["record_hash"],
+                    row["pair_id"],
+                    str(expected_pair_hash),
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise PermissionError("entity pair changed while review was being applied")
+
         self.audit.log(
             "multilingual_pair_reviewed_456",
             "phase20_entity_pair_candidate_456",
