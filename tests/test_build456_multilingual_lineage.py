@@ -147,9 +147,11 @@ def test_build456_status_health_and_focused_cadence(tmp_path):
     finally:
         app.state.context.close()
 
-    assert 'version = "456.0.0"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'BUILD = "456.0"' in (ROOT / "eagleeye_pro/version.py").read_text(encoding="utf-8")
-    assert "app456 import create_workspace_app456" in (
+    # Retained Build-456 contract is exercised under the current Build-457
+    # launcher/package; it must not require an obsolete installed version.
+    assert 'version = "457.0.0"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'BUILD = "457.0"' in (ROOT / "eagleeye_pro/version.py").read_text(encoding="utf-8")
+    assert "app457 import create_workspace_app457" in (
         ROOT / "src/eagleeye/interfaces/web/server.py"
     ).read_text(encoding="utf-8")
     assert (ROOT / "INSTALL_EAGLEEYE_456.py").exists()
