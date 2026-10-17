@@ -100,10 +100,19 @@ def create_workspace_app456(*, base_dir=None):
             raise HTTPException(404, "Claim nicht in diesem Fall")
         return item
 
+    async def review_json_object(request: Request):
+        try:
+            payload = await request.json()
+        except (ValueError, UnicodeError) as exc:
+            raise HTTPException(422, "Ungültiger JSON-Body") from exc
+        if not isinstance(payload, dict):
+            raise HTTPException(422, "JSON-Body muss ein Objekt sein")
+        return payload
+
     @app.post("/api/build456/aliases/{candidate_id}/review")
     async def alias_review(candidate_id: str, request: Request):
         identity = auth(request)
-        payload = await request.json()
+        payload = await review_json_object(request)
         try:
             with ctx.audit.actor_scope(identity["username"]):
                 return ctx.build456.review_multilingual_alias_456(
@@ -121,7 +130,7 @@ def create_workspace_app456(*, base_dir=None):
     @app.post("/api/build456/pairs/{pair_id}/review")
     async def pair_review(pair_id: str, request: Request):
         identity = auth(request)
-        payload = await request.json()
+        payload = await review_json_object(request)
         expected_hash = payload.get("expected_pair_hash")
         if not isinstance(expected_hash, str) or not expected_hash:
             raise HTTPException(422, "expected_pair_hash ist erforderlich")
@@ -143,7 +152,7 @@ def create_workspace_app456(*, base_dir=None):
     @app.post("/api/build456/evidence/{evidence_id}/source-lineage-review")
     async def lineage_review(evidence_id: str, request: Request):
         identity = auth(request)
-        payload = await request.json()
+        payload = await review_json_object(request)
         if "countable" not in payload or type(payload.get("countable")) is not bool:
             raise HTTPException(422, "countable muss ein JSON-Boolean sein")
         expected_hash = payload.get("expected_evidence_hash")
