@@ -401,11 +401,10 @@ class DocumentIntelligence458:
                     violations.append({"table":table,"id":row[key],"reason":"record_hash_mismatch"})
         for row in self.db.all("SELECT * FROM phase20_document_458"):
             item=dict(row)
-            path=self.root / item["stored_relpath"]
-            if not path.is_file() or path.stat().st_size != item["byte_size"]:
-                violations.append({"document_id":item["document_id"],"reason":"file_missing_or_wrong_size"})
-            elif _sha(path.read_bytes()) != item["document_sha256"]:
-                violations.append({"document_id":item["document_id"],"reason":"document_payload_hash_mismatch"})
+            # Keep diagnostics and /health available even if files disappear
+            # between directory checks and reads or become permission-denied.
+            if not self._payload_current(item):
+                violations.append({"document_id":item["document_id"],"reason":"document_payload_missing_unreadable_or_hash_mismatch"})
         return {"build":BUILD,"valid":not violations,"violations":violations}
 
     def status(self):
