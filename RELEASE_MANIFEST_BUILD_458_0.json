@@ -1,0 +1,41 @@
+{
+  "build": "458.0",
+  "package": "458.0.0",
+  "phase": 20,
+  "name": "Document Intelligence 2.0 — provenance and review-bound anchors",
+  "previous": "457.0",
+  "next": "459.0",
+  "next_hard_checkpoint": "460.0",
+  "research_capabilities": {
+    "formats": [
+      "application/pdf",
+      "text/plain;charset=utf-8",
+      "text/markdown;charset=utf-8"
+    ],
+    "page_and_paragraph_anchors": true,
+    "caption_candidates": true,
+    "footnote_candidates": true,
+    "actual_table_cell_extraction": false,
+    "automatic_ocr_execution": false,
+    "ocr_needed_markers": true,
+    "source_binary_sha256": true,
+    "source_saved_locally": true,
+    "version_bound_claim_citations": true,
+    "human_extraction_review": true,
+    "automatic_evidence_promotion": false,
+    "automatic_claim_acceptance": false
+  },
+  "secure_bounded_import": {
+    "max_bytes": 12582912,
+    "max_pdf_pages": 160,
+    "max_anchors": 3200,
+    "no_file_paths_from_api": true,
+    "no_remote_fetch": true
+  },
+  "cadence": {
+    "focused_tests": true,
+    "full_suite": false,
+    "next_full": "460.0"
+  },
+  "production_ready": false
+}
