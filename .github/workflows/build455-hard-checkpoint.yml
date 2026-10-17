@@ -1,7 +1,6 @@
 name: EagleEye Build 455 Hard Checkpoint
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:

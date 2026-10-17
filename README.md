@@ -1,44 +1,37 @@
-# EagleEye — Build 455
+# EagleEye — Build 456
 
 EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
 
-Build 455 is the **Full Operations / Real-Source Research Hard Checkpoint**. See `README_BUILD_455_0.md`.
+Build 456 is the **Multilingual Entity Resolution + Source Lineage** focused development build. It retains the passed Build-455 hard checkpoint and begins the integration cycle toward Build 460. See `README_BUILD_456_0.md`.
 
 The governed chain is:
 
 Acquisition → AI Dispatch → Evidence → Independent Review → Claims → Independent Review → Graph/Timeline/Synthesis → Living Dossier → Independent Dossier Review → Separate Export Approval → Authorized Export → Recovery/Restart Verification.
 
-Build 455 validates:
+Build 455 remains the retained operational baseline. Build 456 adds:
 
-- the retained Build-450 governed workflow;
-- Build-451 process-isolated retrieval and content-risk boundary;
-- Build-452 isolated deterministic runtime;
-- Build-453 recovery verification;
-- Build-454 public infrastructure and explainable XRef integration;
-- a bounded live public-source research case;
-- physical JSON/DOCX/PDF/manifest/ZIP hash integrity;
-- actual close/reopen persistence and reference integrity;
-- the full five-build regression cadence.
+- review-only Hebrew/Arabic/Cyrillic/Latin entity and alias candidates;
+- conservative cross-script similarity with no automatic identity confirmation;
+- human-reviewed source-family and independence-group overrides;
+- Claim-level raw-mention vs independent-origin reporting;
+- exact-payload deduplication so republications do not inflate corroboration;
+- retention of the Build-455 governed live-research/recovery baseline.
 
 ## Install / verify
 
 ```bash
-python INSTALL_EAGLEEYE_455.py
-python INSTALL_EAGLEEYE_455.py --check
+python INSTALL_EAGLEEYE_456.py
+python INSTALL_EAGLEEYE_456.py --check
 ```
 
-## Hard-checkpoint qualification
+## Focused Build-456 qualification
 
 ```bash
 python -m pip install -e '.[test]'
-python tools/run_checkpoint_regression455.py
-python tools/run_checkpoint_regression455.py --phase18-20
-python tools/build455_live_public_gate.py
+pytest -q tests/test_build456_multilingual_lineage.py
 ```
 
-The live qualification is intentionally bounded to stable public reference sources. It is not a general-purpose autonomous collection command.
-
-The five-build regression runner keeps historical functional tests active while deselecting only exact legacy assertions that require an old build to remain the current runtime/server/installer, or predate the canonical case-identity boundary. Every exclusion is enumerated with a reason in `tools/CHECKPOINT_REGRESSION_EXCLUSIONS_455.json`; no Build-455 test can be excluded by that policy.
+Build 456 intentionally does not rerun the complete repository or live operational gate. The full five-build regression remains scheduled for Build 460.
 
 Current roadmap:
 
