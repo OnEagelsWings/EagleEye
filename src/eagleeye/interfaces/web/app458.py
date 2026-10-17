@@ -63,7 +63,7 @@ def create_workspace_app458(*, base_dir=None):
     @app.get("/health")
     def health():
         status=ctx.build458.build458_status()
-        return {"ok":bool(status["integrity_valid"]),"build":"458.0","status":"ok" if status["integrity_valid"] else "hold",
+        return {"ok":True,"build":"458.0","status":"ok" if status["integrity_valid"] else "hold",
                 "document_intelligence":True,"next_checkpoint":"460.0","integrity_valid":status["integrity_valid"]}
 
     @app.get("/api/build458/status")
@@ -74,7 +74,10 @@ def create_workspace_app458(*, base_dir=None):
     @app.get("/api/build458/cases/{case_id}/documents")
     def documents(case_id:str,request:Request):
         identity=auth(request)
-        return service.documents(identity=identity,case_id=case_id)
+        try:
+            return service.documents(identity=identity,case_id=case_id)
+        except (KeyError,PermissionError,ValueError) as exc:
+            fail(exc)
 
     @app.post("/api/build458/cases/{case_id}/documents")
     async def upload(case_id:str,request:Request,file:UploadFile=File(...),
