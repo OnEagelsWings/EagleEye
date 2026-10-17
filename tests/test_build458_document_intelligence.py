@@ -122,7 +122,7 @@ def test_build458_claim_citation_hash_link_and_invalidations(tmp_path):
         svc=ctx.document_intelligence_458
         got=svc.import_bytes(identity=ident,case_id=case["case_id"],filename="notes.md",
                              raw=b"First public paragraph has a precise reference.\n\nSecond paragraph.",
-                             title="Notes")
+                             title="Notes",source_url="https://www.example.org/public/report.pdf")
         packet=svc.anchors(identity=ident,document_id=got["document_id"])
         doc=packet["document"]
         svc.review_extraction(identity=ident,document_id=doc["document_id"],
@@ -145,6 +145,32 @@ def test_build458_claim_citation_hash_link_and_invalidations(tmp_path):
         assert len(report["citations"])==1
         assert report["all_references_current"]
         assert "Seite 1" in report["citations"][0]["locator"]
+        # A document from another public source must never be attributed to
+        # this Claim->Evidence link solely because it belongs to the same case.
+        other=svc.import_bytes(identity=ident,case_id=case["case_id"],filename="other.txt",
+            raw=b"A different publisher and completely independent document body.",
+            source_url="https://www.other.example.org/unrelated")
+        other_detail=svc.anchors(identity=ident,document_id=other["document_id"])
+        svc.review_extraction(identity=ident,document_id=other["document_id"],
+            expected_document_hash=other_detail["document"]["record_hash"],decision="approve",
+            note="Independent extraction review of a different source.",confirmation="REVIEW DOCUMENT EXTRACTION 458")
+        with pytest.raises(PermissionError,match="does not match"):
+            svc.cite_claim_anchor(identity=ident,claim_id=claim_id,link_id=link_id,
+                anchor_id=other_detail["anchors"][0]["anchor_id"],
+                expected_evidence_hash=evidence_hash,
+                expected_anchor_hash=other_detail["anchors"][0]["record_hash"],
+                note="Attempted unrelated source attribution.",
+                confirmation="LINK DOCUMENT ANCHOR 458")
+        # A citation becomes stale if the physical source file is damaged,
+        # even though document/anchor rows still match their stored hashes.
+        stored=svc.root / doc["stored_relpath"]
+        original=stored.read_bytes()
+        stored.write_bytes(b"tampered source")
+        broken=svc.claim_citations(identity=ident,claim_id=claim_id)
+        assert broken["all_references_current"] is False
+        assert broken["citations"][0]["reference_ready"] is False
+        stored.write_bytes(original)
+        assert svc.claim_citations(identity=ident,claim_id=claim_id)["all_references_current"] is True
         db=svc.db
         old=ctx.evidence_claims_dossier_447.evidence(evidence_id)
         current=dict(db.one("SELECT * FROM evidence_item_447 WHERE evidence_id=?",(evidence_id,)))
