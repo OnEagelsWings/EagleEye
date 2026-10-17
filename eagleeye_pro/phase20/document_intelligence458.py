@@ -289,6 +289,28 @@ class DocumentIntelligence458:
                            {"decision":decision,"document_sha256":row["document_sha256"],"truth_determined":False})
         return row
 
+    def _payload_current(self, document):
+        rel = str(document.get("stored_relpath") or "")
+        # Restrict references to generated local filenames, never arbitrary paths.
+        if rel != document["document_id"] + ".bin":
+            return False
+        path = self.root / rel
+        try:
+            return path.is_file() and path.stat().st_size == document["byte_size"] and (
+                _sha(path.read_bytes()) == document["document_sha256"]
+            )
+        except OSError:
+            return False
+
+    @staticmethod
+    def _same_source(document, evidence):
+        """Require explicit public provenance linkage, not merely case membership."""
+        if str(document["document_sha256"]).lower() == str(evidence.get("content_sha256") or "").lower():
+            return True
+        source = str(document.get("source_url") or "").strip()
+        observed = str(evidence.get("canonical_url") or "").strip()
+        return bool(source and observed and source == observed)
+
     def cite_claim_anchor(self, *, identity, claim_id, link_id, anchor_id, expected_evidence_hash,
                           expected_anchor_hash, note, confirmation):
         if str(confirmation or "").strip().upper() != ANCHOR_CONFIRMATION:
@@ -316,6 +338,10 @@ class DocumentIntelligence458:
                 raise PermissionError("cross-case document anchor blocked")
             if doc["state"] != "extraction_approved":
                 raise PermissionError("document extraction must be reviewed first")
+            if not self._same_source(doc,evidence):
+                raise PermissionError("document does not match the linked Evidence source")
+            if not self._payload_current(doc):
+                raise PermissionError("document source payload is missing or has changed")
             if anchor["document_sha256"] != doc["document_sha256"] or str(expected_anchor_hash or "") != anchor["record_hash"]:
                 raise PermissionError("stale document anchor")
             row = {
@@ -341,13 +367,17 @@ class DocumentIntelligence458:
             "SELECT * FROM phase20_claim_document_citation_458 WHERE claim_id=? AND case_id=? ORDER BY rowid",
             (str(claim_id),claim["case_id"]))]
         out=[]
+        payload_checks={}
         for item in rows:
             doc = self._document(item["document_id"])
             anchor = self._anchor(item["anchor_id"])
             evidence = self.closure447.evidence(item["evidence_id"])
+            if doc["document_id"] not in payload_checks:
+                payload_checks[doc["document_id"]]=self._payload_current(doc)
             link = self.db.one("SELECT * FROM claim_evidence_link_447 WHERE link_id=?",(item["link_id"],))
             current = bool(
                 doc["state"]=="extraction_approved" and doc["document_sha256"]==item["document_sha256"]
+                and payload_checks[doc["document_id"]] and self._same_source(doc,evidence)
                 and anchor["record_hash"]==item["anchor_hash"] and
                 evidence["record_hash"]==item["evidence_hash"]
                 and link and link["evidence_hash_at_link"]==evidence["record_hash"]
