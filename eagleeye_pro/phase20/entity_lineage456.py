@@ -872,20 +872,20 @@ class MultilingualEntitySourceLineage456:
         }
 
     def review_source_lineage(
+        self,
+        *,
+        identity,
+        evidence_id,
+        source_family,
+        independence_group,
+        origin_key,
+        source_role,
+        countable,
+        rationale,
+        confirmation,
+        expected_evidence_hash,
+    ):
         with self.db.transaction(immediate=True):
-            self,
-            *,
-            identity,
-            evidence_id,
-            source_family,
-            independence_group,
-            origin_key,
-            source_role,
-            countable,
-            rationale,
-            confirmation,
-            expected_evidence_hash,
-        ):
             evidence = self.closure447.evidence(evidence_id)
             ident = self._authorize(identity, evidence["case_id"], "source.review", evidence_id)
             if str(expected_evidence_hash or "") != str(evidence.get("record_hash") or ""):
