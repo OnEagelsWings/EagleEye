@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from fastapi import HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 
 from .app455 import create_workspace_app455
 from .app448 import COOKIE
@@ -62,11 +63,19 @@ def create_workspace_app456(*, base_dir=None):
     async def entity_scan(case_id: str, request: Request):
         identity = auth(request)
         authorize_case(identity, case_id, "research.run")
-        payload = await request.json()
         try:
+            payload = await request.json()
+            if not isinstance(payload, dict):
+                raise ValueError("request body must be a JSON object")
             min_pair_score = float(payload.get("min_pair_score", 0.72))
             max_entities = int(payload.get("max_entities", 250))
             max_pairs = int(payload.get("max_pairs", 5000))
+        except Exception as exc:
+            if isinstance(exc, HTTPException):
+                raise
+            raise HTTPException(422, "Ungültige Build-456 Scan-Parameter") from exc
+
+        def run_scan():
             with ctx.audit.actor_scope(identity["username"]):
                 return ctx.build456.scan_multilingual_entities_456(
                     identity=identity,
@@ -75,8 +84,12 @@ def create_workspace_app456(*, base_dir=None):
                     max_entities=max_entities,
                     max_pairs=max_pairs,
                 )
+
+        try:
+            return await run_in_threadpool(run_scan)
         except (TypeError, ValueError) as exc:
             raise HTTPException(422, str(exc)) from exc
+
 
     @app.get("/api/build456/cases/{case_id}/claims/{claim_id}/source-lineage")
     def claim_lineage(case_id: str, claim_id: str, request: Request):
@@ -87,10 +100,19 @@ def create_workspace_app456(*, base_dir=None):
             raise HTTPException(404, "Claim nicht in diesem Fall")
         return item
 
+    async def review_json_object(request: Request):
+        try:
+            payload = await request.json()
+        except (ValueError, UnicodeError) as exc:
+            raise HTTPException(422, "Ungültiger JSON-Body") from exc
+        if not isinstance(payload, dict):
+            raise HTTPException(422, "JSON-Body muss ein Objekt sein")
+        return payload
+
     @app.post("/api/build456/aliases/{candidate_id}/review")
     async def alias_review(candidate_id: str, request: Request):
         identity = auth(request)
-        payload = await request.json()
+        payload = await review_json_object(request)
         try:
             with ctx.audit.actor_scope(identity["username"]):
                 return ctx.build456.review_multilingual_alias_456(
@@ -108,7 +130,7 @@ def create_workspace_app456(*, base_dir=None):
     @app.post("/api/build456/pairs/{pair_id}/review")
     async def pair_review(pair_id: str, request: Request):
         identity = auth(request)
-        payload = await request.json()
+        payload = await review_json_object(request)
         expected_hash = payload.get("expected_pair_hash")
         if not isinstance(expected_hash, str) or not expected_hash:
             raise HTTPException(422, "expected_pair_hash ist erforderlich")
@@ -130,7 +152,7 @@ def create_workspace_app456(*, base_dir=None):
     @app.post("/api/build456/evidence/{evidence_id}/source-lineage-review")
     async def lineage_review(evidence_id: str, request: Request):
         identity = auth(request)
-        payload = await request.json()
+        payload = await review_json_object(request)
         if "countable" not in payload or type(payload.get("countable")) is not bool:
             raise HTTPException(422, "countable muss ein JSON-Boolean sein")
         expected_hash = payload.get("expected_evidence_hash")

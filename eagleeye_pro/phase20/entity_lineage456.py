@@ -451,52 +451,53 @@ class MultilingualEntitySourceLineage456:
         return best
 
     def _upsert_pair(self, ident, case_id, left, right, result):
-        a, b = sorted([left["resolution_entity_id"], right["resolution_entity_id"]])
-        existing = self.db.one(
-            "SELECT * FROM phase20_entity_pair_candidate_456 WHERE case_id=? AND left_entity_id=? "
-            "AND right_entity_id=?",
-            (str(case_id), a, b),
-        )
-        band = "high" if result["score"] >= 0.88 else "medium" if result["score"] >= 0.72 else "low"
-        if existing:
-            row = dict(existing)
-            # A terminal analyst decision is bound to the exact score/signals the
-            # analyst saw. Later alias changes must not silently rewrite those
-            # inputs under the old decision/rationale.
-            if row.get("state") != "review_required":
+        with self.db.transaction(immediate=True):
+            a, b = sorted([left["resolution_entity_id"], right["resolution_entity_id"]])
+            existing = self.db.one(
+                "SELECT * FROM phase20_entity_pair_candidate_456 WHERE case_id=? AND left_entity_id=? "
+                "AND right_entity_id=?",
+                (str(case_id), a, b),
+            )
+            band = "high" if result["score"] >= 0.88 else "medium" if result["score"] >= 0.72 else "low"
+            if existing:
+                row = dict(existing)
+                # A terminal analyst decision is bound to the exact score/signals the
+                # analyst saw. Later alias changes must not silently rewrite those
+                # inputs under the old decision/rationale.
+                if row.get("state") != "review_required":
+                    return row, False
+                row["similarity_score"] = result["score"]
+                row["confidence_band"] = band
+                row["signals_json"] = _canon(result)
+                row["record_hash"] = self._rh(row)
+                self.db.execute(
+                    "UPDATE phase20_entity_pair_candidate_456 SET similarity_score=?,confidence_band=?,"
+                    "signals_json=?,record_hash=? WHERE pair_id=?",
+                    (row["similarity_score"], row["confidence_band"], row["signals_json"], row["record_hash"], row["pair_id"]),
+                )
                 return row, False
-            row["similarity_score"] = result["score"]
-            row["confidence_band"] = band
-            row["signals_json"] = _canon(result)
+            row = {
+                "pair_id": "pair456_" + secrets.token_hex(10),
+                "case_id": str(case_id),
+                "left_entity_id": a,
+                "right_entity_id": b,
+                "similarity_score": result["score"],
+                "confidence_band": band,
+                "signals_json": _canon(result),
+                "state": "review_required",
+                "resolution_comparison_id": "",
+                "created_by": str(ident["username"]),
+                "created_at": _now(),
+                "reviewed_by": "",
+                "reviewed_at": "",
+                "review_reason": "",
+            }
             row["record_hash"] = self._rh(row)
             self.db.execute(
-                "UPDATE phase20_entity_pair_candidate_456 SET similarity_score=?,confidence_band=?,"
-                "signals_json=?,record_hash=? WHERE pair_id=?",
-                (row["similarity_score"], row["confidence_band"], row["signals_json"], row["record_hash"], row["pair_id"]),
+                "INSERT INTO phase20_entity_pair_candidate_456 VALUES(" + ",".join("?" for _ in row) + ")",
+                tuple(row.values()),
             )
-            return row, False
-        row = {
-            "pair_id": "pair456_" + secrets.token_hex(10),
-            "case_id": str(case_id),
-            "left_entity_id": a,
-            "right_entity_id": b,
-            "similarity_score": result["score"],
-            "confidence_band": band,
-            "signals_json": _canon(result),
-            "state": "review_required",
-            "resolution_comparison_id": "",
-            "created_by": str(ident["username"]),
-            "created_at": _now(),
-            "reviewed_by": "",
-            "reviewed_at": "",
-            "review_reason": "",
-        }
-        row["record_hash"] = self._rh(row)
-        self.db.execute(
-            "INSERT INTO phase20_entity_pair_candidate_456 VALUES(" + ",".join("?" for _ in row) + ")",
-            tuple(row.values()),
-        )
-        return row, True
+            return row, True
 
     def scan_case_entities(self, *, identity, case_id, min_pair_score=0.72, max_entities=250, max_pairs=5000):
         ident = self._authorize(identity, case_id, "research.run", case_id)
@@ -504,6 +505,10 @@ class MultilingualEntitySourceLineage456:
         threshold = float(min_pair_score)
         if not 0.55 <= threshold <= 0.98:
             raise ValueError("min_pair_score must be between 0.55 and 0.98")
+        if isinstance(max_entities, bool) or isinstance(max_pairs, bool):
+            raise ValueError("scan limits must be integers")
+        if not 1 <= int(max_entities) <= 250 or not 1 <= int(max_pairs) <= 5000:
+            raise ValueError("scan limits exceed server-side ceilings (250 entities, 5000 pairs)")
         entities = [
             dict(row)
             for row in self.db.all(
@@ -637,112 +642,143 @@ class MultilingualEntitySourceLineage456:
         return out
 
     def review_alias_candidate(self, *, identity, candidate_id, decision, rationale, confirmation):
-        raw = self.db.one(
-            "SELECT * FROM phase20_alias_candidate_456 WHERE candidate_id=?",
-            (str(candidate_id),),
-        )
-        if not raw:
-            raise KeyError("Build-456 alias candidate not found")
-        row = dict(raw)
-        ident = self._authorize(identity, row["case_id"], "dossier.review", candidate_id)
-        if str(confirmation or "").strip().upper() != ALIAS_CONFIRM:
-            raise PermissionError(f"explicit {ALIAS_CONFIRM} confirmation required")
-        decision = str(decision or "").strip().lower()
-        if decision not in ALIAS_DECISIONS:
-            raise ValueError("unsupported alias review decision")
-        if row["state"] != "pending":
-            raise ValueError("alias candidate already reviewed")
-        why = _clean(rationale, 4000)
-        if len(why) < 8:
-            raise ValueError("alias review rationale must be documented")
-        entity = self._entity(row["resolution_entity_id"])
-        if entity["case_id"] != row["case_id"]:
-            raise PermissionError("alias candidate entity changed case")
-        if decision == "approve":
-            self.base115.add_alias(
-                row["resolution_entity_id"],
-                row["candidate_alias"],
-                "multilingual_456",
-                str(ident["username"]),
-                "build456:" + row["candidate_id"],
+        with self.db.transaction(immediate=True):
+            raw = self.db.one(
+                "SELECT * FROM phase20_alias_candidate_456 WHERE candidate_id=?",
+                (str(candidate_id),),
             )
-            row["state"] = "approved"
-        else:
-            row["state"] = "rejected"
-        row["reviewed_by"] = str(ident["username"])
-        row["reviewed_at"] = _now()
-        row["review_reason"] = why
-        row["record_hash"] = self._rh(row)
-        self.db.execute(
-            "UPDATE phase20_alias_candidate_456 SET state=?,reviewed_by=?,reviewed_at=?,"
-            "review_reason=?,record_hash=? WHERE candidate_id=?",
-            (row["state"], row["reviewed_by"], row["reviewed_at"], row["review_reason"], row["record_hash"], row["candidate_id"]),
-        )
-        self.audit.log(
-            "multilingual_alias_reviewed_456",
-            "phase20_alias_candidate_456",
-            row["candidate_id"],
-            row["case_id"],
-            {"decision": decision, "automatic_merge": False},
-        )
-        return row
+            if not raw:
+                raise KeyError("Build-456 alias candidate not found")
+            row = dict(raw)
+            ident = self._authorize(identity, row["case_id"], "dossier.review", candidate_id)
+            if str(confirmation or "").strip().upper() != ALIAS_CONFIRM:
+                raise PermissionError(f"explicit {ALIAS_CONFIRM} confirmation required")
+            decision = str(decision or "").strip().lower()
+            if decision not in ALIAS_DECISIONS:
+                raise ValueError("unsupported alias review decision")
+            if row["state"] != "pending":
+                raise ValueError("alias candidate already reviewed")
+            why = _clean(rationale, 4000)
+            if len(why) < 8:
+                raise ValueError("alias review rationale must be documented")
+            entity = self._entity(row["resolution_entity_id"])
+            if entity["case_id"] != row["case_id"]:
+                raise PermissionError("alias candidate entity changed case")
+            if decision == "approve":
+                self.base115.add_alias(
+                    row["resolution_entity_id"],
+                    row["candidate_alias"],
+                    "multilingual_456",
+                    str(ident["username"]),
+                    "build456:" + row["candidate_id"],
+                )
+                row["state"] = "approved"
+            else:
+                row["state"] = "rejected"
+            row["reviewed_by"] = str(ident["username"])
+            row["reviewed_at"] = _now()
+            row["review_reason"] = why
+            row["record_hash"] = self._rh(row)
+            self.db.execute(
+                "UPDATE phase20_alias_candidate_456 SET state=?,reviewed_by=?,reviewed_at=?,"
+                "review_reason=?,record_hash=? WHERE candidate_id=?",
+                (row["state"], row["reviewed_by"], row["reviewed_at"], row["review_reason"], row["record_hash"], row["candidate_id"]),
+            )
+            self.audit.log(
+                "multilingual_alias_reviewed_456",
+                "phase20_alias_candidate_456",
+                row["candidate_id"],
+                row["case_id"],
+                {"decision": decision, "automatic_merge": False},
+            )
+            return row
 
-    def review_pair_candidate(self, *, identity, pair_id, decision, rationale, confirmation, expected_pair_hash):
-        raw = self.db.one(
-            "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
-            (str(pair_id),),
-        )
-        if not raw:
-            raise KeyError("Build-456 pair candidate not found")
-        row = dict(raw)
-        ident = self._authorize(identity, row["case_id"], "dossier.review", pair_id)
-        if str(expected_pair_hash or "") != str(row.get("record_hash") or ""):
-            raise PermissionError("entity pair changed after review was opened")
-        if str(confirmation or "").strip().upper() != PAIR_CONFIRM:
-            raise PermissionError(f"explicit {PAIR_CONFIRM} confirmation required")
+    def review_pair_candidate(
+        self,
+        *,
+        identity,
+        pair_id,
+        decision,
+        rationale,
+        confirmation,
+        expected_pair_hash,
+    ):
         decision = str(decision or "").strip().lower()
         if decision not in PAIR_DECISIONS:
             raise ValueError("unsupported pair review decision")
-        if row["state"] != "review_required":
-            raise ValueError("pair candidate already reviewed")
+        if str(confirmation or "").strip().upper() != PAIR_CONFIRM:
+            raise PermissionError(f"explicit {PAIR_CONFIRM} confirmation required")
         why = _clean(rationale, 4000)
         if len(why) < 8:
             raise ValueError("pair review rationale must be documented")
-        comparison_id = ""
-        if decision == "investigate_same":
-            left_id, right_id = sorted([row["left_entity_id"], row["right_entity_id"]])
-            existing = self.db.one(
-                "SELECT * FROM resolution_comparisons_115 WHERE case_id=? "
-                "AND left_entity_id=? AND right_entity_id=?",
-                (row["case_id"], left_id, right_id),
+
+        # The candidate-version check and terminal decision are one serialized
+        # SQLite write unit. A concurrent entity scan cannot rewrite score/signals
+        # between the analyst-visible hash check and the decision update.
+        with self.db.transaction(immediate=True):
+            raw = self.db.one(
+                "SELECT * FROM phase20_entity_pair_candidate_456 WHERE pair_id=?",
+                (str(pair_id),),
             )
-            if existing and existing["state"] in {"approved_same", "approved_distinct"}:
-                comparison_id = str(existing["comparison_id"])
-                state = "canonical_resolution_already_reviewed"
-            else:
-                comparison = self.base115.compare(
-                    row["left_entity_id"], row["right_entity_id"], str(ident["username"])
+            if not raw:
+                raise KeyError("Build-456 pair candidate not found")
+            row = dict(raw)
+            ident = self._authorize(identity, row["case_id"], "dossier.review", pair_id)
+            if str(expected_pair_hash or "") != str(row.get("record_hash") or ""):
+                raise PermissionError("entity pair changed after review was opened")
+            if row["state"] != "review_required":
+                raise ValueError("pair candidate already reviewed")
+
+            comparison_id = ""
+            if decision == "investigate_same":
+                left_id, right_id = sorted([row["left_entity_id"], row["right_entity_id"]])
+                existing = self.db.one(
+                    "SELECT * FROM resolution_comparisons_115 WHERE case_id=? "
+                    "AND left_entity_id=? AND right_entity_id=?",
+                    (row["case_id"], left_id, right_id),
                 )
-                comparison_id = str(comparison["comparison_id"])
-                state = "forwarded_to_resolution_review"
-        elif decision == "likely_distinct":
-            state = "analyst_marked_distinct"
-        else:
-            state = "dismissed"
-        row["state"] = state
-        row["resolution_comparison_id"] = comparison_id
-        row["reviewed_by"] = str(ident["username"])
-        row["reviewed_at"] = _now()
-        row["review_reason"] = why
-        row["record_hash"] = self._rh(row)
-        self.db.execute(
-            "UPDATE phase20_entity_pair_candidate_456 SET state=?,resolution_comparison_id=?,"
-            "reviewed_by=?,reviewed_at=?,review_reason=?,record_hash=? WHERE pair_id=?",
-            (
-                row["state"], row["resolution_comparison_id"], row["reviewed_by"],
-                row["reviewed_at"], row["review_reason"], row["record_hash"], row["pair_id"],
-            ),
-        )
+                if existing and existing["state"] in {"approved_same", "approved_distinct"}:
+                    comparison_id = str(existing["comparison_id"])
+                    state = "canonical_resolution_already_reviewed"
+                else:
+                    comparison = self.base115.compare(
+                        row["left_entity_id"],
+                        row["right_entity_id"],
+                        str(ident["username"]),
+                    )
+                    comparison_id = str(comparison["comparison_id"])
+                    state = "forwarded_to_resolution_review"
+            elif decision == "likely_distinct":
+                state = "analyst_marked_distinct"
+            else:
+                state = "dismissed"
+
+            row["state"] = state
+            row["resolution_comparison_id"] = comparison_id
+            row["reviewed_by"] = str(ident["username"])
+            row["reviewed_at"] = _now()
+            row["review_reason"] = why
+            row["record_hash"] = self._rh(row)
+
+            cursor = self.db.execute(
+                "UPDATE phase20_entity_pair_candidate_456 "
+                "SET state=?,resolution_comparison_id=?,reviewed_by=?,reviewed_at=?,"
+                "review_reason=?,record_hash=? "
+                "WHERE pair_id=? AND state='review_required' AND record_hash=?",
+                (
+                    row["state"],
+                    row["resolution_comparison_id"],
+                    row["reviewed_by"],
+                    row["reviewed_at"],
+                    row["review_reason"],
+                    row["record_hash"],
+                    row["pair_id"],
+                    str(expected_pair_hash),
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise PermissionError("entity pair changed while review was being applied")
+
         self.audit.log(
             "multilingual_pair_reviewed_456",
             "phase20_entity_pair_candidate_456",
@@ -849,58 +885,59 @@ class MultilingualEntitySourceLineage456:
         confirmation,
         expected_evidence_hash,
     ):
-        evidence = self.closure447.evidence(evidence_id)
-        ident = self._authorize(identity, evidence["case_id"], "source.review", evidence_id)
-        if str(expected_evidence_hash or "") != str(evidence.get("record_hash") or ""):
-            raise PermissionError("evidence changed after lineage review was opened")
-        if type(countable) is not bool:
-            raise ValueError("countable must be a JSON boolean")
-        if str(confirmation or "").strip().upper() != LINEAGE_CONFIRM:
-            raise PermissionError(f"explicit {LINEAGE_CONFIRM} confirmation required")
-        family = _clean(source_family, 300)
-        group = _clean(independence_group, 400)
-        origin = _clean(origin_key, 1000)
-        role = str(source_role or "").strip().lower()
-        why = _clean(rationale, 4000)
-        if not family or not group or not origin:
-            raise ValueError("source_family, independence_group and origin_key are required")
-        if role not in SOURCE_ROLES:
-            raise ValueError("unsupported source role")
-        if len(why) < 12:
-            raise ValueError("source-lineage rationale must be documented")
-        row = {
-            "review_id": "lineage456_" + secrets.token_hex(10),
-            "case_id": evidence["case_id"],
-            "evidence_id": evidence_id,
-            "evidence_hash": evidence["record_hash"],
-            "source_family": family,
-            "independence_group": group,
-            "origin_key": origin,
-            "source_role": role,
-            "countable": int(bool(countable)),
-            "rationale": why,
-            "reviewed_by": str(ident["username"]),
-            "reviewed_at": _now(),
-        }
-        row["record_hash"] = self._rh(row)
-        self.db.execute(
-            "INSERT INTO phase20_source_lineage_review_456 VALUES(" + ",".join("?" for _ in row) + ")",
-            tuple(row.values()),
-        )
-        self.audit.log(
-            "source_lineage_reviewed_456",
-            "phase20_source_lineage_review_456",
-            row["review_id"],
-            evidence["case_id"],
-            {
+        with self.db.transaction(immediate=True):
+            evidence = self.closure447.evidence(evidence_id)
+            ident = self._authorize(identity, evidence["case_id"], "source.review", evidence_id)
+            if str(expected_evidence_hash or "") != str(evidence.get("record_hash") or ""):
+                raise PermissionError("evidence changed after lineage review was opened")
+            if type(countable) is not bool:
+                raise ValueError("countable must be a JSON boolean")
+            if str(confirmation or "").strip().upper() != LINEAGE_CONFIRM:
+                raise PermissionError(f"explicit {LINEAGE_CONFIRM} confirmation required")
+            family = _clean(source_family, 300)
+            group = _clean(independence_group, 400)
+            origin = _clean(origin_key, 1000)
+            role = str(source_role or "").strip().lower()
+            why = _clean(rationale, 4000)
+            if not family or not group or not origin:
+                raise ValueError("source_family, independence_group and origin_key are required")
+            if role not in SOURCE_ROLES:
+                raise ValueError("unsupported source role")
+            if len(why) < 12:
+                raise ValueError("source-lineage rationale must be documented")
+            row = {
+                "review_id": "lineage456_" + secrets.token_hex(10),
+                "case_id": evidence["case_id"],
                 "evidence_id": evidence_id,
+                "evidence_hash": evidence["record_hash"],
                 "source_family": family,
                 "independence_group": group,
-                "countable": bool(countable),
-                "truth_determined": False,
-            },
-        )
-        return {**row, "countable": bool(row["countable"])}
+                "origin_key": origin,
+                "source_role": role,
+                "countable": int(bool(countable)),
+                "rationale": why,
+                "reviewed_by": str(ident["username"]),
+                "reviewed_at": _now(),
+            }
+            row["record_hash"] = self._rh(row)
+            self.db.execute(
+                "INSERT INTO phase20_source_lineage_review_456 VALUES(" + ",".join("?" for _ in row) + ")",
+                tuple(row.values()),
+            )
+            self.audit.log(
+                "source_lineage_reviewed_456",
+                "phase20_source_lineage_review_456",
+                row["review_id"],
+                evidence["case_id"],
+                {
+                    "evidence_id": evidence_id,
+                    "source_family": family,
+                    "independence_group": group,
+                    "countable": bool(countable),
+                    "truth_determined": False,
+                },
+            )
+            return {**row, "countable": bool(row["countable"])}
 
     def _publication_fingerprint(self, evidence):
         descriptive = evidence.get("descriptive") or {}

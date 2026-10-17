@@ -24,7 +24,7 @@ jobs:
       - name: Install focused test dependencies
         run: python -m pip install -e '.[test]'
       - name: Build 457 focused regressions
-        run: python -m pytest -q tests/test_build457_workspace_reliability.py
+        run: python -m pytest -q tests/test_build456_multilingual_lineage.py tests/test_build457_workspace_reliability.py
       - name: Compile Build 457 surfaces
         run: python -m compileall -q eagleeye_pro/phase20 src/eagleeye/application/build457 src/eagleeye/interfaces/web
       - name: Install isolated Build 457 runtime
