@@ -239,3 +239,34 @@ def test_build458_current_installer_and_next_checkpoint():
     assert 'BUILD = "458.0"' in (ROOT/"eagleeye_pro/version.py").read_text()
     assert (ROOT/"INSTALL_EAGLEEYE_458.py").is_file()
     assert (ROOT/"EAGLEEYE_PRO_458_0.py").is_file()
+
+
+def test_build458_unreadable_payload_does_not_break_health(tmp_path,monkeypatch):
+    app=create_workspace_app458(base_dir=tmp_path)
+    ctx=app.state.context
+    try:
+        ident,case=case_and_identity(ctx)
+        svc=ctx.document_intelligence_458
+        imported=svc.import_bytes(
+            identity=ident,case_id=case["case_id"],filename="unreadable.txt",
+            raw=b"Readable original source now subjected to an IO exception."
+        )
+        item=svc.anchors(identity=ident,document_id=imported["document_id"])["document"]
+        path=svc.root/item["stored_relpath"]
+        original_read=Path.read_bytes
+        def intermittent_error(p):
+            if p == path:
+                raise OSError("simulated unreadable source")
+            return original_read(p)
+        monkeypatch.setattr(Path,"read_bytes",intermittent_error)
+        status=svc.verify_integrity()
+        assert status["valid"] is False
+        assert status["violations"][0]["reason"]=="document_payload_missing_unreadable_or_hash_mismatch"
+        with TestClient(app) as client:
+            health=client.get("/health")
+            assert health.status_code==200
+            assert health.json()["ok"] is True
+            assert health.json()["integrity_valid"] is False
+            assert health.json()["status"]=="hold"
+    finally:
+        ctx.close()
