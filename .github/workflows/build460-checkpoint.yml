@@ -40,7 +40,11 @@ jobs:
         shell: bash
         run: |
           git archive --format=zip --output=EagleEye_Build_460_TESTED_SOURCE.zip HEAD
-          python -c "import hashlib; from pathlib import Path; p=Path('EagleEye_Build_460_TESTED_SOURCE.zip'); Path('EagleEye_Build_460_TESTED_SOURCE.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\\n')"
+          python -c "import hashlib; from pathlib import Path; p=Path('EagleEye_Build_460_TESTED_SOURCE.zip'); Path('EagleEye_Build_460_TESTED_SOURCE.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
+      - name: Verify downloadable artifact and launch contract
+        shell: bash
+        run: |
+          python -c "import hashlib, pathlib, zipfile; p=pathlib.Path('EagleEye_Build_460_TESTED_SOURCE.zip'); expected=pathlib.Path('EagleEye_Build_460_TESTED_SOURCE.sha256').read_text().split()[0]; actual=hashlib.sha256(p.read_bytes()).hexdigest(); assert expected==actual, 'SHA256 mismatch'; z=zipfile.ZipFile(p); required={'INSTALL_EAGLEEYE_460.py','START_EAGLEEYE_PRO.sh','START_EAGLEEYE_PRO.bat','src/eagleeye/interfaces/web/app460.py'}; assert required.issubset(z.namelist()), 'Build 460 launch files missing'; assert z.testzip() is None, 'Corrupted archive'"
       - uses: actions/upload-artifact@v4
         if: success()
         with:
