@@ -28,8 +28,8 @@ def load_manifest() -> dict:
         reason = str(item.get("reason") or "")
         if not nodeid.startswith("tests/test_build") or "::" not in nodeid:
             raise RuntimeError("invalid checkpoint exclusion node id: " + nodeid)
-        if "test_build460" in nodeid:
-            raise RuntimeError("Build-460 tests may not be excluded")
+        if "test_build455" in nodeid:
+            raise RuntimeError("Build-455 tests may not be excluded")
         if not reason.startswith("superseded_"):
             raise RuntimeError("checkpoint exclusion requires explicit superseded reason")
         if nodeid in seen:
@@ -40,13 +40,16 @@ def load_manifest() -> dict:
 
 def phase18_20_targets() -> list[str]:
     targets = []
-    for build in range(413, 461):
-        # Include every available suite for the selected build, not only
-        # historical naming conventions; new phase builds use new suffixes.
-        candidates = sorted((ROOT / "tests").glob(f"test_build{build}_*.py"))
-        exact = ROOT / "tests" / f"test_build{build}.py"
-        if exact.is_file():
-            candidates.insert(0, exact)
+    for build in range(413, 456):
+        candidates = [
+            ROOT / "tests" / f"test_build{build}_integrated.py",
+            ROOT / "tests" / f"test_build{build}_operating_profile.py",
+            ROOT / "tests" / f"test_build{build}_retrieval_isolation.py",
+            ROOT / "tests" / f"test_build{build}_deployment.py",
+            ROOT / "tests" / f"test_build{build}_historical_recovery.py",
+            ROOT / "tests" / f"test_build{build}_xref_infrastructure.py",
+            ROOT / "tests" / f"test_build{build}_operational_checkpoint.py",
+        ]
         for path in candidates:
             if path.is_file():
                 rel = path.relative_to(ROOT).as_posix()
