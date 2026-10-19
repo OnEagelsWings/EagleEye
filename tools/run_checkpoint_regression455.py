@@ -28,8 +28,8 @@ def load_manifest() -> dict:
         reason = str(item.get("reason") or "")
         if not nodeid.startswith("tests/test_build") or "::" not in nodeid:
             raise RuntimeError("invalid checkpoint exclusion node id: " + nodeid)
-        if "test_build455" in nodeid:
-            raise RuntimeError("Build-455 tests may not be excluded")
+        if "test_build460" in nodeid:
+            raise RuntimeError("Build-460 tests may not be excluded")
         if not reason.startswith("superseded_"):
             raise RuntimeError("checkpoint exclusion requires explicit superseded reason")
         if nodeid in seen:
@@ -40,7 +40,7 @@ def load_manifest() -> dict:
 
 def phase18_20_targets() -> list[str]:
     targets = []
-    for build in range(413, 456):
+    for build in range(413, 461):
         candidates = [
             ROOT / "tests" / f"test_build{build}_integrated.py",
             ROOT / "tests" / f"test_build{build}_operating_profile.py",
