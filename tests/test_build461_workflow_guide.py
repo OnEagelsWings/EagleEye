@@ -34,22 +34,22 @@ def test_build461_authentication_and_case_scoping(tmp_path):
                 client="Internal", purpose="Review-first UI navigation",
                 legal_basis="public_data",
             )
-                client.cookies.set(COOKIE, issued.token)
-                home = client.get("/", params={"case_id": case["case_id"]})
-                assert home.status_code == 200
-                assert "Ermittlungsweg · Anleitung" in home.text
-                guide = client.get("/workflow461", params={"case_id": case["case_id"]})
-                assert guide.status_code == 200
-                assert guide.headers["cache-control"] == "no-store"
-                assert "Case &lt;source&gt; 461" in guide.text
-                assert "Case <source> 461" not in guide.text
-                assert guide.text.count("case_id=") >= 5
-                assert "Keine automatische Rechercheausführung" in guide.text
-                forbidden = client.get("/workflow461", params={"case_id": "foreign-case"}, follow_redirects=False)
-                assert forbidden.status_code == 303
-                assert forbidden.headers["location"] == "/"
-                health = client.get("/health").json()
-                assert health["build"] == "461.0"
-                assert health["production_release_ready"] is False
+            client.cookies.set(COOKIE, issued.token)
+            home = client.get("/", params={"case_id": case["case_id"]})
+            assert home.status_code == 200
+            assert "Ermittlungsweg · Anleitung" in home.text
+            guide = client.get("/workflow461", params={"case_id": case["case_id"]})
+            assert guide.status_code == 200
+            assert guide.headers["cache-control"] == "no-store"
+            assert "Case &lt;source&gt; 461" in guide.text
+            assert "Case <source> 461" not in guide.text
+            assert guide.text.count("case_id=") >= 5
+            assert "Keine automatische Rechercheausführung" in guide.text
+            forbidden = client.get("/workflow461", params={"case_id": "foreign-case"}, follow_redirects=False)
+            assert forbidden.status_code == 303
+            assert forbidden.headers["location"] == "/"
+            health = client.get("/health").json()
+            assert health["build"] == "461.0"
+            assert health["production_release_ready"] is False
     finally:
         ctx.close()
