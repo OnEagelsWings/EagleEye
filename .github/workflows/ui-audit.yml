@@ -25,5 +25,9 @@ jobs:
         run: python -c "from eagleeye.interfaces.web.app458 import create_workspace_app458; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '458.0'; print(BUILD)"
       - name: Build 458 current health/status UI contract
         run: pytest -q tests/test_build458_document_intelligence.py -k 'health_and_authenticated_upload'
+      - name: Build 458 document UI CSP regression
+        run: pytest -q tests/test_build458_document_intelligence.py -k 'document_upload_script_csp'
+      - name: Build 448-450 investigator UI regressions
+        run: pytest -q tests/test_build448_investigator_workspace.py tests/test_build449_human_review.py tests/test_build450_hard_checkpoint.py
       - name: Compile current web surface
         run: python -m compileall -q src/eagleeye/interfaces/web eagleeye_pro/phase20
