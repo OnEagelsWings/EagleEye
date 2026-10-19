@@ -1,8 +1,8 @@
-# EagleEye — Build 460 Development Checkpoint
+# EagleEye — Build 461 Development Checkpoint
 
 EagleEye is a local-first, case-centered OSINT and investigation platform with source provenance, evidence review, human-governed AI assistance and auditable Evidence → Claims → Dossier workflows.
 
-**Build 458** added Document Intelligence 2.0 and source anchors. **Build 459** integrated case-scoped document navigation into the investigator workspace. **Build 460** is the five-build full regression and installation checkpoint; it is not a production release.
+**Build 458** added Document Intelligence 2.0 and source anchors. **Build 459** integrated case-scoped document navigation into the investigator workspace. **Build 460** was the five-build full regression and installation checkpoint; **Build 461** adds guided investigation and a provenance-first entity registry; it is not a production release.
 
 ## Install and launch (Python 3.12+)
 
@@ -11,8 +11,8 @@ Windows: run `START_EAGLEEYE_PRO.bat`. Linux/macOS: run `sh START_EAGLEEYE_PRO.s
 For manual installation and verification:
 
 ```bash
-python INSTALL_EAGLEEYE_460.py
-python INSTALL_EAGLEEYE_460.py --check
+python INSTALL_EAGLEEYE_461.py
+python INSTALL_EAGLEEYE_461.py --check
 ```
 
 Use **public or synthetic test data only** during development; do not import sensitive personal data until a separately approved and tested deployment is available.
@@ -23,12 +23,12 @@ The Build-460 full checkpoint runs the governed repository regression suite, the
 
 ```bash
 python -m pip install -e '.[test]'
-python tools/run_checkpoint_regression460.py
-python tools/run_checkpoint_regression460.py --phase18-20
-pytest -q tests/test_build460_current_checkpoint.py
+python tools/run_checkpoint_regression461.py
+python tools/run_checkpoint_regression461.py --phase18-20
+pytest -q tests/test_build461_workflow_guide.py tests/test_build461_entity_registry.py
 ```
 
-The historical Build-455 manifest and runner are retained unchanged; Build 460 has its own documented exclusion manifest. A tested source ZIP and SHA-256 checksum are published as GitHub Actions artifacts **only after** the full checkpoint job succeeds.
+The historical Build-455 manifest and runner are retained unchanged; Build 461 has its own documented exclusion manifest. A tested source ZIP and SHA-256 checksum are published as GitHub Actions artifacts **only after** the full checkpoint job succeeds.
 
 - [Build-460 pull request](https://github.com/OnEagelsWings/EagleEye/pull/53)
 - [GitHub Actions](https://github.com/OnEagelsWings/EagleEye/actions)

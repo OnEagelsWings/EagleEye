@@ -1,0 +1,47 @@
+name: EagleEye Build 461 Focused
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-461:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Run Build 461 focused regression
+        run: python -m pytest -q tests/test_build461_workflow_guide.py tests/test_build461_entity_registry.py tests/test_build459_workspace_navigation.py
+      - name: Verify isolated current installer
+        run: python INSTALL_EAGLEEYE_461.py
+      - name: Check isolated runtime
+        run: python INSTALL_EAGLEEYE_461.py --check
+      - name: Compile web modules
+        run: python -m compileall -q src/eagleeye/interfaces/web src/eagleeye/application/entity_registry461.py
+      - name: Package development snapshot
+        if: success()
+        shell: bash
+        run: |
+          git archive --format=zip --output=EagleEye_Build_461_DEV_SOURCE.zip HEAD
+          python -c "import hashlib,pathlib; p=pathlib.Path('EagleEye_Build_461_DEV_SOURCE.zip'); pathlib.Path('EagleEye_Build_461_DEV_SOURCE.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: EagleEye_Build_461_DEV_SOURCE_${{ matrix.os }}
+          path: |
+            EagleEye_Build_461_DEV_SOURCE.zip
+            EagleEye_Build_461_DEV_SOURCE.sha256
+          retention-days: 30

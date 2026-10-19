@@ -61,6 +61,9 @@ def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace
             + escape(urlencode({"case_id": selected_id}), quote=True)
             + '">Dokumente &amp; Quellenprüfung</a>'
         )
+        if workspace_build == "461.0":
+            guide_url = "/workflow461?" + urlencode({"case_id": selected_id})
+            link += '<a href="' + escape(guide_url, quote=True) + '">Ermittlungsweg · Anleitung</a>'
         html = html.replace("</nav>", link + "</nav>", 1)
         return HTMLResponse(html)
 
