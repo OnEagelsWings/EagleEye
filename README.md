@@ -1,52 +1,53 @@
-# EagleEye — Build 458
+# EagleEye — Build 460 Development Checkpoint
 
-EagleEye is a local-first, evidence- and provenance-oriented OSINT/investigation workspace with human-governed AI assistance.
+EagleEye is a local-first, case-centered OSINT and investigation platform with source provenance, evidence review, human-governed AI assistance and auditable Evidence → Claims → Dossier workflows.
 
-Build 458 is the **Document Intelligence 2.0** focused development build. It retains Build-457 workspace reliability while adding page/block-based PDF/text source anchors, manual extraction review and hash-bound Claim citations. See `README_BUILD_458_0.md`.
+**Build 458** added Document Intelligence 2.0 and source anchors. **Build 459** integrated case-scoped document navigation into the investigator workspace. **Build 460** is the five-build full regression and installation checkpoint; it is not a production release.
 
-The governed chain is:
+## Install and launch (Python 3.12+)
 
-Acquisition → AI Dispatch → Evidence → Independent Review → Claims → Independent Review → Graph/Timeline/Synthesis → Living Dossier → Independent Dossier Review → Separate Export Approval → Authorized Export → Recovery/Restart Verification.
+Windows: run `START_EAGLEEYE_PRO.bat`. Linux/macOS: run `sh START_EAGLEEYE_PRO.sh`. The standard launchers install and start the current isolated runtime.
 
-Build 455 remains the retained operational baseline. Build 456 adds:
-
-- review-only Hebrew/Arabic/Cyrillic/Latin entity and alias candidates;
-- conservative cross-script similarity with no automatic identity confirmation;
-- human-reviewed source-family and independence-group overrides;
-- Claim-level raw-mention vs independent-origin reporting;
-- exact-payload deduplication so republications do not inflate corroboration;
-- retention of the Build-455 governed live-research/recovery baseline.
-
-## Install / verify
+For manual installation and verification:
 
 ```bash
-python INSTALL_EAGLEEYE_458.py
-python INSTALL_EAGLEEYE_458.py --check
+python INSTALL_EAGLEEYE_460.py
+python INSTALL_EAGLEEYE_460.py --check
 ```
 
-## Focused Build-456 qualification
+Use **public or synthetic test data only** during development; do not import sensitive personal data until a separately approved and tested deployment is available.
+
+## Verification and download
+
+The Build-460 full checkpoint runs the governed repository regression suite, the Phase-18–20 tests, compilation and isolated-runtime installation on Linux and Windows:
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_build457_workspace_reliability.py
+python tools/run_checkpoint_regression460.py
+python tools/run_checkpoint_regression460.py --phase18-20
+pytest -q tests/test_build460_current_checkpoint.py
 ```
 
-Build 458 intentionally does not rerun the complete repository or live operational gate. The full five-build regression remains scheduled for Build 460.
+The historical Build-455 manifest and runner are retained unchanged; Build 460 has its own documented exclusion manifest. A tested source ZIP and SHA-256 checksum are published as GitHub Actions artifacts **only after** the full checkpoint job succeeds.
 
-Current roadmap:
+- [Build-460 pull request](https://github.com/OnEagelsWings/EagleEye/pull/53)
+- [GitHub Actions](https://github.com/OnEagelsWings/EagleEye/actions)
+- [Build-458 document intelligence notes](README_BUILD_458_0.md)
 
-- 450 Investigation Workflow Hard Checkpoint
-- 451 Retrieval isolation and content-risk gate
-- 452 Deterministic deployment
-- 453 Historical Web Intelligence 2.0 + Recovery Basis
-- 454 Cross-Reference Engine + Domain Infrastructure Intelligence
-- 455 Full Operations / Real-Source Research Gate
-- 456 Multilingual Entity/Alias Resolution + canonical Source-Lineage
-- 457 Document Intelligence 2.0 + precise Evidence anchors
-- 458 Organization/Ownership/Registry Intelligence + connector qualification
-- 459 Graph Analytics 2.0 + Red-Team/Local-AI integration
-- 460 Serious Beta / repeated full operational gate
-- 461–464 product/security packaging, external connector/media/team qualification
-- 465 Release-Candidate / external-beta hard checkpoint
+## Governed investigation process
 
-Production release remains separate from operational research usability.
+Acquisition → controlled AI dispatch → Evidence → independent review → Claims and alternative hypotheses → independent review → Graph/Timeline/Synthesis → Living Dossier → independent dossier review → separate export approval → authorized export → recovery and integrity verification.
+
+Automated extraction does not constitute proof. The system must retain source records, provenance, contrary evidence, uncertainty and human approval boundaries.
+
+## Next development checkpoints
+
+- 460 — full integration, usability, installer and security regression gate
+- 461–464 — stronger entity resolution, temporally grounded relationship graphs, visual network analysis and source-linked graph navigation
+- 465 — five-build graph/security/reliability checkpoint
+- 466–469 — multi-source search, event timeline, controlled source monitoring and contradiction detection
+- 470 — full research-intelligence checkpoint
+- 471–475 — governed local AI analyst, hypothesis comparison and red-team review
+- 476–480 — unified professional case workspace, traceable dossiers, supported exports and external testing
+
+Every intermediate build receives focused tests; every fifth build receives the full governed checkpoint. An external beta or production release remains a separate decision.
