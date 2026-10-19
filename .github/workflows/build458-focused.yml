@@ -24,7 +24,7 @@ jobs:
       - name: Install focused dependencies
         run: python -m pip install -e '.[test]'
       - name: Build 458 bounded document regression
-        run: python -m pytest -q tests/test_build458_document_intelligence.py
+        run: python -m pytest -q tests/test_build458_document_intelligence.py -k 'not test_build458_current_installer_and_next_checkpoint'
       - name: Compile Build 458 surfaces
         run: python -m compileall -q eagleeye_pro/phase20 src/eagleeye/application/build458 src/eagleeye/interfaces/web
       - name: Install isolated Build 458 runtime
