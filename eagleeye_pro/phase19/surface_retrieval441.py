@@ -160,6 +160,7 @@ class PinnedSurfaceTransport441:
             return max(0.001, value)
 
         for address in list(resolved_ips or []):
+            deadline_aborted = threading.Event()
             conn = None
             deadline_timer = None
             deadline_sock = None
@@ -186,6 +187,7 @@ class PinnedSurfaceTransport441:
                     deadline_sock.settimeout(remaining())
 
                     def abort_at_deadline(sock=deadline_sock):
+                        deadline_aborted.set()
                         try:
                             sock.shutdown(socket.SHUT_RDWR)
                         except (OSError, AttributeError):
@@ -234,7 +236,7 @@ class PinnedSurfaceTransport441:
                 )
             except Exception as exc:
                 last_error = exc
-                if time.monotonic() >= deadline:
+                if deadline_aborted.is_set() or time.monotonic() >= deadline:
                     raise TimeoutError("surface retrieval wall-clock deadline exceeded") from exc
             finally:
                 if deadline_timer is not None:
