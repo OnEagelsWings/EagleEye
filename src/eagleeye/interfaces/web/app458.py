@@ -157,7 +157,7 @@ const feedback = document.getElementById("feedback");
 if (form && feedback) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const caseId = new URLSearchParams(window.location.search).get("case_id");
+    const caseId = form.dataset.caseId;
     if (!caseId) { feedback.textContent = "Fall-ID fehlt."; return; }
     feedback.textContent = "Prüfe Dokument …";
     try {
@@ -209,7 +209,7 @@ if (form && feedback) {
             f'<h1>EagleEye 458 · Dokumente</h1><p>Fall: {case}</p>'
             '<p>Extraktion ist ein Prüfobjekt, keine bestätigte Aussage. '
             'Scans ohne Textschicht werden als OCR erforderlich markiert.</p>'
-            '<form id="upload" enctype="multipart/form-data"><input name="file" type="file" '
+            f'<form id="upload" data-case-id="{case}" enctype="multipart/form-data"><input name="file" type="file" '
             'accept=".pdf,.txt,.md" required><input name="title" placeholder="Titel">'
             '<input name="source_url" placeholder="Öffentliche Quellen-URL">'
             '<button type="submit">Dokument lokal aufnehmen</button></form><p id="feedback"></p>'
