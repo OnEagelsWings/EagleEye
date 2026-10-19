@@ -5,7 +5,7 @@ This module is intentionally a local persistence layer, not a public API.
 """
 from __future__ import annotations
 
-import json
+from datetime import date
 import sqlite3
 from pathlib import Path
 from uuid import uuid4
@@ -85,7 +85,17 @@ class EntityRegistry461:
         refs = [self._required(ref, "source_ref", 256) for ref in source_refs]
         if len(set(refs)) != len(refs):
             raise ValueError("duplicate source reference")
-        if valid_from and valid_until and valid_from > valid_until:
+        for bound_name, bound in (("valid_from", valid_from), ("valid_until", valid_until)):
+            if bound is not None:
+                if not isinstance(bound, str):
+                    raise ValueError(f"{bound_name} must be ISO YYYY-MM-DD")
+                try:
+                    parsed = date.fromisoformat(bound)
+                except ValueError as exc:
+                    raise ValueError(f"{bound_name} must be ISO YYYY-MM-DD") from exc
+                if bound != parsed.isoformat():
+                    raise ValueError(f"{bound_name} must be canonical ISO YYYY-MM-DD")
+        if valid_from is not None and valid_until is not None and valid_from > valid_until:
             raise ValueError("invalid date interval")
         with self.db:
             existing = self.db.execute(
