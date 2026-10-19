@@ -4,7 +4,7 @@ import hashlib
 from html import escape
 
 from fastapi import File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from .app457 import create_workspace_app457
@@ -148,6 +148,35 @@ def create_workspace_app458(*, base_dir=None):
         except (PermissionError,KeyError) as exc:
             fail(exc)
 
+    @app.get("/assets/build458/documents.js")
+    def document_upload_script():
+        script = """
+"use strict";
+const form = document.getElementById("upload");
+const feedback = document.getElementById("feedback");
+if (form && feedback) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const caseId = new URLSearchParams(window.location.search).get("case_id");
+    if (!caseId) { feedback.textContent = "Fall-ID fehlt."; return; }
+    feedback.textContent = "Prüfe Dokument …";
+    try {
+      const response = await fetch("/api/build458/cases/" + encodeURIComponent(caseId) + "/documents", {
+        method: "POST", body: new FormData(form), credentials: "same-origin"
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        feedback.textContent = result.detail || "Upload fehlgeschlagen (" + response.status + ")";
+        return;
+      }
+      feedback.textContent = "Dokument aufgenommen.";
+      window.location.reload();
+    } catch (_) { feedback.textContent = "Netzwerkfehler beim Upload."; }
+  });
+}
+"""
+        return Response(script, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
     @app.get("/documents458",response_class=HTMLResponse)
     def document_browser(request:Request,case_id:str,document_id:str=""):
         ident=auth(request)
@@ -185,13 +214,7 @@ def create_workspace_app458(*, base_dir=None):
             '<input name="source_url" placeholder="Öffentliche Quellen-URL">'
             '<button type="submit">Dokument lokal aufnehmen</button></form><p id="feedback"></p>'
             f'<h2>Dokumente</h2><ul>{options}</ul>{details}'
-            '<script>document.querySelector("#upload").onsubmit=async(e)=>{e.preventDefault();'
-            'const v=document.querySelector("#feedback");v.textContent="Prüfe Dokument …";'
-            f'const r=await fetch("/api/build458/cases/{case}/documents",'
-            '{method:"POST",body:new FormData(e.target)});'
-            'const d=await r.json();v.textContent=r.ok?"Aufgenommen; '
-            'Fundstellen nach Aktualisierung sichtbar.":JSON.stringify(d);'
-            'if(r.ok)location.reload();};</script></body></html>'
+            '<script src="/assets/build458/documents.js" defer></script></body></html>'
         )
         return HTMLResponse(html)
 
