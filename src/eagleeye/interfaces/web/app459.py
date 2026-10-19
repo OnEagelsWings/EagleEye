@@ -12,19 +12,22 @@ from .app448 import COOKIE, render_workspace
 from .app449 import _drop
 
 
-def create_workspace_app459(*, base_dir=None):
+def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace_title="Investigator Navigation"):
     """Build 459: case-scoped documents in the primary investigator navigation."""
     app = create_workspace_app458(base_dir=base_dir)
     ctx = app.state.context
     team = ctx.team_identity_359
-    app.title = "EagleEye Build 459.0 — Investigator Navigation"
-    app.version = "459.0"
+    app.title = f"EagleEye Build {workspace_build} — {workspace_title}"
+    app.version = workspace_build
     _drop(app, "/", {"GET"})
     _drop(app, "/health", {"GET"})
 
     @app.get("/health")
     def health459():
-        return {"ok": True, "build": "459.0", "status": "ok", "production_release_ready": False, "next_checkpoint": "465.0"}
+        integrity = bool(ctx.build458.build458_status().get("integrity_valid", False))
+        return {"ok": True, "build": workspace_build, "status": "ok" if integrity else "hold",
+                "integrity_valid": integrity, "production_release_ready": False,
+                "next_checkpoint": "460.0" if workspace_build == "459.0" else "465.0"}
 
 
     @app.get("/", response_class=HTMLResponse)
@@ -50,19 +53,15 @@ def create_workspace_app459(*, base_dir=None):
             return RedirectResponse("/legacy", status_code=303)
         selected_id = str(selected["case_id"])
         snapshot = ctx.workspace_reliability_457.snapshot(identity=identity, case_id=selected_id)
-        snapshot = dict(snapshot, workspace_build="459.0")
+        snapshot = dict(snapshot, workspace_build=workspace_build)
         audits = ctx.investigator_workspace_448.audit_history(selected_id, limit=15)
-        html = render_workspace(snapshot, view=view, cases=cases, audits=audits)
+        html = render_workspace(snapshot, view=view, cases=cases, audits=audits, ui_name_override=workspace_title)
         link = (
             '<a href="/documents458?'
             + escape(urlencode({"case_id": selected_id}), quote=True)
             + '">Dokumente &amp; Quellenprüfung</a>'
         )
         html = html.replace("</nav>", link + "</nav>", 1)
-        html = html.replace("Build 459.0 · Investigation Workflow Hard Checkpoint",
-                            "Build 459.0 · Investigator Navigation")
-        html = html.replace("Build 459.0 · Investigator Workspace",
-                            "Build 459.0 · Investigator Navigation")
         return HTMLResponse(html)
 
     return app
