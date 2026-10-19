@@ -42,7 +42,7 @@ def create_workspace_app460(*, base_dir=None):
         content = response.body.decode("utf-8")
         content = content.replace("Build 459.0", "Build 460.0")
         content = content.replace("Investigator Navigation", "Full Regression Checkpoint")
-        return HTMLResponse(content, status_code=response.status_code, headers=dict(response.headers))
+        return HTMLResponse(content, status_code=response.status_code)
 
     return app
 
