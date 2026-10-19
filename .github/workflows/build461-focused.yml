@@ -1,0 +1,43 @@
+name: EagleEye Build 461 Focused
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  entity-registry:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application and tests
+        run: python -m pip install -e '.[test]'
+      - name: Test Build 461 registry
+        run: python -m pytest -q tests/test_build461_entity_registry.py
+      - name: Compile registry
+        run: python -m compileall -q src/eagleeye/application/entity_registry461.py
+      - name: Archive development snapshot
+        if: success()
+        shell: bash
+        run: |
+          git archive --format=zip --output=EagleEye_Build_461_DEV_SOURCE.zip HEAD
+          python -c "import hashlib,pathlib; p=pathlib.Path('EagleEye_Build_461_DEV_SOURCE.zip');pathlib.Path('EagleEye_Build_461_DEV_SOURCE.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: EagleEye_Build_461_DEV_SOURCE_${{ matrix.os }}
+          path: |
+            EagleEye_Build_461_DEV_SOURCE.zip
+            EagleEye_Build_461_DEV_SOURCE.sha256
+          retention-days: 30
+          if-no-files-found: error
