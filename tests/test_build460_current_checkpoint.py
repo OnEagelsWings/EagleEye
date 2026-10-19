@@ -13,6 +13,8 @@ def test_build460_launcher_version_and_health_contract(tmp_path):
     root = Path(__file__).resolve().parents[1]
     assert 'INSTALL_EAGLEEYE_460.py' in (root / 'START_EAGLEEYE_PRO.sh').read_text()
     assert 'INSTALL_EAGLEEYE_460.py' in (root / 'START_EAGLEEYE_PRO.bat').read_text()
+    assert 'INSTALL_EAGLEEYE_460.py' in (root / 'INSTALL_EAGLEEYE_PRO.sh').read_text()
+    assert 'INSTALL_EAGLEEYE_460.py' in (root / 'INSTALL_EAGLEEYE_PRO.bat').read_text()
     assert 'create_workspace_app460' in (root / 'src/eagleeye/interfaces/web/server.py').read_text()
     app = create_workspace_app460(base_dir=tmp_path)
     try:
