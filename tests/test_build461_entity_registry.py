@@ -23,6 +23,12 @@ def test_case_scoped_graph_persists_and_preserves_provenance(tmp_path):
         with pytest.raises(ValueError, match="at least one source"):
             db.create_relation(case_id="case-one", source_id=a["id"], target_id=b["id"],
                                predicate="works_at", source_refs=[])
+        with pytest.raises(ValueError, match="ISO"):
+            db.create_relation(case_id="case-one", source_id=a["id"], target_id=b["id"],
+                               predicate="works_at", source_refs=["doc:4"], valid_from="garbage")
+        with pytest.raises(ValueError, match="canonical ISO"):
+            db.create_relation(case_id="case-one", source_id=a["id"], target_id=b["id"],
+                               predicate="works_at", source_refs=["doc:5"], valid_from="2024-1-1")
         with pytest.raises(ValueError, match="date interval"):
             db.create_relation(case_id="case-one", source_id=a["id"], target_id=b["id"],
                                predicate="works_at", source_refs=["doc:3"],
