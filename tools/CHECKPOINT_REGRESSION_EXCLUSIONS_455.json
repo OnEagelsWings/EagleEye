@@ -1,13 +1,13 @@
 {
-  "policy": "build460.checkpoint-regression-exclusions.v2",
+  "policy": "build455.checkpoint-regression-exclusions.v1",
   "purpose": "Exact historical tests whose assertion is intentionally incompatible with a later current build. Functional tests in the same files remain active.",
   "rules": [
-    "Only superseded current-build assertions can be excluded; Build 460 test cases cannot be excluded.",
+    "No Build-455 test may be excluded.",
     "Only exact node ids are excluded; entire historical test files remain in the regression unless separately ignored for the retired Build-360-364 suites.",
     "Launcher/version exclusions cover assertions that a historical build is still the current runtime/server/installer.",
     "Build-407-409 pre-canonical-identity write tests are superseded by later fail-closed identity requirements and must not weaken current authorization."
   ],
-  "excluded_count": 118,
+  "excluded_count": 114,
   "exclusions": [
     {
       "nodeid": "tests/test_build365.py::test_version_schema",
@@ -464,22 +464,6 @@
     {
       "nodeid": "tests/test_build454_xref_infrastructure.py::test_build454_status_health_version_and_test_cadence",
       "reason": "superseded_historical_exact_version_contract"
-    },
-    {
-      "nodeid": "tests/test_build455_operational_checkpoint.py::test_build455_status_health_version_and_full_test_contract",
-      "reason": "superseded_historical_current_launcher_contract"
-    },
-    {
-      "nodeid": "tests/test_build456_multilingual_lineage.py::test_build456_status_health_and_focused_cadence",
-      "reason": "superseded_historical_current_launcher_contract"
-    },
-    {
-      "nodeid": "tests/test_build457_workspace_reliability.py::test_build457_http_current_workspace_and_version_contract",
-      "reason": "superseded_historical_current_launcher_contract"
-    },
-    {
-      "nodeid": "tests/test_build458_document_intelligence.py::test_build458_current_installer_and_next_checkpoint",
-      "reason": "superseded_historical_current_launcher_contract"
     }
   ]
 }
