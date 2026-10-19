@@ -39,7 +39,7 @@ jobs:
         run: python -m compileall -q src/eagleeye/interfaces/web src/eagleeye/application/build458 eagleeye_pro/phase20
       - name: Full repository checkpoint regression
         if: steps.cadence.outputs.full == 'true'
-        run: python tools/run_checkpoint_regression455.py
+        run: python tools/run_checkpoint_regression460.py
       - name: Phase 18-20 checkpoint chain
         if: steps.cadence.outputs.full == 'true'
-        run: python tools/run_checkpoint_regression455.py --phase18-20
+        run: python tools/run_checkpoint_regression460.py --phase18-20
