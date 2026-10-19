@@ -26,7 +26,7 @@ jobs:
       - name: Check current app and version
         run: python -c "from eagleeye.interfaces.web.app460 import create_workspace_app460; from eagleeye_pro.version import BUILD; assert BUILD == '460.0'; print(BUILD)"
       - name: Full repository regression
-        run: python -m pytest -q tests
+        run: python tools/run_checkpoint_regression455.py
       - name: Phase 18–20 governed checkpoint
         run: python tools/run_checkpoint_regression455.py --phase18-20
       - name: Compile all modules
