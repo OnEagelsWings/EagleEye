@@ -8,6 +8,13 @@ def create_workspace_app460(*, base_dir=None):
     app = create_workspace_app459(base_dir=base_dir)
     app.title = "EagleEye Build 460.0 — Full Regression Checkpoint"
     app.version = "460.0"
+    _drop(app, "/health", {"GET"})
+
+    @app.get("/health")
+    def health460():
+        return {"ok": True, "build": "460.0", "status": "ok", "production_release_ready": False,
+                "next_checkpoint": "465.0"}
+
     return app
 
 
