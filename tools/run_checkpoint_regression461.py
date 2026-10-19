@@ -40,7 +40,7 @@ def load_manifest() -> dict:
 
 def phase18_20_targets() -> list[str]:
     targets = []
-    for build in range(413, 461):
+    for build in range(413, 462):
         # Include every available suite for the selected build, not only
         # historical naming conventions; new phase builds use new suffixes.
         candidates = sorted((ROOT / "tests").glob(f"test_build{build}_*.py"))
