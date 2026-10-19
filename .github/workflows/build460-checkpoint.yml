@@ -29,6 +29,10 @@ jobs:
         run: python tools/run_checkpoint_regression455.py
       - name: Phase 18–20 governed checkpoint
         run: python tools/run_checkpoint_regression455.py --phase18-20
+      - name: Install current isolated Build 460 runtime
+        run: python INSTALL_EAGLEEYE_460.py
+      - name: Verify current isolated runtime
+        run: python INSTALL_EAGLEEYE_460.py --check
       - name: Compile all modules
         run: python -m compileall -q src eagleeye_pro
       - name: Package tested source archive
