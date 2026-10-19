@@ -1,0 +1,39 @@
+name: EagleEye Build 459 Focused
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-459:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install application
+        run: python -m pip install -e '.[test]'
+      - name: Build 459 navigation regression
+        run: python -m pytest -q tests/test_build459_workspace_navigation.py
+      - name: Compile updated web layer
+        run: python -m compileall -q src/eagleeye/interfaces/web
+      - name: Package tested development snapshot
+        if: success()
+        run: |
+          git archive --format=zip --output=EagleEye_Build_459_DEV_SOURCE.zip HEAD
+          sha256sum EagleEye_Build_459_DEV_SOURCE.zip > EagleEye_Build_459_DEV_SOURCE.sha256
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: EagleEye_Build_459_DEV_SOURCE
+          path: |
+            EagleEye_Build_459_DEV_SOURCE.zip
+            EagleEye_Build_459_DEV_SOURCE.sha256
+          if-no-files-found: error
+          retention-days: 30

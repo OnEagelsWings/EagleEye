@@ -554,7 +554,7 @@ def _operations(snapshot, audits):
 """
 
 
-def render_workspace(snapshot, *, view, cases, audits):
+def render_workspace(snapshot, *, view, cases, audits, ui_name_override=None):
     case = snapshot["case"]
     case_id = case["case_id"]
     view = view if view in {x[0] for x in VIEWS} else "overview"
@@ -588,6 +588,8 @@ def render_workspace(snapshot, *, view, cases, audits):
         if checkpoint450
         else ("Human Review & Team Workflow" if team449 else "Investigator Workspace")
     )
+    if ui_name_override is not None:
+        ui_name = _e(ui_name_override)
     review_note = " · formales Vier-Augen-Review aktiv" if team449 else ""
     return f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye Build {ui_build} · {_e(case.get("title"))}</title><style>{CSS}</style></head><body><div class="app"><aside class="side"><div class="brand"><div class="logo">EE</div><div><b>EagleEye</b><small>Build {ui_build} · {ui_name}</small></div></div><nav class="nav" aria-label="Hauptnavigation">{nav}</nav><div class="side-foot">Case-first · provenance-first · review-first{review_note}<br><a href="/legacy">Legacy/Expert Workspace</a><br>Build 447 Evidence/Claims/Dossier integriert.</div></aside><main class="main"><header class="top"><div><h1>{_e(dict(VIEWS).get(view))}</h1><p>{_e(case.get("title"))} · Benutzer: {_e(snapshot.get("actor"))}</p></div>{selector}</header>{_flow(snapshot,case_id)}{content}<div id="workspace-status" class="statusline" aria-live="polite"></div><footer class="footer">Anzeige gespeicherter Daten ≠ unabhängige Verifikation. Evidence, Claims und Hypothesen bleiben unterscheidbar; keine automatische Wahrheitsfeststellung, Identitätsbestätigung, Kausalitäts- oder Schuldzuweisung.</footer></main></div><script src="/assets/build448/workspace.js"></script></body></html>'''
 
