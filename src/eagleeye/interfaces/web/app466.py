@@ -107,7 +107,7 @@ def create_workspace_app466(*, base_dir=None):
                 else:
                     detail=escape(ref)
                 details.append('<li>'+detail+' · '+escape(source["status"])+'</li>')
-            sections.append('<section><h2>'+escape(by_id.get(row["source_id"],"?"))+' → '+escape(row["predicate"])+' → '+escape(by_id.get(row["target_id"],"?"))+'</h2><p>Relations-ID: '+escape(row["id"] )+'</p><p>Beziehungstyp: '+'</h2><p>Status: '
+            sections.append('<section><h2>'+escape(by_id.get(row["source_id"],"?"))+' → '+escape(row["predicate"])+' → '+escape(by_id.get(row["target_id"],"?"))+'</h2><p>Relations-ID: '+escape(row["id"] )+'</p><p>Status: '
                             +escape(row["state"])+'</p><ul>'+''.join(details)+'</ul></section>')
         back="/graph464?"+urlencode({"case_id":case_id})
         return HTMLResponse('<!doctype html><html lang="de"><head><meta charset="utf-8">'
