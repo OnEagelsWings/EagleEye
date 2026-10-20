@@ -1,4 +1,23 @@
-# EagleEye — Build 468 — Reproducible Retrieval Baseline
+# EagleEye — Build 469 — Case-Scoped Public Source Collectors
+
+## Aktuell benutzbar: Drei öffentliche OSINT-Quellen
+
+Im authentifizierten Fall über **Öffentliche Quellen** ein Domain- oder DOI-Kennzeichen eingeben. Die Auswahl bietet:
+- **DNS-over-HTTPS:** Google DNS, A-Datensätze öffentlicher Domains.
+- **RDAP:** Verisign für `.com`-Domains, kein generischer RDAP-Fallback.
+- **Crossref:** öffentliches DOI-Metadatenregister.
+
+Jede erfolgreiche Abfrage erzeugt einen unbestätigten TXT-Snapshot mit UTC-Erfassungszeit, Provider, abgefragtem Kennzeichen und exakt gespeicherter Quellen-URL **im bereits vorhandenen Document-Intelligence-Archiv des berechtigten Falls**. Der Browser öffnet anschließend das importierte Dokument.
+
+**OPSEC:** Das Kennzeichen wird an den gewählten Drittanbieter übermittelt. Keine geheimen, persönlichen oder sensiblen Indikatoren einsetzen. Keine automatisch verifizierten Aussagen oder Identitätszusammenführungen. Die Adapter haben feste Zielhosts, deaktivierte Redirects, Eingabevalidierung, Größen-/Timeout-Grenzen, CSRF-Schutz und eine kurzlebige Sitzungs-Drosselung. Drittanbieter können vorübergehend nicht erreichbar sein.
+
+```bash
+python INSTALL_EAGLEEYE_469.py
+python -m pytest -q tests/test_build469_collectors.py
+```
+
+Der Test mockt HTTP-Abfragen, bestätigt also die fallbezogene UI/Persistenz **nicht** die reale Verfügbarkeit von Drittanbietern. Vollständiger Integrationstest und produktive Verwendbarkeit werden erst mit Checkpoint 470 bewertet.
+
 
 ## Build 468: verifizierbares Messprotokoll
 **Synthetischer Test, kein Benchmark der produktiven EagleEye-Suche.** Authentifizierte Nutzer können unter **Messprotokoll** die Precision@10, Recall@50, MRR@10, nDCG@10, P95-Latenz und den Hash eines deterministischen 100-Abfragen-Goldsets sehen. Entity Resolution und echte OSINT-Recherchequalität bleiben **N/A**, bis eine vollständige Suchschnittstelle mit beschriftetem Goldset getestet wird.
@@ -25,8 +44,8 @@ Windows: run `START_EAGLEEYE_PRO.bat`. Linux/macOS: run `sh START_EAGLEEYE_PRO.s
 For manual installation and verification:
 
 ```bash
-python INSTALL_EAGLEEYE_468.py
-python INSTALL_EAGLEEYE_468.py --check
+python INSTALL_EAGLEEYE_469.py
+python INSTALL_EAGLEEYE_469.py --check
 ```
 
 Use **public or synthetic test data only** during development; do not import sensitive personal data until a separately approved and tested deployment is available.
