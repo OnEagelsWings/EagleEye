@@ -61,22 +61,22 @@ def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace
             + escape(urlencode({"case_id": selected_id}), quote=True)
             + '">Dokumente &amp; Quellenprüfung</a>'
         )
-        if workspace_build in {"461.0", "462.0", "463.0", "464.0", "465.0", "466.0"}:
+        if workspace_build in {"461.0", "462.0", "463.0", "464.0", "465.0", "466.0", "467.0"}:
             guide_url = "/workflow461?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(guide_url, quote=True) + '">Ermittlungsweg · Anleitung</a>'
-        if workspace_build in {"462.0", "463.0", "464.0", "465.0", "466.0"}:
+        if workspace_build in {"462.0", "463.0", "464.0", "465.0", "466.0", "467.0"}:
             graph_url = "/entities462?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(graph_url, quote=True) + '">Entitäten &amp; Beziehungen</a>'
-        if workspace_build in {"463.0", "464.0", "465.0", "466.0"}:
+        if workspace_build in {"463.0", "464.0", "465.0", "466.0", "467.0"}:
             proof_url = "/source-links463?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(proof_url, quote=True) + '">Dokumentgebundene Beziehungen</a>'
-        if workspace_build in {"464.0", "465.0", "466.0"}:
+        if workspace_build in {"464.0", "465.0", "466.0", "467.0"}:
             graph_url = "/graph464?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(graph_url, quote=True) + '">Netzwerkanalyse</a>'
-        if workspace_build == "465.0":
+        if workspace_build in {"465.0","466.0","467.0"}:
             review_url = "/review465?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(review_url,quote=True) + '">Integrierte Fallprüfung</a>'
-        if workspace_build == "466.0":
+        if workspace_build in {"466.0","467.0"}:
             url = "/provenance466?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(url, quote=True) + '">Belegherkunft &amp; Integrität</a>'
         html = html.replace("</nav>", link + "</nav>", 1)
