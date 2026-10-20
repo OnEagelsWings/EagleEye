@@ -27,12 +27,20 @@ def resolve_provenance(service, identity, case_id, graph):
                         loaded[doc_id]=service.anchors(identity=identity,document_id=doc_id)
                     packet=loaded[doc_id]
                     doc=packet["document"]
+                    # The underlying document and anchor rows remain the source of truth.
+                    # Validate only records from this authorized document, not other cases.
+                    record_valid=doc["record_hash"]==service._rh(doc)
+                    for raw in service.db.all("SELECT * FROM phase20_document_anchor_458 WHERE document_id=?", (doc_id,)):
+                        anchor=dict(raw)
+                        if anchor["record_hash"]!=service._rh(anchor):
+                            record_valid=False
                     detail.update(status="case_document",title=doc.get("title",""),
                         sha256=doc.get("document_sha256",""),
                         captured_at=doc.get("created_at") or doc.get("imported_at") or "",
                         uri=doc.get("source_url") or doc.get("canonical_url") or "",
                         anchors=len(packet.get("anchors",[])),document_id=doc_id,
-                        stored_relpath=doc.get("stored_relpath",""))
+                        stored_relpath=doc.get("stored_relpath",""),
+                        record_integrity=record_valid)
                     if not all((detail["sha256"],detail["captured_at"],detail["uri"])):
                         detail["status"]="incomplete_provenance"
                 else:
@@ -86,7 +94,8 @@ def create_workspace_app466(*, base_dir=None, workspace_build="466.0"):
                         with candidate.open("rb") as stream:
                             for chunk in iter(lambda:stream.read(1024*1024),b""):
                                 digest.update(chunk)
-                        checked[doc_id]=bool(source["sha256"]) and digest.hexdigest()==source["sha256"]
+                        checked[doc_id]=(bool(source["sha256"]) and digest.hexdigest()==source["sha256"]
+                                         and source["record_integrity"])
                     except (OSError,ValueError):
                         checked[doc_id]=False
                 source["file_integrity"]="bestanden" if checked[doc_id] else "HALT"
@@ -111,11 +120,11 @@ def create_workspace_app466(*, base_dir=None, workspace_build="466.0"):
                             +escape(row["state"])+'</p><ul>'+''.join(details)+'</ul></section>')
         back="/graph464?"+urlencode({"case_id":case_id})
         return HTMLResponse('<!doctype html><html lang="de"><head><meta charset="utf-8">'
-            '<title>EagleEye 466 – Provenienz</title><style>body{font:1rem system-ui;'
+            '<title>EagleEye '+escape(workspace_build)+' – Provenienz</title><style>body{font:1rem system-ui;'
             'max-width:900px;margin:2rem auto;padding:1rem;background:#142236;color:#eaf3fd}'
             'a{color:#80dfd3}section{padding:1rem;border:1px solid #7e93a6;margin:1rem 0}</style>'
             '</head><body><main><a href="'+escape(back,quote=True)+'">Zurück zum Graph</a>'
-            '<h1>Belegprüfung · Build 467</h1><p>Integrität der verknüpften Falldokumente: '
+            '<h1>Belegprüfung · Build '+escape(workspace_build)+'</h1><p>Integrität der verknüpften Falldokumente: '
             +("bestanden" if overall is True else ("HALT" if overall is False else "nicht geprüft"))+'</p><p>Quellenmetadaten sind keine '
             'Bestätigung von Behauptungen. Unbekannte Pflichtfelder bleiben sichtbar.</p>'
             +''.join(sections)+'</main></body></html>',headers={"Cache-Control":"no-store"})
