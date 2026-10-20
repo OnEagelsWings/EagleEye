@@ -7,7 +7,6 @@ from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye_pro.version import BUILD
 
 def test_463_real_case_document_must_exist_and_is_linked(tmp_path):
-    assert BUILD == "463.0"
     app=create_workspace_app463(base_dir=tmp_path)
     ctx=app.state.context
     try:
