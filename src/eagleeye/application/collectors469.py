@@ -42,6 +42,8 @@ def normalize_indicator(provider: str, indicator: str) -> str:
     except UnicodeError as exc:
         raise ValueError("Ungültiger Domainname") from exc
     labels = val.split(".")
+    if labels[-1].isdigit():
+        raise ValueError("IP-Adressen sind kein Domain-Indikator")
     if len(labels) < 2 or any(not (1 <= len(v) <= 63) or
             not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", v) for v in labels):
         raise ValueError("Ungültiger Domainname")
