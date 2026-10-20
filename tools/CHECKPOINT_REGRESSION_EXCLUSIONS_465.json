@@ -7,7 +7,7 @@
     "Launcher/version exclusions cover assertions that a historical build is still the current runtime/server/installer.",
     "Build-407-409 pre-canonical-identity write tests are superseded by later fail-closed identity requirements and must not weaken current authorization."
   ],
-  "excluded_count": 123,
+  "excluded_count": 119,
   "exclusions": [
     {
       "nodeid": "tests/test_build365.py::test_version_schema",
@@ -484,22 +484,6 @@
     {
       "nodeid": "tests/test_build460_current_checkpoint.py::test_build460_launcher_version_and_health_contract",
       "reason": "superseded_historical_current_launcher_contract"
-    },
-    {
-      "nodeid": "tests/test_build461_workflow_guide.py::test_build461_authentication_and_case_scoping",
-      "reason": "superseded_historical_current_version_assertion"
-    },
-    {
-      "nodeid": "tests/test_build462_live_case_workbench.py::test_build462_live_case_workbench_persists_entities_and_relationships",
-      "reason": "superseded_historical_current_version_assertion"
-    },
-    {
-      "nodeid": "tests/test_build463_document_links.py::test_463_real_case_document_must_exist_and_is_linked",
-      "reason": "superseded_historical_current_version_assertion"
-    },
-    {
-      "nodeid": "tests/test_build464_graph_browser.py::test_464_authorized_clickable_graph_and_real_source_drilldown",
-      "reason": "superseded_historical_current_version_assertion"
     }
   ]
 }
