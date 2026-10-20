@@ -9,16 +9,16 @@ from .app448 import COOKIE
 from .app449 import _drop
 from eagleeye.application.benchmark468 import benchmark
 
-def create_workspace_app468(*,base_dir=None):
-    app=create_workspace_app467(base_dir=base_dir,workspace_build='468.0')
-    app.version="468.0"
+def create_workspace_app468(*,base_dir=None,workspace_build="468.0"):
+    app=create_workspace_app467(base_dir=base_dir,workspace_build=workspace_build)
+    app.version=workspace_build
     app.title="EagleEye Build 468 – Reproducible Benchmark"
     ctx=app.state.context
     _drop(app,"/health",{"GET"})
     @app.get("/health")
     def health468():
         valid=bool(ctx.build458.build458_status().get("integrity_valid",False))
-        return {"ok":True,"build":"468.0","status":"ok" if valid else "hold",
+        return {"ok":True,"build":workspace_build,"status":"ok" if valid else "hold",
                 "integrity_valid":valid,"production_release_ready":False,"next_checkpoint":"470.0"}
 
     @app.get("/benchmark468",response_class=HTMLResponse)
