@@ -42,8 +42,8 @@ def resolve_provenance(service, identity, case_id, graph):
                       "predicate":relation["predicate"],"state":relation["state"],"sources":sources})
     return items
 
-def create_workspace_app466(*, base_dir=None):
-    app=create_workspace_app465(base_dir=base_dir,workspace_build="466.0",
+def create_workspace_app466(*, base_dir=None, workspace_build="466.0"):
+    app=create_workspace_app465(base_dir=base_dir,workspace_build=workspace_build,
                                 workspace_title="Document Provenance Inspection")
     ctx=app.state.context
     db=(Path(base_dir) if base_dir is not None else Path.home()/".eagleeye")/"entity_registry_462.sqlite3"
@@ -52,7 +52,7 @@ def create_workspace_app466(*, base_dir=None):
     @app.get("/health")
     def health466():
         integrity=bool(ctx.build458.build458_status().get("integrity_valid",False))
-        return {"ok":True,"build":"466.0","status":"ok" if integrity else "hold",
+        return {"ok":True,"build":workspace_build,"status":"ok" if integrity else "hold",
                 "integrity_valid":integrity,"production_release_ready":False,"next_checkpoint":"470.0"}
 
     @app.get("/provenance466",response_class=HTMLResponse)
