@@ -20,7 +20,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-%PYTHON% INSTALL_EAGLEEYE_465.py
+%PYTHON% INSTALL_EAGLEEYE_466.py
 if errorlevel 1 goto :failed
 
 set "RUNTIME_PY=.eagleeye-runtime\Scripts\python.exe"
@@ -34,7 +34,7 @@ exit /b 0
 :failed
 echo.
 echo EagleEye Build 461 did not install or start successfully.
-echo Run: %PYTHON% INSTALL_EAGLEEYE_465.py --check
+echo Run: %PYTHON% INSTALL_EAGLEEYE_466.py --check
 echo.
 pause
 exit /b 1

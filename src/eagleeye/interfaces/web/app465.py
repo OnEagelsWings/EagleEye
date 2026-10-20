@@ -12,9 +12,9 @@ from .app464 import create_workspace_app464
 from .app448 import COOKIE
 from .app449 import _drop
 
-def create_workspace_app465(*,base_dir=None):
-    app=create_workspace_app464(base_dir=base_dir,workspace_build="465.0",
-                                 workspace_title="Integrated Investigation Checkpoint")
+def create_workspace_app465(*,base_dir=None,workspace_build="465.0",workspace_title="Integrated Investigation Checkpoint"):
+    app=create_workspace_app464(base_dir=base_dir,workspace_build=workspace_build,
+                                 workspace_title=workspace_title)
     ctx=app.state.context
     db_path=(Path(base_dir) if base_dir is not None else Path.home()/".eagleeye")/"entity_registry_462.sqlite3"
     _drop(app,"/health",{"GET"})
@@ -22,7 +22,7 @@ def create_workspace_app465(*,base_dir=None):
     @app.get("/health")
     def health465():
         integrity=bool(ctx.build458.build458_status().get("integrity_valid",False))
-        return {"ok":True,"build":"465.0","status":"ok" if integrity else "hold",
+        return {"ok":True,"build":workspace_build,"status":"ok" if integrity else "hold",
                 "integrity_valid":integrity,"production_release_ready":False,
                 "next_checkpoint":"470.0"}
 

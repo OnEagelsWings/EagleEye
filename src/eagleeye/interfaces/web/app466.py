@@ -1,0 +1,97 @@
+"""Build 466: inspect provenance against existing case-authorized document store."""
+from __future__ import annotations
+import hashlib
+from html import escape
+from pathlib import Path
+from urllib.parse import urlencode
+from fastapi import Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from eagleeye.application.entity_registry461 import EntityRegistry461
+from .app465 import create_workspace_app465
+from .app448 import COOKIE
+from .app449 import _drop
+
+def resolve_provenance(service, identity, case_id, graph):
+    documents={d["document_id"]:d for d in service.documents(identity=identity,case_id=case_id)}
+    items=[]
+    for relation in graph["relations"]:
+        sources=[]
+        for source in relation["sources"]:
+            ref=source["source_ref"]
+            detail={"ref":ref,"status":"unverified","title":"","sha256":"","captured_at":"","uri":"","anchors":0}
+            if ref.startswith("doc458:"):
+                doc_id=ref[7:]
+                if doc_id in documents:
+                    packet=service.anchors(identity=identity,document_id=doc_id)
+                    doc=packet["document"]
+                    detail.update(status="case_document",title=doc.get("title",""),
+                        sha256=doc.get("document_sha256",""),
+                        captured_at=doc.get("created_at") or doc.get("imported_at") or "",
+                        uri=doc.get("source_url") or doc.get("canonical_url") or "",
+                        anchors=len(packet.get("anchors",[])))
+                    if not all((detail["sha256"],detail["captured_at"],detail["uri"])):
+                        detail["status"]="incomplete_provenance"
+                else:
+                    detail["status"]="missing_or_foreign_document"
+            sources.append(detail)
+        items.append({"predicate":relation["predicate"],"state":relation["state"],"sources":sources})
+    return items
+
+def create_workspace_app466(*, base_dir=None):
+    app=create_workspace_app465(base_dir=base_dir,workspace_build="466.0",
+                                workspace_title="Document Provenance Inspection")
+    ctx=app.state.context
+    db=(Path(base_dir) if base_dir is not None else Path.home()/".eagleeye")/"entity_registry_462.sqlite3"
+    _drop(app,"/health",{"GET"})
+
+    @app.get("/health")
+    def health466():
+        integrity=bool(ctx.build458.build458_status().get("integrity_valid",False))
+        return {"ok":True,"build":"466.0","status":"ok" if integrity else "hold",
+                "integrity_valid":integrity,"production_release_ready":False,"next_checkpoint":"470.0"}
+
+    @app.get("/provenance466",response_class=HTMLResponse)
+    def provenance(request:Request,case_id:str=""):
+        fingerprint=hashlib.sha256("|".join((
+            request.headers.get("user-agent",""),request.headers.get("accept-language",""),
+            request.client.host if request.client else "")).encode()).hexdigest()
+        identity=ctx.team_identity_359.validate_session(
+            request.cookies.get(COOKIE,""),client_fingerprint=fingerprint,touch=True)
+        if not identity:
+            return RedirectResponse("/security/login",status_code=303)
+        if not any(str(c.get("case_id"))==case_id for c in ctx.team_governance_359.visible_cases(identity)):
+            return RedirectResponse("/",status_code=303)
+        with EntityRegistry461(db) as store:
+            graph=store.graph(case_id)
+        rows=resolve_provenance(ctx.document_intelligence_458,identity,case_id,graph)
+        overall=bool(ctx.document_intelligence_458.verify_integrity()["valid"])
+        sections=[]
+        for row in rows:
+            details=[]
+            for source in row["sources"]:
+                ref=source["ref"]
+                if source["status"] in ("case_document","incomplete_provenance"):
+                    link="/documents458?"+urlencode({"case_id":case_id,"document_id":ref[7:]})
+                    detail='<a href="'+escape(link,quote=True)+'">'+escape(source["title"])+'</a>'
+                    for title,key in (("SHA-256","sha256"),("Zeitstempel","captured_at"),
+                                      ("Quellen-URL","uri")):
+                        detail+='<p>'+title+': '+escape(source[key] or "UNBEKANNT")+'</p>'
+                    detail+='<p>Textanker: '+str(source["anchors"])+'</p>'
+                else:
+                    detail=escape(ref)
+                details.append('<li>'+detail+' · '+escape(source["status"])+'</li>')
+            sections.append('<section><h2>'+escape(row["predicate"])+'</h2><p>Status: '
+                            +escape(row["state"])+'</p><ul>'+''.join(details)+'</ul></section>')
+        back="/graph464?"+urlencode({"case_id":case_id})
+        return HTMLResponse('<!doctype html><html lang="de"><head><meta charset="utf-8">'
+            '<title>EagleEye 466 – Provenienz</title><style>body{font:1rem system-ui;'
+            'max-width:900px;margin:2rem auto;padding:1rem;background:#142236;color:#eaf3fd}'
+            'a{color:#80dfd3}section{padding:1rem;border:1px solid #7e93a6;margin:1rem 0}</style>'
+            '</head><body><main><a href="'+escape(back,quote=True)+'">Zurück zum Graph</a>'
+            '<h1>Belegprüfung · Build 466</h1><p>Dokumentenintegrität: '
+            +("bestanden" if overall else "HALT")+'</p><p>Quellenmetadaten sind keine '
+            'Bestätigung von Behauptungen. Unbekannte Pflichtfelder bleiben sichtbar.</p>'
+            +''.join(sections)+'</main></body></html>',headers={"Cache-Control":"no-store"})
+    return app
+
+create_app=create_workspace_app466
