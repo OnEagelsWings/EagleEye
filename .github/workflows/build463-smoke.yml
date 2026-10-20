@@ -1,0 +1,43 @@
+name: EagleEye Build 463 Quick Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-463:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Quick functional smoke
+        run: python -m pytest -q tests/test_build463_document_links.py
+      - name: Syntax and runtime import
+        run: python -m compileall -q src/eagleeye/interfaces/web/app463.py src/eagleeye/application/entity_registry461.py
+      - name: Package full laptop source build
+        if: success()
+        shell: bash
+        run: |
+          git archive --format=zip --output=EagleEye_Build_463_LAPTOP.zip HEAD
+          python -c "import hashlib,pathlib; p=pathlib.Path('EagleEye_Build_463_LAPTOP.zip');pathlib.Path('EagleEye_Build_463_LAPTOP.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: EagleEye_Build_463_LAPTOP_${{ matrix.os }}
+          path: |
+            EagleEye_Build_463_LAPTOP.zip
+            EagleEye_Build_463_LAPTOP.sha256
+          if-no-files-found: error
+          retention-days: 30

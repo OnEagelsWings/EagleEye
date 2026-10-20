@@ -1,7 +1,6 @@
 name: EagleEye Build 462 Quick Smoke
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:

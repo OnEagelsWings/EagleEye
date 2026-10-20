@@ -61,12 +61,15 @@ def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace
             + escape(urlencode({"case_id": selected_id}), quote=True)
             + '">Dokumente &amp; Quellenprüfung</a>'
         )
-        if workspace_build in {"461.0", "462.0"}:
+        if workspace_build in {"461.0", "462.0", "463.0", "464.0", "465.0"}:
             guide_url = "/workflow461?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(guide_url, quote=True) + '">Ermittlungsweg · Anleitung</a>'
-        if workspace_build == "462.0":
+        if workspace_build in {"462.0", "463.0", "464.0", "465.0"}:
             graph_url = "/entities462?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(graph_url, quote=True) + '">Entitäten &amp; Beziehungen</a>'
+        if workspace_build in {"463.0", "464.0", "465.0"}:
+            proof_url = "/source-links463?" + urlencode({"case_id": selected_id})
+            link += '<a href="' + escape(proof_url, quote=True) + '">Dokumentgebundene Beziehungen</a>'
         html = html.replace("</nav>", link + "</nav>", 1)
         return HTMLResponse(html)
 
