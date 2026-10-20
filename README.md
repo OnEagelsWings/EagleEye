@@ -1,4 +1,4 @@
-# EagleEye — Build 465 — End-to-End Investigation Checkpoint
+# EagleEye — Build 466 — Document Provenance Inspection
 
 EagleEye is a local-first, case-centered OSINT and investigation platform with source provenance, evidence review, human-governed AI assistance and auditable Evidence → Claims → Dossier workflows.
 
@@ -11,13 +11,23 @@ Windows: run `START_EAGLEEYE_PRO.bat`. Linux/macOS: run `sh START_EAGLEEYE_PRO.s
 For manual installation and verification:
 
 ```bash
-python INSTALL_EAGLEEYE_465.py
-python INSTALL_EAGLEEYE_465.py --check
+python INSTALL_EAGLEEYE_466.py
+python INSTALL_EAGLEEYE_466.py --check
 ```
 
 Use **public or synthetic test data only** during development; do not import sensitive personal data until a separately approved and tested deployment is available.
 
-## Build 465 – Integration und Fallabnahme
+## Build 466 – Fallbezogene Belegherkunft prüfen
+
+Im Fall die Navigation **Belegherkunft & Integrität** öffnen. Für auflösbare Document-Intelligence-Belege werden der gespeicherte SHA-256-Hash, verfügbare Zeitstempel, Ursprungs-URL und Anzahl der Dokumentanker angezeigt. Fehlende Angaben und manuelle Quellenverweise bleiben ausdrücklich sichtbar. Ein Dokument-Hash beweist nicht, dass eine Behauptung wahr ist.
+
+Zwischenbuild: kurzer Browser-Smoke-Test unter Windows/Linux. Nächster vollständiger Systemcheckpoint: Build 470.
+
+```bash
+python -m pytest -q tests/test_build466_provenance_smoke.py
+```
+
+## Vorherige Integration und Fallabnahme
 
 Nach Anmeldung einen Fall öffnen, zunächst unter **Dokumente & Quellenprüfung** ein TXT-, MD- oder PDF-Dokument importieren, anschließend unter **Dokumentgebundene Beziehungen** eine Beziehung zwischen zwei Entitäten mit einem tatsächlich vorhandenen Fall-Dokument verknüpfen. Die Nachweis-ID wird auf Zugehörigkeit zum Fall geprüft.
 
