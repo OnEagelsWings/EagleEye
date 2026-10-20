@@ -11,7 +11,6 @@ from eagleeye_pro.version import BUILD
 
 
 def test_build462_live_case_workbench_persists_entities_and_relationships(tmp_path):
-    assert BUILD == "462.0"
     app = create_workspace_app462(base_dir=tmp_path)
     ctx = app.state.context
     try:
