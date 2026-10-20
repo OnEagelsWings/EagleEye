@@ -2,7 +2,7 @@
 from .app466 import create_workspace_app466 as _base
 from .app449 import _drop
 
-def create_workspace_app467(*,base_dir=None):
+def create_workspace_app467(*,base_dir=None,workspace_build=workspace_build):
     app=_base(base_dir=base_dir,workspace_build='467.0')
     app.title="EagleEye Build 467 – Provenance Review Corrections"
     app.version="467.0"
