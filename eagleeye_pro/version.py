@@ -1,3 +1,3 @@
-BUILD = "468.0"
-SCHEMA_VERSION = "468.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 468.0 Reproducible Synthetic Search Benchmark"
+BUILD = "469.0"
+SCHEMA_VERSION = "469.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 469.0 Case Scoped Source Collectors"
