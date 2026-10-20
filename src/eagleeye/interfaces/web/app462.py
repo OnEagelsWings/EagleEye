@@ -15,10 +15,10 @@ from .app448 import COOKIE
 from .app449 import _drop
 
 
-def create_workspace_app462(*, base_dir=None):
+def create_workspace_app462(*, base_dir=None, workspace_build="462.0", workspace_title="Interactive Case Intelligence"):
     app = create_workspace_app461(
-        base_dir=base_dir, workspace_build="462.0",
-        workspace_title="Interactive Case Intelligence",
+        base_dir=base_dir, workspace_build=workspace_build,
+        workspace_title=workspace_title,
     )
     ctx = app.state.context
     team = ctx.team_identity_359
@@ -28,7 +28,7 @@ def create_workspace_app462(*, base_dir=None):
     @app.get("/health")
     def health462():
         integrity = bool(ctx.build458.build458_status().get("integrity_valid", False))
-        return {"ok": True, "build": "462.0", "status": "ok" if integrity else "hold",
+        return {"ok": True, "build": workspace_build, "status": "ok" if integrity else "hold",
                 "integrity_valid": integrity, "production_release_ready": False,
                 "next_checkpoint": "465.0"}
 
