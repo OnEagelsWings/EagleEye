@@ -1,4 +1,4 @@
-# EagleEye — Build 461 Development Checkpoint
+# EagleEye — Build 462 Interactive Case Workbench
 
 EagleEye is a local-first, case-centered OSINT and investigation platform with source provenance, evidence review, human-governed AI assistance and auditable Evidence → Claims → Dossier workflows.
 
@@ -11,13 +11,13 @@ Windows: run `START_EAGLEEYE_PRO.bat`. Linux/macOS: run `sh START_EAGLEEYE_PRO.s
 For manual installation and verification:
 
 ```bash
-python INSTALL_EAGLEEYE_461.py
-python INSTALL_EAGLEEYE_461.py --check
+python INSTALL_EAGLEEYE_462.py
+python INSTALL_EAGLEEYE_462.py --check
 ```
 
 Use **public or synthetic test data only** during development; do not import sensitive personal data until a separately approved and tested deployment is available.
 
-## Verification and download
+## Build 462 – Jetzt im Browser testen\n\nNach Anmeldung einen Fall öffnen, in der Hauptnavigation **Entitäten & Beziehungen** wählen und Personen/Organisationen anlegen. Zwei Entitäten können anschließend durch eine gerichtete Beziehung mit einer Quellen-ID verbunden werden. Die Datensätze bleiben lokal über Neustarts erhalten. **Quellenverweise sind keine automatisch verifizierten Belege.**\n\nFür diesen Zwischenbuild gilt ein kurzer Smoke-Test unter Linux und Windows; der nächste vollständige Systemtest folgt erst bei Build 465.\n\n```bash\npython -m pip install -e '.[test]'\npython -m pytest -q tests/test_build462_live_case_workbench.py\n```\n\n## Ältere vollständige Checkpoint-Tests
 
 The Build-460 full checkpoint runs the governed repository regression suite, the Phase-18–20 tests, compilation and isolated-runtime installation on Linux and Windows:
 
