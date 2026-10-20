@@ -28,3 +28,17 @@ def test_build468_dashboard_requires_auth_and_reports_non_product_status(tmp_pat
             assert not client.get("/health").json()["production_release_ready"]
     finally:
         ctx.close()
+
+def test_cli_runs_from_clean_repository_checkout(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+    repo=Path(__file__).resolve().parents[1]
+    destination=tmp_path/"report.json"
+    result=subprocess.run([sys.executable,str(repo/"tools"/"benchmark468.py"),
+        "--output",str(destination)],cwd=tmp_path,capture_output=True,text=True,timeout=20)
+    assert result.returncode==0, result.stderr
+    import json
+    data=json.loads(destination.read_text())
+    assert data["query_count"]==100
+    assert data["not_product_search"] is True
