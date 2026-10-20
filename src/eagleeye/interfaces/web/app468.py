@@ -10,7 +10,7 @@ from .app449 import _drop
 from eagleeye.application.benchmark468 import benchmark
 
 def create_workspace_app468(*,base_dir=None):
-    app=create_workspace_app467(base_dir=base_dir)
+    app=create_workspace_app467(base_dir=base_dir,workspace_build='468.0')
     app.version="468.0"
     ctx=app.state.context
     _drop(app,"/health",{"GET"})
