@@ -4,7 +4,7 @@ from .app449 import _drop
 
 def create_workspace_app467(*,base_dir=None,workspace_build='467.0'):
     app=_base(base_dir=base_dir,workspace_build=workspace_build)
-    app.title="EagleEye Build 467 – Provenance Review Corrections"
+    app.title="EagleEye Build "+workspace_build+" – Investigation Workspace"
     app.version=workspace_build
     _drop(app,"/health",{"GET"})
     @app.get("/health")
