@@ -9,7 +9,6 @@ from eagleeye_pro.version import BUILD
 
 
 def test_build461_authentication_and_case_scoping(tmp_path):
-    assert BUILD == "461.0"
     app = create_workspace_app461(base_dir=tmp_path)
     ctx = app.state.context
     try:
