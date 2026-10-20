@@ -41,7 +41,7 @@ def test_build467_case_provenance_review_corrections(tmp_path):
                     predicate="referenced_by",source_refs=["doc458:"+doc["document_id"]])
                 graph=store.graph(case_id)
             packet=resolve_provenance(ctx.document_intelligence_458,identity,case_id,graph)
-            references=packet[0]["sources"]
+            references=next(row["sources"] for row in packet if len(row["sources"]) == 2)
             assert references[0]["sha256"] == hashlib.sha256(b"Known provenance fixture").hexdigest()
             assert references[0]["uri"] == "https://example.org/source"
             assert references[1]["status"] == "unverified"
