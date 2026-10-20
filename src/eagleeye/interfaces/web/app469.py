@@ -84,6 +84,12 @@ def create_workspace_app469(*, base_dir=None, workspace_build="469.0"):
         case_id=str(form.get("case_id",""))
         identity,denied=current_actor(request,case_id)
         if denied is not None:return denied
+        try:
+            ctx.team_governance_359.authorize(
+                identity,case_id=str(case_id),capability="research.run",
+                object_type="document_intelligence_458",object_id=str(case_id))
+        except PermissionError as exc:
+            raise HTTPException(status_code=403,detail="No research permission for case") from exc
         if not hmac.compare_digest(str(form.get("csrf_token","")),token(request,case_id)):
             raise HTTPException(status_code=403,detail="Invalid submission token")
         origin=request.headers.get("origin","")
@@ -107,9 +113,12 @@ def create_workspace_app469(*, base_dir=None, workspace_build="469.0"):
             raise HTTPException(status_code=422,detail=str(exc)) from exc
         except Exception as exc:
             raise HTTPException(status_code=502,detail="Public provider unavailable") from exc
-        document=ctx.document_intelligence_458.import_bytes(
-            identity=identity,case_id=case_id,filename=packet["filename"],
-            raw=packet["raw"],title=packet["title"],source_url=packet["source_url"])
+        def import_with_audit():
+            with ctx.audit.actor_scope(identity["username"]):
+                return ctx.document_intelligence_458.import_bytes(
+                    identity=identity,case_id=case_id,filename=packet["filename"],
+                    raw=packet["raw"],title=packet["title"],source_url=packet["source_url"])
+        document=await asyncio.to_thread(import_with_audit)
         return RedirectResponse("/documents458?"+urlencode({
             "case_id":case_id,"document_id":document["document_id"]}),status_code=303)
     return app
