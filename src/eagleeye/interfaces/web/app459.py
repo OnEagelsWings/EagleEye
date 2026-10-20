@@ -73,6 +73,9 @@ def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace
         if workspace_build in {"464.0", "465.0"}:
             graph_url = "/graph464?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(graph_url, quote=True) + '">Netzwerkanalyse</a>'
+        if workspace_build == "465.0":
+            review_url = "/review465?" + urlencode({"case_id": selected_id})
+            link += '<a href="' + escape(review_url,quote=True) + '">Integrierte Fallprüfung</a>'
         html = html.replace("</nav>", link + "</nav>", 1)
         return HTMLResponse(html)
 

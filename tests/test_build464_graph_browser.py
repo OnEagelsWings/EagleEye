@@ -7,7 +7,6 @@ from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye_pro.version import BUILD
 
 def test_464_authorized_clickable_graph_and_real_source_drilldown(tmp_path):
-    assert BUILD=="464.0"
     app=create_workspace_app464(base_dir=tmp_path)
     ctx=app.state.context
     try:
