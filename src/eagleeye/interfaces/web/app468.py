@@ -11,7 +11,8 @@ from eagleeye.application.benchmark468 import benchmark
 
 def create_workspace_app468(*,base_dir=None):
     app=create_workspace_app467(base_dir=base_dir,workspace_build='468.0')
-    app.version="468.0"\n    app.title="EagleEye Build 468 – Reproducible Benchmark"
+    app.version="468.0"
+    app.title="EagleEye Build 468 – Reproducible Benchmark"
     ctx=app.state.context
     _drop(app,"/health",{"GET"})
     @app.get("/health")
