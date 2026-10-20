@@ -27,7 +27,7 @@ def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace
         integrity = bool(ctx.build458.build458_status().get("integrity_valid", False))
         return {"ok": True, "build": workspace_build, "status": "ok" if integrity else "hold",
                 "integrity_valid": integrity, "production_release_ready": False,
-                "next_checkpoint": "460.0" if workspace_build == "459.0" else "465.0", "466.0"}
+                "next_checkpoint": "460.0" if workspace_build == "459.0" else ("470.0" if workspace_build == "466.0" else "465.0")}
 
 
     @app.get("/", response_class=HTMLResponse)
