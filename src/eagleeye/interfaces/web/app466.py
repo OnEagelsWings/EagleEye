@@ -15,6 +15,7 @@ def resolve_provenance(service, identity, case_id, graph):
     documents={d["document_id"]:d for d in service.documents(identity=identity,case_id=case_id)}
     items=[]
     loaded={}
+    validated={}
     for relation in graph["relations"]:
         sources=[]
         for source in relation["sources"]:
@@ -29,11 +30,14 @@ def resolve_provenance(service, identity, case_id, graph):
                     doc=packet["document"]
                     # The underlying document and anchor rows remain the source of truth.
                     # Validate only records from this authorized document, not other cases.
-                    record_valid=doc["record_hash"]==service._rh(doc)
-                    for raw in service.db.all("SELECT * FROM phase20_document_anchor_458 WHERE document_id=?", (doc_id,)):
-                        anchor=dict(raw)
-                        if anchor["record_hash"]!=service._rh(anchor):
-                            record_valid=False
+                    if doc_id not in validated:
+                        record_valid=doc["record_hash"]==service._rh(doc)
+                        for raw in service.db.all("SELECT * FROM phase20_document_anchor_458 WHERE document_id=?", (doc_id,)):
+                            anchor=dict(raw)
+                            if anchor["record_hash"]!=service._rh(anchor):
+                                record_valid=False
+                        validated[doc_id]=record_valid
+                    record_valid=validated[doc_id]
                     detail.update(status="case_document",title=doc.get("title",""),
                         sha256=doc.get("document_sha256",""),
                         captured_at=doc.get("created_at") or doc.get("imported_at") or "",
