@@ -1,4 +1,4 @@
-# EagleEye — Build 464 — Clickable Intelligence Graph
+# EagleEye — Build 465 — End-to-End Investigation Checkpoint
 
 EagleEye is a local-first, case-centered OSINT and investigation platform with source provenance, evidence review, human-governed AI assistance and auditable Evidence → Claims → Dossier workflows.
 
@@ -11,20 +11,32 @@ Windows: run `START_EAGLEEYE_PRO.bat`. Linux/macOS: run `sh START_EAGLEEYE_PRO.s
 For manual installation and verification:
 
 ```bash
-python INSTALL_EAGLEEYE_464.py
-python INSTALL_EAGLEEYE_464.py --check
+python INSTALL_EAGLEEYE_465.py
+python INSTALL_EAGLEEYE_465.py --check
 ```
 
 Use **public or synthetic test data only** during development; do not import sensitive personal data until a separately approved and tested deployment is available.
 
-## Build 464 – Beziehungsnetz im Browser untersuchen\n\nNach Anmeldung einen Fall öffnen, zunächst unter **Dokumente & Quellenprüfung** ein TXT-, MD- oder PDF-Dokument importieren, anschließend unter **Dokumentgebundene Beziehungen** eine Beziehung zwischen zwei Entitäten mit einem tatsächlich vorhandenen Fall-Dokument verknüpfen. Die Nachweis-ID wird auf Zugehörigkeit zum Fall geprüft.\n\nIm bisherigen Entitätenarbeitsplatz kann man und Personen/Organisationen anlegen. Zwei Entitäten können anschließend durch eine gerichtete Beziehung mit einer Quellen-ID verbunden werden. Die Datensätze bleiben lokal über Neustarts erhalten. **Quellenverweise sind keine automatisch verifizierten Belege.**\n\nFür diesen Zwischenbuild gilt ein kurzer Smoke-Test unter Linux und Windows; der nächste vollständige Systemtest folgt erst bei Build 465.\n\n```bash\npython -m pip install -e '.[test]'\npython -m pytest -q tests/test_build464_graph_browser.py\n```\n\n## Ältere vollständige Checkpoint-Tests
+## Build 465 – Integration und Fallabnahme\n\nNach Anmeldung einen Fall öffnen, zunächst unter **Dokumente & Quellenprüfung** ein TXT-, MD- oder PDF-Dokument importieren, anschließend unter **Dokumentgebundene Beziehungen** eine Beziehung zwischen zwei Entitäten mit einem tatsächlich vorhandenen Fall-Dokument verknüpfen. Die Nachweis-ID wird auf Zugehörigkeit zum Fall geprüft.\n\nIm bisherigen Entitätenarbeitsplatz kann man und Personen/Organisationen anlegen. Zwei Entitäten können anschließend durch eine gerichtete Beziehung mit einer Quellen-ID verbunden werden. Die Datensätze bleiben lokal über Neustarts erhalten. **Quellenverweise sind keine automatisch verifizierten Belege.**\n\nBuild 465 ist ein vollständiger Testcheckpoint. Er prüft den integrierten Fallablauf sowie die breite Regression unter Windows und Linux. Eine unabhängige Produktivfreigabe wird damit nicht behauptet.\n\n```bash\npython -m pip install -e '.[test]'\npython -m pytest -q tests/test_build465_integrated_e2e.py\n```\n\n
+## Ende-zu-Ende-Abnahme
+
+1. Fall erstellen und darin ein TXT-, MD- oder PDF-Dokument unter **Dokumente & Quellenprüfung** importieren.
+2. Unter **Entitäten & Beziehungen** Personen und Organisationen anlegen.
+3. Unter **Dokumentgebundene Beziehungen** zwei Entitäten mit einem tatsächlich importierten Fall-Dokument als Hypothese verbinden.
+4. Den **Netzwerkgraph** öffnen, Knoten und Beziehung anklicken und über den Beleglink zum Dokument zurückgehen.
+5. **Integrierte Fallprüfung** öffnen: Dokumente, Entitäten, Hypothesen, unsichere und nicht auflösbare Verweise müssen sichtbar sein.
+6. Ein offizieller Dossierexport ist ausschließlich nach den bereits vorhandenen menschlichen Freigaben möglich; die Fallprüfung ist kein ungenehmigter Export.
+
+Die Build-465-Auslieferung enthält den vollständigen Quellcode und Startskripte. Python 3.12 und mögliche Dependency-Downloads sind weiterhin nötig.
+
+## Vollständige Checkpoint-Tests
 
 The Build-460 full checkpoint runs the governed repository regression suite, the Phase-18–20 tests, compilation and isolated-runtime installation on Linux and Windows:
 
 ```bash
 python -m pip install -e '.[test]'
-python tools/run_checkpoint_regression461.py
-python tools/run_checkpoint_regression461.py --phase18-20
+python tools/run_checkpoint_regression465.py
+python tools/run_checkpoint_regression465.py --phase18-20
 pytest -q tests/test_build461_workflow_guide.py tests/test_build461_entity_registry.py
 ```
 
