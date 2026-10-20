@@ -32,7 +32,7 @@ def normalize_indicator(provider: str, indicator: str) -> str:
         raise ValueError("Unbekannte Quelle")
     val = str(indicator).strip()
     if provider == "crossref":
-        if len(val) > 256 or not re.fullmatch(r"10\\.\\d{4,9}/[A-Za-z0-9._;()/:+-]+", val):
+        if len(val) > 256 or not re.fullmatch(r"10\.\d{4,9}/[A-Za-z0-9._;()/:+-]+", val):
             raise ValueError("Ungültiger DOI")
         return val
     if not val or len(val) > 253:
