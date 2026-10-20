@@ -56,6 +56,13 @@ def test_build469_authenticated_case_import_and_csrf(tmp_path):
             assert token
             data={"case_id":case_id,"provider":"dns","indicator":"example.com"}
             assert client.post("/collect469/import",data=data,follow_redirects=False).status_code==403
+            # Denied research permission must prevent *all* network egress.
+            with patch.object(ctx.team_governance_359,"authorize",side_effect=PermissionError("denied")):
+                with patch("eagleeye.interfaces.web.app469.collect") as blocked_collector:
+                    denied=client.post("/collect469/import",
+                        data={**data,"csrf_token":token.group(1)},follow_redirects=False)
+                    assert denied.status_code==403
+                    blocked_collector.assert_not_called()
             with patch("eagleeye.interfaces.web.app469.collect",
                        side_effect=lambda provider,indicator: collect(
                          provider,indicator,fetcher=lambda url:{"Status":0,"Answer":[]})):
