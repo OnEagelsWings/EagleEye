@@ -103,7 +103,9 @@ def create_workspace_app466(*, base_dir=None, workspace_build="466.0"):
                     except (OSError,ValueError):
                         checked[doc_id]=False
                 source["file_integrity"]="bestanden" if checked[doc_id] else "HALT"
-        overall=all(checked.values()) if checked else None
+        unresolved_documents=any(source["status"]=="missing_or_foreign_document"
+            for relation in rows for source in relation["sources"])
+        overall=(all(checked.values()) and not unresolved_documents) if (checked or unresolved_documents) else None
         sections=[]
         for row in rows:
             details=[]
