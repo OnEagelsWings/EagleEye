@@ -12,12 +12,12 @@ from .app448 import COOKIE
 from .app449 import _drop
 
 
-def create_workspace_app461(*, base_dir=None):
+def create_workspace_app461(*, base_dir=None, workspace_build="461.0", workspace_title="Guided Investigator Workspace"):
     """Review-first, case-authorized workflow guide; no autonomous actions."""
     app = create_workspace_app459(
         base_dir=base_dir,
-        workspace_build="461.0",
-        workspace_title="Guided Investigator Workspace",
+        workspace_build=workspace_build,
+        workspace_title=workspace_title,
     )
     ctx = app.state.context
     team = ctx.team_identity_359
