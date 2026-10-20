@@ -59,6 +59,25 @@ def test_build467_case_provenance_review_corrections(tmp_path):
             assert "Bob → referenced_by → Company" in view.text
             assert relation2["id"] in view.text
             assert "Integrität der verknüpften Falldokumente: bestanden" in view.text
+            # A damaged document in another case must not invalidate this one.
+            foreign_case=ctx.team_governance_359.create_case(
+                identity=identity,title="Foreign case",client="QA",
+                purpose="Verify isolation",legal_basis="public_data")
+            foreign=ctx.document_intelligence_458.import_bytes(
+                identity=identity,case_id=foreign_case["case_id"],filename="foreign.txt",
+                raw=b"Foreign original",title="Foreign source",source_url="https://example.org/foreign")
+            foreign_doc=ctx.document_intelligence_458.anchors(
+                identity=identity,document_id=foreign["document_id"])["document"]
+            (ctx.document_intelligence_458.root/foreign_doc["stored_relpath"]).write_bytes(b"damaged")
+            scoped=client.get("/provenance466",params={"case_id":case_id})
+            assert "Integrität der verknüpften Falldokumente: bestanden" in scoped.text
+            # Tampering document metadata without a matching record hash must be detected.
+            ctx.document_intelligence_458.db.execute(
+                "UPDATE phase20_document_458 SET source_url=? WHERE document_id=?",
+                ("https://example.org/modified",doc["document_id"]))
+            damaged=client.get("/provenance466",params={"case_id":case_id})
+            assert "Integrität der verknüpften Falldokumente: HALT" in damaged.text
+
             assert client.get("/provenance466",params={"case_id":"foreign"},follow_redirects=False).status_code==303
             home=client.get("/",params={"case_id":case_id})
             assert "/provenance466?" in home.text
