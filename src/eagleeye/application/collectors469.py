@@ -88,10 +88,16 @@ def collect(provider: str, indicator: str, *, fetcher=None):
     raw = json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8")
     if len(raw) > MAX_CAPTURE:
         raise ValueError("Metadatenauszug zu groß")
-    prefix = (f"Public source snapshot – unverified\nProvider: {provider}\n"
-              f"Indicator: {name}\nCapture time UTC: {captured}\n"
-              f"Original endpoint: {url}\n\n").encode()
+    # Paragraph extraction limits each anchor excerpt to 2,500 chars. Split every
+    # character of the canonical JSON into bounded chunks with explicit delimiters.
+    # This keeps larger RDAP/Crossref responses completely reviewable via anchors.
+    text = raw.decode("utf-8")
+    chunks = [text[i:i+1800] for i in range(0,len(text),1800)]
+    prefix = (f"Public source snapshot – unverified\\nProvider: {provider}\\n"
+              f"Indicator: {name}\\nCapture time UTC: {captured}\\n"
+              f"Original endpoint: {url}\\n\\n").encode()
+    exported = prefix + ("\\n\\n".join(chunks)).encode("utf-8")
     return {"provider": provider, "indicator": name, "source_url": url,
             "title": f"{PROVIDERS[provider]} – {name}", "filename": f"{provider}_snapshot.txt",
-            "raw": prefix + raw, "captured_at_utc": captured,
+            "raw": exported, "captured_at_utc": captured,
             "verified_claim": False}
