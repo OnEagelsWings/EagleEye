@@ -58,7 +58,7 @@ def endpoint(provider: str, normalized: str) -> str:
     if provider == "rdap_com":
         return "https://rdap.verisign.com/com/v1/domain/" + quote(normalized, safe="")
     if provider == "crossref":
-        return "https://api.crossref.org/works/" + quote(normalized, safe="")
+        return "https://api.crossref.org/works/" + quote(normalized, safe="/")
     raise ValueError("Unbekannte Quelle")
 
 def _fetch_fixed_json(url: str) -> dict:
