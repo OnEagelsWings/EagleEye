@@ -93,10 +93,10 @@ def collect(provider: str, indicator: str, *, fetcher=None):
     # This keeps larger RDAP/Crossref responses completely reviewable via anchors.
     text = raw.decode("utf-8")
     chunks = [text[i:i+1800] for i in range(0,len(text),1800)]
-    prefix = (f"Public source snapshot – unverified\\nProvider: {provider}\\n"
-              f"Indicator: {name}\\nCapture time UTC: {captured}\\n"
-              f"Original endpoint: {url}\\n\\n").encode()
-    exported = prefix + ("\\n\\n".join(chunks)).encode("utf-8")
+    prefix = (f"Public source snapshot – unverified\nProvider: {provider}\n"
+              f"Indicator: {name}\nCapture time UTC: {captured}\n"
+              f"Original endpoint: {url}\n\n").encode()
+    exported = prefix + ("\n\n".join(chunks)).encode("utf-8")
     return {"provider": provider, "indicator": name, "source_url": url,
             "title": f"{PROVIDERS[provider]} – {name}", "filename": f"{provider}_snapshot.txt",
             "raw": exported, "captured_at_utc": captured,
