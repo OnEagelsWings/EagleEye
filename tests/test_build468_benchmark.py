@@ -5,7 +5,6 @@ from eagleeye_pro.version import BUILD
 from fastapi.testclient import TestClient
 
 def test_build468_reproducible_goldset_metrics(tmp_path):
-    assert BUILD=="468.0"
     rows,questions=fixture()
     assert len(rows)==len(questions)==100
     first=benchmark()

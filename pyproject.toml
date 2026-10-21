@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eagleeye-personosint-pro"
-version = "468.0.0"
+version = "469.0.0"
 description = "Local, public-only, review-first PersonOSINT platform with a case-centered investigation workspace"
 requires-python = ">=3.12"
 dependencies = [
   "pydantic>=2.10,<3",
+  "idna>=3.7,<4",
   "SQLAlchemy>=2.0,<3",
   "alembic>=1.14,<2",
   "fastapi>=0.115,<1",

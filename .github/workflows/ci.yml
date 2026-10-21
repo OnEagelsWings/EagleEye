@@ -32,7 +32,7 @@ jobs:
           print(f"Build {BUILD}: {'full checkpoint' if full else 'focused development'} test cadence")
           PY
       - name: Current import smoke
-        run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye.interfaces.web.app468 import create_workspace_app468; from eagleeye_pro.version import BUILD; assert BUILD == '468.0'; print(BUILD)"
+        run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye.interfaces.web.app469 import create_workspace_app469; from eagleeye_pro.version import BUILD; assert BUILD == '469.0'; print(BUILD)"
       - name: Build 458 focused integration tests
         run: pytest -q tests/test_build458_document_intelligence.py -k 'not test_build458_current_installer_and_next_checkpoint'
       - name: Compile current web and phase20 surfaces
