@@ -8,7 +8,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
   exit 1
 }
 
-"$PYTHON_BIN" INSTALL_EAGLEEYE_469.py
+"$PYTHON_BIN" INSTALL_EAGLEEYE_470.py
 RUNTIME_PY=".eagleeye-runtime/bin/python"
 if [ ! -x "$RUNTIME_PY" ]; then
   echo "EagleEye runtime is missing after installation." >&2

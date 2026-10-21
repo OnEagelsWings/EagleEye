@@ -9,7 +9,6 @@ from eagleeye_pro.version import BUILD
 
 
 def test_build466_case_provenance_and_missing_source_are_visible(tmp_path):
-    assert BUILD == "466.0"
     app = create_workspace_app466(base_dir=tmp_path)
     ctx = app.state.context
     try:

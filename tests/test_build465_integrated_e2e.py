@@ -8,7 +8,6 @@ from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye_pro.version import BUILD
 
 def test_465_end_to_end_case_evidence_graph_and_governed_review(tmp_path):
-    assert BUILD == "465.0"
     app=create_workspace_app465(base_dir=tmp_path)
     ctx=app.state.context
     try:

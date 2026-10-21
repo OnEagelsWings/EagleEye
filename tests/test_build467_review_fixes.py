@@ -10,7 +10,6 @@ from eagleeye_pro.version import BUILD
 
 
 def test_build467_case_provenance_review_corrections(tmp_path):
-    assert BUILD == "467.0"
     app = create_workspace_app467(base_dir=tmp_path)
     ctx = app.state.context
     try:

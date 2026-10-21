@@ -14,7 +14,6 @@ from eagleeye.interfaces.web.app469 import create_workspace_app469
 from eagleeye_pro.version import BUILD
 
 def test_build469_fixed_host_validation():
-    assert BUILD == "469.0"
     assert normalize_indicator("dns","Example.COM") == "example.com"
     assert normalize_indicator("dns","faß.de") == "xn--fa-hia.de"
     assert endpoint("dns","example.com").startswith("https://dns.google/resolve?")
