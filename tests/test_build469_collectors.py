@@ -20,6 +20,8 @@ def test_build469_fixed_host_validation():
     assert endpoint("dns","example.com").startswith("https://dns.google/resolve?")
     assert endpoint("rdap_com","example.com").startswith("https://rdap.verisign.com/com/v1/domain/")
     assert normalize_indicator("crossref","10.1234/Sample") == "10.1234/Sample"
+    assert endpoint("crossref","10.1038/nature12373") == "https://api.crossref.org/works/10.1038/nature12373"
+    assert "%2F" not in endpoint("crossref","10.1038/nature12373")
     legacy="10.1002/(SICI)1097-4571(199706)48:6<369::AID-ASI4>3.0.CO;2-O"
     assert normalize_indicator("crossref",legacy)==legacy
     assert "%3C" in endpoint("crossref",legacy) and "%3E" in endpoint("crossref",legacy)
