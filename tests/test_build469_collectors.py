@@ -30,6 +30,13 @@ def test_build469_fixed_host_validation():
     assert packet["verified_claim"] is False
     assert packet["source_url"].startswith("https://dns.google/")
     assert b"unverified" in packet["raw"]
+    long_packet=collect("crossref","10.1234/Sample",
+        fetcher=lambda url:{"message":{"abstract":"A"*7000}})
+    chunks=long_packet["raw"].decode("utf-8").split("\n\n")
+    assert len(chunks)>=4
+    assert all(len(part)<=2500 for part in chunks[1:])
+    assert sum(part.count("A") for part in chunks)==7000
+
 
 def test_build469_authenticated_case_import_and_csrf(tmp_path):
     app=create_workspace_app469(base_dir=tmp_path)
