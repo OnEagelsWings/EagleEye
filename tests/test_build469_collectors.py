@@ -16,9 +16,15 @@ from eagleeye_pro.version import BUILD
 def test_build469_fixed_host_validation():
     assert BUILD == "469.0"
     assert normalize_indicator("dns","Example.COM") == "example.com"
+    assert normalize_indicator("dns","faß.de") == "xn--fa-hia.de"
     assert endpoint("dns","example.com").startswith("https://dns.google/resolve?")
     assert endpoint("rdap_com","example.com").startswith("https://rdap.verisign.com/com/v1/domain/")
     assert normalize_indicator("crossref","10.1234/Sample") == "10.1234/Sample"
+    legacy="10.1002/(SICI)1097-4571(199706)48:6<369::AID-ASI4>3.0.CO;2-O"
+    assert normalize_indicator("crossref",legacy)==legacy
+    assert "%3C" in endpoint("crossref",legacy) and "%3E" in endpoint("crossref",legacy)
+    assert "%23" in endpoint("crossref","10.1234/A#B")
+
     for value in ("http://127.0.0.1/","localhost","10.0.0.1", "-invalid.com"):
         with pytest.raises(ValueError):
             normalize_indicator("dns",value)
