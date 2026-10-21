@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import re
+import idna
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
@@ -32,14 +33,14 @@ def normalize_indicator(provider: str, indicator: str) -> str:
         raise ValueError("Unbekannte Quelle")
     val = str(indicator).strip()
     if provider == "crossref":
-        if len(val) > 256 or not re.fullmatch(r"10\.\d{4,9}/[A-Za-z0-9._;()/:+-]+", val):
+        if len(val) > 256 or not re.fullmatch(r"10\.\d{4,9}/[!-~]+", val):
             raise ValueError("Ungültiger DOI")
         return val
     if not val or len(val) > 253:
         raise ValueError("Ungültiger Domainname")
     try:
-        val = val.rstrip(".").encode("idna").decode("ascii").lower()
-    except UnicodeError as exc:
+        val = idna.encode(val.rstrip("."), uts46=True, transitional=False).decode("ascii").lower()
+    except idna.IDNAError as exc:
         raise ValueError("Ungültiger Domainname") from exc
     labels = val.split(".")
     if labels[-1].isdigit():
