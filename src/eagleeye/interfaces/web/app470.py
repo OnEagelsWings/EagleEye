@@ -11,8 +11,8 @@ from .app469 import create_workspace_app469
 from .app448 import COOKIE
 from .app449 import _drop
 
-def create_workspace_app470(*, base_dir=None):
-    app=create_workspace_app469(base_dir=base_dir,workspace_build="470.0")
+def create_workspace_app470(*, base_dir=None, workspace_build="470.0"):
+    app=create_workspace_app469(base_dir=base_dir,workspace_build=workspace_build)
     ctx=app.state.context
     app.version="470.0"
     app.title="EagleEye Build 470 – Investigation Checkpoint"

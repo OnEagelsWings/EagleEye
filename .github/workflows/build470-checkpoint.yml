@@ -1,7 +1,6 @@
 name: EagleEye Build 470 Full Checkpoint
 
 on:
-  pull_request:
   workflow_dispatch:
 
 env:
