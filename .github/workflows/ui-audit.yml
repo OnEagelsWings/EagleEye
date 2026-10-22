@@ -22,7 +22,7 @@ jobs:
       - name: Install EagleEye
         run: python -m pip install -e '.[test]'
       - name: Current UI import smoke
-        run: python -c "from eagleeye.interfaces.web.app470 import create_workspace_app470; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '470.0'; print(BUILD)"
+        run: python -c "from eagleeye.interfaces.web.app471 import create_workspace_app471; from eagleeye.interfaces.web.app448 import render_workspace; from eagleeye_pro.version import BUILD; assert BUILD == '471.0'; print(BUILD)"
       - name: Build 458 current health/status UI contract
         run: pytest -q tests/test_build458_document_intelligence.py -k 'health_and_authenticated_upload'
       - name: Investigator UI regression suite

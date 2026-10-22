@@ -1,3 +1,17 @@
+# EagleEye – Build 471: Lokaler KI-Ermittler
+
+**Entwicklungsstand, nicht produktiv freigegeben.** Neuer Fallmenü-Einstieg **Lokaler KI-Ermittler**:
+1–3 Dokumente auswählen, mit bereits lokal installiertem Ollama-Modell einen quellengebundenen
+Zusammenfassungsentwurf erzeugen, Originalfundstellen öffnen und mit Begründung prüfen.
+Die Ausgabe bleibt KI-Vorschlag; kein automatischer Claim und keine Faktenbestätigung.
+
+Start: `START_EAGLEEYE_PRO.bat` (Windows) oder `sh START_EAGLEEYE_PRO.sh` (Linux).
+Python 3.12+ und für KI ein separat installiertes lokales Ollama-Modell erforderlich.
+Details, Umfang, Testbefehle und Einschränkungen: [BUILD_471_NOTES.md](BUILD_471_NOTES.md).
+Nächster vollständiger KI-/Sicherheitscheckpoint: **475**. 471 führt nur gezielte Smoke-Tests aus.
+
+---
+
 # EagleEye – Build 470 Vollcheckpoint
 
 **Entwicklungsstand, nicht produktiv freigegeben.** Der freigegebene Fall zeigt unter **Qualitätsprüfung 470** den tatsächlichen Umfang des vorhandenen Dokumenten- und Entitätenregisters, Beziehungen und ungeklärte Quellen, außerdem explizit nicht gemessene Qualitätskennzahlen.

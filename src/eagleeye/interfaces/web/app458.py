@@ -196,7 +196,7 @@ if (form && feedback) {
         if anchors:
             details="<h2>Verifizierbare Fundstellen</h2><p>Quelle: "+escape(anchors["document"]["document_sha256"])+"</p>"
             for item in anchors["anchors"][:200]:
-                details+=f'<article><strong>Seite {item["page_number"]} / Block {item["ordinal"]}</strong>'
+                details+=f'<article id="anchor-{escape(item["anchor_id"],quote=True)}"><strong>Seite {item["page_number"]} / Block {item["ordinal"]}</strong>'
                 details+=f'<p>{escape(item["text_excerpt"])}</p><small>{escape(item["locator"])}</small></article>'
         html=(
             '<!doctype html><html lang="de"><head><meta charset="utf-8">'
