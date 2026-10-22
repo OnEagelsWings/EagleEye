@@ -59,7 +59,9 @@ def test_real_browser_summary_review_anchor_and_mobile(tmp_path):
             page.goto(base + '/?case_id=' + case['case_id'])
             page.get_by_role('link', name='Lokaler KI-Ermittler', exact=True).click()
             page.locator('input[name=document_id]').first.check()
-            page.get_by_role('button', name='Auswahl lokal zusammenfassen', exact=True).click()
+            with page.expect_response(lambda response: response.request.method == 'POST' and response.url.endswith('/assistant471/generate')) as generated:
+                page.get_by_role('button', name='Auswahl lokal zusammenfassen', exact=True).click()
+            assert generated.value.status == 303, generated.value.text()
             page.get_by_text('Die Quelle nennt das Gründungsjahr 2001.', exact=True).wait_for()
             page.locator('textarea[name=note]').fill('Im Original gelesen; Unsicherheiten bleiben bestehen.')
             page.get_by_role('button', name='Prüfentscheidung speichern', exact=True).click()
