@@ -27,7 +27,7 @@ jobs:
       - name: Install Chromium browser test runtime
         run: python -m pip install 'playwright>=1.61,<2'
       - name: Install Chromium
-        run: python -m playwright install --with-deps chromium
+        run: python -m playwright install chromium
       - name: Real browser acceptance with simulated local model
         run: python -m pytest -q tests/test_build471_browser.py
       - name: Adjacent document and navigation smoke
