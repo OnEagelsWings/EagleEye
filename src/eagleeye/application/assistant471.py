@@ -133,11 +133,9 @@ class Assistant471:
                 source = allowed.get(citation.anchor_id)
                 if source is None or citation.quote not in source["text"]:
                     raise ValueError("Modellantwort verworfen: erfundene Fundstelle oder unzutreffendes Zitat.")
-        # Reauthorize and recheck after a slow model call, before any persistent write.
-        self.authorize(identity, case_id, "research.run")
-        self._unlocked(case_id)
-        if sources != self.sources(identity, case_id, document_ids) or model_hash != self.model_digest(model):
-            raise ValueError("Belege oder Modell wurden während des Laufs verändert.")
+        # Network I/O stays outside the database write lock.
+        if model_hash != self.model_digest(model):
+            raise ValueError("Modell wurde während des Laufs verändert.")
         payload = {"run_id": new_id("ai471"), "case_id": case_id, "created_at": now_ts(),
                    "created_by": identity["username"], "model": model, "model_digest": model_hash,
                    "request_sha256": digest(body), "summary": result.model_dump(), "sources": sources,
@@ -145,6 +143,11 @@ class Assistant471:
                    "coverage": "Nur bis zu vier Fundstellen je Dokument, maximal 1500 Zeichen je Fundstelle.",
                    "truth_determined": False, "claims_created": 0}
         with self.db.transaction(immediate=True):
+            # Authorize and resolve the final evidence under the same write lock as INSERT.
+            self.authorize(identity, case_id, "research.run")
+            self._unlocked(case_id)
+            if sources != self.sources(identity, case_id, document_ids):
+                raise ValueError("Belege wurden während des Laufs verändert.")
             self.db.execute("INSERT INTO phase20_ai_summary_471 VALUES(?,?,?,?)",
                             (payload["run_id"], case_id, dumps(payload), digest(payload)))
             self.ctx.audit.log("local_summary_created_471", "ai_summary", payload["run_id"], case_id,
@@ -166,6 +169,7 @@ class Assistant471:
         if decision not in {"acknowledged", "rejected"} or not 12 <= len(note.strip()) <= 2000:
             raise ValueError("Prüfentscheidung und Begründung mit 12–2000 Zeichen erforderlich.")
         with self.db.transaction(immediate=True):
+            self.authorize(identity, case_id, "source.review")
             row = self.db.one("SELECT * FROM phase20_ai_summary_471 WHERE run_id=? AND case_id=?", (run_id, case_id))
             if not row:
                 raise PermissionError("Entwurf nicht in diesem Fall gefunden.")

@@ -185,3 +185,42 @@ def test_remote_model_metadata_and_malformed_model_data_blocked(workspace):
                 'document_id': doc_id, 'model': 'mistral:latest'})
         assert response.status_code == 422
         assert service.history(user, case_id) == []
+
+
+@pytest.mark.parametrize('change', ['permission_revoked', 'extraction_rejected'])
+def test_final_validation_and_insert_are_atomic(workspace, change):
+    from contextlib import contextmanager
+    app, client, user, case_id, doc_id, *_ = workspace
+    service = app.state.assistant471
+    answer = reply(service, user, case_id, doc_id)
+    original_transaction = service.db.transaction
+    original_authorize = service.authorize
+    revoked = False
+    entered = False
+    def authorize(identity, selected_case, capability='case.read'):
+        if revoked and capability == 'research.run':
+            assert service.db.in_transaction
+            raise PermissionError('permission revoked at transaction boundary')
+        return original_authorize(identity, selected_case, capability)
+    @contextmanager
+    def racing_transaction(*, immediate=False):
+        nonlocal revoked, entered
+        if not entered:
+            entered = True
+            assert immediate
+            if change == 'permission_revoked':
+                revoked = True
+            else:
+                doc = service.documents._document(doc_id)
+                doc['state'] = 'extraction_rejected'
+                service.db.execute('UPDATE phase20_document_458 SET state=?,record_hash=? WHERE document_id=?',
+                    (doc['state'], service.documents._rh(doc), doc_id))
+        with original_transaction(immediate=immediate) as transaction:
+            yield transaction
+    with patch.object(service, 'request', side_effect=provider(answer, [])), \
+         patch.object(service, 'authorize', side_effect=authorize), \
+         patch.object(service.db, 'transaction', side_effect=racing_transaction):
+        with pytest.raises((PermissionError, ValueError)):
+            service.generate(user, case_id, [doc_id], 'mistral:latest')
+    assert entered
+    assert service.history(user, case_id) == []
