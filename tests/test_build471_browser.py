@@ -3,6 +3,7 @@ import json
 import socket
 import threading
 import time
+from urllib.parse import urlencode
 
 import pytest
 import uvicorn
@@ -49,7 +50,9 @@ def test_real_browser_summary_review_anchor_and_mobile(tmp_path):
             errors = []
             page.on('pageerror', lambda error: errors.append(str(error)))
             base = f'http://127.0.0.1:{port}'
-            page.goto(base + '/security/login')
+            launch_token = (tmp_path/'data/security_364/local_session_token').read_text().strip()
+            response = page.goto(base + '/security/start?' + urlencode({'token': launch_token}))
+            assert response.status == 200
             page.locator('input[name=username]').fill('browser471')
             page.locator('input[name=password]').fill(password)
             page.get_by_role('button', name='Anmelden', exact=True).click()
