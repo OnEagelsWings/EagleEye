@@ -36,6 +36,7 @@ def workspace(tmp_path):
 def csrf(client, case_id):
     page = client.get('/assistant471', params={'case_id': case_id})
     assert page.status_code == 200
+    assert page.headers['referrer-policy'] == 'same-origin'
     return re.search(r'name="csrf_token" value="([a-f0-9]{64})"', page.text).group(1)
 
 
@@ -95,7 +96,7 @@ def test_browser_summary_review_and_persistence(workspace):
     assert client.get('/health').json()['next_checkpoint'] == '475.0'
 
 
-@pytest.mark.parametrize('mode', ['foreign_document', 'csrf', 'origin', 'cloud', 'missing_model', 'hallucinated_anchor', 'false_quote', 'unavailable', 'changed_source', 'tampered_anchor'])
+@pytest.mark.parametrize('mode', ['foreign_document', 'csrf', 'origin', 'origin_null', 'cloud', 'missing_model', 'hallucinated_anchor', 'false_quote', 'unavailable', 'changed_source', 'tampered_anchor'])
 def test_fail_closed_generation(workspace, mode):
     app, client, user, case_id, doc_id, other, other_doc = workspace
     service = app.state.assistant471
@@ -107,6 +108,7 @@ def test_fail_closed_generation(workspace, mode):
     if mode == 'foreign_document': form['document_id'] = other_doc
     if mode == 'csrf': form['csrf_token'] = 'wrong'
     if mode == 'origin': headers['origin'] = 'https://evil.example'
+    if mode == 'origin_null': headers['origin'] = 'null'
     if mode == 'cloud': form['model'] = 'mistral:cloud'
     if mode == 'missing_model': form['model'] = 'notinstalled:latest'
     if mode == 'hallucinated_anchor': answer['statements'][0]['citations'][0]['anchor_id'] = 'foreign-anchor'
@@ -124,7 +126,7 @@ def test_fail_closed_generation(workspace, mode):
         response = client.post('/assistant471/generate', data=form, headers=headers)
     assert response.status_code in {403, 422, 503}, response.text
     assert service.history(user, case_id) == []
-    if mode in {'foreign_document', 'csrf', 'origin', 'cloud', 'tampered_anchor'}:
+    if mode in {'foreign_document', 'csrf', 'origin', 'origin_null', 'cloud', 'tampered_anchor'}:
         assert not calls
 
 

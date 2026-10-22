@@ -61,6 +61,7 @@ def test_real_browser_summary_review_anchor_and_mobile(tmp_path):
             page.locator('input[name=document_id]').first.check()
             with page.expect_response(lambda response: response.request.method == 'POST' and response.url.endswith('/assistant471/generate')) as generated:
                 page.get_by_role('button', name='Auswahl lokal zusammenfassen', exact=True).click()
+            assert generated.value.request.headers.get('origin') == base
             assert generated.value.status == 303, generated.value.text()
             page.get_by_text('Die Quelle nennt das Gründungsjahr 2001.', exact=True).wait_for()
             page.locator('textarea[name=note]').fill('Im Original gelesen; Unsicherheiten bleiben bestehen.')

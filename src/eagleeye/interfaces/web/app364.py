@@ -65,7 +65,9 @@ def create_workspace_app364(*, base_dir: str | Path | None = None) -> FastAPI:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        # Native same-origin POSTs need a non-opaque Origin for strict CSRF checks.
+        # same-origin still suppresses referrers to every external origin.
+        response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         if remote_enabled:

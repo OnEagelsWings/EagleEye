@@ -38,6 +38,13 @@ Zwischenbuild: gezielte Smoke-/Negativtests; vollständiger KI-/Security-Checkpo
 - Produktivfreigabe bleibt NEIN. Offene 470-Gates (immutable Rohbelege, dossier/export,
   restore, reale Suchgüte und unabhängige Praxistests) bleiben bestehen.
 
+## Browser-Formulare
+Die gemeinsame Referrer-Policy ist jetzt `same-origin`: Native Formulare behalten so
+bei lokalen POSTs ihren tatsächlichen Origin. Fremde Origins und `Origin: null`
+bleiben gesperrt; externe Seiten erhalten weiterhin keinen Referrer.
+Der Browser-Test startet über den echten lokalen Launcher-Einstieg.
+Hintergrund: [WHATWG Fetch, Origin-Header](https://fetch.spec.whatwg.org/#append-a-request-origin-header).
+
 ## Reproduzierbare gezielte Prüfung
 ```sh
 python -m pytest -q tests/test_build471_local_ai.py
