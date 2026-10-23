@@ -62,7 +62,7 @@ def provider(answer, calls):
 
 def test_browser_summary_review_and_persistence(workspace):
     app, client, user, case_id, doc_id, other, other_doc = workspace
-    assert BUILD == '471.0'
+    assert app.version == '471.0'
     service = app.state.assistant471
     calls = []
     answer = reply(service, user, case_id, doc_id)

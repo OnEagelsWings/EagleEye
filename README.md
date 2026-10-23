@@ -1,3 +1,9 @@
+# EagleEye – Build 472: Fragen an Fallquellen
+
+Im Fallmenü **Lokaler KI-Ermittler** jetzt eine Arbeitsfrage eingeben. Quellengebundene Antworten oder ausdrücklich ausgewiesene Quellenlücken bleiben prüfpflichtige Vorschläge. [Bedienung und Grenzen](BUILD_472_NOTES.md). Vollcheckpoint: 475.
+
+---
+
 # EagleEye – Build 471: Lokaler KI-Ermittler
 
 **Entwicklungsstand, nicht produktiv freigegeben.** Neuer Fallmenü-Einstieg **Lokaler KI-Ermittler**:

@@ -113,20 +113,26 @@ class Assistant471:
         if profile and int(profile.get("safety_lock") or 0):
             raise PermissionError("Die OPSEC-Sicherheitssperre dieses Falls ist aktiv.")
 
-    def generate(self, identity, case_id, document_ids, model):
+    def generate(self, identity, case_id, document_ids, model, *, question=""):
+        if not isinstance(question, str) or len(question) > 1000 or "\x00" in question:
+            raise ValueError("Arbeitsfrage darf höchstens 1000 Zeichen enthalten.")
+        question = question.strip()
+        from .question472 import Answer472
+        schema = Answer472 if question else Summary
         self.authorize(identity, case_id, "research.run")
         self._unlocked(case_id)
         sources = self.sources(identity, case_id, document_ids)
         model_hash = self.model_digest(model)
-        body = {"model": model, "stream": False, "format": Summary.model_json_schema(),
-                "messages": [{"role": "system", "content": self.SYSTEM},
-                             {"role": "user", "content": dumps({"sources": sources})}],
+        body = {"model": model, "stream": False, "format": schema.model_json_schema(),
+                "messages": [{"role": "system", "content": self.SYSTEM + (
+                    " Answer the working question only from supplied sources. Return insufficient_evidence with no statements when those sources cannot answer it." if question else "")},
+                             {"role": "user", "content": dumps({"sources": sources, "working_question": question})}],
                 "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 1800}, "keep_alive": "0s"}
         raw = self.request("POST", "/api/chat", body, timeout=120)
         message = raw.get("message")
         if not isinstance(message, dict) or not isinstance(message.get("content"), str):
             raise ValueError("Ungültige lokale Modellantwort.")
-        result = Summary.model_validate_json(message["content"])
+        result = schema.model_validate_json(message["content"])
         allowed = {s["anchor_id"]: s for s in sources}
         for statement in result.statements:
             for citation in statement.citations:
@@ -139,6 +145,7 @@ class Assistant471:
         payload = {"run_id": new_id("ai471"), "case_id": case_id, "created_at": now_ts(),
                    "created_by": identity["username"], "model": model, "model_digest": model_hash,
                    "request_sha256": digest(body), "summary": result.model_dump(), "sources": sources,
+                   "question": question, "task": "question" if question else "summary",
                    "status": "review_required", "review": None,
                    "coverage": "Nur bis zu vier Fundstellen je Dokument, maximal 1500 Zeichen je Fundstelle.",
                    "truth_determined": False, "claims_created": 0}
