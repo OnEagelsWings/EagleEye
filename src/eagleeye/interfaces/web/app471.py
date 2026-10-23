@@ -12,6 +12,7 @@ from urllib.parse import urlencode, urlsplit
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from eagleeye.application.assistant471 import Assistant471
+from eagleeye.application.question472 import GAP_LABELS
 from .app470 import create_workspace_app470
 from .app448 import COOKIE
 from .app449 import _drop
@@ -95,6 +96,7 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
             if run['summary'].get('answer_status') == 'insufficient_evidence':
                 question_text += '<p><strong>Quellen reichen für eine Antwort nicht aus.</strong></p>'
             uncertainty = ''.join('<li>'+escape(x)+'</li>' for x in run['summary']['uncertainties'])
+            uncertainty += ''.join('<li>'+escape(GAP_LABELS[code])+'</li>' for code in run['summary'].get('gap_reasons', []))
             review = ''
             if run['status'] == 'review_required':
                 review = '<form method="post" action="/assistant471/review">'+hidden+'<input type="hidden" name="run_id" value="'+escape(run['run_id'], quote=True)+'"><label>Prüfentscheidung <select name="decision"><option value="acknowledged">Gelesen und geprüft – bleibt KI-Vorschlag</option><option value="rejected">Verwerfen</option></select></label><label>Begründung <textarea name="note" minlength="12" maxlength="2000" required></textarea></label><button>Prüfentscheidung speichern</button></form>'

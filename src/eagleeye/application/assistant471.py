@@ -125,7 +125,7 @@ class Assistant471:
         model_hash = self.model_digest(model)
         body = {"model": model, "stream": False, "format": schema.model_json_schema(),
                 "messages": [{"role": "system", "content": self.SYSTEM + (
-                    " Answer the working question only from supplied sources. Return insufficient_evidence with no statements when those sources cannot answer it." if question else "")},
+                    " Answer the working question only from supplied sources. When those sources cannot answer it, return insufficient_evidence with empty statements and uncertainties, and only allowed gap_reasons codes." if question else "")},
                              {"role": "user", "content": dumps({"sources": sources, "working_question": question})}],
                 "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 1800}, "keep_alive": "0s"}
         raw = self.request("POST", "/api/chat", body, timeout=120)

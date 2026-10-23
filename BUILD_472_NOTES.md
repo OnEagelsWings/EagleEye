@@ -3,7 +3,7 @@
 Im Fallmenü **Lokaler KI-Ermittler** eine Arbeitsfrage eingeben, 1–3 Dokumente
 wählen und lokal zusammenfassen lassen. Leer lassen erzeugt weiterhin eine Zusammenfassung.
 Antworten benötigen genaue Fall-Fundstellen und wörtliche Zitate. Bei fehlender
-Quellengrundlage verlangt das Schema `insufficient_evidence` ohne Tatsachenaussagen.
+Quellengrundlage verlangt das Schema `insufficient_evidence` ohne Tatsachenaussagen oder freie Modellprosa; Gründe werden als feste Gap-Codes gespeichert und von der Oberfläche übersetzt.
 Frage, Antwort, Quellen, Modell-Digest und menschliche Prüfung werden gemeinsam gespeichert.
 Kein automatischer Claim, keine Faktenbestätigung oder externe Recherche.
 

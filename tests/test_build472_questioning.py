@@ -26,7 +26,7 @@ def test_missing_evidence_must_abstain_without_statements(workspace):
     app,client,user,case_id,doc_id,*_=workspace
     service=app.state.assistant471
     answer={'answer_status':'insufficient_evidence','statements':[],
-            'uncertainties':['Die gewählten Auszüge nennen keinen Geschäftsführer.']}
+            'uncertainties':[], 'gap_reasons':['not_in_selected_excerpts']}
     with patch.object(service,'request',side_effect=provider(answer,[])):
         run=service.generate(user,case_id,[doc_id],'mistral:latest',question='Wer führt das Unternehmen?')
     assert not run['summary']['statements']
@@ -62,3 +62,12 @@ def test_current_factory_exposes_question_field_and_current_launcher(tmp_path):
             assert '/assistant471?' in client.get('/',params={'case_id':case['case_id']}).text
             assert client.get('/health').json()['build']=='472.0'
     finally:ctx.close()
+
+
+def test_abstention_rejects_uncited_factual_prose():
+    with pytest.raises(ValueError):
+        Answer472.model_validate({'answer_status':'insufficient_evidence','statements':[],
+            'uncertainties':['The CEO is Alice.'],'gap_reasons':['not_in_selected_excerpts']})
+    with pytest.raises(ValueError):
+        Answer472.model_validate({'answer_status':'insufficient_evidence','statements':[],
+            'uncertainties':[], 'gap_reasons':['The CEO is Alice.']})
