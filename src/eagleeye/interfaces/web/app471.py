@@ -16,9 +16,10 @@ from eagleeye.application.question472 import GAP_LABELS
 from .app470 import create_workspace_app470
 from .app448 import COOKIE
 from .app449 import _drop
+from .hypotheses473 import render_alternatives
 
 
-def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions_enabled=False):
+def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions_enabled=False, hypotheses_enabled=False):
     app = create_workspace_app470(base_dir=base_dir, workspace_build=workspace_build)
     app.version = workspace_build
     app.title = "EagleEye Build " + workspace_build + " – Lokaler KI-Ermittler"
@@ -81,6 +82,8 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
         hidden = '<input type="hidden" name="case_id" value="'+escape(case_id, quote=True)+'"><input type="hidden" name="csrf_token" value="'+csrf+'">'
         choices = ''.join('<label><input type="checkbox" name="document_id" value="'+escape(d['document_id'], quote=True)+'"> '+escape(d['title'])+' · '+escape(d['state'])+'</label>' for d in documents)
         question_form = ('<label>Arbeitsfrage (optional)<textarea name="question" maxlength="1000" rows="3"></textarea></label><p>Leer lassen für eine Zusammenfassung. Bei fehlenden Belegen muss die Antwort die Quellenlücke ausweisen.</p>' if questions_enabled else '')
+        if hypotheses_enabled:
+            question_form += '<label>Arbeitsweise <select name="analysis_mode"><option value="answer">Frage beantworten</option><option value="alternatives">Alternative Hypothesen und Gegenprüfung</option></select></label>'
         cards = ''
         for run in history:
             by_id = {s['anchor_id']: s for s in run['sources']}
@@ -95,6 +98,7 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
             question_text = ('<h4>Arbeitsfrage</h4><p>'+escape(run.get('question', ''))+'</p>' if run.get('question') else '')
             if run['summary'].get('answer_status') == 'insufficient_evidence':
                 question_text += '<p><strong>Quellen reichen für eine Antwort nicht aus.</strong></p>'
+            alternatives_html = render_alternatives(run, case_id)
             uncertainty = ''.join('<li>'+escape(x)+'</li>' for x in run['summary']['uncertainties'])
             uncertainty += ''.join('<li>'+escape(GAP_LABELS[code])+'</li>' for code in run['summary'].get('gap_reasons', []))
             review = ''
@@ -102,7 +106,7 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
                 review = '<form method="post" action="/assistant471/review">'+hidden+'<input type="hidden" name="run_id" value="'+escape(run['run_id'], quote=True)+'"><label>Prüfentscheidung <select name="decision"><option value="acknowledged">Gelesen und geprüft – bleibt KI-Vorschlag</option><option value="rejected">Verwerfen</option></select></label><label>Begründung <textarea name="note" minlength="12" maxlength="2000" required></textarea></label><button>Prüfentscheidung speichern</button></form>'
             elif run['review']:
                 review = '<p>Prüfung: '+escape(run['review']['by'])+' · '+escape(run['review']['at'])+'</p><p>'+escape(run['review']['note'])+'</p>'
-            cards += '<article id="'+escape(run['run_id'], quote=True)+'"><h3>KI-Vorschlag · '+escape(run['status'])+'</h3><p>'+escape(run['created_at'])+' · '+escape(run['model'])+'</p><small>Modell-Digest: '+escape(run['model_digest'])+'</small>'+question_text+'<ol>'+statements+'</ol><h4>Unsicherheiten</h4><ul>'+uncertainty+'</ul><p>'+escape(run['coverage'])+' Fundstellen und Hashes zeigen den Stand bei Erstellung; spätere Änderungen benötigen einen neuen Entwurf.</p>'+review+'</article>'
+            cards += '<article id="'+escape(run['run_id'], quote=True)+'"><h3>KI-Vorschlag · '+escape(run['status'])+'</h3><p>'+escape(run['created_at'])+' · '+escape(run['model'])+'</p><small>Modell-Digest: '+escape(run['model_digest'])+'</small>'+question_text+'<ol>'+statements+'</ol>'+alternatives_html+'<h4>Unsicherheiten</h4><ul>'+uncertainty+'</ul><p>'+escape(run['coverage'])+' Fundstellen und Hashes zeigen den Stand bei Erstellung; spätere Änderungen benötigen einen neuen Entwurf.</p>'+review+'</article>'
         home = '/?' + urlencode({'case_id': case_id})
         return HTMLResponse('<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EagleEye · Lokaler KI-Ermittler</title><style>body{font:1rem system-ui;line-height:1.5;overflow-wrap:anywhere;max-width:980px;margin:auto;padding:1rem;background:#102137;color:#eff7fb}a{color:#8ee6d2}article,fieldset{border:1px solid #8aa0b8;border-radius:.5rem;padding:1rem;margin:1rem 0}label{display:block;margin:.7rem 0}input,select,button,textarea{font:inherit;max-width:100%;box-sizing:border-box;padding:.5rem}textarea{width:100%}small,blockquote{overflow-wrap:anywhere}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #f9cd73}</style></head><body><main><nav><a href="'+escape(home, quote=True)+'">← Fallübersicht</a></nav><h1>Lokaler KI-Ermittler</h1><p>Quellengebundene Zusammenfassung als <strong>ungeprüfter Vorschlag</strong>. Zitate werden technisch zugeordnet; ob sie die Aussage tragen, prüfst du am Original. Keine automatische Faktenbestätigung.</p><p>Ollama läuft auf diesem Computer (127.0.0.1:11434). Verwende ein bereits installiertes lokales Modell, beispielsweise mistral:latest. Die Funktion lädt kein Modell herunter.</p><form method="post" action="/assistant471/generate">'+hidden+'<fieldset><legend>Ein bis drei Fall-Dokumente wählen</legend>'+(choices or '<p>Zuerst Fall-Dokumente mit Quellen-URL importieren.</p>')+'</fieldset>'+question_form+'<label>Installiertes Ollama-Modell <input name="model" value="mistral:latest" maxlength="120" required></label><p>Auswahl: maximal vier Textfundstellen pro Dokument, jeweils bis zu 1500 Zeichen. Keine vollständige Dokumentanalyse. Quelleninhalte werden als unvertrauenswürdige Daten verarbeitet. Lauf kann bis zu zwei Minuten dauern.</p><button>Auswahl lokal zusammenfassen</button></form><h2>Gespeicherte Entwürfe und Prüfungen</h2><p>Die letzten 20 Entwürfe dieses Falls. Eine Prüfbestätigung erzeugt keine bestätigten Claims.</p>'+cards+'</main></body></html>', headers={"Cache-Control": "no-store"})
 
@@ -114,7 +118,7 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
         try:
             def work():
                 with ctx.audit.actor_scope(user['username']):
-                    return service.generate(user, case_id, [str(x) for x in form.getlist('document_id')], str(form.get('model', '')), question=str(form.get('question', '')) if questions_enabled else '')
+                    return service.generate(user, case_id, [str(x) for x in form.getlist('document_id')], str(form.get('model', '')), question=str(form.get('question', '')) if questions_enabled else '', analysis_mode=str(form.get('analysis_mode', 'answer')) if hypotheses_enabled else 'answer')
             run = await asyncio.to_thread(work)
         except (PermissionError, ValueError, ConnectionError, KeyError, TypeError) as exc:
             error(exc)
