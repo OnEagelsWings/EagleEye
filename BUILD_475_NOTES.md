@@ -39,7 +39,9 @@ keinen Claim, bestätigten Fakt oder Identitätsmerge.
 
 Zusätzliche Sicherheitstests prüfen echte Fallrollen, Falltrennung, Rechteentzug
 während des Modelllaufs, ungültiges JSON, Modellwechsel und Werkzeugaufrufe in
-Modellantworten. Letztere werden ausdrücklich verworfen. Die vorhandenen Tests
+Modellantworten. Letztere werden ausdrücklich verworfen. Abgewiesene Zugriffe
+auf fremde Fälle bleiben trotz Snapshot-Transaktion im kanonischen Audit
+erhalten; die Hashkette wird im Regressionstest geprüft. Die vorhandenen Tests
 prüfen außerdem CSRF/Origin, OPSEC, Belegintegrität, begrenzte Antworten, feste
 numerische Loopback-Adresse, gesperrte Redirects und menschliche Einzelprüfung.
 Bandit prüft gezielt die aktuellen KI-Module auf Befunde ab mittlerer Schwere,

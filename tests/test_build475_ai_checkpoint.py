@@ -213,3 +213,16 @@ def test_inventory_is_one_stable_transaction_during_concurrent_writes(workspace,
     after=review_inventory(service,user,case_id)
     assert after['total']==(22 if change=='insert' else 21)
     assert after['rejected']==(1 if change=='review' else 0)
+
+
+def test_denied_checkpoint_access_remains_in_canonical_audit(workspace):
+    app,client,admin,case_id,doc_id,other,*_=workspace;ctx=app.state.context
+    user=member(workspace,'read_only')
+    before=ctx.db.one('SELECT COUNT(*) AS n FROM phase15_access_events WHERE user_id=? AND case_id=? AND allowed=0',
+        (user['user_id'],other))['n']
+    assert client.get('/ai-checkpoint475',params={'case_id':other}).status_code==403
+    after=ctx.db.all('SELECT * FROM phase15_access_events WHERE user_id=? AND case_id=? AND allowed=0 ORDER BY rowid',
+        (user['user_id'],other))
+    assert len(after)==before+1
+    assert after[-1]['capability']=='case.read' and after[-1]['reason']=='role_or_case_membership_denied'
+    assert ctx.team_identity_359.verify_access_chain()['ok']
