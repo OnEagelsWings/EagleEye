@@ -10,8 +10,8 @@ from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye_pro.version import BUILD
 
 def test_build470_case_from_public_capture_to_review_and_readiness(tmp_path):
-    assert BUILD=="470.0"
     app=create_workspace_app470(base_dir=tmp_path)
+    assert app.version=="470.0"
     ctx=app.state.context
     try:
         with TestClient(app) as client:

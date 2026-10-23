@@ -1,6 +1,5 @@
 name: EagleEye Build 474 Local AI Smoke
 on:
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read

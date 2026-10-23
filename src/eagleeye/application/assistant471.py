@@ -34,6 +34,19 @@ def digest(value):
     return hashlib.sha256(dumps(value).encode()).hexdigest()
 
 
+def validate_quote_bindings(result, sources):
+    """Validate literal excerpt bindings only; this does not establish entailment."""
+    allowed = {s["anchor_id"]: s for s in sources}
+    groups = [statement.citations for statement in result.statements]
+    for alternative in getattr(result, "alternatives", []):
+        groups.extend([alternative.supporting, alternative.contradicting])
+    for citations in groups:
+        for citation in citations:
+            source = allowed.get(citation.anchor_id)
+            if source is None or citation.quote not in source["text"]:
+                raise ValueError("Modellantwort verworfen: erfundene Fundstelle oder unzutreffendes Zitat.")
+
+
 class Assistant471:
     ENDPOINT = "http://127.0.0.1:11434"
     SYSTEM = (
@@ -136,16 +149,10 @@ class Assistant471:
         message = raw.get("message")
         if not isinstance(message, dict) or not isinstance(message.get("content"), str):
             raise ValueError("Ungültige lokale Modellantwort.")
+        if raw.get("tool_calls") or message.get("tool_calls"):
+            raise ValueError("Werkzeugaufrufe aus Modellantworten sind gesperrt.")
         result = schema.model_validate_json(message["content"])
-        allowed = {s["anchor_id"]: s for s in sources}
-        citation_groups = [statement.citations for statement in result.statements]
-        for alternative in getattr(result, "alternatives", []):
-            citation_groups.extend([alternative.supporting, alternative.contradicting])
-        for citations in citation_groups:
-            for citation in citations:
-                source = allowed.get(citation.anchor_id)
-                if source is None or citation.quote not in source["text"]:
-                    raise ValueError("Modellantwort verworfen: erfundene Fundstelle oder unzutreffendes Zitat.")
+        validate_quote_bindings(result, sources)
         # Network I/O stays outside the database write lock.
         if model_hash != self.model_digest(model):
             raise ValueError("Modell wurde während des Laufs verändert.")
