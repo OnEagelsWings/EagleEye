@@ -168,17 +168,19 @@ class Assistant471:
                                {"actor": identity["username"], "model_digest": model_hash, "truth_determined": False})
         return payload
 
-    def history(self, identity, case_id):
+    def history(self, identity, case_id, *, offset=0):
+        if type(offset) is not int or not 0 <= offset <= 100000:
+            raise ValueError("Ungültige Seite.")
         self.authorize(identity, case_id)
         result = []
-        for row in self.db.all("SELECT * FROM phase20_ai_summary_471 WHERE case_id=? ORDER BY rowid DESC LIMIT 20", (case_id,)):
+        for row in self.db.all("SELECT * FROM phase20_ai_summary_471 WHERE case_id=? ORDER BY rowid DESC LIMIT 20 OFFSET ?", (case_id, offset)):
             payload = json.loads(row["payload_json"])
             if digest(payload) != row["record_hash"] or payload.get("case_id") != case_id:
                 raise ValueError("Integrität des KI-Entwurfs verletzt.")
             result.append(payload)
         return result
 
-    def review(self, identity, case_id, run_id, decision, note):
+    def review(self, identity, case_id, run_id, decision, note, *, assessments=None, require_assessments=False):
         self.authorize(identity, case_id, "source.review")
         if decision not in {"acknowledged", "rejected"} or not 12 <= len(note.strip()) <= 2000:
             raise ValueError("Prüfentscheidung und Begründung mit 12–2000 Zeichen erforderlich.")
@@ -190,7 +192,20 @@ class Assistant471:
             payload = json.loads(row["payload_json"])
             if digest(payload) != row["record_hash"] or payload["status"] != "review_required":
                 raise ValueError("Entwurf verändert oder bereits geprüft.")
-            payload.update(status=decision, review={"by": identity["username"], "at": now_ts(), "note": note.strip()})
+            from .review474 import StaleDraftError, validate_assessments
+            checked = None
+            if decision == "acknowledged":
+                if require_assessments:
+                    checked = validate_assessments(payload, assessments)
+                document_ids = list(dict.fromkeys(s["document_id"] for s in payload["sources"]))
+                try:
+                    current_sources = self.sources(identity, case_id, document_ids)
+                except ValueError as exc:
+                    raise StaleDraftError("Quellenstand ist nicht mehr unverändert.") from exc
+                if current_sources != payload["sources"]:
+                    raise StaleDraftError("Quellenstand hat sich seit Erstellung verändert.")
+            payload.update(status=decision, review={"by": identity["username"], "at": now_ts(), "note": note.strip(),
+                                                   "assessments": checked, "truth_determined": False})
             self.db.execute("UPDATE phase20_ai_summary_471 SET payload_json=?,record_hash=? WHERE run_id=? AND case_id=?",
                             (dumps(payload), digest(payload), run_id, case_id))
             self.ctx.audit.log("local_summary_reviewed_471", "ai_summary", run_id, case_id,

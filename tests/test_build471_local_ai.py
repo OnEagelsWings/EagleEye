@@ -13,8 +13,9 @@ from eagleeye_pro.version import BUILD
 
 
 @pytest.fixture
-def workspace(tmp_path):
-    app = create_workspace_app471(base_dir=tmp_path)
+def workspace(tmp_path, request):
+    factory = getattr(request, "param", create_workspace_app471)
+    app = factory(base_dir=tmp_path)
     ctx = app.state.context
     ctx.team_identity_359.create_initial_admin(username="qa471", display_name="QA", password="Build471!Password_88")
     fp = hashlib.sha256(b"testclient||testclient").hexdigest()
