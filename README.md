@@ -1,3 +1,9 @@
+# EagleEye – Build 474: Menschliche Einzelprüfung
+
+KI-Inhalte einzeln prüfen, Gründe dauerhaft zuordnen und veränderte Quellen vor einer Bestätigung erkennen. Ältere Entwürfe über Seitennavigation wiederfinden. [Bedienung und Grenzen](BUILD_474_NOTES.md). Vollcheckpoint: 475.
+
+---
+
 # EagleEye – Build 473: Alternative Hypothesen
 
 Im lokalen KI-Ermittler konkurrierende Erklärungen mit Stützen, Gegenbelegen und Prüffragen anfordern. Alles bleibt menschlich prüfpflichtig. [Bedienung und Grenzen](BUILD_473_NOTES.md). Vollcheckpoint: 475.
