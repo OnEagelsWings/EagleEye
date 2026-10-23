@@ -166,3 +166,50 @@ def test_forged_global_role_cannot_read_foreign_case(workspace):
     forged={**user,'global_role':'system_administrator'}
     with pytest.raises(PermissionError):review_inventory(service,forged,other)
     with pytest.raises(PermissionError):service.generate(forged,case_id,[doc_id],'mistral:latest')
+
+
+@pytest.mark.parametrize('change',['insert','review'])
+def test_inventory_is_one_stable_transaction_during_concurrent_writes(workspace,change):
+    import sqlite3
+    import threading
+    app,client,user,case_id,*_=workspace;service=app.state.assistant471
+    original=generate(workspace)
+    for i in range(20):
+        clone=deepcopy(original);clone['run_id']='snapshot475_'+str(i)
+        service.db.execute('INSERT INTO phase20_ai_summary_471 VALUES(?,?,?,?)',
+            (clone['run_id'],case_id,json.dumps(clone),digest(clone)))
+    started=threading.Event();finished=threading.Event();errors=[]
+    def writer():
+        conn=sqlite3.connect(service.db.path,timeout=5)
+        try:
+            started.set()
+            if change=='insert':
+                clone=deepcopy(original);clone['run_id']='concurrent475'
+                conn.execute('INSERT INTO phase20_ai_summary_471 VALUES(?,?,?,?)',
+                    (clone['run_id'],case_id,json.dumps(clone),digest(clone)))
+            else:
+                changed=deepcopy(original);changed['status']='rejected'
+                conn.execute('UPDATE phase20_ai_summary_471 SET payload_json=?,record_hash=? WHERE run_id=?',
+                    (json.dumps(changed),digest(changed),original['run_id']))
+            conn.commit()
+        except BaseException as exc:errors.append(exc)
+        finally:conn.close();finished.set()
+    thread=threading.Thread(target=writer,daemon=True)
+    history=service.history
+    def page(*args,offset=0,**kwargs):
+        result=history(*args,offset=offset,**kwargs)
+        if offset==0:
+            thread.start();assert started.wait(3)
+            # An external writer cannot shift the next page or alter its review state.
+            assert not finished.wait(.05)
+        return result
+    try:
+        with patch.object(service,'history',side_effect=page):
+            counts=review_inventory(service,user,case_id)
+    finally:
+        if thread.ident:thread.join(timeout=6)
+    assert finished.is_set() and not errors
+    assert counts['total']==counts['review_required']==21 and counts['rejected']==0
+    after=review_inventory(service,user,case_id)
+    assert after['total']==(22 if change=='insert' else 21)
+    assert after['rejected']==(1 if change=='review' else 0)

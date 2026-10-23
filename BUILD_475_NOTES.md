@@ -2,7 +2,9 @@
 
 Der Einstieg **KI-Prüfpunkt 475** im authentifizierten Fallmenü liest den gesamten
 integritätsgeprüften KI-Entwurfsbestand dieses Falls: offene, verworfene und
-beurteilte Entwürfe sowie vollständige Einzelprüfungen. Ältere Gesamtprüfungen
+beurteilte Entwürfe sowie vollständige Einzelprüfungen. Zählung und alle
+Seiten lesen denselben reservierten Datenbank-Snapshot; gleichzeitige
+Entwürfe oder Reviews können die Bestandszahlen nicht gegeneinander verschieben. Ältere Gesamtprüfungen
 werden separat ausgewiesen. Die Seite behauptet keine bestandene CI-Prüfung
 oder gemessene Modellqualität. `/health` nennt 480 als nächsten Prüfpunkt und
 setzt `production_release_ready` weiterhin auf `false`.

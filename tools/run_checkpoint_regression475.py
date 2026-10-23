@@ -77,7 +77,7 @@ def main() -> int:
         exclusions.append(nodeid)
         reasons[item["reason"]] = reasons.get(item["reason"], 0) + 1
 
-    cmd = [sys.executable, "-m", "pytest", "-q", *targets]
+    cmd = [sys.executable, "-m", "pytest", "-q", "-ra", *targets]
     if not args.phase18_20:
         for path in RETIRED_360_364:
             cmd.append("--ignore=" + path)

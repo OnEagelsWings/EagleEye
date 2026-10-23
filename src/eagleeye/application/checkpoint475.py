@@ -89,26 +89,32 @@ def policy_benchmark():
 
 def review_inventory(service,identity,case_id):
     """Read every record under the canonical case boundary, including integrity checks."""
-    service.authorize(identity,case_id)
-    counts={'total':0,'review_required':0,'acknowledged':0,'rejected':0,'complete_item_reviews':0,
-            'acknowledged_without_item_reviews':0}
-    # Count in SQL so history pagination never silently truncates the inventory.
-    total=service.db.one('SELECT COUNT(*) AS n FROM phase20_ai_summary_471 WHERE case_id=?',(case_id,))['n']
-    if total>100000:
-        raise ValueError('Prüfbestand überschreitet die unterstützte Grenze; Archivierung erforderlich.')
-    for offset in range(0,total,20):
-        for run in service.history(identity,case_id,offset=offset):
-            counts['total']+=1
-            if run['status'] not in {'review_required','acknowledged','rejected'}:
-                raise ValueError('Unbekannter Prüfstatus.')
-            counts[run['status']]+=1
-            if run['status']=='acknowledged':
-                try:
-                    validate_assessments(run,(run.get('review') or {}).get('assessments'))
-                    counts['complete_item_reviews']+=1
-                except ValueError:
-                    counts['acknowledged_without_item_reviews']+=1
-    return counts
+    # Authorization emits audit records, so reserve the writer before any read.
+    # The shared connection lock and SQLite reservation keep count/pages/reviews stable.
+    with service.db.transaction(immediate=True):
+        service.authorize(identity,case_id)
+        counts={'total':0,'review_required':0,'acknowledged':0,'rejected':0,'complete_item_reviews':0,
+                'acknowledged_without_item_reviews':0}
+        # Count in SQL so history pagination never silently truncates the inventory.
+        total=service.db.one('SELECT COUNT(*) AS n FROM phase20_ai_summary_471 WHERE case_id=?',(case_id,))['n']
+        if total>100000:
+            raise ValueError('Prüfbestand überschreitet die unterstützte Grenze; Archivierung erforderlich.')
+        for offset in range(0,total,20):
+            for run in service.history(identity,case_id,offset=offset):
+                counts['total']+=1
+                if run['status'] not in {'review_required','acknowledged','rejected'}:
+                    raise ValueError('Unbekannter Prüfstatus.')
+                counts[run['status']]+=1
+                if run['status']=='acknowledged':
+                    try:
+                        validate_assessments(run,(run.get('review') or {}).get('assessments'))
+                        counts['complete_item_reviews']+=1
+                    except ValueError:
+                        counts['acknowledged_without_item_reviews']+=1
+        if counts["total"]!=total:
+            raise ValueError("Prüfbestand ist unvollständig.")
+        return counts
+
 
 
 def main():
