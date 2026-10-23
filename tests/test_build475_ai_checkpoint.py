@@ -121,7 +121,13 @@ def test_inventory_exposes_legacy_review_and_fails_on_tampering(workspace):
     service.review(user,case_id,run['run_id'],'acknowledged','Legacy overall review without item matrix.')
     assert review_inventory(service,user,case_id)['acknowledged_without_item_reviews']==1
     service.db.execute('UPDATE phase20_ai_summary_471 SET record_hash=? WHERE run_id=?',('tampered',run['run_id']))
+    before=service.db.one('SELECT COUNT(*) AS n FROM phase15_access_events WHERE user_id=? AND case_id=? AND allowed=1',
+        (user['user_id'],case_id))['n']
     assert client.get('/ai-checkpoint475',params={'case_id':case_id}).status_code==409
+    after=service.db.one('SELECT COUNT(*) AS n FROM phase15_access_events WHERE user_id=? AND case_id=? AND allowed=1',
+        (user['user_id'],case_id))['n']
+    assert after>before
+    assert app.state.context.team_identity_359.verify_access_chain()['ok']
 
 
 def test_deterministic_policy_report_is_reproducible_and_not_llm_quality(workspace):

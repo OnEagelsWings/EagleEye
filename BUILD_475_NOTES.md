@@ -41,7 +41,9 @@ Zusätzliche Sicherheitstests prüfen echte Fallrollen, Falltrennung, Rechteentz
 während des Modelllaufs, ungültiges JSON, Modellwechsel und Werkzeugaufrufe in
 Modellantworten. Letztere werden ausdrücklich verworfen. Abgewiesene Zugriffe
 auf fremde Fälle bleiben trotz Snapshot-Transaktion im kanonischen Audit
-erhalten; die Hashkette wird im Regressionstest geprüft. Die vorhandenen Tests
+erhalten. Auch bei einer Integritätsverletzung (409) bleiben erlaubte
+Leseversuche protokolliert; beide Auditpfade und die Hashkette werden
+im Regressionstest geprüft. Die vorhandenen Tests
 prüfen außerdem CSRF/Origin, OPSEC, Belegintegrität, begrenzte Antworten, feste
 numerische Loopback-Adresse, gesperrte Redirects und menschliche Einzelprüfung.
 Bandit prüft gezielt die aktuellen KI-Module auf Befunde ab mittlerer Schwere,

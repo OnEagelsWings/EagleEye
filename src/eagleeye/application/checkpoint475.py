@@ -89,17 +89,20 @@ def policy_benchmark():
 
 def review_inventory(service,identity,case_id):
     """Read the case in one snapshot while committing denied access decisions."""
-    # Authorization writes audit records, so reserve the writer before reading.
-    # Raising a denial inside this transaction would erase the canonical event.
-    denial=None
+    # This unit performs inventory reads and access-audit inserts only.
+    # Commit those access events even when authorization or verification fails;
+    # propagate the original error after releasing the reserved snapshot.
+    failure=None
+    counts=None
     with service.db.transaction(immediate=True):
         try:
             service.authorize(identity,case_id)
-        except PermissionError as exc:
-            denial=exc
-        if denial is None:
-            return _inventory_snapshot(service,identity,case_id)
-    raise denial
+            counts=_inventory_snapshot(service,identity,case_id)
+        except Exception as exc:
+            failure=exc
+    if failure is not None:
+        raise failure
+    return counts
 
 
 def _inventory_snapshot(service,identity,case_id):
