@@ -1,3 +1,9 @@
+# EagleEye – Build 473: Alternative Hypothesen
+
+Im lokalen KI-Ermittler konkurrierende Erklärungen mit Stützen, Gegenbelegen und Prüffragen anfordern. Alles bleibt menschlich prüfpflichtig. [Bedienung und Grenzen](BUILD_473_NOTES.md). Vollcheckpoint: 475.
+
+---
+
 # EagleEye – Build 472: Fragen an Fallquellen
 
 Im Fallmenü **Lokaler KI-Ermittler** jetzt eine Arbeitsfrage eingeben. Quellengebundene Antworten oder ausdrücklich ausgewiesene Quellenlücken bleiben prüfpflichtige Vorschläge. [Bedienung und Grenzen](BUILD_472_NOTES.md). Vollcheckpoint: 475.

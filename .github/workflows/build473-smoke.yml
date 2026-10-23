@@ -1,0 +1,51 @@
+name: EagleEye Build 473 Local AI Smoke
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install
+        run: python -m pip install -e '.[test]'
+      - name: Current local AI browser forms and negative cases
+        run: python -m pytest -q tests/test_build471_local_ai.py tests/test_build472_questioning.py tests/test_build473_hypotheses.py
+      - name: Install Chromium browser test runtime
+        run: python -m pip install 'playwright>=1.61,<2'
+      - name: Install Chromium
+        run: python -m playwright install chromium
+      - name: Real browser acceptance with simulated local model
+        run: python -m pytest -q tests/test_build471_browser.py tests/test_build473_browser.py
+      - name: Adjacent document and navigation smoke
+        run: python -m pytest -q tests/test_build458_document_intelligence.py tests/test_build459_workspace_navigation.py -k 'not test_build458_current_installer_and_next_checkpoint'
+      - name: Install isolated current runtime
+        run: python INSTALL_EAGLEEYE_473.py
+      - name: Verify isolated current runtime
+        run: python INSTALL_EAGLEEYE_473.py --check
+      - name: Package and verify laptop build
+        shell: bash
+        run: |
+          git archive --format=zip --output=EagleEye_Build_473_LAPTOP.zip HEAD
+          python -c "import hashlib,pathlib,zipfile; p=pathlib.Path('EagleEye_Build_473_LAPTOP.zip'); h=hashlib.sha256(p.read_bytes()).hexdigest(); pathlib.Path('EagleEye_Build_473_LAPTOP.sha256').write_text(h+'  '+p.name+chr(10)); z=zipfile.ZipFile(p); assert z.testzip() is None; assert {'INSTALL_EAGLEEYE_473.py','START_EAGLEEYE_PRO.bat','START_EAGLEEYE_PRO.sh','src/eagleeye/interfaces/web/app473.py'}.issubset(z.namelist())"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EagleEye_Build_473_LAPTOP_${{ matrix.os }}
+          path: |
+            EagleEye_Build_473_LAPTOP.zip
+            EagleEye_Build_473_LAPTOP.sha256
+          if-no-files-found: error
+          retention-days: 30
