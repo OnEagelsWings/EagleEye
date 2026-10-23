@@ -16,7 +16,7 @@ class Alternative473(StrictModel):
     def anchored(self):
         if not self.supporting and not self.contradicting:
             raise ValueError('Each alternative requires at least one source citation')
-        overlap={(c.anchor_id,c.quote) for c in self.supporting} & {(c.anchor_id,c.quote) for c in self.contradicting}
+        overlap={' '.join(c.quote.split()) for c in self.supporting} & {' '.join(c.quote.split()) for c in self.contradicting}
         if overlap:
             raise ValueError('The same exact quotation must not count as both supporting and contradicting one alternative')
         return self

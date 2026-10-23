@@ -60,3 +60,12 @@ def test_alternatives_require_question_before_network(workspace):
     with patch.object(service,'request') as call:
         with pytest.raises(ValueError):service.generate(user,case_id,[doc_id],'mistral:latest',analysis_mode='alternatives')
     call.assert_not_called()
+
+
+def test_identical_quote_from_different_anchors_cannot_fill_both_roles(workspace):
+    app,_,user,case_id,doc_id,*_=workspace
+    answer,_=analysis(app.state.assistant471,user,case_id,doc_id)
+    citation=deepcopy(answer['alternatives'][0]['supporting'][0])
+    citation['anchor_id']='another-valid-anchor-with-duplicate-text'
+    answer['alternatives'][0]['contradicting']=[citation]
+    with pytest.raises(ValueError):Analysis473.model_validate(answer)
