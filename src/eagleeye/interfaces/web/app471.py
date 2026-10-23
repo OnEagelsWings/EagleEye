@@ -53,10 +53,10 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
     def token(request, case_id):
         return hmac.new(secret, (request.cookies.get(COOKIE, "") + "|" + case_id).encode(), hashlib.sha256).hexdigest()
 
-    async def submission(request):
+    async def submission(request, *, max_bytes=64000):
         data = bytearray()
         async for chunk in request.stream():
-            if len(data) + len(chunk) > 64000:
+            if len(data) + len(chunk) > max_bytes:
                 raise HTTPException(413, "Formular ist zu groß.")
             data.extend(chunk)
         async def receive_form():
@@ -153,7 +153,9 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
 
     @app.post("/assistant471/review")
     async def review(request: Request):
-        form, case_id, user = await submission(request)
+        # 23 item rationales + overall note: 25,000 Unicode characters.
+        # URL encoding needs at most 12 bytes/character, plus 20KB field overhead.
+        form, case_id, user = await submission(request, max_bytes=320000)
         try:
             with ctx.audit.actor_scope(user['username']):
                 service.review(user, case_id, str(form.get('run_id', '')), str(form.get('decision', '')), str(form.get('note', '')), assessments=read_assessments(form), require_assessments=review_matrix_enabled)

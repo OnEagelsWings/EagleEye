@@ -114,3 +114,27 @@ def test_disconnecting_request_does_not_free_running_model_slot(workspace):
                 await asyncio.to_thread(finished.wait,5)
     with patch.object(app.state.assistant471,'generate',side_effect=slow_model):
         asyncio.run(scenario())
+
+
+def test_maximum_multilingual_review_matrix_fits_bounded_form(workspace):
+    app,client,user,case_id,doc_id,*_=workspace;service=app.state.assistant471
+    answer=reply(service,user,case_id,doc_id)
+    answer['statements']*=12
+    answer['uncertainties']*=8
+    answer['answer_status']='source_bound'
+    answer['alternatives']=[{'title':'Alternative Erklärung '+str(i),
+        'explanation':'Eine vorläufige Interpretation der Quellen.',
+        'supporting':answer['statements'][0]['citations'],'contradicting':[],
+        'missing_evidence':'Unabhängige Bestätigung ist weiterhin nötig.',
+        'verification_question':'Welche weiteren Originalbelege gibt es?'} for i in range(3)]
+    with patch.object(service,'request',side_effect=provider(answer,[])):
+        run=service.generate(user,case_id,[doc_id],'mistral:latest',
+            question='Welche Erklärungen sind möglich?',analysis_mode='alternatives')
+    form=form_for(client,case_id,run)
+    for key in form:
+        if key.startswith('item_note_'):form[key]='\U0001f50e'*1000
+    form['note']='\U0001f50e'*2000
+    assert len(review_items(run))==23
+    response=client.post('/assistant471/review',data=form,follow_redirects=False)
+    assert response.status_code==303,response.text
+    assert service.history(user,case_id)[0]['status']=='acknowledged'
