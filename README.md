@@ -1,3 +1,11 @@
+## Build 475 – KI-/Sicherheitscheckpoint
+
+Fallmenü → **KI-Prüfpunkt 475**: persistierte Entwürfe und Einzelprüfungen,
+fallautorisiert und integritätsgeprüft. Vollständige Linux-/Windows-Regression,
+Browserabnahme und reproduzierbare Antwortregel-Prüfung stehen im aktuellen
+Checkpoint-Workflow. Modellgüte und Produktivfreigabe bleiben offen.
+Siehe [BUILD_475_NOTES.md](BUILD_475_NOTES.md) für Start, Messgrenzen und Befehle.
+
 # EagleEye – Build 474: Menschliche Einzelprüfung
 
 KI-Inhalte einzeln prüfen, Gründe dauerhaft zuordnen und veränderte Quellen vor einer Bestätigung erkennen. Ältere Entwürfe über Seitennavigation wiederfinden. [Bedienung und Grenzen](BUILD_474_NOTES.md). Vollcheckpoint: 475.
