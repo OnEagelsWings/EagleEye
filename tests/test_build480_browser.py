@@ -48,8 +48,11 @@ def test_real_chromium_operational_case_workflow(tmp_path):
                 page.get_by_role("button",name="Fall anlegen").click()
             posted=submission.value
             assert posted.status==303, (posted.status,posted.text()[:700],page.url)
-            page.wait_for_url("**/cases/*",timeout=8000)
-            case_id=page.url.rsplit("/",1)[-1]
+            case_url=posted.headers.get("location","")
+            assert case_url.startswith("/cases/"), (case_url,page.url)
+            case_id=case_url.split("/cases/",1)[1].split("?",1)[0]
+            page.goto(base+"/?"+urlencode({"case_id":case_id}))
+            assert "OSINT public source trial" in page.locator("body").inner_text()
             # Import a synthetic public source into the real authenticated case store.
             session=ctx.team_identity_359.authenticate(
                 username="gui480",password=password,client_fingerprint="setup-browser")
