@@ -3,6 +3,7 @@
 Tests use the canonical authenticated case fixture and its existing source archive.
 """
 from urllib.parse import urlencode
+from html import escape
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,7 +33,7 @@ def test_expert_tool_center_restores_existing_dossier_and_analyst_views(workspac
         ("operations", "OPSEC & Team"),
     ]:
         link = "/?" + urlencode({"case_id": case_id, "view": view})
-        assert 'href="' + link + '"' in center.text
+        assert 'href="' + escape(link, quote=True) + '"' in center.text
         response = client.get("/", params={"view": view, "case_id": case_id})
         assert response.status_code == 200, (view, response.text[:350])
         assert visible in response.text, view
