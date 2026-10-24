@@ -133,6 +133,8 @@ def attach_workbench(app, workspace_build):
             steps.append(step(8,"Arbeitsbericht","Quellengebundenen Bericht zur manuellen Prüfung und Weiterarbeit erzeugen.","/workbench/report"))
         if stage>=480:
             steps.append(step(9,"Prüfpunkt 480","Belegstand und offene Einsatzgrenzen transparent überprüfen.","/workbench/checkpoint"))
+        if stage>=479:
+            steps.append(step(9,"Sicherung & Wiederherstellung","Anwendung schließen; eigenen gesamten Arbeitsordner sichern und in neuen Ordner wiederherstellen.","/workbench/recovery"))
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
         body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
         body += '<div class="grid">'+"".join(steps)+'</div>'
