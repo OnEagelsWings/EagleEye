@@ -341,17 +341,7 @@ def create_workspace_app450(*, base_dir=None):
         cases = visible_cases(identity)
         selected = choose_case(cases, case_id)
         if not selected:
-            return HTMLResponse(
-                """<!doctype html><html lang="de"><head><meta charset="utf-8">"""
-                """<meta name="viewport" content="width=device-width,initial-scale=1">"""
-                """<title>EagleEye Build 450</title></head><body>"""
-                """<main><h1>Kein operativer Fall verfügbar</h1>"""
-                """<p>Build-450-Qualifikationsfälle sind absichtlich aus dem operativen """
-                """Workspace und den Legacy-Werkzeugen ausgeschlossen.</p>"""
-                """<p>Lege einen normalen Ermittlungsfall an, um den Investigator Workspace zu nutzen.</p>"""
-                """</main></body></html>""",
-                status_code=200,
-            )
+            return RedirectResponse("/new-case", status_code=303)
         snapshot = ctx.build449.team_review_snapshot_449(
             identity=identity,
             case_id=selected["case_id"],
@@ -360,9 +350,10 @@ def create_workspace_app450(*, base_dir=None):
         latest = ctx.build450.investigation_workflow_latest_450(selected["case_id"])
         snapshot["checkpoint450"] = {**status, "latest": latest}
         audits = ctx.build449.ui_audit_history_449(selected["case_id"], limit=15)
-        return HTMLResponse(
-            render_workspace(snapshot, view=view, cases=cases, audits=audits)
-        )
+        page = render_workspace(snapshot, view=view, cases=cases, audits=audits)
+        return HTMLResponse(page.replace(
+            "</nav>", '<a href="/new-case">Neuen Ermittlungsfall anlegen</a></nav>', 1,
+        ))
 
     @app.get("/legacy", response_class=HTMLResponse)
     def legacy450(request: Request, case_id: str = ""):
