@@ -40,7 +40,8 @@ def test_expert_tool_center_restores_existing_dossier_and_analyst_views(workspac
         assert "Alle Ermittlungswerkzeuge" in response.text, view
     dossier = client.get("/", params={"case_id": case_id, "view": "dossier"})
     assert "Living-Dossier-Revision" in dossier.text
-    assert "Dossier-Review" in dossier.text or "Vier-Augen" in dossier.text
+    # No accepted claim in this fixture: dossier creation must not be falsely pre-approved.
+    assert "Mindestens ein akzeptierter Claim ist erforderlich" in dossier.text
     assert "Freigegebenes Dossier" not in center.text  # no endorsement/automatic release
 
 
