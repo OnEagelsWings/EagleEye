@@ -44,8 +44,11 @@ def test_real_chromium_operational_case_workflow(tmp_path):
             page.locator('input[name=client]').fill("Browser QA")
             page.locator('textarea[name=purpose]').fill("Validate a bounded public research process.")
             page.locator('textarea[name=legal_basis]').fill("public_data")
-            page.get_by_role("button",name="Fall anlegen").click()
-            page.wait_for_url("**/cases/*")
+            with page.expect_response(lambda r: r.request.method=="POST" and r.url.endswith("/cases")) as submission:
+                page.get_by_role("button",name="Fall anlegen").click()
+            posted=submission.value
+            assert posted.status==303, (posted.status,posted.text()[:700],page.url)
+            page.wait_for_url("**/cases/*",timeout=8000)
             case_id=page.url.rsplit("/",1)[-1]
             # Import a synthetic public source into the real authenticated case store.
             session=ctx.team_identity_359.authenticate(
