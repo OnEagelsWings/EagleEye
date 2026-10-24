@@ -16,6 +16,8 @@ try:
         cid=case['case_id']
         doc=ctx.document_intelligence_458.import_bytes(identity=identity,case_id=cid,filename='source.txt',raw=b'Original source survives offline restoration.',title='Recovery source',source_url='https://example.org/source')
         anchor=ctx.document_intelligence_458.anchors(identity=identity,document_id=doc['document_id'])['anchors'][0]
+        anchor=ctx.document_intelligence_458._anchor(anchor['anchor_id'])
+        doc=ctx.document_intelligence_458._document(doc['document_id'])
         row=dict(finding_id='native-restore-note',case_id=cid,document_id=doc['document_id'],anchor_id=anchor['anchor_id'],title='Original source observation',interpretation='This is a human working note, not a confirmed fact.',source_excerpt=anchor['text_excerpt'],document_sha256=doc['document_sha256'],source_url=doc['source_url'],created_by=identity['username'],created_at='2026-10-24T00:00:00+00:00',review_state='unreviewed',review_reason='',reviewed_by='',kind='observation',anchor_hash=anchor['record_hash'],legacy_imported=0)
         row['record_hash']=finding_hash(row)
         with notes_db(app) as db:db.execute(INSERT_FINDING_SQL,tuple(row[k] for k in BASE_COLUMNS+('record_hash',)))
