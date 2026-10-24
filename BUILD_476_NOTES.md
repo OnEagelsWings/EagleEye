@@ -25,3 +25,9 @@ Windows und Linux prüfen den installierten Prozess mit echter HTTP-Verbindung
 und dem vorgesehenen Launcher-Zugang. Chromium prüft zusätzlich Erstkonfiguration,
 Anmeldung, echten Fall, Dokumentimport und Reload. Die Tests ersetzen keinen
 Doppelklickversuch auf dem konkreten Anwendergerät. Keine Produktivfreigabe.
+
+Der neue Einstieg **Geführte Recherche** übernimmt den Arbeitsablauf aus dem
+Windows-Arbeitsstrang: Auftrag → öffentliche Quellen → Originaldokumente →
+Beziehungen/Graph → Fallprüfung. Qualifikationsfälle bleiben auch bei einer
+leeren Auswahl aus dem operativen Einstieg ausgeschlossen. Das Quelleninventar,
+Arbeitsbefunde und der Arbeitsbericht folgen in den nächsten Builds.

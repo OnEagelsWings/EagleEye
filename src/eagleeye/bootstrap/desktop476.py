@@ -8,6 +8,7 @@ from pathlib import Path
 import threading
 import tempfile
 from eagleeye_pro.version import BUILD
+from .paths import default_runtime_root
 
 _STATUS_LOCK=threading.Lock()
 
@@ -56,7 +57,9 @@ def resolve_workspace(install_dir):
         if not root.is_dir():raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bitte Datenordner auswählen.')
         return root
     installed=_local_path(install_dir)
-    if (installed/'data/eagleeye.db').is_file():return remember_workspace(installed)
+    for candidate in (installed,default_runtime_root()):
+        if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db')):
+            return remember_workspace(candidate)
     return remember_workspace(settings_directory()/'workspace')
 
 
@@ -73,7 +76,7 @@ def diagnostics(root):
     status_path=root/'data/runtime_126_0/start-status.json'
     try:status=json.loads(status_path.read_text(encoding='utf-8'))
     except (OSError,ValueError):status={'stage':'unknown'}
-    return {'build':BUILD,'workspace_directory':str(root),'database_present':(root/'data/eagleeye.db').is_file(),
+    return {'build':BUILD,'workspace_directory':str(root),'database_present':any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
         'server_reachable':bool(runtime and runtime['build']==BUILD),'running_build':runtime['build'] if runtime else None,
         'version_conflict':bool(runtime and runtime['build']!=BUILD),'port':runtime['port'] if runtime else None,
         'last_start':{k:status[k] for k in ('stage','updated_at','browser','error_type') if k in status},

@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def default_runtime_root() -> Path:
+    if os.name == "nt":
+        return Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))/"EagleEye"/"Spearhead"
+    return Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))/"eagleeye-spearhead"
+
+
 @dataclass(frozen=True, slots=True)
 class RuntimePaths:
     base_dir: Path
@@ -41,10 +47,7 @@ class RuntimePaths:
         db_path: str | Path | None = None,
     ) -> "RuntimePaths":
         if base_dir is None:
-            if os.name == "nt":
-                runtime_root = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "EagleEye" / "Spearhead"
-            else:
-                runtime_root = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))) / "eagleeye-spearhead"
+            runtime_root = default_runtime_root()
         else:
             runtime_root = Path(base_dir)
 

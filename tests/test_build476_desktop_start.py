@@ -12,6 +12,8 @@ from eagleeye_pro.version import BUILD
 @pytest.fixture(autouse=True)
 def isolated_settings(tmp_path,monkeypatch):
     monkeypatch.setenv('EAGLEEYE_SETTINGS_DIR',str(tmp_path/'settings'))
+    monkeypatch.setenv('XDG_DATA_HOME',str(tmp_path/'global-data'))
+    monkeypatch.setenv('LOCALAPPDATA',str(tmp_path/'local-data'))
     monkeypatch.delenv('EAGLEEYE_DATA_DIR',raising=False)
     monkeypatch.delenv('EAGLEEYE_REMOTE_TEAM_ENABLED',raising=False)
 
@@ -120,3 +122,38 @@ def test_existing_workspace_reports_failed_browser_start(tmp_path):
             patch.object(server,'open_local_browser',return_value='unavailable'):
         assert not server.open_existing_workspace(base_dir=tmp_path)
     assert diagnostics(tmp_path)['last_start']['stage']=='browser-unavailable'
+
+
+@pytest.mark.parametrize('location',['installation','previous_default'])
+def test_legacy_database_is_discovered_without_silent_new_case_directory(tmp_path,location):
+    from eagleeye.bootstrap.paths import default_runtime_root
+    install=tmp_path/'install'
+    old=install if location=='installation' else default_runtime_root()
+    (old/'data').mkdir(parents=True)
+    legacy=old/'data/eagleeye_pro_95_0.db';legacy.write_bytes(b'existing legacy source')
+    assert resolve_workspace(install)==old
+    assert legacy.read_bytes()==b'existing legacy source'
+    assert not (old/'data/eagleeye.db').exists()  # canonical migration runs on app startup
+
+
+def test_qualification_only_workspace_cannot_become_operational_default(tmp_path):
+    import hashlib
+    from fastapi.testclient import TestClient
+    from test_build450_integrated import setup_users,ADMIN_PASSWORD
+    from eagleeye.interfaces.web.app476 import create_workspace_app476
+    from eagleeye.interfaces.web.app448 import COOKIE
+    from eagleeye.interfaces.web.app364 import CSRF_COOKIE
+    app=create_workspace_app476(base_dir=tmp_path);ctx=app.state.context
+    try:
+        _,_,admin,reviewer,*_=setup_users(ctx)
+        qualification=ctx.build450.prepare_investigation_workflow_qualification_case_450(
+            identity=admin,reviewer_username=reviewer['username'])
+        session=ctx.team_identity_359.authenticate(username=admin['username'],password=ADMIN_PASSWORD,
+            client_fingerprint=hashlib.sha256(b'testclient||testclient').hexdigest())
+        with TestClient(app) as client:
+            client.cookies.set(COOKIE,session.token);client.cookies.set(CSRF_COOKIE,session.csrf_token)
+            assert client.get('/',follow_redirects=False).headers['location']=='/new-case'
+            assert client.get('/workbench',follow_redirects=False).headers['location']=='/new-case'
+            assert client.get('/workbench',params={'case_id':qualification['case_id']}).status_code==403
+            assert client.get('/new-case').status_code==200
+    finally:ctx.close()
