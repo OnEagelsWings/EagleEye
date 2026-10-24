@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 from html import escape
+from urllib.parse import urlencode
 
-from fastapi import File, Form, HTTPException, Request, UploadFile
+from fastapi import File, Form, HTTPException, Request, UploadFile, Query
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 
@@ -178,7 +179,7 @@ if (form && feedback) {
         return Response(script, media_type="application/javascript", headers={"Cache-Control": "no-store"})
 
     @app.get("/documents458",response_class=HTMLResponse)
-    def document_browser(request:Request,case_id:str,document_id:str=""):
+    def document_browser(request:Request,case_id:str,document_id:str="",anchor_id:str="",anchor_offset:int=Query(0,ge=0,le=100000)):
         ident=auth(request)
         try:
             all_docs=service.documents(identity=ident,case_id=case_id)
@@ -195,18 +196,37 @@ if (form && feedback) {
         details=""
         if anchors:
             details="<h2>Verifizierbare Fundstellen</h2><p>Quelle: "+escape(anchors["document"]["document_sha256"])+"</p>"
-            for item in anchors["anchors"][:200]:
+            document=anchors["document"]
+            if document["record_hash"]!=service._rh(document) or not service._payload_current(document):
+                raise HTTPException(409,"Originalbeleg wurde verändert oder ist nicht verfügbar.")
+            items=anchors["anchors"]
+            if anchor_id:
+                match=next((i for i,item in enumerate(items) if item["anchor_id"]==anchor_id),None)
+                if match is None:raise HTTPException(404,"Fundstelle nicht in diesem Dokument vorhanden.")
+                anchor_offset=(match//200)*200
+            else:
+                anchor_offset=min(anchor_offset,(max(0,len(items)-1)//200)*200)
+            for item in items[anchor_offset:anchor_offset+200]:
+                raw_anchor=service._anchor(item["anchor_id"])
+                if raw_anchor["record_hash"]!=service._rh(raw_anchor):
+                    raise HTTPException(409,"Integrität der Originalfundstelle verletzt.")
                 details+=f'<article id="anchor-{escape(item["anchor_id"],quote=True)}"><strong>Seite {item["page_number"]} / Block {item["ordinal"]}</strong>'
                 details+=f'<p>{escape(item["text_excerpt"])}</p><small>{escape(item["locator"])}</small></article>'
+            links=[]
+            for offset,label in ((max(0,anchor_offset-200),"Frühere Fundstellen"),(anchor_offset+200,"Weitere Fundstellen")):
+                if (anchor_offset>0 and offset<anchor_offset) or (offset>anchor_offset and offset<len(items)):
+                    href="/documents458?"+urlencode({"case_id":case_id,"document_id":document_id,"anchor_offset":offset})
+                    links.append('<a href="'+escape(href,quote=True)+'">'+label+'</a>')
+            details+="<nav>"+" · ".join(links)+"</nav>"
         html=(
             '<!doctype html><html lang="de"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            '<title>EagleEye 458 · Document Intelligence</title>'
-            '<style>body{font:16px system-ui;max-width:920px;margin:auto;padding:20px;line-height:1.5}'
+            f'<title>EagleEye {escape(app.version)} · Dokumente</title>'
+            '<style>body{font:16px system-ui;max-width:920px;margin:auto;padding:20px;line-height:1.5;overflow-wrap:anywhere}'
             'article{border:1px solid #aaa;border-radius:7px;padding:12px;margin:12px 0}'
             'input,button{font:inherit;padding:8px;margin:5px}button{cursor:pointer}'
             'a{color:inherit}</style></head><body>'
-            f'<h1>EagleEye 458 · Dokumente</h1><p>Fall: {case}</p>'
+            f'<h1>EagleEye {escape(app.version)} · Dokumente</h1><p>Fall: {case}</p>'
             '<p>Extraktion ist ein Prüfobjekt, keine bestätigte Aussage. '
             'Scans ohne Textschicht werden als OCR erforderlich markiert.</p>'
             f'<form id="upload" data-case-id="{case}" enctype="multipart/form-data"><input name="file" type="file" '
@@ -216,7 +236,7 @@ if (form && feedback) {
             f'<h2>Dokumente</h2><ul>{options}</ul>{details}'
             '<script src="/assets/build458/documents.js" defer></script></body></html>'
         )
-        return HTMLResponse(html)
+        return HTMLResponse(html,headers={"Cache-Control":"no-store"})
 
     return app
 

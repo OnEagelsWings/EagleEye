@@ -8,7 +8,7 @@ import uvicorn
 from eagleeye.interfaces.web.app475 import create_workspace_app475
 
 
-def run_onboarding(factory,tmp_path,*,inventory=False,expert=False):
+def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=False):
     sync=pytest.importorskip('playwright.sync_api')
     app=factory(base_dir=tmp_path);ctx=app.state.context
     with socket.socket() as sock:
@@ -69,6 +69,19 @@ def run_onboarding(factory,tmp_path,*,inventory=False,expert=False):
                 page.goto(base+'/workbench/expert?'+urlencode({'case_id':case_url.split('case_id=')[1]}))
                 page.set_viewport_size({'width':390,'height':844})
                 assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
+            if findings:
+                page.goto(case_url)
+                page.get_by_role('link',name='Geführte Recherche',exact=True).click()
+                page.locator('a[href^="/workbench/findings?"]').click()
+                page.locator('[name=title]').fill('Documentation use hypothesis')
+                page.locator('[name=interpretation]').fill('The original text describes a documentation purpose; broader usage needs independent evidence.')
+                page.locator('[name=kind]').select_option('hypothesis')
+                with page.expect_response(lambda r:r.request.method=='POST' and '/workbench/findings' in r.url) as saved:
+                    page.get_by_role('button',name='Mit Quelle als Arbeitsbefund speichern',exact=True).click()
+                assert saved.value.status==303
+                page.get_by_role('heading',name='Documentation use hypothesis',exact=True).wait_for()
+                page.reload()
+                page.get_by_role('heading',name='Documentation use hypothesis',exact=True).wait_for()
             page.goto(base+'/new-case');page.set_viewport_size({'width':390,'height':844})
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             assert page.locator('[name=title]').is_visible()

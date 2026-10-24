@@ -1,3 +1,3 @@
-BUILD = "477.0"
-SCHEMA_VERSION = "477.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 477.0 Evidence Grounded Local AI Drafts"
+BUILD = "478.0"
+SCHEMA_VERSION = "478.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 478.0 Evidence Grounded Local AI Drafts"
