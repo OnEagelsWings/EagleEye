@@ -198,7 +198,8 @@ def attach_report(app,build):
     def recovery_help(request:Request,case_id:str=''):
         case_access(app,request,case_id)
         body=('<p>Die Offline-Sicherung enthält den <strong>gesamten Arbeitsordner mit allen Fällen</strong>, '
-            'Benutzerkonten, Originaldateien, Notizen, Berichten, Dossierexporten und lokalen Datenbanken. Sie ist kein fallbezogener Export.</p>'
+            'Benutzerkonten, Originaldateien, Notizen, Berichten, Dossierexporten und lokalen Datenbanken. Gesichert werden reguläre Dateien innerhalb dieses Ordners. '
+            'Laufzeitumgebungen, Git-Metadaten und regenerierte Sitzungsdateien sind ausgenommen; extern referenzierte Dateien müssen separat gesichert werden. Sie ist kein fallbezogener Export.</p>'
             '<ol><li>Serverfenster vollständig schließen.</li><li><strong>EAGLEEYE_SICHERUNG.bat</strong> öffnen; neue ZIP-Datei außerhalb des Arbeitsordners wählen.</li>'
             '<li>Nur eine eigene vertrauenswürdige Sicherung über <strong>EAGLEEYE_WIEDERHERSTELLEN.bat</strong> auswählen. '
             'Ein neuer Arbeitsordner wird angelegt; bestehende Ordner werden nicht überschrieben.</li>'

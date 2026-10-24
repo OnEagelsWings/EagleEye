@@ -11,6 +11,9 @@ MANIFEST='EAGLEEYE_BACKUP_MANIFEST.json'
 MAX_BYTES=2*1024*1024*1024
 MAX_FILES=100000
 MAX_MANIFEST=32*1024*1024
+APPLICATION_DATABASES={'data/eagleeye.db','data/eagleeye_pro_95_0.db','data/operational_notes_478.sqlite3',
+    'entity_registry_461.sqlite3','entity_registry_462.sqlite3'}
+OMIT_ROOT={'.git','.eagleeye-runtime','.venv','venv','__pycache__'}
 
 def now():return datetime.now(timezone.utc).isoformat()
 
@@ -29,13 +32,14 @@ def safe_name(value):
     for part in path.parts:
         if part.endswith((' ','.')) or part.split('.')[0].upper() in {'CON','PRN','AUX','NUL',*(f'COM{i}' for i in range(1,10)),*(f'LPT{i}' for i in range(1,10))}:
             raise ValueError('Nicht portabler Dateiname.')
-    if not (path.parts[0] in {'data','reports','exports'} or (len(path.parts)==1 and value.startswith('entity_registry') and value.endswith(('.sqlite3','.db')))):
-        raise ValueError('Pfad außerhalb des gesicherten Arbeitsbestands.')
     return path
 
 def excluded(name):
-    return (name.startswith('data/runtime_126_0/') or name in {'data/.workspace.runtime.lock','data/security_364/local_session_token'}
-        or name.endswith(('-wal','-shm','-journal')))
+    first=PurePosixPath(name).parts[0]
+    if first in OMIT_ROOT or name=='restore-receipt.json':return True
+    if name=='data/runtime_126_0' or name.startswith('data/runtime_126_0/'):return True
+    if name in {'data/.workspace.runtime.lock','data/security_364/local_session_token'}:return True
+    return any(name==db+suffix for db in APPLICATION_DATABASES for suffix in ('-wal','-shm','-journal'))
 
 def local_path(value):
     value=str(value)
@@ -44,8 +48,10 @@ def local_path(value):
 
 def collect_files(root):
     files=[]
-    candidates=[root/'data',root/'reports',root/'exports',*root.glob('entity_registry*.sqlite3'),*root.glob('entity_registry*.db')]
+    candidates=list(root.iterdir())
     def visit(path):
+        relative=path.relative_to(root).as_posix()
+        if excluded(relative):return
         if path.is_symlink() or getattr(path,'is_junction',lambda:False)():
             raise ValueError('Verknüpfungen sind nicht Teil einer portablen Sicherung.')
         if not path.exists():return
@@ -91,8 +97,7 @@ def create_backup(root,archive):
                         before=path.stat()
                         with path.open('rb') as handle:magic=handle.read(16)
                         source=path
-                        application_db=(name in {'data/eagleeye.db','data/eagleeye_pro_95_0.db','data/operational_notes_478.sqlite3'}
-                            or name in {'entity_registry_461.sqlite3','entity_registry_462.sqlite3'})
+                        application_db=name in APPLICATION_DATABASES
                         if application_db and magic==b'SQLite format 3\x00':
                             source=Path(temporary)/str(index);sqlite_snapshot(path,source)
                         size=source.stat().st_size
@@ -109,7 +114,7 @@ def create_backup(root,archive):
                         total+=written;entries.append({'path':name,'bytes':written,'sha256':digest.hexdigest()})
                         if source!=path:source.unlink()
                     manifest={'format':FORMAT,'source_build':BUILD,'created_at':now(),
-                        'scope':['data','reports','exports','root entity_registry databases'],'files':entries,
+                        'scope':['all regular files inside workspace except runtime, virtualenvs, git metadata, regenerated receipt and session admission token'],'files':entries,
                         'total_bytes':total,'sessions_reactivated_on_restore':False}
                     payload=json.dumps(manifest,ensure_ascii=False,sort_keys=True).encode()
                     if len(payload)>MAX_MANIFEST:raise ValueError('Manifest zu groß.')

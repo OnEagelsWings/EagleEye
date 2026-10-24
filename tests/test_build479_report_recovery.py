@@ -172,3 +172,19 @@ def test_original_sqlite_evidence_is_copied_byte_for_byte(workspace,tmp_path):
             assert fresh.state.context.evidence_preservation_121.verify_package(package['package_id'])['valid']
         finally:fresh.state.context.close()
     finally:archive.unlink(missing_ok=True)
+
+def test_historical_root_artifacts_and_raw_wal_evidence_are_included(workspace,tmp_path):
+    app,*_=workspace;root=app.state.context.base_dir
+    originals={'darknet_301/raw/public-capture.bin':b'original public capture',
+        'dossiers_303/old-dossier.pdf':b'original dossier',
+        'unclassified/new-service-artifact.bin':b'preserve future application files',
+        'data/evidence_vault/raw-original-wal':b'original WAL preserved as evidence'}
+    for name,payload in originals.items():
+        path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(payload)
+    ignored=root/'.eagleeye-runtime/large-unneeded';ignored.parent.mkdir();ignored.write_bytes(b'installed runtime excluded')
+    archive=tmp_path.parent/(tmp_path.name+'-historical.zip');target=tmp_path.parent/(tmp_path.name+'-historical-restored')
+    try:
+        create_backup(root,archive);restore_backup(archive,target)
+        for name,payload in originals.items():assert (target/name).read_bytes()==payload
+        assert not (target/'.eagleeye-runtime').exists()
+    finally:archive.unlink(missing_ok=True)
