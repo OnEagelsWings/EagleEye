@@ -78,3 +78,15 @@ def test_visible_tools_reflect_actual_routes_not_fake_features(workspace):
     # Build 477 does not claim the yet-to-be-merged 478/479 functionality.
     assert "In diesem Build nicht angebunden" in page.text
     assert 'href="/workbench/report?case_id=' not in page.text
+
+
+def test_restoring_dossier_view_does_not_restore_unsafe_direct_approval_routes(workspace):
+    app, client, user, case_id, *_ = workspace
+    routes = {(route.path, method) for route in app.router.routes
+              for method in (getattr(route, "methods", set()) or set())}
+    assert ("/api/build449/reviews", "POST") in routes
+    assert ("/api/build449/reviews/{review_id}/export", "POST") in routes
+    # Build-449 intentionally deleted older direct approval/export mutation routes.
+    assert ("/api/build447/dossiers/{revision_id}/export", "POST") not in routes
+    assert ("/api/build447/dossiers/{revision_id}/review", "POST") not in routes
+    assert client.get("/", params={"case_id": case_id, "view": "dossier"}).status_code == 200
