@@ -52,7 +52,8 @@ def page(title, case_id, body, build):
        '<nav><a href="'+link('/')+'">Hauptansicht</a><a href="/new-case">Neuen Fall anlegen</a>'
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
-       '<a href="'+link('/entities462')+'">Entitäten</a></nav></header><main><h1>'+escape(title)+'</h1>'
+       '<a href="'+link('/entities462')+'">Entitäten</a>'
+       '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a></nav></header><main><h1>'+escape(title)+'</h1>'
        +body+'<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
        ' Nur öffentliche oder synthetische, unkritische Quellen verwenden. KI-Entwürfe'
        ' und Beziehungen sind nicht automatisch bestätigte Tatsachen.</p>'
@@ -82,8 +83,15 @@ def attach_workbench(app, workspace_build):
             return result
         case_access(app,request,case_id)
         href = "/workbench?" + urlencode({"case_id":case_id})
-        html = result.body.decode("utf-8").replace(
-            "</nav>", '<a href="'+escape(href,quote=True)+'">Geführte Recherche</a></nav>', 1)
+        expert_url = "/workbench/expert?" + urlencode({"case_id":case_id})
+        html = result.body.decode("utf-8")
+        # Link old expert entrypoints to the preserved Build-448 advanced panels,
+        # rather than a possibly empty or redirected legacy workspace.
+        html = html.replace('href="/legacy?case_id=', 'href="/workbench/expert?case_id=')
+        html = html.replace('href="/legacy"', 'href="'+escape(expert_url,quote=True)+'"')
+        html = html.replace(
+            "</nav>", '<a href="'+escape(href,quote=True)+'">Geführte Recherche</a>'
+            '<a href="'+escape(expert_url,quote=True)+'">Alle Ermittlungswerkzeuge</a></nav>', 1)
         return HTMLResponse(html, status_code=result.status_code,
                             headers={"Cache-Control":"no-store"})
 
@@ -113,6 +121,9 @@ def attach_workbench(app, workspace_build):
             step(3,"Dokumente & Originalstellen","Originaldateien importieren, Textanker und Herkunft prüfen.","/documents458"),
             step(4,"Entitäten & Beziehungen","Beziehungen als Hypothesen formulieren und im Graph überprüfen.","/graph464"),
             step(5,"Quellenkritische Fallprüfung","Unklare und fehlende Belege sichtbar halten.","/review465"),
+            step(6,"Erweiterte Ermittlungswerkzeuge",
+                 "Vorhandene KI-, Evidence-, Claims-, Graph-, Timeline- und Dossierfunktionen fallbezogen öffnen.",
+                 "/workbench/expert"),
         ]
         if stage>=477:
             steps.append(step(6,"Quellenbestand","Alle importierten Dokumente mit Herkunft und Vollständigkeit sehen.","/workbench/sources"))
@@ -127,3 +138,8 @@ def attach_workbench(app, workspace_build):
         body += '<div class="grid">'+"".join(steps)+'</div>'
         return HTMLResponse(page("Dein Ermittlungs- und Rechercheablauf",case_id,body,workspace_build),
                             headers={"Cache-Control":"no-store"})
+
+    # Reuse the existing, secure research views instead of reimplementing a
+    # competing simplified claims/dossier system.
+    from .tool_center477 import attach_tool_center
+    attach_tool_center(app, workspace_build)
