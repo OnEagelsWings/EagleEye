@@ -108,6 +108,8 @@ def attach_workbench(app, workspace_build):
             steps.append(step(7,"Arbeitsbefunde","Eigene beleggebundene Beobachtungen als nicht bestätigte Befunde speichern.","/workbench/findings"))
         if stage>=479:
             steps.append(step(8,"Arbeitsbericht","Quellengebundenen Bericht zur manuellen Prüfung und Weiterarbeit erzeugen.","/workbench/report"))
+        if stage>=480:
+            steps.append(step(9,"Prüfpunkt 480","Belegstand und offene Einsatzgrenzen transparent überprüfen.","/workbench/checkpoint"))
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
         body += '<div class="grid">'+"".join(steps)+'</div>'
         return HTMLResponse(page("Dein Ermittlungs- und Rechercheablauf",case_id,body,workspace_build),
