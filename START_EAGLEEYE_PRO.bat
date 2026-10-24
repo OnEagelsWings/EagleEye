@@ -1,7 +1,9 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 475
+title EagleEye Build 480
+@echo [EagleEye] Starte Build 480. Bitte dieses Fenster offen lassen.
+@echo [EagleEye] Wenn Firefox ausbleibt, hier Fehler ablesen.
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -20,7 +22,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-%PYTHON% INSTALL_EAGLEEYE_475.py
+%PYTHON% INSTALL_EAGLEEYE_480.py
 if errorlevel 1 goto :failed
 
 set "RUNTIME_PY=.eagleeye-runtime\Scripts\python.exe"
@@ -33,8 +35,8 @@ exit /b 0
 
 :failed
 echo.
-echo EagleEye Build 475 did not install or start successfully.
-echo Run: %PYTHON% INSTALL_EAGLEEYE_475.py --check
+echo EagleEye Build 480 did not install or start successfully.
+echo Run: %PYTHON% INSTALL_EAGLEEYE_480.py --check
 echo.
 pause
 exit /b 1
