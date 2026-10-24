@@ -91,7 +91,9 @@ def create_backup(root,archive):
                         before=path.stat()
                         with path.open('rb') as handle:magic=handle.read(16)
                         source=path
-                        if magic==b'SQLite format 3\x00':
+                        application_db=(name in {'data/eagleeye.db','data/eagleeye_pro_95_0.db','data/operational_notes_478.sqlite3'}
+                            or name in {'entity_registry_461.sqlite3','entity_registry_462.sqlite3'})
+                        if application_db and magic==b'SQLite format 3\x00':
                             source=Path(temporary)/str(index);sqlite_snapshot(path,source)
                         size=source.stat().st_size
                         if total+size>MAX_BYTES:raise ValueError('Sicherung überschreitet 2 GiB.')

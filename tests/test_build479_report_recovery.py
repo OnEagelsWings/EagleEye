@@ -150,3 +150,17 @@ def test_corrupt_or_escaping_restore_leaves_no_target(workspace,tmp_path,mode):
         with pytest.raises((ValueError,KeyError)):restore_backup(bad,target)
         assert not target.exists()
     finally:archive.unlink(missing_ok=True);bad.unlink(missing_ok=True)
+
+def test_original_sqlite_evidence_is_copied_byte_for_byte(workspace,tmp_path):
+    app,*_=workspace;root=app.state.context.base_dir
+    evidence=root/'data/evidence_preservation_121/raw-sqlite-evidence.sqlite3'
+    evidence.parent.mkdir(parents=True,exist_ok=True)
+    db=sqlite3.connect(evidence);db.execute('CREATE TABLE source(value TEXT)');db.execute("INSERT INTO source VALUES('evidence')");db.commit();db.close()
+    # A preserved original may include meaningful non-SQLite trailing bytes.
+    original=evidence.read_bytes()+b'original-trailing-evidence-bytes'
+    evidence.write_bytes(original)
+    archive=tmp_path.parent/(tmp_path.name+'-sqlite-evidence.zip');target=tmp_path.parent/(tmp_path.name+'-sqlite-restored')
+    try:
+        create_backup(root,archive);restore_backup(archive,target)
+        assert (target/evidence.relative_to(root)).read_bytes()==original
+    finally:archive.unlink(missing_ok=True)
