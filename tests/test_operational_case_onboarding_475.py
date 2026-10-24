@@ -16,12 +16,12 @@ def test_first_operational_case_flow_in_build475(tmp_path):
         ctx.team_identity_359.create_initial_admin(
             username="firstcase475",
             display_name="First Case QA",
-            password="FirstCase475!Password_88",
+            password="Distinct!Secure-Key-2847",
         )
         fingerprint = hashlib.sha256(b"testclient||testclient").hexdigest()
         session = ctx.team_identity_359.authenticate(
             username="firstcase475",
-            password="FirstCase475!Password_88",
+            password="Distinct!Secure-Key-2847",
             client_fingerprint=fingerprint,
         )
         with TestClient(app) as client:
