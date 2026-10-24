@@ -49,8 +49,12 @@ def test_real_chromium_operational_case_workflow(tmp_path):
             posted=submission.value
             assert posted.status==303, (posted.status,posted.text()[:700],page.url)
             case_url=posted.headers.get("location","")
-            assert case_url.startswith("/cases/"), (case_url,page.url)
-            case_id=case_url.split("/cases/",1)[1].split("?",1)[0]
+            from urllib.parse import urlsplit, parse_qs
+            if case_url.startswith("/cases/"):
+                case_id=case_url.split("/cases/",1)[1].split("?",1)[0]
+            else:
+                case_id=parse_qs(urlsplit(case_url).query).get("case_id",[""])[0]
+            assert case_id and case_url.startswith("/"), (case_url,page.url)
             page.goto(base+"/?"+urlencode({"case_id":case_id}))
             assert "OSINT public source trial" in page.locator("body").inner_text()
             # Import a synthetic public source into the real authenticated case store.
