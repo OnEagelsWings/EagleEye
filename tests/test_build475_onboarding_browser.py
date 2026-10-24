@@ -8,9 +8,9 @@ import uvicorn
 from eagleeye.interfaces.web.app475 import create_workspace_app475
 
 
-def test_fresh_browser_creates_and_uses_regular_case_without_console(tmp_path):
+def run_onboarding(factory,tmp_path,*,inventory=False):
     sync=pytest.importorskip('playwright.sync_api')
-    app=create_workspace_app475(base_dir=tmp_path);ctx=app.state.context
+    app=factory(base_dir=tmp_path);ctx=app.state.context
     with socket.socket() as sock:
         sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
     server=uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=port,log_level='warning'))
@@ -40,6 +40,7 @@ def test_fresh_browser_creates_and_uses_regular_case_without_console(tmp_path):
             assert created.value.status==303
             assert created.value.request.headers.get('origin')==base
             assert '/?case_id=' in page.url
+            case_url=page.url
             assert 'Legacy Workspace nicht verfügbar' not in page.locator('body').inner_text()
             page.get_by_role('link',name='Dokumente & Quellenprüfung',exact=True).click()
             source=tmp_path/'public-source.txt';source.write_text('Example domains are maintained for documentation purposes.')
@@ -50,9 +51,18 @@ def test_fresh_browser_creates_and_uses_regular_case_without_console(tmp_path):
             page.get_by_text('Public documentation source',exact=False).first.wait_for()
             page.reload()
             page.get_by_text('Public documentation source',exact=False).first.wait_for()
+            if inventory:
+                page.goto(case_url)
+                page.get_by_role('link',name='Geführte Recherche',exact=True).click()
+                page.locator('a[href^="/workbench/sources?"]').click()
+                assert 'Public documentation source' in page.locator('main').inner_text()
             page.goto(base+'/new-case');page.set_viewport_size({'width':390,'height':844})
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             assert page.locator('[name=title]').is_visible()
             browser.close()
     finally:
         server.should_exit=True;thread.join(timeout=10);ctx.close()
+
+
+def test_fresh_browser_creates_and_uses_regular_case_without_console(tmp_path):
+    run_onboarding(create_workspace_app475,tmp_path)
