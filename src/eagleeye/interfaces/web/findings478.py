@@ -164,7 +164,7 @@ def attach_findings(app,build):
         if 'research.run' not in ctx.team_governance_359.effective_capabilities(user,case_id):
             form='<p>Du kannst die Arbeitsbefunde lesen. Zum Anlegen ist eine Rechercheberechtigung in diesem Fall erforderlich.</p>'
         rows=notes_for_case(app,case_id,offset=offset,limit=50)
-        items=''.join('<article class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(KINDS.get(row['kind'],'Arbeitsnotiz'))+' · '+escape(row['interpretation'])+'</p><blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape('/documents458?'+urlencode({'case_id':case_id,'document_id':row['document_id']})+'#anchor-'+row['anchor_id'],quote=True)+'">Originalfundstelle öffnen</a><p>Status: '+escape(row['review_state'])+' · '+escape(row['created_by'])+'</p></article>' for row in rows)
+        items=''.join('<article class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(KINDS.get(row['kind'],'Arbeitsnotiz'))+' · '+escape(row['interpretation'])+'</p><blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape('/documents458?'+urlencode({'case_id':case_id,'document_id':row['document_id'],'anchor_id':row['anchor_id']})+'#anchor-'+row['anchor_id'],quote=True)+'">Originalfundstelle öffnen</a><p>Status: '+escape(row['review_state'])+' · '+escape(row['created_by'])+'</p></article>' for row in rows)
         nav=''
         for value,label in ((max(0,offset-50),'Neuere Arbeitsbefunde'),(offset+50,'Ältere Arbeitsbefunde')):
             if (offset>0 and value<offset) or (len(rows)==50 and value>offset):nav+='<a href="'+escape('/workbench/findings?'+urlencode({'case_id':case_id,'offset':value,'document_id':document_id}),quote=True)+'">'+label+'</a> '

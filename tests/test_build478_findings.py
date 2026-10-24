@@ -130,3 +130,21 @@ def test_legacy_sidecar_work_is_retained_and_never_auto_approved(workspace):
     assert restored['finding_id']==saved['finding_id'] and restored['interpretation']==saved['interpretation']
     assert restored['review_state']=='unreviewed' and restored['legacy_imported']==1
     assert legacy.is_file() and finding_hash(restored)==restored['record_hash']
+
+
+
+def test_original_source_jump_reaches_anchors_after_two_hundred(workspace):
+    app,client,user,case_id,*_=workspace;data=form(workspace)
+    source=app.state.context.document_intelligence_458.import_bytes(
+        identity=user,case_id=case_id,filename='many-anchors.txt',
+        raw='\n\n'.join('Original paragraph '+str(i)+' with independently inspectable evidence.' for i in range(230)).encode(),
+        title='Long source document',source_url='https://example.org/long')
+    anchors=app.state.context.document_intelligence_458.anchors(identity=user,document_id=source['document_id'])['anchors']
+    chosen=anchors[-1]['anchor_id'];data['anchor_ref']=source['document_id']+'|'+chosen
+    assert client.post('/workbench/findings',data=data,follow_redirects=False).status_code==303
+    finding_page=client.get('/workbench/findings',params={'case_id':case_id})
+    assert 'anchor_id='+chosen in finding_page.text
+    original=client.get('/documents458',params={'case_id':case_id,'document_id':source['document_id'],'anchor_id':chosen})
+    assert original.status_code==200 and 'id="anchor-'+chosen+'"' in original.text
+    assert 'Original paragraph 229' in original.text and 'Frühere Fundstellen' in original.text
+    assert 'id="anchor-'+anchors[0]['anchor_id']+'"' not in original.text
