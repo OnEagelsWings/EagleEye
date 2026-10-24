@@ -111,8 +111,13 @@ def attach_workbench(app, workspace_build):
             case_id = str(cases[0]["case_id"])
         user,case = case_access(app,request,case_id)
         docs = ctx.document_intelligence_458.documents(identity=user,case_id=case_id)
+        # Number steps in their actual displayed order: previous versions
+        # duplicated step six once advanced tools and sources were appended.
+        step_index = 0
         def step(n,title,desc,path):
-            return ('<section class="card"><h2>'+str(n)+'. '+escape(title)+'</h2>'
+            nonlocal step_index
+            step_index += 1
+            return ('<section class="card"><h2>'+str(step_index)+'. '+escape(title)+'</h2>'
                 '<p>'+escape(desc)+'</p><a href="'+escape(path+"?"+urlencode({"case_id":case_id}),quote=True)
                 +'">Jetzt öffnen →</a></section>')
         steps = [
@@ -124,6 +129,9 @@ def attach_workbench(app, workspace_build):
             step(6,"Erweiterte Ermittlungswerkzeuge",
                  "Vorhandene KI-, Evidence-, Claims-, Graph-, Timeline- und Dossierfunktionen fallbezogen öffnen.",
                  "/workbench/expert"),
+            step(7,"Evidence → Claims → Dossier",
+                 "Original-Evidence und importierte Dokumente unterscheiden, belegte Claims und formale Vier-Augen-Freigabe nachvollziehen.",
+                 "/workbench/closure"),
         ]
         if stage>=477:
             steps.append(step(6,"Quellenbestand","Alle importierten Dokumente mit Herkunft und Vollständigkeit sehen.","/workbench/sources"))
