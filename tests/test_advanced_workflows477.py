@@ -3,7 +3,7 @@
 Tests use the canonical authenticated case fixture and its existing source archive.
 """
 from urllib.parse import urlencode
-from html import escape
+from html import escape, unescape
 
 import pytest
 from fastapi.testclient import TestClient
@@ -25,7 +25,7 @@ def test_expert_tool_center_restores_existing_dossier_and_analyst_views(workspac
     assert "kein allgemeiner Webcrawler" in center.text
     for view, visible in [
         ("research", "Recherche"),
-        ("ai", "KI-Ermittlung"),
+        ("ai", "AI-Ermittlung"),
         ("evidence", "Evidence"),
         ("claims", "Claims & Hypothesen"),
         ("analysis", "Graph & Timeline"),
@@ -36,7 +36,7 @@ def test_expert_tool_center_restores_existing_dossier_and_analyst_views(workspac
         assert 'href="' + escape(link, quote=True) + '"' in center.text
         response = client.get("/", params={"view": view, "case_id": case_id})
         assert response.status_code == 200, (view, response.text[:350])
-        assert visible in response.text, view
+        assert visible in unescape(response.text), view
         assert "Alle Ermittlungswerkzeuge" in response.text, view
     dossier = client.get("/", params={"case_id": case_id, "view": "dossier"})
     assert "Living-Dossier-Revision" in dossier.text
