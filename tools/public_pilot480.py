@@ -141,5 +141,5 @@ def main():
     Path(args.output).write_text(json.dumps(proof,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(proof,ensure_ascii=False))
     if error:raise error
-    return 0
+    return 0 if proof['result']=='PASS' else 1
 if __name__=='__main__':raise SystemExit(main())
