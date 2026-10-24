@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from html import escape
 from urllib.parse import urlencode
 
@@ -30,6 +31,17 @@ def create_workspace_app459(*, base_dir=None, workspace_build="459.0", workspace
                 "integrity_valid": integrity, "production_release_ready": False,
                 "next_checkpoint": "460.0" if workspace_build == "459.0" else ("470.0" if workspace_build == "466.0" else "465.0")}
 
+
+    @app.middleware("http")
+    async def operational_case_destination(request: Request, call_next):
+        # Keep the canonical POST /cases authorization and CSRF boundary.
+        response = await call_next(request)
+        if request.method == "POST" and request.url.path == "/cases" and response.status_code == 303:
+            match = re.fullmatch(r"/cases/([A-Za-z0-9_-]+)", response.headers.get("location", ""))
+            if match:
+                response.headers["location"] = "/?" + urlencode({"case_id": match.group(1)})
+                response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/new-case", response_class=HTMLResponse)
     def new_operational_case(request: Request):
@@ -62,7 +74,7 @@ label{{display:block;margin-top:1rem;font-weight:600}}input,textarea{{box-sizing
 button{{margin-top:1.3rem;padding:.8rem 1.2rem;font-weight:700}}a{{color:#9be9d5}}
 .notice{{background:#273e58;border-left:4px solid #ffcb70;padding:.8rem}}
 </style></head><body><main><h1>Neuen Ermittlungsfall anlegen</h1>
-<p>Lege einen regulären, fallbezogenen Arbeitsbereich an. Er wird nicht als Qualifikationsfall markiert.</p>
+<p>Lege einen regulären, fallbezogenen Arbeitsbereich an. Hier speicherst du deinen Rechercheauftrag und die zugehörigen Belege.</p>
 <p class="notice"><strong>Entwicklungsstand:</strong> Noch keine Produktivfreigabe. Bis zur unabhängigen
 Sicherheits- und Wiederherstellungsprüfung nur öffentliche oder synthetische, unkritische
 Quellen verarbeiten. KI-Ausgaben bleiben prüfpflichtige Entwürfe.</p>
@@ -74,8 +86,8 @@ Quellen verarbeiten. KI-Ausgaben bleiben prüfpflichtige Entwürfe.</p>
 <label for="legal_basis">Rechtsgrundlage / Berechtigung</label>
 <textarea id="legal_basis" name="legal_basis" required rows="3"></textarea>
 <button type="submit">Fall anlegen</button>
-</form><p>Nach dem Anlegen öffnet sich die Fallansicht. Über „Übersicht“ gelangst du
-zum Investigator Workspace mit Dokumentimport, öffentlichen Quellen und Graph.</p>
+</form><p>Nach dem Anlegen öffnet sich dein Arbeitsbereich mit Dokumentimport, öffentlichen
+Quellen und Graph.</p>
 <p>{back}</p></main></body></html>"""
         return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 

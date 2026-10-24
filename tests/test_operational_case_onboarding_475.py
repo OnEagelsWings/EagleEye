@@ -64,13 +64,13 @@ def test_first_operational_case_flow_in_build475(tmp_path):
                 "csrf": session.csrf_token,
             }, follow_redirects=False)
             assert posted.status_code == 303
-            assert posted.headers["location"].startswith("/cases/")
+            assert posted.headers["location"].startswith("/?case_id=")
 
             cases = ctx.team_governance_359.visible_cases(ident)
             assert len(cases) == 1
             case_id = cases[0]["case_id"]
             assert cases[0]["title"] == "First operational public case"
-            assert posted.headers["location"] == "/cases/" + case_id
+            assert posted.headers["location"] == "/?case_id=" + case_id
 
             primary = client.get("/")
             assert primary.status_code == 200
