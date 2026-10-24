@@ -5,6 +5,7 @@ from eagleeye.interfaces.web.app478 import create_workspace_app478
 from eagleeye.interfaces.web.closure_workflow478 import case_closure_counts
 from test_build471_local_ai import workspace
 from test_build447_integrated import seed_evidence
+from test_build475_ai_checkpoint import member
 from fastapi.testclient import TestClient
 
 pytestmark = pytest.mark.parametrize(
@@ -43,11 +44,12 @@ def test_original_registered_acquisition_becomes_evidence_not_approved_fact(work
     page=client.get("/workbench/closure",params={"case_id":cid})
     assert "0/1 akzeptiert" in page.text
     assert "Ein PDF/TXT im Dokumentenarchiv" not in page.text
-    assert "keine Wahrheitsbestätigung" in page.text.lower()
+    assert "keine wahrheitsbestätigung" in page.text.lower()
 
 
 def test_foreign_and_missing_sessions_never_reveal_canonical_counts(workspace):
     app,client,actor,cid,doc_id,foreign,*_=workspace
+    member(workspace,"read_only")
     assert client.get("/workbench/closure",params={"case_id":foreign}).status_code==403
     assert client.get("/workbench/closure",params={"case_id":"case_missing"}).status_code==403
     with TestClient(app) as visitor:
