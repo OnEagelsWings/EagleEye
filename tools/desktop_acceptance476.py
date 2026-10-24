@@ -1,6 +1,7 @@
 """Start the installed runtime, verify real launcher admission, stop it cleanly."""
 from pathlib import Path
 import argparse,json,os,subprocess,tempfile,time,urllib.request
+from http.cookiejar import CookieJar
 
 
 def main():
@@ -14,7 +15,7 @@ def main():
             '--install-root',str(source),'--no-browser'],env=env,stdout=log,stderr=subprocess.STDOUT)
         try:
             deadline=time.monotonic()+60
-            opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.request.HTTPCookieProcessor(CookieJar()))
             while time.monotonic()<deadline:
                 if process.poll() is not None:raise RuntimeError('Installed desktop process stopped before readiness')
                 try:
