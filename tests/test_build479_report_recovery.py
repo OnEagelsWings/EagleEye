@@ -169,7 +169,7 @@ def test_original_sqlite_evidence_is_copied_byte_for_byte(workspace,tmp_path):
         fresh=create_workspace_app479(base_dir=target)
         try:
             assert fresh.state.context.evidence_preservation_121.read_raw(package['package_id'])==original
-            assert fresh.state.context.evidence_preservation_121.verify_package(package['package_id'])['valid']
+            assert fresh.state.context.evidence_preservation_121.verify_package(package['package_id'])['ok']
         finally:fresh.state.context.close()
     finally:archive.unlink(missing_ok=True)
 

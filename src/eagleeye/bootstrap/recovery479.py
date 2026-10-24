@@ -61,6 +61,7 @@ def collect_files(root):
             for child in sorted(path.iterdir()):visit(child)
         elif path.is_file():
             safe_name(relative)
+            if relative.casefold()==MANIFEST.casefold():raise ValueError('Reservierter Archivmanifest-Dateiname im Arbeitsordner.')
             if root not in path.resolve().parents:raise ValueError('Datei außerhalb des Arbeitsordners.')
             files.append((relative,path))
             if len(files)>MAX_FILES:raise ValueError('Zu viele Dateien.')
