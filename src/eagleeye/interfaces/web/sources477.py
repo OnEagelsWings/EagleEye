@@ -22,9 +22,10 @@ def attach_sources(app, build):
             state=str(row.get("state") or "ungeprüft")
             origin=str(row.get("source_url") or row.get("origin_url") or "Herkunft prüfen")
             pages=str(row.get("page_count") or "?")
+            finding_link=("<br><a href='"+escape('/workbench/findings?'+urlencode({'case_id':case_id,'document_id':doc_id}),quote=True)+"'>Befund notieren →</a>" if int(build.split('.')[0])>=478 else "")
             rows.append("<tr><td><a href='"+escape(href,quote=True)+"'>"+escape(title)+"</a></td>"
                         "<td>"+escape(state)+"</td><td>"+escape(pages)+"</td>"
-                        "<td>"+escape(origin[:300])+"</td></tr>")
+                        "<td>"+escape(origin[:300])+finding_link+"</td></tr>")
         table=("<table><thead><tr><th>Dokument und Anker</th><th>Status</th>"
                "<th>Seiten</th><th>Herkunft / Quellen-URL</th></tr></thead><tbody>"
                +("".join(rows) or '<tr><td colspan="4">Noch keine Quellen importiert.</td></tr>')

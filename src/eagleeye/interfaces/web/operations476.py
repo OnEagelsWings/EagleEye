@@ -42,7 +42,7 @@ def page(title, case_id, body, build):
        'main{max-width:1080px;margin:1.5rem auto;padding:1rem}'
        'header{background:#1d3856;padding:1rem}nav{display:flex;gap:1rem;flex-wrap:wrap}'
        'a{color:#9af3de}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}'
-       '.card{background:#1c3451;border:1px solid #647b93;border-radius:12px;padding:1.2rem;margin:.6rem 0}'
+       '.card{overflow-wrap:anywhere;background:#1c3451;border:1px solid #647b93;border-radius:12px;padding:1.2rem;margin:.6rem 0}'
        '.warn{border-left:5px solid #ffd18a;padding:.8rem;background:#344b61}'
        'input,textarea,select{box-sizing:border-box;width:100%;padding:.6rem;margin:.3rem 0 1rem}'
        'button{padding:.7rem;cursor:pointer}table{width:100%;border-collapse:collapse}'

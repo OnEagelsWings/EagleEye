@@ -1,0 +1,57 @@
+name: EagleEye Build 478 Operational Smoke
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install
+        run: python -m pip install -e '.[test]'
+      - name: Operative cases and current changes
+        run: python -m pytest -q tests/test_operational_case_onboarding_475.py tests/test_build476_desktop_start.py tests/test_build477_case_workspace.py tests/test_build478_findings.py
+      - name: Install Chromium browser test runtime
+        run: python -m pip install 'playwright>=1.61,<2'
+      - name: Install Chromium
+        run: python -m playwright install chromium
+      - name: Real browser acceptance with simulated local model
+        run: python -m pytest -q tests/test_build478_browser.py tests/test_build475_browser.py
+      - name: Adjacent document and navigation smoke
+        run: python -m pytest -q tests/test_build458_document_intelligence.py tests/test_build459_workspace_navigation.py -k 'not test_build458_current_installer_and_next_checkpoint'
+      - name: Install isolated current runtime
+        run: python INSTALL_EAGLEEYE_478.py
+      - name: Verify isolated current runtime
+        run: python INSTALL_EAGLEEYE_478.py --check
+      - name: Installed desktop process (Linux)
+        if: runner.os == 'Linux'
+        run: python tools/desktop_acceptance476.py --runtime-python .eagleeye-runtime/bin/python
+      - name: Installed desktop process (Windows)
+        if: runner.os == 'Windows'
+        run: python tools/desktop_acceptance476.py --runtime-python .eagleeye-runtime/Scripts/python.exe
+      - name: Package and verify laptop build
+        shell: bash
+        run: |
+          git archive --format=zip --output=EagleEye_Build_478_LAPTOP.zip HEAD
+          python -c "import hashlib,pathlib,zipfile; p=pathlib.Path('EagleEye_Build_478_LAPTOP.zip'); h=hashlib.sha256(p.read_bytes()).hexdigest(); pathlib.Path('EagleEye_Build_478_LAPTOP.sha256').write_text(h+'  '+p.name+chr(10)); z=zipfile.ZipFile(p); assert z.testzip() is None; assert {'INSTALL_EAGLEEYE_478.py','START_EAGLEEYE_PRO.bat','START_EAGLEEYE_PRO.sh','src/eagleeye/interfaces/web/app478.py'}.issubset(z.namelist())"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EagleEye_Build_478_LAPTOP_${{ matrix.os }}
+          path: |
+            EagleEye_Build_478_LAPTOP.zip
+            EagleEye_Build_478_LAPTOP.sha256
+          if-no-files-found: error
+          retention-days: 30

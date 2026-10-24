@@ -1,6 +1,5 @@
 name: EagleEye Build 477 Operational Smoke
 on:
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
