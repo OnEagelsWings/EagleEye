@@ -29,7 +29,7 @@ def safe_name(value):
     for part in path.parts:
         if part.endswith((' ','.')) or part.split('.')[0].upper() in {'CON','PRN','AUX','NUL',*(f'COM{i}' for i in range(1,10)),*(f'LPT{i}' for i in range(1,10))}:
             raise ValueError('Nicht portabler Dateiname.')
-    if not (path.parts[0] in {'data','reports'} or (len(path.parts)==1 and value.startswith('entity_registry') and value.endswith(('.sqlite3','.db')))):
+    if not (path.parts[0] in {'data','reports','exports'} or (len(path.parts)==1 and value.startswith('entity_registry') and value.endswith(('.sqlite3','.db')))):
         raise ValueError('Pfad außerhalb des gesicherten Arbeitsbestands.')
     return path
 
@@ -44,7 +44,7 @@ def local_path(value):
 
 def collect_files(root):
     files=[]
-    candidates=[root/'data',root/'reports',*root.glob('entity_registry*.sqlite3'),*root.glob('entity_registry*.db')]
+    candidates=[root/'data',root/'reports',root/'exports',*root.glob('entity_registry*.sqlite3'),*root.glob('entity_registry*.db')]
     def visit(path):
         if path.is_symlink() or getattr(path,'is_junction',lambda:False)():
             raise ValueError('Verknüpfungen sind nicht Teil einer portablen Sicherung.')
@@ -109,7 +109,7 @@ def create_backup(root,archive):
                         total+=written;entries.append({'path':name,'bytes':written,'sha256':digest.hexdigest()})
                         if source!=path:source.unlink()
                     manifest={'format':FORMAT,'source_build':BUILD,'created_at':now(),
-                        'scope':['data','reports','root entity_registry databases'],'files':entries,
+                        'scope':['data','reports','exports','root entity_registry databases'],'files':entries,
                         'total_bytes':total,'sessions_reactivated_on_restore':False}
                     payload=json.dumps(manifest,ensure_ascii=False,sort_keys=True).encode()
                     if len(payload)>MAX_MANIFEST:raise ValueError('Manifest zu groß.')

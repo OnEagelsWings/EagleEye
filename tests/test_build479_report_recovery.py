@@ -159,8 +159,16 @@ def test_original_sqlite_evidence_is_copied_byte_for_byte(workspace,tmp_path):
     # A preserved original may include meaningful non-SQLite trailing bytes.
     original=evidence.read_bytes()+b'original-trailing-evidence-bytes'
     evidence.write_bytes(original)
+    package=app.state.context.evidence_preservation_121.preserve_bytes(case_id=workspace[3],title='Raw SQLite evidence',data=original,media_type='application/vnd.sqlite3',captured_by=workspace[2]['username'])
+    exported=root/'exports/build447/example/original-report.txt';exported.parent.mkdir(parents=True,exist_ok=True);exported.write_bytes(b'preserve prior dossier artifact')
     archive=tmp_path.parent/(tmp_path.name+'-sqlite-evidence.zip');target=tmp_path.parent/(tmp_path.name+'-sqlite-restored')
     try:
         create_backup(root,archive);restore_backup(archive,target)
         assert (target/evidence.relative_to(root)).read_bytes()==original
+        assert (target/exported.relative_to(root)).read_bytes()==exported.read_bytes()
+        fresh=create_workspace_app479(base_dir=target)
+        try:
+            assert fresh.state.context.evidence_preservation_121.read_raw(package['package_id'])==original
+            assert fresh.state.context.evidence_preservation_121.verify_package(package['package_id'])['valid']
+        finally:fresh.state.context.close()
     finally:archive.unlink(missing_ok=True)
