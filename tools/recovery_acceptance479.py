@@ -33,9 +33,10 @@ finally:ctx.close()
 """
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--runtime-python',required=True);parser.add_argument('--output',default='recovery-acceptance479.json')
-    args=parser.parse_args();python=str(Path(args.runtime_python).resolve())
+    args=parser.parse_args();python=str(Path(args.runtime_python).absolute())
     def run(arguments):
-        result=subprocess.run([python,'-I',*arguments],capture_output=True,text=True,timeout=120,check=True)
+        result=subprocess.run([python,'-I',*arguments],capture_output=True,text=True,timeout=120,check=False)
+        if result.returncode:raise RuntimeError(result.stderr[-4000:])
         return json.loads(result.stdout.strip().splitlines()[-1])
     with tempfile.TemporaryDirectory(prefix='eagleeye-native-recovery-') as directory:
         root=Path(directory);original=root/'original';restored=root/'restored';archive=root/'backup.zip'

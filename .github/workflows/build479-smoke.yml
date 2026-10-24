@@ -49,7 +49,7 @@ jobs:
         if: runner.os == 'Windows'
         run: python tools/recovery_acceptance479.py --runtime-python .eagleeye-runtime/Scripts/python.exe
       - name: Targeted security analysis
-        run: python -m bandit -q -lll -iii src/eagleeye/interfaces/web/report479.py src/eagleeye/bootstrap/recovery479.py
+        run: python -m bandit -q -ll src/eagleeye/interfaces/web/report479.py src/eagleeye/bootstrap/recovery479.py
       - name: Package and verify laptop build
         shell: bash
         run: |
