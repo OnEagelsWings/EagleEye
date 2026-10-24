@@ -1,3 +1,10 @@
+## Build 476 – Operativer Windows-Start
+
+Die Arbeiten aus UI Audit und „Windows Startproblem Build 471“ sind zusammengeführt.
+Echte Fallanlage ohne Entwicklerkonsole, aktueller Arbeitsbereich nach dem Anlegen,
+stabiler Datenordner über Versionswechsel und Startdiagnose ohne Zugangsdaten.
+Siehe [BUILD_476_NOTES.md](BUILD_476_NOTES.md) und [PLAN_476_480_OPERATIVE.md](PLAN_476_480_OPERATIVE.md).
+
 ## Build 475 – KI-/Sicherheitscheckpoint
 
 Fallmenü → **KI-Prüfpunkt 475**: persistierte Entwürfe und Einzelprüfungen,
