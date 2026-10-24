@@ -30,6 +30,11 @@ def test_uploaded_document_is_not_mislabeled_as_canonical_evidence(workspace):
     assert "/?case_id="+cid+"&amp;view=claims" in shown.text
     assert shown.headers["cache-control"]=="no-store"
     assert "/workbench/closure?case_id="+cid in client.get("/workbench/expert",params={"case_id":cid}).text
+    guided=client.get("/workbench",params={"case_id":cid})
+    assert guided.status_code==200
+    assert "7. Evidence → Claims → Dossier" in guided.text
+    assert guided.text.count('6. Erweiterte Ermittlungswerkzeuge')==1
+    assert guided.text.count('6. Quellenbestand')==0
 
 
 def test_original_registered_acquisition_becomes_evidence_not_approved_fact(workspace):
