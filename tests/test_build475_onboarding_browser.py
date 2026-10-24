@@ -8,7 +8,7 @@ import uvicorn
 from eagleeye.interfaces.web.app475 import create_workspace_app475
 
 
-def run_onboarding(factory,tmp_path,*,inventory=False):
+def run_onboarding(factory,tmp_path,*,inventory=False,expert=False):
     sync=pytest.importorskip('playwright.sync_api')
     app=factory(base_dir=tmp_path);ctx=app.state.context
     with socket.socket() as sock:
@@ -56,6 +56,19 @@ def run_onboarding(factory,tmp_path,*,inventory=False):
                 page.get_by_role('link',name='Geführte Recherche',exact=True).click()
                 page.locator('a[href^="/workbench/sources?"]').click()
                 assert 'Public documentation source' in page.locator('main').inner_text()
+            if expert:
+                page.goto(case_url)
+                page.get_by_role('link',name='Alle Ermittlungswerkzeuge',exact=True).click()
+                page.get_by_role('heading',name='Alle Ermittlungswerkzeuge – Expertenmodus').wait_for()
+                page.locator('a[href*="view=dossier"]').first.click()
+                page.get_by_role('heading',name='Dossier',exact=True).wait_for()
+                assert 'Living-Dossier-Revision' in page.locator('main').inner_text()
+                page.get_by_role('link',name='Alle Ermittlungswerkzeuge',exact=True).click()
+                page.locator('a[href*="view=analysis"]').first.click()
+                page.get_by_role('heading',name='Graph & Timeline',exact=True).wait_for()
+                page.goto(base+'/workbench/expert?'+urlencode({'case_id':case_url.split('case_id=')[1]}))
+                page.set_viewport_size({'width':390,'height':844})
+                assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             page.goto(base+'/new-case');page.set_viewport_size({'width':390,'height':844})
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             assert page.locator('[name=title]').is_visible()
