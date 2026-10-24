@@ -1,3 +1,10 @@
+## Build 477 – Fallbezogenes Quelleninventar
+
+Geführte Recherche → Quellenbestand zeigt die gespeicherten Dokumente mit Herkunft,
+Status und Originalankern in 50er-Seiten. Der gewählte Fall bleibt in Übersicht und
+Rechercheablauf erhalten; Auftrag und Rechtsgrundlage sind sichtbar.
+Siehe [BUILD_477_NOTES.md](BUILD_477_NOTES.md).
+
 ## Build 476 – Operativer Windows-Start
 
 Die Arbeiten aus UI Audit und „Windows Startproblem Build 471“ sind zusammengeführt.

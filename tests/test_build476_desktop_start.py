@@ -157,3 +157,16 @@ def test_qualification_only_workspace_cannot_become_operational_default(tmp_path
             assert client.get('/workbench',params={'case_id':qualification['case_id']}).status_code==403
             assert client.get('/new-case').status_code==200
     finally:ctx.close()
+
+
+def test_transient_windows_replace_denial_keeps_complete_settings(tmp_path,monkeypatch):
+    from pathlib import Path
+    original=Path.replace;attempts=[]
+    def transient(source,target):
+        if Path(target).name=='workspace.json' and len(attempts)<2:
+            attempts.append(1);raise PermissionError('temporary Windows sharing violation')
+        return original(source,target)
+    monkeypatch.setattr(Path,'replace',transient)
+    chosen=remember_workspace(tmp_path/'selected')
+    assert resolve_workspace(tmp_path/'fresh-program')==chosen
+    assert len(attempts)==2 and not list((tmp_path/'settings').glob('*.tmp'))

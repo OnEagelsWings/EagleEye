@@ -7,10 +7,14 @@ import os
 from pathlib import Path
 import threading
 import tempfile
+import time
+from contextlib import contextmanager
+from .runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
 from .paths import default_runtime_root
 
 _STATUS_LOCK=threading.Lock()
+_SETTINGS_LOCK=threading.Lock()
 
 
 def settings_directory():
@@ -36,31 +40,50 @@ def _atomic_json(path,payload):
     try:
         try:temp.chmod(0o600)
         except OSError:pass
-        temp.replace(path)
+        for attempt in range(6):
+            try:
+                temp.replace(path)
+                break
+            except PermissionError:
+                if attempt==5:raise
+                time.sleep(.025*(attempt+1))
     finally:temp.unlink(missing_ok=True)
+
+
+@contextmanager
+def _settings_guard():
+    directory=settings_directory()
+    with _SETTINGS_LOCK:
+        with workspace_runtime_lock(directory,timeout=5):
+            yield directory
 
 
 def remember_workspace(path):
     root=_local_path(path);root.mkdir(parents=True,exist_ok=True)
-    _atomic_json(settings_directory()/'workspace.json',{'workspace_directory':str(root)})
+    with _settings_guard() as directory:
+        _atomic_json(directory/'workspace.json',{'workspace_directory':str(root)})
     return root
 
 
 def resolve_workspace(install_dir):
-    explicit=os.environ.get('EAGLEEYE_DATA_DIR')
-    if explicit:return remember_workspace(explicit)
-    settings=settings_directory()/'workspace.json'
-    if settings.is_file():
-        saved=json.loads(settings.read_text(encoding='utf-8'))
-        # A missing saved folder is an error, never a silent new empty workspace.
-        root=_local_path(saved['workspace_directory'])
-        if not root.is_dir():raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bitte Datenordner auswählen.')
+    with _settings_guard() as directory:
+        explicit=os.environ.get('EAGLEEYE_DATA_DIR')
+        settings=directory/'workspace.json'
+        if explicit:
+            root=_local_path(explicit)
+        elif settings.is_file():
+            saved=json.loads(settings.read_text(encoding='utf-8'))
+            root=_local_path(saved['workspace_directory'])
+            if not root.is_dir():raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bitte Datenordner auswählen.')
+            return root
+        else:
+            installed=_local_path(install_dir)
+            candidates=[candidate for candidate in (installed,default_runtime_root())
+                if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db'))]
+            root=candidates[0] if candidates else directory/'workspace'
+        root.mkdir(parents=True,exist_ok=True)
+        _atomic_json(settings,{'workspace_directory':str(root)})
         return root
-    installed=_local_path(install_dir)
-    for candidate in (installed,default_runtime_root()):
-        if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db')):
-            return remember_workspace(candidate)
-    return remember_workspace(settings_directory()/'workspace')
 
 
 def write_start_status(root,stage,**details):

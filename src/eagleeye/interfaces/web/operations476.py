@@ -19,15 +19,18 @@ def case_access(app, request, case_id, capability="case.read"):
                       client_fingerprint=fp, touch=True)
     if not user:
         raise HTTPException(401, "Bitte anmelden")
-    cases = visible_operational_cases(ctx,user)
-    case = next((c for c in cases if str(c.get("case_id")) == case_id), None)
-    if case is None:
-        raise HTTPException(403, "Kein Zugriff auf diesen Fall")
     try:
-        ctx.team_governance_359.authorize(user, case_id=case_id,
-                    capability=capability, object_type="operational_case", object_id=case_id)
+        ctx.team_governance_359.authorize(user,case_id=case_id,
+            capability=capability,object_type="operational_case",object_id=case_id)
     except PermissionError as exc:
-        raise HTTPException(403, "Keine Fallberechtigung") from exc
+        raise HTTPException(403,"Keine Fallberechtigung") from exc
+    cases=visible_operational_cases(ctx,user)
+    case=next((c for c in cases if str(c.get("case_id"))==case_id),None)
+    if case is None:
+        ctx.team_identity_359.record_access(user_id=user['user_id'],username=user['username'],
+            session_id=user.get('session_id',''),case_id=case_id,capability=capability,
+            allowed=False,reason='not_an_operational_visible_case',object_type='operational_case',object_id=case_id)
+        raise HTTPException(403,"Kein Zugriff auf diesen Fall")
     return user, case
 
 
@@ -46,7 +49,7 @@ def page(title, case_id, body, build):
        'td,th{padding:.6rem;text-align:left;border-bottom:1px solid #647b93;word-break:break-word}'
        'h1{font-size:1.7rem}h2{font-size:1.15rem}a:focus,button:focus{outline:3px solid #f9e099}'
        '</style></head><body><header><strong>EagleEye – Build '+escape(str(build))+'</strong>'
-       '<nav><a href="/">Hauptansicht</a><a href="/new-case">Neuen Fall anlegen</a>'
+       '<nav><a href="'+link('/')+'">Hauptansicht</a><a href="/new-case">Neuen Fall anlegen</a>'
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a></nav></header><main><h1>'+escape(title)+'</h1>'
@@ -67,9 +70,17 @@ def attach_workbench(app, workspace_build):
 
     @app.get("/")
     def primary(request: Request, view: str = "overview", case_id: str = ""):
+        if not case_id:
+            fp=hashlib.sha256("|".join((request.headers.get("user-agent",""),
+                request.headers.get("accept-language",""),request.client.host if request.client else "")).encode()).hexdigest()
+            current=ctx.team_identity_359.validate_session(request.cookies.get(COOKIE,""),client_fingerprint=fp,touch=True)
+            if current:
+                available=visible_operational_cases(ctx,current)
+                case_id=str(available[0]['case_id']) if available else ""
         result = old_home(request, view=view, case_id=case_id)
         if not isinstance(result, HTMLResponse):
             return result
+        case_access(app,request,case_id)
         href = "/workbench?" + urlencode({"case_id":case_id})
         html = result.body.decode("utf-8").replace(
             "</nav>", '<a href="'+escape(href,quote=True)+'">Geführte Recherche</a></nav>', 1)
@@ -112,6 +123,7 @@ def attach_workbench(app, workspace_build):
         if stage>=480:
             steps.append(step(9,"Prüfpunkt 480","Belegstand und offene Einsatzgrenzen transparent überprüfen.","/workbench/checkpoint"))
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
+        body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
         body += '<div class="grid">'+"".join(steps)+'</div>'
         return HTMLResponse(page("Dein Ermittlungs- und Rechercheablauf",case_id,body,workspace_build),
                             headers={"Cache-Control":"no-store"})
