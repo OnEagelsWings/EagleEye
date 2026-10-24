@@ -7,5 +7,5 @@ if %errorlevel%==0 (
 ) else (
     set "PYTHON=python"
 )
-%PYTHON% INSTALL_EAGLEEYE_479.py %*
+%PYTHON% INSTALL_EAGLEEYE_480.py %*
 exit /b %errorlevel%

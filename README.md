@@ -1,9 +1,9 @@
-## Build 479 – Eigene Arbeitsbefunde mit Originalfundstelle
+## Build 480 – Eigene Arbeitsbefunde mit Originalfundstelle
 
 Geführte Recherche → Arbeitsbefunde: Dokument und Originalanker auswählen,
 Beobachtung/Hypothese/Gegenbeleg/Unsicherheit formulieren und dauerhaft speichern.
 Originaltext und Hashes bleiben getrennt von der eigenen Interpretation sichtbar.
-Siehe [BUILD_479_NOTES.md](BUILD_479_NOTES.md).
+Siehe [BUILD_480_NOTES.md](BUILD_480_NOTES.md).
 
 ## Build 477 – Fallbezogenes Quelleninventar
 
