@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 475
+title EagleEye Build 476
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -20,21 +20,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-%PYTHON% INSTALL_EAGLEEYE_475.py
+%PYTHON% INSTALL_EAGLEEYE_476.py
 if errorlevel 1 goto :failed
 
 set "RUNTIME_PY=.eagleeye-runtime\Scripts\python.exe"
 if not exist "%RUNTIME_PY%" goto :failed
 
-set "EAGLEEYE_WORKSPACE_ROOT=%CD%"
-"%RUNTIME_PY%" -I -c "import os; from eagleeye.interfaces.web.server import serve_workspace; raise SystemExit(serve_workspace(base_dir=os.environ['EAGLEEYE_WORKSPACE_ROOT']))"
+"%RUNTIME_PY%" -I -m eagleeye.bootstrap.desktop476 --install-root "%CD%"
 if errorlevel 1 goto :failed
 exit /b 0
 
 :failed
 echo.
-echo EagleEye Build 475 did not install or start successfully.
-echo Run: %PYTHON% INSTALL_EAGLEEYE_475.py --check
+echo EagleEye Build 476 did not install or start successfully.
+echo Run: %PYTHON% INSTALL_EAGLEEYE_476.py --check
 echo.
 pause
 exit /b 1

@@ -9,9 +9,9 @@ from .app471 import create_workspace_app471
 from .app448 import COOKIE
 
 
-def create_workspace_app475(*,base_dir=None):
-    app=create_workspace_app471(base_dir=base_dir,workspace_build='475.0',questions_enabled=True,
-        hypotheses_enabled=True,review_matrix_enabled=True,next_checkpoint='480.0')
+def create_workspace_app475(*,base_dir=None,workspace_build="475.0",next_checkpoint="480.0"):
+    app=create_workspace_app471(base_dir=base_dir,workspace_build=workspace_build,questions_enabled=True,
+        hypotheses_enabled=True,review_matrix_enabled=True,next_checkpoint=next_checkpoint)
     ctx=app.state.context;service=app.state.assistant471
 
     @app.get('/ai-checkpoint475',response_class=HTMLResponse)

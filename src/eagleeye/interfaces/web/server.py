@@ -19,8 +19,9 @@ import uvicorn
 
 from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
+from eagleeye.bootstrap.desktop476 import write_start_status
 
-from .app475 import create_workspace_app475 as create_workspace_app
+from .app476 import create_workspace_app476 as create_workspace_app
 
 
 def _free_port(host: str, preferred: int) -> int:
@@ -101,20 +102,21 @@ def _write_runtime(root: Path, *, host: str, port: int) -> Path:
     return path
 
 
-def _read_running_workspace(root: Path, *, timeout: float = 0.6) -> dict | None:
+def _read_running_workspace(root: Path, *, timeout: float = 0.6, accept_other_build: bool = False) -> dict | None:
     path = _runtime_path(root)
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload,dict):return None
         host = str(payload.get("host") or "").strip("[]").casefold()
         port = int(payload.get("port") or 0)
         if host not in {"127.0.0.1", "localhost", "::1"} or not 1 <= port <= 65535:
             return None
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler())
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(f"http://127.0.0.1:{port}/health", timeout=timeout) as response:
             health = json.loads(response.read(16 * 1024).decode("utf-8"))
-        if not health.get("ok") or str(health.get("build")) != BUILD:
+        if not isinstance(health,dict) or not health.get("ok") or (not accept_other_build and str(health.get("build")) != BUILD):
             return None
-        return {**payload, "host": "127.0.0.1", "port": port}
+        return {**payload, "host": "127.0.0.1", "port": port,"build":str(health.get("build","unknown"))}
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError):
         return None
 
@@ -149,12 +151,23 @@ def _workspace_url(root: Path, runtime: dict) -> str:
     base = f"http://127.0.0.1:{int(runtime['port'])}"
     return base + "/security/start?token=" + urllib.parse.quote(token, safe="") if token else base + "/security/login"
 
+def _request_workspace_browser(root: Path, runtime: dict, browser: str) -> str:
+    result=open_local_browser(_workspace_url(root,runtime),browser)
+    write_start_status(root,"browser-requested" if result!="unavailable" else "browser-unavailable",
+                       browser=result,port=int(runtime["port"]))
+    if result=="unavailable":
+        print("[EagleEye] Browser nicht geöffnet. Bitte EAGLEEYE_START_STANDARD_BROWSER.bat starten.",flush=True)
+    else:
+        print("[EagleEye] Browserstart angefordert. Dieses Serverfenster geöffnet lassen.",flush=True)
+    return result
+
+
 def _health_ready(port: int, *, timeout: float = 0.35) -> bool:
     try:
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler())
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(f"http://127.0.0.1:{int(port)}/health", timeout=timeout) as response:
             payload = json.loads(response.read(16 * 1024).decode("utf-8"))
-        return bool(payload.get("ok") and str(payload.get("build")) == BUILD)
+        return bool(isinstance(payload,dict) and payload.get("ok") and str(payload.get("build")) == BUILD)
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError):
         return False
 
@@ -168,8 +181,12 @@ def _open_browser_when_ready(root: Path, runtime: dict, browser: str, *, attempt
     port = int(runtime["port"])
     for _ in range(max(1, int(attempts))):
         if _health_ready(port):
-            return open_local_browser(_workspace_url(root, runtime), browser)
+            write_start_status(root,"healthy",port=port)
+            print("[EagleEye] Health-Check bestanden. Browserstart wird angefordert.",flush=True)
+            return _request_workspace_browser(root,runtime,browser)
         time.sleep(max(0.02, float(delay)))
+    write_start_status(root,"health-timeout",port=port)
+    print("[EagleEye] Health-Check nicht erreicht. Bitte Startdiagnose öffnen.",flush=True)
     return "unavailable"
 
 
@@ -178,8 +195,7 @@ def open_existing_workspace(*, base_dir: str | Path, browser: str = "firefox") -
     runtime = _read_running_workspace(root)
     if not runtime:
         return False
-    open_local_browser(_workspace_url(root, runtime), browser)
-    return True
+    return _request_workspace_browser(root,runtime,browser)!="unavailable"
 
 
 def serve_workspace(
@@ -191,6 +207,7 @@ def serve_workspace(
     browser: str = "firefox",
 ) -> int:
     root = Path(base_dir or Path.cwd()).resolve()
+    write_start_status(root,"starting")
     remote_enabled = os.environ.get("EAGLEEYE_REMOTE_TEAM_ENABLED", "").strip().casefold() in {"1", "true", "yes", "on"}
     if not remote_enabled and host not in {"127.0.0.1", "localhost", "::1"}:
         raise ValueError("Local workspace may bind to loopback only; use the explicit Build-364 remote-team profile for network access")
@@ -198,7 +215,7 @@ def serve_workspace(
         runtime = _read_running_workspace(root)
         if runtime:
             if open_browser:
-                open_local_browser(_workspace_url(root, runtime), browser)
+                _request_workspace_browser(root,runtime,browser)
             return 0
     try:
         lock_context = workspace_runtime_lock(root, timeout=0.0)
@@ -224,7 +241,7 @@ def serve_workspace(
             resolved_port = _free_port(host, int(port))
             runtime_path = _write_runtime(root, host=host, port=resolved_port)
             runtime_info = {"host": host, "port": resolved_port}
-            print(f"[EagleEye] Server bereit auf {scheme}://{host}:{resolved_port}", flush=True)
+            print(f"[EagleEye] Server startet auf {scheme}://{host}:{resolved_port}", flush=True)
             if remote_enabled:
                 print("[EagleEye] Remote-Team-Modus: direktes TLS, explizite Host-/CIDR-Allowlist, Proxy-Header werden nicht vertraut.", flush=True)
             else:
@@ -247,6 +264,8 @@ def serve_workspace(
                 server.run()
             finally:
                 runtime_path.unlink(missing_ok=True)
+                write_start_status(root,"stopped")
+                app.state.context.close()
         return 0
     except RuntimeError:
         if remote_enabled:
@@ -256,6 +275,6 @@ def serve_workspace(
             runtime = _read_running_workspace(root, timeout=0.2)
             if runtime:
                 if open_browser:
-                    open_local_browser(_workspace_url(root, runtime), browser)
+                    _request_workspace_browser(root,runtime,browser)
                 return 0
         raise

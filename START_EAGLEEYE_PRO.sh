@@ -8,12 +8,11 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
   exit 1
 }
 
-"$PYTHON_BIN" INSTALL_EAGLEEYE_475.py
+"$PYTHON_BIN" INSTALL_EAGLEEYE_476.py
 RUNTIME_PY=".eagleeye-runtime/bin/python"
 if [ ! -x "$RUNTIME_PY" ]; then
   echo "EagleEye runtime is missing after installation." >&2
   exit 1
 fi
 
-export EAGLEEYE_WORKSPACE_ROOT="$PWD"
-exec "$RUNTIME_PY" -I -c 'import os; from eagleeye.interfaces.web.server import serve_workspace; raise SystemExit(serve_workspace(base_dir=os.environ["EAGLEEYE_WORKSPACE_ROOT"]))'
+exec "$RUNTIME_PY" -I -m eagleeye.bootstrap.desktop476 --install-root "$PWD"
