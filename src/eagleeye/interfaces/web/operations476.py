@@ -53,7 +53,8 @@ def page(title, case_id, body, build):
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'
-       '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a></nav></header><main><h1>'+escape(title)+'</h1>'
+       '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a>'
+       '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a></nav></header><main><h1>'+escape(title)+'</h1>'
        +body+'<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
        ' Nur öffentliche oder synthetische, unkritische Quellen verwenden. KI-Entwürfe'
        ' und Beziehungen sind nicht automatisch bestätigte Tatsachen.</p>'
@@ -111,8 +112,13 @@ def attach_workbench(app, workspace_build):
             case_id = str(cases[0]["case_id"])
         user,case = case_access(app,request,case_id)
         docs = ctx.document_intelligence_458.documents(identity=user,case_id=case_id)
+        # Number steps in their actual displayed order: previous versions
+        # duplicated step six once advanced tools and sources were appended.
+        step_index = 0
         def step(n,title,desc,path):
-            return ('<section class="card"><h2>'+str(n)+'. '+escape(title)+'</h2>'
+            nonlocal step_index
+            step_index += 1
+            return ('<section class="card"><h2>'+str(step_index)+'. '+escape(title)+'</h2>'
                 '<p>'+escape(desc)+'</p><a href="'+escape(path+"?"+urlencode({"case_id":case_id}),quote=True)
                 +'">Jetzt öffnen →</a></section>')
         steps = [
@@ -124,6 +130,9 @@ def attach_workbench(app, workspace_build):
             step(6,"Erweiterte Ermittlungswerkzeuge",
                  "Vorhandene KI-, Evidence-, Claims-, Graph-, Timeline- und Dossierfunktionen fallbezogen öffnen.",
                  "/workbench/expert"),
+            step(7,"Evidence → Claims → Dossier",
+                 "Original-Evidence und importierte Dokumente unterscheiden, belegte Claims und formale Vier-Augen-Freigabe nachvollziehen.",
+                 "/workbench/closure"),
         ]
         if stage>=477:
             steps.append(step(6,"Quellenbestand","Alle importierten Dokumente mit Herkunft und Vollständigkeit sehen.","/workbench/sources"))
@@ -133,8 +142,8 @@ def attach_workbench(app, workspace_build):
             steps.append(step(8,"Arbeitsbericht","Quellengebundenen Bericht zur manuellen Prüfung und Weiterarbeit erzeugen.","/workbench/report"))
         if stage>=480:
             steps.append(step(9,"Prüfpunkt 480","Belegstand und offene Einsatzgrenzen transparent überprüfen.","/workbench/checkpoint"))
-        if stage>=479:
-            steps.append(step(9,"Sicherung & Wiederherstellung","Anwendung schließen; eigenen gesamten Arbeitsordner sichern und in neuen Ordner wiederherstellen.","/workbench/recovery"))
+        if stage>=481:
+            steps.append(step(10,"Geprüfte Quellen als Evidence übernehmen","Originaldokument nach manueller Extraktionsprüfung fallgebunden in die prüfpflichtige Evidence-Kette aufnehmen.","/workbench/bridge481"))
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
         body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
         body += '<div class="grid">'+"".join(steps)+'</div>'
