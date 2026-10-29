@@ -49,6 +49,10 @@ SPECIAL_TOOLS = (
      "Quellengebundene Entwürfe; Ollama und lokal geladenes Modell erforderlich."),
     ("Arbeitsbefunde", "/workbench/findings",
      "Menschliche, an Originalanker gebundene vorläufige Beobachtungen (ab Build 478)."),
+    ("Evidence → Claims → Dossier (Original-Workflow)", "/workbench/closure",
+     "Echte Fallstände, Quellenlücke und vorhandene Vier-Augen-Gates nachvollziehen."),
+    ("Dokument in prüfbare Evidence überführen", "/workbench/bridge481",
+     "Nach Extraktionsfreigabe und menschlicher Herkunftsbegründung – neue Evidence bleibt ungeprüft."),
     ("Quellenkritischer Arbeitsbericht", "/workbench/report",
      "Arbeitsbericht, keine behördliche/freigegebene Dossierfassung (ab Build 479)."),
 )

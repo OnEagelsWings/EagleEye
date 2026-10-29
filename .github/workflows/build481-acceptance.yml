@@ -1,0 +1,70 @@
+name: EagleEye Build 481 Windows and Linux Operator Acceptance
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+jobs:
+  operational:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install current application and test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Build 481 case/source security and Evidence tests
+        run: python -m pytest -q tests/test_build481_evidence_bridge.py tests/test_canonical_closure478.py
+      - name: Windows and Linux first-run operator/browser test dependencies
+        run: python -m pip install 'playwright>=1.61,<2'
+      - name: Install Chromium
+        run: python -m playwright install chromium
+      - name: Actual browser workflow + legacy expert tools
+        run: python -m pytest -q tests/test_build481_browser.py tests/test_build480_browser.py tests/test_build478_browser.py tests/test_advanced_workflows477.py
+      - name: Complete repository checkpoint and historical regressions
+        run: python tools/run_checkpoint_regression480.py
+      - name: Controlled Phase-18/20 checkpoint
+        run: python tools/run_checkpoint_regression480.py --phase18-20
+      - name: Install isolated EagleEye Build 481
+        run: python INSTALL_EAGLEEYE_481.py
+      - name: Verify isolated package and server location
+        run: python INSTALL_EAGLEEYE_481.py --check
+      - name: Installed process startup under Linux
+        if: runner.os == 'Linux'
+        run: python tools/desktop_acceptance476.py --runtime-python .eagleeye-runtime/bin/python
+      - name: Installed process startup under Windows
+        if: runner.os == 'Windows'
+        run: python tools/desktop_acceptance476.py --runtime-python .eagleeye-runtime/Scripts/python.exe
+      - name: Installed backup / restore under Linux
+        if: runner.os == 'Linux'
+        run: python tools/recovery_acceptance479.py --runtime-python .eagleeye-runtime/bin/python
+      - name: Installed backup / restore under Windows
+        if: runner.os == 'Windows'
+        run: python tools/recovery_acceptance479.py --runtime-python .eagleeye-runtime/Scripts/python.exe
+      - name: True public source + formal dossier + portable restore gate (no mocks)
+        run: python tools/public_pilot481.py --output checkpoint481-live-public.json
+      - name: Produce verifiable source ZIP for real Windows/laptop use
+        shell: bash
+        run: |
+          git archive --format=zip --output=EagleEye_Build_481_LAPTOP.zip HEAD
+          python -c "import hashlib,pathlib,zipfile; p=pathlib.Path('EagleEye_Build_481_LAPTOP.zip'); z=zipfile.ZipFile(p); assert z.testzip() is None; must={'INSTALL_EAGLEEYE_481.py','START_EAGLEEYE_PRO.bat','src/eagleeye/interfaces/web/app481.py','src/eagleeye/interfaces/web/bridge481.py'}; assert must.issubset(z.namelist()),must.difference(z.namelist()); pathlib.Path('EagleEye_Build_481_LAPTOP.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EagleEye_Build_481_LAPTOP_${{ matrix.os }}
+          path: |
+            EagleEye_Build_481_LAPTOP.zip
+            EagleEye_Build_481_LAPTOP.sha256
+            checkpoint481-live-public.json
+            recovery-acceptance479.json
+          if-no-files-found: warn
+          retention-days: 30

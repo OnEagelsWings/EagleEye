@@ -129,30 +129,30 @@ Quellen und Graph.</p>
             + escape(urlencode({"case_id": selected_id}), quote=True)
             + '">Dokumente &amp; Quellenprüfung</a>'
         )
-        if workspace_build in {"461.0", "462.0", "463.0", "464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"461.0", "462.0", "463.0", "464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             guide_url = "/workflow461?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(guide_url, quote=True) + '">Ermittlungsweg · Anleitung</a>'
-        if workspace_build in {"462.0", "463.0", "464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"462.0", "463.0", "464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             graph_url = "/entities462?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(graph_url, quote=True) + '">Entitäten &amp; Beziehungen</a>'
-        if workspace_build in {"463.0", "464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"463.0", "464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             proof_url = "/source-links463?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(proof_url, quote=True) + '">Dokumentgebundene Beziehungen</a>'
-        if workspace_build in {"464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"464.0", "465.0", "466.0", "467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             graph_url = "/graph464?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(graph_url, quote=True) + '">Netzwerkanalyse</a>'
-        if workspace_build in {"465.0","466.0","467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"465.0","466.0","467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             review_url = "/review465?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(review_url,quote=True) + '">Integrierte Fallprüfung</a>'
-        if workspace_build in {"466.0","467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"466.0","467.0", "468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             url = "/provenance466?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(url, quote=True) + '">Belegherkunft &amp; Integrität</a>'
-        if workspace_build in {"468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"468.0", "469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             link += '<a href="/benchmark468">Messprotokoll</a>'
-        if workspace_build in {"469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"469.0", "470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             source_url = "/collect469?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(source_url, quote=True) + '">Öffentliche Quellen</a>'
-        if workspace_build in {"470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0"}:
+        if workspace_build in {"470.0", "471.0", "472.0", "473.0", "474.0", "475.0", "476.0", "477.0", "478.0", "479.0", "480.0", "481.0"}:
             readiness_url = "/readiness470?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(readiness_url, quote=True) + '">Qualitätsprüfung 470</a>'
         if int(workspace_build.split(".")[0]) >= 471:

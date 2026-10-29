@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 480
+title EagleEye Build 481
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -20,7 +20,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-%PYTHON% INSTALL_EAGLEEYE_480.py
+%PYTHON% INSTALL_EAGLEEYE_481.py
 if errorlevel 1 goto :failed
 
 set "RUNTIME_PY=.eagleeye-runtime\Scripts\python.exe"
@@ -32,8 +32,8 @@ exit /b 0
 
 :failed
 echo.
-echo EagleEye Build 480 did not install or start successfully.
-echo Run: %PYTHON% INSTALL_EAGLEEYE_480.py --check
+echo EagleEye Build 481 did not install or start successfully.
+echo Run: %PYTHON% INSTALL_EAGLEEYE_481.py --check
 echo.
 pause
 exit /b 1
