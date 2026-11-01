@@ -31,6 +31,10 @@ ADVANCED_VIEWS = (
 
 # Explicitly scoped GET endpoints. Missing routes are reported, not faked.
 SPECIAL_TOOLS = (
+    ("Dork-Recherche", "/workbench/dorks482",
+     "Vorhandenen DorkEngine-Generator für öffentliche Suchlinks benutzen; keine automatischen Suchtreffer."),
+    ("Bildakte und Metadaten", "/workbench/images482",
+     "Bestehende Bildanalyse Build 353/354 für lokale Originale, EXIF und Ähnlichkeit."),
     ("Dokumente und Originalanker", "/documents458",
      "Lokaler PDF/TXT/Markdown-Import und verifizierbare Fundstellen."),
     ("Quelleninventar", "/workbench/sources",

@@ -54,7 +54,10 @@ def page(title, case_id, body, build):
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'
        '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a>'
-       '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a></nav></header><main><h1>'+escape(title)+'</h1>'
+       '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a>'
+       '<a href="'+link('/workbench/dorks482')+'">Dork-Recherche</a>'
+       '<a href="'+link('/workbench/images482')+'">Bildakte</a>'
+       '<a href="'+link('/graph464')+'">Graph</a></nav></header><main><h1>'+escape(title)+'</h1>'
        +body+'<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
        ' Nur öffentliche oder synthetische, unkritische Quellen verwenden. KI-Entwürfe'
        ' und Beziehungen sind nicht automatisch bestätigte Tatsachen.</p>'
@@ -92,7 +95,10 @@ def attach_workbench(app, workspace_build):
         html = html.replace('href="/legacy"', 'href="'+escape(expert_url,quote=True)+'"')
         html = html.replace(
             "</nav>", '<a href="'+escape(href,quote=True)+'">Geführte Recherche</a>'
-            '<a href="'+escape(expert_url,quote=True)+'">Alle Ermittlungswerkzeuge</a></nav>', 1)
+            '<a href="'+escape(expert_url,quote=True)+'">Alle Ermittlungswerkzeuge</a>'
+            '<a href="/workbench/dorks482?'+escape(urlencode({"case_id":case_id}),quote=True)+'">Dork-Recherche</a>'
+            '<a href="/workbench/images482?'+escape(urlencode({"case_id":case_id}),quote=True)+'">Bildakte</a>'
+            '<a href="/graph464?'+escape(urlencode({"case_id":case_id}),quote=True)+'">Graph</a></nav>', 1)
         return HTMLResponse(html, status_code=result.status_code,
                             headers={"Cache-Control":"no-store"})
 
@@ -144,6 +150,9 @@ def attach_workbench(app, workspace_build):
             steps.append(step(9,"Prüfpunkt 480","Belegstand und offene Einsatzgrenzen transparent überprüfen.","/workbench/checkpoint"))
         if stage>=481:
             steps.append(step(10,"Geprüfte Quellen als Evidence übernehmen","Originaldokument nach manueller Extraktionsprüfung fallgebunden in die prüfpflichtige Evidence-Kette aufnehmen.","/workbench/bridge481"))
+        if stage>=482:
+            steps.append(step(11,"Dork-Recherche","Vorhandene Dork-Engine verwenden: Suchlinks manuell öffnen und echte Belege im Fall sichern.","/workbench/dorks482"))
+            steps.append(step(12,"Bildakte & Metadaten","Bildoriginale lokal prüfen, EXIF und Ähnlichkeiten ansehen; keine Identitätsfeststellung.","/workbench/images482"))
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
         body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
         body += '<div class="grid">'+"".join(steps)+'</div>'
