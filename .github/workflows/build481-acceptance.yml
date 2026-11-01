@@ -1,6 +1,5 @@
 name: EagleEye Build 481 Windows and Linux Operator Acceptance
 on:
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read

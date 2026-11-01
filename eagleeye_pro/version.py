@@ -1,3 +1,3 @@
-BUILD = "481.0"
-SCHEMA_VERSION = "481.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 481 Operational Source-to-Evidence Bridge"
+BUILD = "482.0"
+SCHEMA_VERSION = "482.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 482 Restored Dork and Image Workbench"

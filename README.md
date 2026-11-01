@@ -1,3 +1,11 @@
+## EagleEye Build 482 – Dork-Recherche, Bildakte, Graph und bestehender Ermittlungsablauf
+
+**Windows:** Archiv vollständig entpacken, `START_EAGLEEYE_PRO.bat` starten. Bestehende Falldaten nicht überschreiben. Python 3.12+ erforderlich. Der Installer heißt `INSTALL_EAGLEEYE_482.py`.
+
+**Arbeiten:** Regulären Fall anlegen/öffnen → `Geführte Recherche` → `Dork-Recherche` für kontrollierte Suchlinks zu vorhandenen Suchdiensten (manuell öffnen, nicht automatisch gecrawlt) → `Dokumente` für echte Originalbelege → `Bildakte` für lokalen Bildimport mit Metadaten und Ähnlichkeit → `Graph` für überprüfbare Beziehungen → `Evidence/Claims/Dossier`. Keine automatischen Identitätsfeststellungen. Das Vorhandensein von Links ist keine Aussage über Live-Suchabdeckung.
+
+**Build 482 ist vor erfolgreicher Windows-/Linux- und Security-Abnahme ein Entwicklungsstand und nicht für vertrauliche Kundenaufträge freigegeben.**
+
 ## Build 481 – Durchgehender Ermittlungsweg und geprüfte Quellenübergabe
 
 **Windows:** ZIP vollständig entpacken und `START_EAGLEEYE_PRO.bat` starten. Der Starter erzeugt bei Bedarf ein isoliertes Python-3.12+-Runtime und verwendet einen stabilen lokalen Arbeitsordner. Aufeinanderfolgende Build-Ordner dürfen Fälle nicht verstecken. Achtung: Build 481 ist vor Abschluss der Windows-/Live-Abnahme nicht für vertrauliche Aufträge freigegeben.
