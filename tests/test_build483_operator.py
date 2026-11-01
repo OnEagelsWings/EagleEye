@@ -64,11 +64,13 @@ def test_cross_case_csrf_and_unsafe_urls_are_blocked(workspace):
         assert client.post("/workbench/leads483",data={**form,"url":url}).status_code==422,url
     assert app.state.context.db.one("SELECT count(*) n FROM research_leads_483")["n"]==0
     assert client.get("/workbench/leads483",params={"case_id":"missing_case"}).status_code==403
-    with TestClient(app) as anonymous:
-        assert anonymous.get("/workbench/leads483",params={"case_id":cid}).status_code==401
     # A case-scoped non-admin user cannot read the other case.
     member(workspace,"read_only")
     assert client.get("/workbench/leads483",params={"case_id":foreign}).status_code==403
+    # The anonymous TestClient lifecycle closes the app context on exit.
+    # Put it LAST so it cannot invalidate the identity services still needed above.
+    with TestClient(app) as anonymous:
+        assert anonymous.get("/workbench/leads483",params={"case_id":cid}).status_code==401
 
 def test_integrity_tamper_fails_closed(workspace):
     app,client,user,cid,*_=workspace
