@@ -1,4 +1,7 @@
 # EAGLEEYE 500 – VERBINDLICHER KONSOLIDIERUNGS- UND EINSATZMASTERPLAN
+
+> **Verbindlicher Architekturentscheid (01.11.2026):** [Universeller Ermittlungsalgorithmus – Investigation Kernel 1.0](INVESTIGATION_KERNEL_ALGORITHM.md) ist ab sofort die **Wurzel und der Stamm** aller folgenden Builds. Der deterministische Kernel kontrolliert Zustände, human GO, fallautorisierte Agenten, Quellen-/Evidence-Gates und die unabhängige Freigabe; die Kern-KI plant/synthetisiert, aber erteilt sich niemals Berechtigungen. Der reine Python-Vertragskern \`src/eagleeye/application/orchestrator/investigation_kernel_contract.py\` und unabhängige Tests \`tests/test_investigation_kernel_contract.py\` sind die Grundlage für die anschließende **echte, persistente Integration ab Build 486**; nicht als bereits laufende Web-Agenten zu verstehen.
+
 **Stand: 01.11.2026 · Ersetzt die bisherige Reihenfolge der Roadmap 481–500, nicht deren fachliche Anforderungen.**  
 **Ziel:** spätestens Build 500 ein tatsächlich arbeitsfähiges, lokales OSINT-/Ermittlungsprodukt für kleine professionelle Teams und genau definierte, rechtlich zulässige Kundenaufträge. **Keine automatische Freigabe durch eine Buildnummer.** 485 = erstes eng begrenztes Arbeitspilot-Gate, 490 = integriertes Recherche-Gate, 495 = Security-/Reliability-Gate, 500 = Produktentscheidung. Die Buildnummer ist ein Meilenstein, keine Qualitätsskala.
 
