@@ -56,3 +56,15 @@ def test_pilot_refuses_to_display_healthy_progress_after_chain_integrity_failure
     result=client.get("/workbench/pilot485",params={"case_id":cid})
     assert result.status_code==409
     assert "Integrität" not in result.text or "fehlgeschlagen" in result.text
+
+
+def test_pilot_image_inventory_not_truncated_by_legacy_500_limit(workspace,monkeypatch):
+    app,client,user,cid,*_=workspace
+    ctx=app.state.context
+    ctx.build354.ingest_image(case_id=cid,content=png_bytes(),
+        declared_media_type="image/png",filename="first.png")
+    monkeypatch.setattr(ctx.build354,"image_assets",
+                        lambda **kw: (_ for _ in ()).throw(AssertionError("capped legacy listing used")))
+    counts=pilot_counts(ctx,user,cid)
+    assert counts["images"]==1
+    assert client.get("/workbench/pilot485",params={"case_id":cid}).status_code==200
