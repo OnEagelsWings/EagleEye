@@ -11,7 +11,8 @@ from html import escape
 from pathlib import PurePath
 from urllib.parse import urlencode
 
-from fastapi import HTTPException, Request, UploadFile
+from fastapi import HTTPException, Request
+from starlette.datastructures import UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from eagleeye_pro.providers.dork_engine import DorkEngine, ENGINES
