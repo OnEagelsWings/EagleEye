@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import json
 import ipaddress
+import hashlib
 from html import escape
 from pathlib import PurePath
 from urllib.parse import urlencode
 
 from fastapi import HTTPException, Request
 from starlette.datastructures import UploadFile
+from .app448 import COOKIE
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from eagleeye_pro.providers.dork_engine import DorkEngine, ENGINES
@@ -194,11 +196,43 @@ def attach_recovery482(app, build):
 
     @app.post("/workbench/images482")
     async def upload_image(request: Request):
+        # Gate unauthenticated uploads BEFORE a multipart parser allocates files.
+        fingerprint = hashlib.sha256("|".join((
+            request.headers.get("user-agent", ""),
+            request.headers.get("accept-language", ""),
+            request.client.host if request.client else "",
+        )).encode()).hexdigest()
+        preauth = ctx.team_identity_359.validate_session(
+            request.cookies.get(COOKIE, ""),
+            client_fingerprint=fingerprint, touch=False,
+        )
+        if not preauth:
+            raise HTTPException(401, "Bitte anmelden.")
+        origin = request.headers.get("origin", "")
+        if origin:
+            from urllib.parse import urlsplit
+            parsed = urlsplit(origin)
+            if parsed.scheme not in ("http", "https") or parsed.netloc != request.headers.get("host"):
+                raise HTTPException(403, "Fremder Formularursprung.")
+        if request.headers.get("sec-fetch-site", "").lower() not in ("", "same-origin", "none"):
+            raise HTTPException(403, "Formular kommt nicht von EagleEye.")
+        if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
+            raise HTTPException(415, "Nur Multipart-Bildübertragungen werden akzeptiert.")
         size = int(request.headers.get("content-length", "0") or 0)
         if size > MAX_MULTIPART:
             raise HTTPException(413, "Bild-Upload überschreitet 20 MB.")
+        # Starlette max_part_size limits text fields, NOT file parts. Bound the
+        # entire chunked/streaming request BEFORE passing it into the parser.
+        received = bytearray()
+        async for chunk in request.stream():
+            if len(received) + len(chunk) > MAX_MULTIPART:
+                raise HTTPException(413, "Bild-Upload überschreitet die erlaubte Datengröße.")
+            received.extend(chunk)
+        async def bounded_receive():
+            return {"type": "http.request", "body": bytes(received), "more_body": False}
+        bounded = Request(request.scope, receive=bounded_receive)
         try:
-            async with request.form(max_files=1, max_fields=5, max_part_size=MAX_MULTIPART) as fields:
+            async with bounded.form(max_files=1, max_fields=3, max_part_size=2048) as fields:
                 case_id = str(fields.get("case_id") or "")
                 user, _case = case_access(app, request, case_id, capability="research.run")
                 verify_post(app, request, user, fields.get("csrf", ""))
