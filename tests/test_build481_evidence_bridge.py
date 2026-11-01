@@ -137,3 +137,69 @@ def test_bridge_record_tampering_blocks_list(workspace):
         ("0" * 64, doc_id)
     )
     assert client.get("/workbench/bridge481", params={"case_id": cid}).status_code == 409
+
+
+def test_global_source_registry_does_not_leak_case_metadata(workspace):
+    """Logged-in but case-unrelated accounts can list registry sources."""
+    import json
+    app, client, user, cid, doc_id, foreign, foreign_doc = workspace
+    document_approved(workspace)
+    response = client.post("/workbench/bridge481", data=form(workspace),
+                           follow_redirects=False)
+    assert response.status_code == 303
+    leaked = client.get("/api/build421/acquisition/sources")
+    assert leaked.status_code == 200
+    raw = json.dumps(leaked.json(), ensure_ascii=False)
+    assert doc_id not in raw
+    assert cid not in raw
+    assert "Synthetic Source" not in raw
+    assert "example.org" not in raw
+    # Case-restricted provenance is still linked in the actual acquisition event.
+    ctx = app.state.context
+    e = ctx.evidence_claims_dossier_447.case_evidence(cid)[0]
+    event = ctx.acquisition_events_422.get(e["event_id"])
+    assert event["provenance"]["document_id"] == doc_id
+
+
+def test_failed_handoff_rolls_back_all_records_without_duplicates(workspace):
+    """A downstream failure must not leave orphaned source/event/observations."""
+    from unittest.mock import patch
+    app, client, user, cid, doc_id, *_ = workspace
+    ctx = app.state.context
+    document_approved(workspace)
+    data = form(workspace)
+    # Pre-initialize all services, then simulate a failed downstream integrity check.
+    sync = ctx.evidence_claims_dossier_447.sync_case_evidence
+    with patch.object(ctx.evidence_claims_dossier_447, "sync_case_evidence",
+                      side_effect=RuntimeError("simulated downstream failure")):
+        with pytest.raises(RuntimeError, match="downstream failure"):
+            client.post("/workbench/bridge481", data=data, follow_redirects=False)
+    assert ctx.db.one("SELECT count(*) n FROM acquisition_source_421")["n"] == 0
+    assert ctx.db.one("SELECT count(*) n FROM acquisition_event_422")["n"] == 0
+    assert ctx.db.one("SELECT count(*) n FROM content_observation_423")["n"] == 0
+    assert ctx.db.one("SELECT count(*) n FROM document_evidence_bridge_481")["n"] == 0
+    assert ctx.evidence_claims_dossier_447.case_evidence(cid) == []
+    # Retrying after a transient fault creates exactly one canonical Evidence.
+    assert client.post("/workbench/bridge481", data=data, follow_redirects=False).status_code == 303
+    assert len(ctx.evidence_claims_dossier_447.case_evidence(cid)) == 1
+    assert ctx.db.one("SELECT count(*) n FROM acquisition_event_422")["n"] == 1
+    assert len(_records(ctx, cid)) == 1
+
+
+def test_handoff_audit_events_use_authenticated_operator(workspace):
+    app, client, user, cid, doc_id, *_ = workspace
+    ctx = app.state.context
+    document_approved(workspace)
+    assert client.post("/workbench/bridge481", data=form(workspace),
+                       follow_redirects=False).status_code == 303
+    actions = {
+        "acquisition_source_registered_421",
+        "acquisition_event_recorded_422",
+        "content_ingested_423",
+        "document_promoted_to_unreviewed_evidence_481",
+    }
+    events = ctx.db.all("SELECT action, actor FROM audit_events WHERE action IN (?,?,?,?)",
+                        tuple(sorted(actions)))
+    seen = {event["action"] for event in events}
+    assert actions.issubset(seen)
+    assert all(event["actor"] == user["username"] for event in events)
