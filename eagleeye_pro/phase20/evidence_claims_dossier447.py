@@ -6,6 +6,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import hashlib
 import json
 import secrets
+import re
 
 from eagleeye_pro.reporting.docx_writer import write_docx
 from eagleeye_pro.reporting.pdf_writer import write_pdf
@@ -1216,7 +1217,23 @@ class EvidenceClaimsDossier447:
             (str(case_id),),
         ):
             d = dict(row)
-            d["paths"] = json.loads(d.pop("paths_json"))
+            if self._rh(d) != d.get("record_hash"):
+                raise PermissionError("dossier export record integrity invalid")
+            # Retain original hashed database records, but resolve managed files
+            # against the current workspace after a portable restore.
+            for key in ("case_id", "revision_id", "export_id"):
+                if not re.fullmatch(r"[A-Za-z0-9_-]{1,160}", str(d[key])):
+                    raise ValueError("invalid managed export identifier")
+            directory = self.base_dir / "exports" / "build447" / d["case_id"] / d["revision_id"] / d["export_id"]
+            if not directory.resolve().is_relative_to(self.base_dir.resolve()):
+                raise ValueError("managed export path escaped workspace")
+            names = {"json": "EagleEye_Living_Dossier.json", "docx": "EagleEye_Living_Dossier.docx",
+                "pdf": "EagleEye_Living_Dossier.pdf", "manifest": "manifest.json",
+                "case_package": "EagleEye_Case_Package_447.zip"}
+            d.pop("paths_json")
+            d["paths"] = {kind: str(directory / name) for kind, name in names.items()}
+            if any(not Path(path).resolve().is_relative_to(self.base_dir.resolve()) for path in d["paths"].values()):
+                raise ValueError("managed export file escaped workspace")
             d["hashes"] = json.loads(d.pop("hashes_json"))
             out.append(d)
         return out

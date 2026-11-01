@@ -1,9 +1,15 @@
-## Build 478 – Eigene Arbeitsbefunde mit Originalfundstelle
+## Build 481 – Durchgehender Ermittlungsweg und geprüfte Quellenübergabe
+
+**Windows:** ZIP vollständig entpacken und `START_EAGLEEYE_PRO.bat` starten. Der Starter erzeugt bei Bedarf ein isoliertes Python-3.12+-Runtime und verwendet einen stabilen lokalen Arbeitsordner. Aufeinanderfolgende Build-Ordner dürfen Fälle nicht verstecken. Achtung: Build 481 ist vor Abschluss der Windows-/Live-Abnahme nicht für vertrauliche Aufträge freigegeben.
+
+**Ermittlung:** Regulären Fall öffnen → **Geführte Recherche** → Dokumente importieren → Textextraktion im Dokumentenarchiv prüfen → **Quelle → Evidence** mit bewusster Herkunftsbegründung → Original-Evidence und Claims im bestehenden Profi-Workflow unabhängig prüfen → Living Dossier und vorhandenen Vier-Augen-Gate verwenden. Keine automatische Wahrheitsbehauptung und kein ungeprüfter KI-Claim.
+
+## Build 480 – Eigene Arbeitsbefunde mit Originalfundstelle
 
 Geführte Recherche → Arbeitsbefunde: Dokument und Originalanker auswählen,
 Beobachtung/Hypothese/Gegenbeleg/Unsicherheit formulieren und dauerhaft speichern.
 Originaltext und Hashes bleiben getrennt von der eigenen Interpretation sichtbar.
-Siehe [BUILD_478_NOTES.md](BUILD_478_NOTES.md).
+Siehe [BUILD_480_NOTES.md](BUILD_480_NOTES.md).
 
 ## Build 477 – Fallbezogenes Quelleninventar
 

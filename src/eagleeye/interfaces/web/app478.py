@@ -7,5 +7,7 @@ def create_workspace_app478(*,base_dir=None,workspace_build="478.0"):
     app.version=workspace_build
     app.title="EagleEye – Quellenbelegte Arbeitsbefunde "+workspace_build
     attach_findings(app,workspace_build)
+    from .closure_workflow478 import attach_canonical_closure
+    attach_canonical_closure(app,workspace_build)
     return app
 create_app=create_workspace_app478

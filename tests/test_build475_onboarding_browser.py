@@ -8,7 +8,7 @@ import uvicorn
 from eagleeye.interfaces.web.app475 import create_workspace_app475
 
 
-def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=False):
+def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=False,report=False):
     sync=pytest.importorskip('playwright.sync_api')
     app=factory(base_dir=tmp_path);ctx=app.state.context
     with socket.socket() as sock:
@@ -82,6 +82,22 @@ def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=Fals
                 page.get_by_role('heading',name='Documentation use hypothesis',exact=True).wait_for()
                 page.reload()
                 page.get_by_role('heading',name='Documentation use hypothesis',exact=True).wait_for()
+            if report:
+                page.goto(case_url)
+                page.get_by_role('link',name='Geführte Recherche',exact=True).click()
+                page.locator('a[href^="/workbench/report?"]').click()
+                page.locator('[name=reason]').fill('Original excerpt checked; independent corroboration still pending.')
+                with page.expect_response(lambda r:r.request.method=='POST' and '/report/review' in r.url) as reviewed:
+                    page.get_by_role('button',name='Prüfentscheidung speichern',exact=True).click()
+                assert reviewed.value.status==303
+                assert 'reviewed_self' in page.locator('main').inner_text()
+                with page.expect_download() as download:
+                    page.get_by_role('link',name='Arbeitsbericht als Markdown herunterladen →',exact=True).click()
+                assert download.value.suggested_filename.endswith('_Arbeitsbericht.md')
+                content=__import__('pathlib').Path(download.value.path()).read_text(encoding='utf-8')
+                assert 'Documentation use hypothesis' in content and 'reviewed_self' in content
+                page.set_viewport_size({'width':390,'height':844})
+                assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             page.goto(base+'/new-case');page.set_viewport_size({'width':390,'height':844})
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             assert page.locator('[name=title]').is_visible()
