@@ -47,3 +47,12 @@ def test_pilot_is_read_only_and_does_not_issue_formal_dossier(workspace):
     assert before==ctx.evidence_claims_dossier_447.case_dossiers(cid)
     assert exports==ctx.evidence_claims_dossier_447.exports(cid)
     assert "Pilotprüfung" in client.get("/workbench",params={"case_id":cid}).text
+
+
+def test_pilot_refuses_to_display_healthy_progress_after_chain_integrity_failure(workspace,monkeypatch):
+    app,client,user,cid,*_=workspace
+    engine=app.state.context.evidence_claims_dossier_447
+    monkeypatch.setattr(engine,"verify_integrity",lambda:{"valid":False,"reason":"tampered"})
+    result=client.get("/workbench/pilot485",params={"case_id":cid})
+    assert result.status_code==409
+    assert "Integrität" not in result.text or "fehlgeschlagen" in result.text
