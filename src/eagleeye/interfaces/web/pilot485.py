@@ -10,7 +10,12 @@ from .research483 import listed
 
 def pilot_counts(ctx,identity,case_id):
     sources=ctx.document_intelligence_458.documents(identity=identity,case_id=case_id)
-    assets=ctx.build354.image_assets(case_id=case_id,limit=500)
+    # The legacy image_assets() helper is capped at 500, but the case archive
+    # can contain more. Count all image originals in the canonical case DB.
+    image_total=ctx.db.one(
+        "SELECT COUNT(*) AS n FROM phase15_media_assets WHERE case_id=? AND media_kind='image'",
+        (case_id,),
+    )["n"]
     leads=listed(ctx,case_id)
     chain=ctx.evidence_claims_dossier_447
     integrity=chain.verify_integrity()
@@ -21,7 +26,7 @@ def pilot_counts(ctx,identity,case_id):
     dossiers=chain.case_dossiers(case_id)
     exports=chain.exports(case_id)
     return {
-        "documents":len(sources),"images":len(assets),"search_leads":len(leads),
+        "documents":len(sources),"images":int(image_total),"search_leads":len(leads),
         "evidence":len(evidence),"accepted_evidence":sum(x["review_state"]=="accepted" for x in evidence),
         "claims":len(claims),"accepted_claims":sum(x["state"]=="accepted_for_dossier" for x in claims),
         "dossiers":len(dossiers),"formal_exports":len(exports),
