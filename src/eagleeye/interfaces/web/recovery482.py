@@ -6,6 +6,7 @@ queries external search engines or upgrades image similarities into identity.
 from __future__ import annotations
 
 import json
+import ipaddress
 from html import escape
 from pathlib import PurePath
 from urllib.parse import urlencode
@@ -53,6 +54,14 @@ def attach_recovery482(app, build):
                        or domain.startswith("-") or domain.endswith("-")
                        or ".." in domain or "." not in domain):
             raise HTTPException(422, "Nur vollständige öffentliche Domainnamen eingeben.")
+        if domain:
+            try:
+                ipaddress.ip_address(domain)
+            except ValueError:
+                if domain.endswith((".local", ".internal", ".localhost", ".test")):
+                    raise HTTPException(422, "Keine privaten oder lokalen Suchziele.")
+            else:
+                raise HTTPException(422, "Nur öffentliche Domainnamen, keine IP-Adressen.")
         if engine not in SEARCH_ENGINES:
             raise HTTPException(422, "Unbekannter Suchanbieter.")
         if topic and not PolicyGate.evaluate_query(topic).get("ok"):
