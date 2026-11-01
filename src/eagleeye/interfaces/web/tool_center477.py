@@ -61,6 +61,8 @@ SPECIAL_TOOLS = (
      "Echte Fallstände, Quellenlücke und vorhandene Vier-Augen-Gates nachvollziehen."),
     ("Dokument in prüfbare Evidence überführen", "/workbench/bridge481",
      "Nach Extraktionsfreigabe und menschlicher Herkunftsbegründung – neue Evidence bleibt ungeprüft."),
+    ("Pilot-Abnahme und Fallfortschritt", "/workbench/pilot485",
+     "Realer gespeicherter Quellen-, Bild-, Evidence- und Dossierbestand; keine automatische Kundenfreigabe."),
     ("Quellenkritischer Arbeitsbericht", "/workbench/report",
      "Arbeitsbericht, keine behördliche/freigegebene Dossierfassung (ab Build 479)."),
 )
