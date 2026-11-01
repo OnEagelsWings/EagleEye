@@ -86,6 +86,7 @@ class TransitionProof:
 _ALLOWED = {
     (Stage.CREATED, Action.ACCEPT_SCOPE): Stage.SCOPED,
     (Stage.SCOPED, Action.DRAFT_PLAN): Stage.PLAN_DRAFT,
+    (Stage.PLAN_DRAFT, Action.DRAFT_PLAN): Stage.PLAN_DRAFT,  # rework/revise before renewed GO
     (Stage.PLAN_DRAFT, Action.APPROVE_PLAN): Stage.PLAN_APPROVED,
     (Stage.PLAN_APPROVED, Action.START_AGENTS): Stage.AGENTS_RUNNING,
     (Stage.AGENTS_RUNNING, Action.RECORD_RESULTS): Stage.RESULTS_COLLECTED,
