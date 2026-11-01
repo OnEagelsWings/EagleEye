@@ -1,6 +1,5 @@
 name: EagleEye Build 484 Windows Linux Case Acceptance
 on:
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
