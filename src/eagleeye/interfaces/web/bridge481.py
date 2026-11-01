@@ -86,7 +86,14 @@ def _reviewed_bytes(ctx, user, case_id, document_id):
 
 
 def promote_reviewed_document(ctx, user, case_id, document_id, rationale):
-    """Creates unreviewed Evidence. Does NOT approve it or create a Claim."""
+    """Atomic, attributed human handoff; never approves Evidence/Claims."""
+    with ctx.audit.actor_scope(user["username"]):
+        with ctx.db.transaction(immediate=True):
+            return _promote_reviewed_document(ctx, user, case_id, document_id, rationale)
+
+
+def _promote_reviewed_document(ctx, user, case_id, document_id, rationale):
+    """Creates unreviewed Evidence within the caller's transaction."""
     rationale = " ".join(str(rationale or "").split())
     if not (15 <= len(rationale) <= 1200):
         raise HTTPException(422, "Bitte Prüfzweck und rechtmäßige Herkunft begründen (15–1200 Zeichen).")
@@ -111,16 +118,19 @@ def promote_reviewed_document(ctx, user, case_id, document_id, rationale):
     doc, raw, anchors = _reviewed_bytes(ctx, user, case_id, document_id)
     # No remote access: the optional source URL remains user-supplied metadata.
     url = str(doc.get("source_url") or "")
+    # The 421 registry is intentionally GLOBAL and listable after login.
+    # It must NEVER contain case-scoped titles, original URLs or document IDs.
+    # Those fields belong only in the ACL-protected acquisition event below.
     source = ctx.acquisition_source_registry_421.register(
         identity=user,
-        name=("Manuell geprüft: " + str(doc.get("title") or document_id))[:180],
-        source_type="website" if url else "dataset",
-        access_mode="public" if url else "local_dataset",
-        base_url=(urlsplit(url).scheme + "://" + urlsplit(url).netloc + "/") if url else "",
+        name="Local reviewed document (restricted case metadata)",
+        source_type="dataset",
+        access_mode="local_dataset",
+        base_url="",
         capabilities=["manual_import"],
         coverage={"origin": "document_intelligence_458",
-                  "document_id": document_id, "human_reviewed_extraction": True},
-        license_note="Analyst documents lawful acquisition; source URL is unverified metadata.",
+                  "human_reviewed_extraction": True},
+        license_note="Restricted case details are stored in the access-controlled event.",
     )
     event = ctx.acquisition_events_422.record(
         identity=user, case_id=case_id, source_id=source["source_id"],
