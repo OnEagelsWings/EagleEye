@@ -165,7 +165,7 @@ def attach_workbench(app, workspace_build):
                  [step(4,"Originaldokumente sichern",
                        "TXT/PDF importieren, Herkunft und Textanker prüfen.",
                        "/documents458"),
-                  step(5,"Bilder und Metadaten",
+                  step(5,"Bildakte und Metadaten",
                        "Bildoriginale, EXIF und lokale Ähnlichkeitsanalyse prüfen.",
                        "/workbench/images482"),
                   step(6,"Quelleninventar",
