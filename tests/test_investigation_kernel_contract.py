@@ -70,6 +70,9 @@ def test_rework_forces_new_plan_and_new_go():
         advance(draft,Action.START_AGENTS,proof(requested_agents=frozenset({"search"})))
     with pytest.raises(KernelGateError):
         advance(draft,Action.APPROVE_PLAN,proof(plan_hash=H("plan-v1"),approved_agents=frozenset({"search"})))
+    new_draft=advance(draft,Action.DRAFT_PLAN,proof(plan_hash=H("plan-v2")))
+    new_approval=advance(new_draft,Action.APPROVE_PLAN,proof(plan_hash=H("plan-v2"),approved_agents=frozenset({"search"})))
+    assert new_approval.stage==Stage.PLAN_APPROVED and new_approval.approved_plan_hash==H("plan-v2")
 
 def test_pause_resume_does_not_gain_new_authority():
     approved=through_approval()
