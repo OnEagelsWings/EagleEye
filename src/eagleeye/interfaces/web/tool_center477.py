@@ -33,6 +33,8 @@ ADVANCED_VIEWS = (
 SPECIAL_TOOLS = (
     ("Dork-Recherche", "/workbench/dorks482",
      "Vorhandenen DorkEngine-Generator für öffentliche Suchlinks benutzen; keine automatischen Suchtreffer."),
+    ("Recherchefunde und Suchhinweise", "/workbench/leads483",
+     "Öffentliche Suchtreffer manuell als fallgebundene, ausdrücklich ungeprüfte Leads aufnehmen."),
     ("Bildakte und Metadaten", "/workbench/images482",
      "Bestehende Bildanalyse Build 353/354 für lokale Originale, EXIF und Ähnlichkeit."),
     ("Dokumente und Originalanker", "/documents458",
