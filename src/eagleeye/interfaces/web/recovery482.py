@@ -134,8 +134,7 @@ def attach_recovery482(app, build):
         for asset in assets:
             aid = str(asset["media_id"])
             meta = _metadata(asset)
-            security = str(asset.get("security_state") or
-                           (asset.get("metadata") or {}).get("security_state") or "unreviewed")
+            security = str(asset.get("review_status") or (asset.get("metadata") or {}).get("security_state") or "unreviewed")
             dims = str(meta.get("width") or meta.get("width_px") or "?") + " × " + str(
                 meta.get("height") or meta.get("height_px") or "?")
             preview = (
@@ -233,11 +232,11 @@ def attach_recovery482(app, build):
         if str(asset.get("case_id")) != case_id:
             raise HTTPException(403, "Bild gehört nicht zu diesem Fall.")
         meta = asset.get("metadata") or {}
-        security = str(asset.get("security_state") or meta.get("security_state") or "")
+        security = str(asset.get("review_status") or meta.get("security_state") or "")
         if security == "quarantined":
             raise HTTPException(403, "Quarantänisiertes Bild darf nicht angezeigt werden.")
         raw = ctx.build354.build353.build352.artifact_bytes(asset["object_ref"])
-        media_type = str(asset.get("mime_type") or asset.get("media_type") or "")
+        media_type = str(_metadata(asset).get("magic_media_type") or "")
         if media_type not in IMAGE_TYPES:
             # Do not let a stored metadata field produce arbitrary active HTML/SVG.
             raise HTTPException(422, "Kein zulässiges Bildformat.")
