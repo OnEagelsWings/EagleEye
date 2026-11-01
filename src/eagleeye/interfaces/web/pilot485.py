@@ -2,7 +2,7 @@
 from __future__ import annotations
 from html import escape
 from urllib.parse import urlencode
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from .operations476 import case_access,page
@@ -14,6 +14,8 @@ def pilot_counts(ctx,identity,case_id):
     leads=listed(ctx,case_id)
     chain=ctx.evidence_claims_dossier_447
     integrity=chain.verify_integrity()
+    if not integrity.get("valid",False):
+        raise HTTPException(409,"Evidence-/Dossierintegrität fehlgeschlagen. Keine Pilotfreigabe oder Fortschrittsanzeige.")
     evidence=chain.case_evidence(case_id)
     claims=chain.case_claims(case_id)
     dossiers=chain.case_dossiers(case_id)
