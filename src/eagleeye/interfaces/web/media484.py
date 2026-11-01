@@ -37,11 +37,20 @@ def attach_media484(app,build):
         indexed={str(r["media_id"]):r for r in assets}
         links=ctx.build354.similarity_links(case_id=case_id)[:300]
         cards=[]
+        def original(media_id):
+            key=str(media_id)
+            if key not in indexed:
+                try:
+                    row=ctx.build354.image_asset(key)
+                except KeyError:
+                    raise HTTPException(409,"Bildbeziehung ohne Originalbild.") from None
+                if str(row.get("case_id")) != case_id:
+                    raise HTTPException(409,"Bildbeziehung verweist außerhalb des Ermittlungsfalls.")
+                indexed[key]=row
+            return indexed[key]
         for link in links:
-            left=indexed.get(str(link["from_id"]))
-            right=indexed.get(str(link["to_id"]))
-            if not left or not right:
-                raise HTTPException(409,"Bildbeziehung ohne fallbezogene Originalbilder.")
+            left=original(link["from_id"])
+            right=original(link["to_id"])
             provenance=link.get("provenance") or {}
             if provenance.get("identity_confirmed") is True or provenance.get("requires_human_review") is not True:
                 raise HTTPException(409,"Ungültiger automatischer Bildbezug.")
@@ -67,7 +76,7 @@ def attach_media484(app,build):
             )
         body=(
             '<p>Aktiver Fall: <strong>'+escape(str(case.get("title") or ""))+
-            '</strong> · '+str(len(assets))+' Bildoriginale · '+str(len(links))+
+            '</strong> · '+str(ctx.db.one("SELECT count(*) AS n FROM phase15_media_assets WHERE case_id=? AND media_kind=?", (case_id,"image"))["n"])+' Bildoriginale · '+str(len(links))+
             ' ungeprüfte Kandidatenverbindungen.</p>'
             '<p class="warn">Die Analyse nutzt die bereits vorhandene Build-354-'
             'Bildähnlichkeit. Metadaten, identische Pixel oder Hashes sind allein '
