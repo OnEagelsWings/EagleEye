@@ -54,3 +54,20 @@ def test_broken_image_relationship_fails_closed(workspace):
                    ("media_not_in_this_case",link["link_id"]))
     denied=client.get("/workbench/media484",params={"case_id":cid})
     assert denied.status_code==409
+
+def test_similarity_older_than_first_asset_page_keeps_case_view_usable(workspace):
+    from unittest.mock import patch
+    app,client,user,cid,*_=workspace
+    ctx=app.state.context
+    raw=png_bytes()
+    ctx.build354.ingest_image(case_id=cid,content=raw,
+        declared_media_type="image/png",filename="old.png")
+    ctx.build354.ingest_image(case_id=cid,content=raw,
+        declared_media_type="image/png",filename="new.png")
+    assert ctx.build354.similarity_links(case_id=cid)
+    # Simulate a full recent-image page that excludes older link endpoints.
+    with patch.object(ctx.build354,"image_assets",return_value=[]):
+        response=client.get("/workbench/media484",params={"case_id":cid})
+    assert response.status_code==200
+    assert "Ungeprüfte Bildähnlichkeit" in response.text
+    assert "2 Bildoriginale" in response.text
