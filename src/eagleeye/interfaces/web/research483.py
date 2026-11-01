@@ -6,6 +6,7 @@ automatic evidence, or identity inference takes place here.
 from __future__ import annotations
 import hashlib
 import ipaddress
+import re
 import json
 import secrets
 from datetime import datetime, timezone
@@ -38,6 +39,13 @@ def validate_public_lead_url(value):
         or any(x in host for x in ("\\", "%", " ", "\t", "\n"))
         or host.startswith("-") or ".." in host):
         raise HTTPException(422, "Lokale oder ungültige Zieladresse.")
+    # WHATWG browser URL parsing resolves numeric IPv4 variants such as
+    # 127.1, 0177.0.0.1 and 0x7f.0.0.1 to the loopback address.
+    # Reject numeric host labels rather than trusting Python ipaddress alone.
+    labels=host.split(".")
+    if labels and all(re.fullmatch(r"(?:0[xX][0-9A-Fa-f]+|[0-9]+)",part)
+                      for part in labels):
+        raise HTTPException(422,"IP-ähnliche numerische Hosts sind nicht erlaubt.")
     try:
         ipaddress.ip_address(host.strip("[]"))
         raise HTTPException(422, "IP-Adressen und interne Ziele sind hier nicht zulässig.")
