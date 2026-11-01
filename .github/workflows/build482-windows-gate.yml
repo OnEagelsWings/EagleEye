@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           git archive --format=zip --output=EagleEye_Build_482_LAPTOP.zip HEAD
-          python -c "import hashlib,pathlib,zipfile; p=pathlib.Path('EagleEye_Build_482_LAPTOP.zip'); z=zipfile.ZipFile(p); assert z.testzip() is None; assert {'INSTALL_EAGLEEYE_482.py','START_EAGLEEYE_PRO.bat','src/eagleeye/interfaces/web/bridge482.py'}.issubset(z.namelist()); pathlib.Path('EagleEye_Build_482_LAPTOP.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
+          python -c "import hashlib,pathlib,zipfile; p=pathlib.Path('EagleEye_Build_482_LAPTOP.zip'); z=zipfile.ZipFile(p); assert z.testzip() is None; assert {'INSTALL_EAGLEEYE_482.py','START_EAGLEEYE_PRO.bat','src/eagleeye/interfaces/web/recovery482.py'}.issubset(z.namelist()); pathlib.Path('EagleEye_Build_482_LAPTOP.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+chr(10))"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
