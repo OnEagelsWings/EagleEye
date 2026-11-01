@@ -21,7 +21,7 @@ from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
 from eagleeye.bootstrap.desktop476 import write_start_status
 
-from .app483 import create_workspace_app483 as create_workspace_app
+from .app484 import create_workspace_app484 as create_workspace_app
 
 
 def _free_port(host: str, preferred: int) -> int:

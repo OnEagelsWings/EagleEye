@@ -1,3 +1,3 @@
-BUILD = "483.0"
-SCHEMA_VERSION = "483.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 483 Case-Scoped Search Findings"
+BUILD = "484.0"
+SCHEMA_VERSION = "484.0"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 484 Image Similarity & Graph Evidence"

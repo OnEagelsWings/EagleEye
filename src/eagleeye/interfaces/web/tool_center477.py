@@ -37,6 +37,8 @@ SPECIAL_TOOLS = (
      "Öffentliche Suchtreffer manuell als fallgebundene, ausdrücklich ungeprüfte Leads aufnehmen."),
     ("Bildakte und Metadaten", "/workbench/images482",
      "Bestehende Bildanalyse Build 353/354 für lokale Originale, EXIF und Ähnlichkeit."),
+    ("Lokaler Bildvergleich und Bildbeziehungen", "/workbench/media484",
+     "Bildähnlichkeit und Metadatenkandidaten ausdrücklich getrennt von bestätigten Graphrelationen prüfen."),
     ("Dokumente und Originalanker", "/documents458",
      "Lokaler PDF/TXT/Markdown-Import und verifizierbare Fundstellen."),
     ("Quelleninventar", "/workbench/sources",
