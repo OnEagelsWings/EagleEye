@@ -87,6 +87,13 @@ def _reviewed_bytes(ctx, user, case_id, document_id):
 
 def promote_reviewed_document(ctx, user, case_id, document_id, rationale):
     """Atomic, attributed human handoff; never approves Evidence/Claims."""
+    # Instantiate schema-creating services BEFORE BEGIN IMMEDIATE:
+    # sqlite3.executescript in a first-time service constructor implicitly commits.
+    # Keeping initialization outside the transaction preserves all-or-nothing writes.
+    ctx.acquisition_source_registry_421
+    ctx.acquisition_events_422
+    ctx.content_store_423
+    ctx.evidence_claims_dossier_447
     with ctx.audit.actor_scope(user["username"]):
         with ctx.db.transaction(immediate=True):
             return _promote_reviewed_document(ctx, user, case_id, document_id, rationale)
