@@ -126,3 +126,30 @@ def test_anonymous_and_nonexistent_case_blocked(workspace):
         assert stranger.get("/workbench/dorks482", params={"case_id": cid}).status_code == 401
         assert stranger.get("/workbench/images482", params={"case_id": cid}).status_code == 401
         assert stranger.get("/workbench/image482/media_random", params={"case_id": cid}).status_code == 401
+
+
+def test_chunked_oversized_multipart_is_rejected_before_file_parsing(workspace):
+    from eagleeye.interfaces.web.recovery482 import MAX_MULTIPART
+    app, client, user, cid, *_ = workspace
+    csrf_session(workspace)
+    boundary = b"safe-boundary"
+    def chunks():
+        yield b"--" + boundary + b'\r\nContent-Disposition: form-data; name="image"; filename="oversize.png"\r\nContent-Type: image/png\r\n\r\n'
+        yield b"x" * (MAX_MULTIPART // 2)
+        yield b"x" * (MAX_MULTIPART // 2 + 2048)
+        yield b"\r\n--" + boundary + b"--\r\n"
+    response = client.post(
+        "/workbench/images482",
+        content=chunks(),
+        headers={
+            "Content-Type": "multipart/form-data; boundary=safe-boundary",
+            "Transfer-Encoding": "chunked"
+        })
+    assert response.status_code == 413, response.text[:350]
+    assert app.state.context.build354.image_assets(case_id=cid) == []
+    with TestClient(app) as anonymous:
+        rejected = anonymous.post(
+            "/workbench/images482",
+            content=b"x" * 100,
+            headers={"Content-Type": "multipart/form-data; boundary=safe-boundary"})
+        assert rejected.status_code == 401
