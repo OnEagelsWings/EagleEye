@@ -171,6 +171,10 @@ def attach_workbench(app, workspace_build):
                   step(5,"Bildakte und Metadaten",
                        "Bildoriginale, EXIF und lokale Ähnlichkeitsanalyse prüfen.",
                        "/workbench/images482"),
+                  ] + ([step(5,"Bildbeziehungen vergleichen",
+                        "Vorhandene lokale Ähnlichkeitskandidaten anhand der Originalbilder bewerten.",
+                        "/workbench/media484")] if stage>=484 else []) + [
+
                   step(6,"Quelleninventar",
                        "Originaldokumente und Vollständigkeit überprüfen.",
                        "/workbench/sources"),
