@@ -125,7 +125,7 @@ def diagnostics(root):
     except (OSError,ValueError):status={'stage':'unknown'}
     safe_status={'stage':status.get('stage') if status.get('stage') in _START_STAGES else 'unknown'}
     timestamp=status.get('updated_at')
-    if isinstance(timestamp,str) and len(timestamp)<=48 and re.fullmatch(r'[0-9T:+.\\-Z]+',timestamp):
+    if isinstance(timestamp,str) and len(timestamp)<=48 and re.fullmatch(r'[0-9TZ:+.-]+',timestamp):
         safe_status['updated_at']=timestamp
     if status.get('browser') in {'firefox','default','unavailable'}:
         safe_status['browser']=status['browser']
