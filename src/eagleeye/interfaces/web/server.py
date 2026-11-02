@@ -177,7 +177,7 @@ def _health_ready(port: int, *, timeout: float = 0.35, expected_instance: str | 
             payload = json.loads(response.read(16 * 1024).decode("utf-8"))
             reported_instance = response.headers.get("X-EagleEye-Instance", "")
         return bool(isinstance(payload,dict) and payload.get("ok") and str(payload.get("build")) == BUILD
-                    and expected_instance and secrets.compare_digest(expected_instance, reported_instance))
+                    and (expected_instance is None or (bool(expected_instance) and secrets.compare_digest(expected_instance, reported_instance))))
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError):
         return False
 
