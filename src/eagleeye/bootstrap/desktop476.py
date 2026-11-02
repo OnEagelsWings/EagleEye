@@ -72,9 +72,18 @@ def resolve_workspace(install_dir):
         if explicit:
             root=_local_path(explicit)
         elif settings.is_file():
-            saved=json.loads(settings.read_text(encoding='utf-8'))
-            root=_local_path(saved['workspace_directory'])
-            if not root.is_dir():raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bitte Datenordner auswählen.')
+            # Never silently fall back to an empty workspace if a saved data
+            # location is corrupt or temporarily unavailable. Existing cases
+            # may live in that directory, including older Build-398 installs.
+            try:
+                saved=json.loads(settings.read_text(encoding='utf-8'))
+                if not isinstance(saved,dict):
+                    raise ValueError('workspace settings are not an object')
+                root=_local_path(saved['workspace_directory'])
+            except (OSError,ValueError,KeyError,TypeError) as exc:
+                raise ValueError('Arbeitsordner-Konfiguration unlesbar. Bestehende Daten bleiben unverändert; bitte den bisherigen Datenordner ausdrücklich auswählen.') from exc
+            if not root.is_dir():
+                raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bestehende Daten nicht überschreiben; bitte den bisherigen Datenordner auswählen.')
             return root
         else:
             installed=_local_path(install_dir)
