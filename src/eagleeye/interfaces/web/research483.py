@@ -6,6 +6,7 @@ automatic evidence, or identity inference takes place here.
 from __future__ import annotations
 import hashlib
 import ipaddress
+import idna
 import re
 import json
 import secrets
@@ -30,9 +31,9 @@ def validate_public_lead_url(value):
         url = urlsplit(raw)
         # Canonicalize IDNA before stripping the terminal dot: Unicode dot
         # equivalents (U+3002, U+FF0E, U+FF61) normalize to ASCII dots.
-        host = (url.hostname or "").encode("idna").decode("ascii").rstrip(".").lower()
+        host = idna.encode(url.hostname or "", uts46=True, transitional=False).decode("ascii").rstrip(".").lower()
         port = url.port
-    except ValueError:
+    except (ValueError, idna.IDNAError, UnicodeError):
         raise HTTPException(422, "Ungültige URL.") from None
     if url.scheme != "https" or not host or url.username or url.password or port not in (None, 443):
         raise HTTPException(422, "Nur öffentliche HTTPS-Adressen ohne Zugangsdaten/Portangaben.")
@@ -43,9 +44,9 @@ def validate_public_lead_url(value):
         raise HTTPException(422, "Lokale oder ungültige Zieladresse.")
     # WHATWG browser URL parsing resolves numeric IPv4 variants such as
     # 127.1, 0177.0.0.1 and 0x7f.0.0.1 to the loopback address.
-    # Reject numeric host labels rather than trusting Python ipaddress alone.
+    # Reject numeric host labels, including bare 0x (WHATWG treats it as zero),\n    # rather than trusting Python ipaddress alone.
     labels=host.split(".")
-    if labels and all(re.fullmatch(r"(?:0[xX][0-9A-Fa-f]+|[0-9]+)",part)
+    if labels and all(re.fullmatch(r"(?:0[xX][0-9A-Fa-f]*|[0-9]+)",part)
                       for part in labels):
         raise HTTPException(422,"IP-ähnliche numerische Hosts sind nicht erlaubt.")
     try:

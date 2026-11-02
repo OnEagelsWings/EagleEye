@@ -26,11 +26,11 @@ jobs:
       - name: Install EagleEye and testing tools
         run: python -m pip install -e '.[test]'
       - name: Test all new real case gates
-        run: python -m pytest -q tests/test_build485_pilot_gate.py tests/test_build484_image_links.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
+        run: python -m pytest -q tests/test_build485_pilot_gate.py tests/test_build484_image_links.py tests/test_build483_operator.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
       - name: Real Chromium first-case usability
         run: python -m pip install 'playwright>=1.61,<2'
       - run: python -m playwright install chromium
-      - run: python -m pytest -q tests/test_build485_browser.py tests/test_advanced_workflows477.py
+      - run: python -m pytest -q tests/test_build485_browser.py tests/test_build482_browser.py tests/test_build481_browser.py tests/test_build480_browser.py tests/test_build478_browser.py tests/test_advanced_workflows477.py
       - name: Full canonical regression every fifth build
         run: python tools/run_checkpoint_regression480.py
       - name: Full Phase 18-20 governed regression

@@ -1,5 +1,7 @@
 name: EagleEye Build 484 Windows Linux Case Acceptance
 on:
+  pull_request:
+    branches: [build-483-search-findings-queue]
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 110
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,7 +22,13 @@ jobs:
       - name: Install product and test tools
         run: python -m pip install -e '.[test]'
       - name: Image, search and case-specific security tests
-        run: python -m pytest -q tests/test_build484_image_links.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
+        run: python -m pytest -q tests/test_build484_image_links.py tests/test_build483_operator.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
+      - name: Install Playwright browser regression dependencies
+        run: python -m pip install 'playwright>=1.61,<2'
+      - name: Install Chromium for real browser regression
+        run: python -m playwright install chromium
+      - name: Actual Chromium browser regression and legacy operator workflows
+        run: python -m pytest -q tests/test_build482_browser.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_browser.py tests/test_build480_browser.py tests/test_build478_browser.py tests/test_advanced_workflows477.py
       - name: Compile all current interfaces
         run: python -m compileall -q src/eagleeye/interfaces/web eagleeye_pro
       - name: Install current build
