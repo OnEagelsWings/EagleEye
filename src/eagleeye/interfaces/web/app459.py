@@ -161,6 +161,8 @@ Quellen und Graph.</p>
         if int(workspace_build.split(".")[0]) >= 475:
             checkpoint_url = "/ai-checkpoint475?" + urlencode({"case_id": selected_id})
             link += '<a href="' + escape(checkpoint_url, quote=True) + '">KI-Prüfpunkt 475</a>'
+        if int(workspace_build.split(".")[0]) >= 487:
+            link += '<a href="/workbench/sources487?' + escape(urlencode({"case_id": selected_id}), quote=True) + '">Quellenzuordnung</a>'
         html = html.replace("</nav>", link + "</nav>", 1)
         return HTMLResponse(html)
 
