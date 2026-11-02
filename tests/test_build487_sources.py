@@ -81,3 +81,29 @@ def test_original_and_association_tampering_block_display(workspace):
     ctx.db.execute("UPDATE lead_original_links_487 SET rationale=? WHERE case_id=?",
                    ("forged", cid))
     assert client.get("/workbench/sources487", params={"case_id": cid}).status_code == 409
+
+
+@pytest.mark.parametrize("rationale", ["日本語" * 280, "🧭" * 1200])
+def test_unicode_rationale_respects_decoded_character_limit(workspace, rationale):
+    """Valid Unicode text must not be rejected due to URL-encoded transport size."""
+    app, client, user, cid, doc_id, *_ = workspace
+    lead_id = lead(workspace)
+    document_approved(workspace)
+    response = client.post("/workbench/sources487",
+                           data=form(workspace, lead_id, rationale=rationale),
+                           follow_redirects=False)
+    assert response.status_code == 303, response.text
+    links = source_links(app.state.context, user, cid)
+    assert len(links) == 1 and links[0]["rationale"] == rationale
+
+
+def test_unicode_rationale_still_enforces_character_and_transport_caps(workspace):
+    app, client, user, cid, doc_id, *_ = workspace
+    lead_id = lead(workspace)
+    document_approved(workspace)
+    for size, expected in [(1201, 422), (2500, 413)]:
+        response = client.post("/workbench/sources487",
+                               data=form(workspace, lead_id, rationale="🧭" * size),
+                               follow_redirects=False)
+        assert response.status_code == expected, (size, response.status_code)
+    assert source_links(app.state.context, user, cid) == []
