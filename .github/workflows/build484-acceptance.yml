@@ -21,7 +21,7 @@ jobs:
       - name: Install product and test tools
         run: python -m pip install -e '.[test]'
       - name: Image, search and case-specific security tests
-        run: python -m pytest -q tests/test_build484_image_links.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
+        run: python -m pytest -q tests/test_build484_image_links.py tests/test_build483_operator.py tests/test_build483_research_leads.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
       - name: Compile all current interfaces
         run: python -m compileall -q src/eagleeye/interfaces/web eagleeye_pro
       - name: Install current build

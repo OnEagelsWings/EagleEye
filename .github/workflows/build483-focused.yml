@@ -6,6 +6,9 @@ permissions:
   contents: read
 jobs:
   test:
+    # Version-pinned Build 483 installer/manifest gates run only on their release branch.
+    # Build 484 runs its own full Windows/Linux acceptance and inherited 483 tests.
+    if: github.head_ref == 'build-483-search-findings-queue' || github.ref_name == 'build-483-search-findings-queue'
     strategy:
       fail-fast: false
       matrix:
