@@ -1,6 +1,7 @@
 """Build 485: read-only first-case pilot acceptance, never self-authorizes customer use."""
 from __future__ import annotations
 from html import escape
+import hashlib
 from urllib.parse import urlencode
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -8,14 +9,26 @@ from fastapi.responses import HTMLResponse
 from .operations476 import case_access,page
 from .research483 import listed
 
+def verified_image_count(ctx,case_id):
+    """Verify every case image against its stored original before claiming integrity."""
+    rows=ctx.db.all(
+        "SELECT object_ref,sha256 FROM phase15_media_assets WHERE case_id=? AND media_kind='image'",
+        (case_id,),
+    )
+    for row in rows:
+        try:
+            original=ctx.build354.artifact_bytes(row["object_ref"])
+            valid=isinstance(original,bytes) and hashlib.sha256(original).hexdigest()==str(row["sha256"]).lower()
+        except Exception:
+            valid=False
+        if not valid:
+            raise HTTPException(409,"Bildoriginalintegrität fehlgeschlagen. Keine Pilotfreigabe oder Fortschrittsanzeige.")
+    return len(rows)
+
 def pilot_counts(ctx,identity,case_id):
     sources=ctx.document_intelligence_458.documents(identity=identity,case_id=case_id)
-    # The legacy image_assets() helper is capped at 500, but the case archive
-    # can contain more. Count all image originals in the canonical case DB.
-    image_total=ctx.db.one(
-        "SELECT COUNT(*) AS n FROM phase15_media_assets WHERE case_id=? AND media_kind='image'",
-        (case_id,),
-    )["n"]
+    # Do not trust the legacy capped image listing or a database count alone.
+    image_total=verified_image_count(ctx,case_id)
     leads=listed(ctx,case_id)
     chain=ctx.evidence_claims_dossier_447
     integrity=chain.verify_integrity()
