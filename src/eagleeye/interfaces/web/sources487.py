@@ -160,7 +160,7 @@ def attach_sources487(app, build):
 
     @app.post("/workbench/sources487")
     async def source_post(request: Request):
-        form = await bounded_form(request, max_bytes=5500)
+        # 1200 astral Unicode code points can expand to 14,400 bytes when URL-encoded.\n        # Keep a finite transport cap while validating the decoded 20–1200 characters below.\n        form = await bounded_form(request, max_bytes=24576)
         cid = str(form.get("case_id") or "")
         user, _case = case_access(app, request, cid, capability="research.run")
         verify_post(app, request, user, form.get("csrf", ""))
