@@ -125,3 +125,39 @@ def test_running_server_requires_matching_workspace_instance(tmp_path, monkeypat
     monkeypatch.setattr(server.urllib.request, "build_opener", lambda *_: _Opener("", "485.0"))
     assert server._read_running_workspace(root) is None
     assert server._read_running_workspace(root, accept_other_build=True)["build"] == "485.0"
+
+
+def test_browser_readiness_does_not_trust_unrelated_local_server(monkeypatch):
+    class _Opener:
+        def __init__(self, instance):
+            self.instance = instance
+
+        def open(self, url, timeout):
+            assert url == "http://127.0.0.1:8765/health"
+            return _Response(instance=self.instance)
+
+    monkeypatch.setattr(server.urllib.request, "build_opener", lambda *_: _Opener("unrelated"))
+    assert server._health_ready(8765, expected_instance="expected") is False
+    monkeypatch.setattr(server.urllib.request, "build_opener", lambda *_: _Opener("expected"))
+    assert server._health_ready(8765, expected_instance="expected") is True
+
+
+def test_parallel_workspace_lock_does_not_allow_second_writer(tmp_path):
+    from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
+    with workspace_runtime_lock(tmp_path, timeout=0):
+        with pytest.raises(RuntimeError, match="EagleEye läuft noch"):
+            with workspace_runtime_lock(tmp_path, timeout=0):
+                pytest.fail("second writer entered the same workspace")
+
+
+def test_unresponsive_loopback_server_times_out_without_token(monkeypatch, tmp_path):
+    root = tmp_path / "workspace"
+    server._write_runtime(root, host="127.0.0.1", port=8765, instance_id="a" * 48)
+
+    class _TimeoutOpener:
+        def open(self, url, timeout):
+            assert timeout <= 0.6
+            raise TimeoutError("loopback socket timed out")
+
+    monkeypatch.setattr(server.urllib.request, "build_opener", lambda *_: _TimeoutOpener())
+    assert server._read_running_workspace(root) is None
