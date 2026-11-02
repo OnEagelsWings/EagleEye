@@ -54,6 +54,8 @@ def test_lead_requires_csrf_and_public_url(workspace):
                    "https://ｅxample.local/private",
                    "https://ｅxample.internal/private",
                    "https://１２７.０.０.１/private",
+                   "https://🯱🯲🯷.🯰.🯰.🯱/private",
+                   "https://🯱🯲🯷.🯰.🯰.🯱．/private",
                    "https://foo.ｉｎｔｅｒｎａｌ/private",
                    "https://foo.internal．/private",
                    "https://１２７.０.０.１．/private",
