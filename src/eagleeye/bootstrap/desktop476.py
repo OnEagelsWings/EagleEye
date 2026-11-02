@@ -27,6 +27,8 @@ def settings_directory():
 
 
 def _local_path(value):
+    if not isinstance(value,(str,Path)):
+        raise ValueError('Bitte einen gültigen lokalen Arbeitsordner auswählen.')
     text=str(value).strip()
     if not text or text.startswith(('\\\\','//')):
         raise ValueError('Bitte einen lokalen Arbeitsordner auswählen.')
