@@ -19,7 +19,8 @@ def pilot_counts(ctx,identity,case_id):
     leads=listed(ctx,case_id)
     chain=ctx.evidence_claims_dossier_447
     integrity=chain.verify_integrity()
-    if not integrity.get("valid",False):
+    document_integrity=ctx.document_intelligence_458.verify_integrity()
+    if not integrity.get("valid",False) or not document_integrity.get("valid",False):
         raise HTTPException(409,"Evidence-/Dossierintegrität fehlgeschlagen. Keine Pilotfreigabe oder Fortschrittsanzeige.")
     evidence=chain.case_evidence(case_id)
     claims=chain.case_claims(case_id)
@@ -30,7 +31,7 @@ def pilot_counts(ctx,identity,case_id):
         "evidence":len(evidence),"accepted_evidence":sum(x["review_state"]=="accepted" for x in evidence),
         "claims":len(claims),"accepted_claims":sum(x["state"]=="accepted_for_dossier" for x in claims),
         "dossiers":len(dossiers),"formal_exports":len(exports),
-        "integrity_ok":bool(integrity.get("valid")),
+        "integrity_ok":bool(integrity.get("valid") and document_integrity.get("valid")),
     }
 
 def attach_pilot485(app,build):
