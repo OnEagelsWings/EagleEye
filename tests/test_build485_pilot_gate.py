@@ -68,3 +68,12 @@ def test_pilot_image_inventory_not_truncated_by_legacy_500_limit(workspace,monke
     counts=pilot_counts(ctx,user,cid)
     assert counts["images"]==1
     assert client.get("/workbench/pilot485",params={"case_id":cid}).status_code==200
+
+
+def test_pilot_rejects_failed_document_original_integrity(workspace,monkeypatch):
+    app,client,user,cid,*_=workspace
+    documents=app.state.context.document_intelligence_458
+    monkeypatch.setattr(documents,"verify_integrity",lambda:{"valid":False,"reason":"tampered original"})
+    response=client.get("/workbench/pilot485",params={"case_id":cid})
+    assert response.status_code==409
+    assert "Bestanden" not in response.text
