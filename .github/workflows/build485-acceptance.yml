@@ -1,5 +1,8 @@
 name: EagleEye Build 485 Full Operational Pilot Checkpoint
 on:
+  # Run even while the stacked PR has merge conflicts: pull_request is suppressed.
+  push:
+    branches: [build-485-first-case-pilot-gate]
   pull_request:
   workflow_dispatch:
 permissions:
