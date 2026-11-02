@@ -4,6 +4,7 @@ on:
   push:
     branches: [build-485-first-case-pilot-gate]
   pull_request:
+    branches: [build-484-image-relationship-comparison]
   workflow_dispatch:
 permissions:
   contents: read

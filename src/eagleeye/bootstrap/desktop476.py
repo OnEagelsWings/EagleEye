@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime,timezone
 import json
 import os
+import re
 from pathlib import Path
 import threading
 import tempfile
@@ -15,6 +16,7 @@ from .paths import default_runtime_root
 
 _STATUS_LOCK=threading.Lock()
 _SETTINGS_LOCK=threading.Lock()
+_START_STAGES={'starting','healthy','stopped','health-timeout','browser-requested','browser-unavailable','start-failed'}
 
 
 def settings_directory():
@@ -25,6 +27,8 @@ def settings_directory():
 
 
 def _local_path(value):
+    if not isinstance(value,(str,Path)):
+        raise ValueError('Bitte einen gültigen lokalen Arbeitsordner auswählen.')
     text=str(value).strip()
     if not text or text.startswith(('\\\\','//')):
         raise ValueError('Bitte einen lokalen Arbeitsordner auswählen.')
@@ -72,9 +76,18 @@ def resolve_workspace(install_dir):
         if explicit:
             root=_local_path(explicit)
         elif settings.is_file():
-            saved=json.loads(settings.read_text(encoding='utf-8'))
-            root=_local_path(saved['workspace_directory'])
-            if not root.is_dir():raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bitte Datenordner auswählen.')
+            # Never silently fall back to an empty workspace if a saved data
+            # location is corrupt or temporarily unavailable. Existing cases
+            # may live in that directory, including older Build-398 installs.
+            try:
+                saved=json.loads(settings.read_text(encoding='utf-8'))
+                if not isinstance(saved,dict):
+                    raise ValueError('workspace settings are not an object')
+                root=_local_path(saved['workspace_directory'])
+            except (OSError,ValueError,KeyError,TypeError) as exc:
+                raise ValueError('Arbeitsordner-Konfiguration unlesbar. Bestehende Daten bleiben unverändert; bitte den bisherigen Datenordner ausdrücklich auswählen.') from exc
+            if not root.is_dir():
+                raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bestehende Daten nicht überschreiben; bitte den bisherigen Datenordner auswählen.')
             return root
         else:
             installed=_local_path(install_dir)
@@ -87,7 +100,20 @@ def resolve_workspace(install_dir):
 
 
 def write_start_status(root,stage,**details):
-    allowed={k:v for k,v in details.items() if k in {'browser','error_type','port'}}
+    # Status and diagnostics are intentionally credential-free. Only known
+    # enum values, exception class names and numeric ports may be persisted.
+    stage=stage if stage in _START_STAGES else 'start-failed'
+    allowed={}
+    if details.get('browser') in {'firefox','default','unavailable'}:
+        allowed['browser']=details['browser']
+    error_type=details.get('error_type')
+    if isinstance(error_type,str) and error_type.isidentifier() and len(error_type)<=80:
+        allowed['error_type']=error_type
+    try:
+        port=int(details.get('port',0))
+        if 1<=port<=65535:allowed['port']=port
+    except (TypeError,ValueError,OverflowError):
+        pass
     with _STATUS_LOCK:
         _atomic_json(Path(root)/'data/runtime_126_0/start-status.json',
             {'build':BUILD,'stage':stage,'updated_at':datetime.now(timezone.utc).isoformat(),**allowed})
@@ -99,10 +125,19 @@ def diagnostics(root):
     status_path=root/'data/runtime_126_0/start-status.json'
     try:status=json.loads(status_path.read_text(encoding='utf-8'))
     except (OSError,ValueError):status={'stage':'unknown'}
+    safe_status={'stage':status.get('stage') if status.get('stage') in _START_STAGES else 'unknown'}
+    timestamp=status.get('updated_at')
+    if isinstance(timestamp,str) and len(timestamp)<=48 and re.fullmatch(r'[0-9TZ:+.-]+',timestamp):
+        safe_status['updated_at']=timestamp
+    if status.get('browser') in {'firefox','default','unavailable'}:
+        safe_status['browser']=status['browser']
+    error_type=status.get('error_type')
+    if isinstance(error_type,str) and error_type.isidentifier() and len(error_type)<=80:
+        safe_status['error_type']=error_type
     return {'build':BUILD,'workspace_directory':str(root),'database_present':any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
         'server_reachable':bool(runtime and runtime['build']==BUILD),'running_build':runtime['build'] if runtime else None,
         'version_conflict':bool(runtime and runtime['build']!=BUILD),'port':runtime['port'] if runtime else None,
-        'last_start':{k:status[k] for k in ('stage','updated_at','browser','error_type') if k in status},
+        'last_start':safe_status,
         'contains_credentials':False}
 
 
