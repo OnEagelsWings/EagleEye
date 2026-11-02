@@ -1,6 +1,7 @@
 name: EagleEye Build 484 Windows Linux Case Acceptance
 on:
   pull_request:
+    branches: [build-483-search-findings-queue]
   workflow_dispatch:
 permissions:
   contents: read

@@ -39,6 +39,8 @@ SPECIAL_TOOLS = (
      "Bestehende Bildanalyse Build 353/354 für lokale Originale, EXIF und Ähnlichkeit."),
     ("Lokaler Bildvergleich und Bildbeziehungen", "/workbench/media484",
      "Bildähnlichkeit und Metadatenkandidaten ausdrücklich getrennt von bestätigten Graphrelationen prüfen."),
+    ("Pilotprüfung des gesamten Falls", "/workbench/pilot485",
+     "Echte Zähler und Quellstatus; keine automatische Kunden- oder Sicherheitsfreigabe."),
     ("Dokumente und Originalanker", "/documents458",
      "Lokaler PDF/TXT/Markdown-Import und verifizierbare Fundstellen."),
     ("Quelleninventar", "/workbench/sources",

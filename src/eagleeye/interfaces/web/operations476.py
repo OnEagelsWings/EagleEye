@@ -207,7 +207,10 @@ def attach_workbench(app, workspace_build):
                        "/workbench/checkpoint"),
                   step(15,"Erweiterte Ermittlungswerkzeuge",
                        "Originale Evidence-, KI-, Graph- und Dossiersysteme öffnen.",
-                       "/workbench/expert")]),
+                       "/workbench/expert")
+                  ] + ([step(16,"Pilotprüfung: vollständiger Recherchefall",
+                      "Den echten Fallbestand und die nicht erfüllten Prüfungen überprüfen.",
+                      "/workbench/pilot485")] if stage>=485 else [])),
             ]
             grouped = "".join(
                 '<section aria-label="'+escape(heading,quote=True)+'"><h2>'+escape(heading)+
