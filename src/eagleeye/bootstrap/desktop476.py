@@ -96,7 +96,19 @@ def resolve_workspace(install_dir):
 
 
 def write_start_status(root,stage,**details):
-    allowed={k:v for k,v in details.items() if k in {'browser','error_type','port'}}
+    # Status and diagnostics are intentionally credential-free. Only known
+    # enum values, exception class names and numeric ports may be persisted.
+    allowed={}
+    if details.get('browser') in {'firefox','default','unavailable'}:
+        allowed['browser']=details['browser']
+    error_type=details.get('error_type')
+    if isinstance(error_type,str) and error_type.isidentifier() and len(error_type)<=80:
+        allowed['error_type']=error_type
+    try:
+        port=int(details.get('port',0))
+        if 1<=port<=65535:allowed['port']=port
+    except (TypeError,ValueError,OverflowError):
+        pass
     with _STATUS_LOCK:
         _atomic_json(Path(root)/'data/runtime_126_0/start-status.json',
             {'build':BUILD,'stage':stage,'updated_at':datetime.now(timezone.utc).isoformat(),**allowed})
