@@ -158,6 +158,9 @@ def attach_workbench(app, workspace_build):
                  [step(2,"Dork-Recherche",
                        "Öffentliche Suchlinks mit der vorhandenen Dork-Engine erzeugen.",
                        "/workbench/dorks482"),
+                  ] + ([step(3,"Recherchefunde sichern",
+                       "Einen tatsächlich im Browser geprüften Treffer als ungeprüften Fallhinweis speichern.",
+                       "/workbench/leads483")] if stage>=483 else []) + [
                   step(3,"Öffentliche Datenquellen",
                        "DNS-, RDAP- oder DOI-Quellen im definierten Fall abrufen.",
                        "/collect469")]),
