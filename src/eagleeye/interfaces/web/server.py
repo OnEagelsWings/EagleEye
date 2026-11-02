@@ -170,12 +170,14 @@ def _request_workspace_browser(root: Path, runtime: dict, browser: str) -> str:
     return result
 
 
-def _health_ready(port: int, *, timeout: float = 0.35) -> bool:
+def _health_ready(port: int, *, timeout: float = 0.35, expected_instance: str | None = None) -> bool:
     try:
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(f"http://127.0.0.1:{int(port)}/health", timeout=timeout) as response:
             payload = json.loads(response.read(16 * 1024).decode("utf-8"))
-        return bool(isinstance(payload,dict) and payload.get("ok") and str(payload.get("build")) == BUILD)
+            reported_instance = response.headers.get("X-EagleEye-Instance", "")
+        return bool(isinstance(payload,dict) and payload.get("ok") and str(payload.get("build")) == BUILD
+                    and expected_instance and secrets.compare_digest(expected_instance, reported_instance))
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError):
         return False
 
@@ -188,7 +190,7 @@ def _open_browser_when_ready(root: Path, runtime: dict, browser: str, *, attempt
     """
     port = int(runtime["port"])
     for _ in range(max(1, int(attempts))):
-        if _health_ready(port):
+        if _health_ready(port, expected_instance=str(runtime.get("instance_id") or "")):
             write_start_status(root,"healthy",port=port)
             print("[EagleEye] Health-Check bestanden. Browserstart wird angefordert.",flush=True)
             return _request_workspace_browser(root,runtime,browser)
@@ -257,7 +259,7 @@ def serve_workspace(
                 scheme = "https"
             resolved_port = _free_port(host, int(port))
             runtime_path = _write_runtime(root, host=host, port=resolved_port, instance_id=instance_id)
-            runtime_info = {"host": host, "port": resolved_port}
+            runtime_info = {"host": host, "port": resolved_port, "instance_id": instance_id}
             print(f"[EagleEye] Server startet auf {scheme}://{host}:{resolved_port}", flush=True)
             if remote_enabled:
                 print("[EagleEye] Remote-Team-Modus: direktes TLS, explizite Host-/CIDR-Allowlist, Proxy-Header werden nicht vertraut.", flush=True)
