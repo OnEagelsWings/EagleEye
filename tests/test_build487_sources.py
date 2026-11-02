@@ -10,9 +10,9 @@ from test_build483_research_leads import data as lead_data
 
 pytestmark = pytest.mark.parametrize("workspace", [create_workspace_app487], indirect=True)
 
-def form(workspace, lead_id, **patch):
+def form(workspace, selected_lead_id, **patch):
     app, client, user, cid, doc_id, *_ = workspace
-    data = {"case_id": cid, "csrf": csrf_session(workspace), "lead_id": lead_id,
+    data = {"case_id": cid, "csrf": csrf_session(workspace), "lead_id": selected_lead_id,
             "document_id": doc_id, "rationale":
             "I checked the original and manually associated it with this public search lead.",
             "confirm": "yes"}
