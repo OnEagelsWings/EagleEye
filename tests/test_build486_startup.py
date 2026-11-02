@@ -161,3 +161,45 @@ def test_unresponsive_loopback_server_times_out_without_token(monkeypatch, tmp_p
 
     monkeypatch.setattr(server.urllib.request, "build_opener", lambda *_: _TimeoutOpener())
     assert server._read_running_workspace(root) is None
+
+
+def test_real_build485_case_remains_visible_after_build486_workspace_upgrade(tmp_path, isolated_settings):
+    from eagleeye.interfaces.web.app485 import create_workspace_app485
+
+    old_root = tmp_path / "previous-build-workspace"
+    previous = create_workspace_app485(base_dir=old_root)
+    try:
+        old = previous.state.context
+        old.team_identity_359.create_initial_admin(
+            username="upgradeqa", display_name="Upgrade QA",
+            password="Distinct!Upgrade-Test-486")
+        issued = old.team_identity_359.authenticate(
+            username="upgradeqa", password="Distinct!Upgrade-Test-486",
+            client_fingerprint="upgrade-qa")
+        actor = old.team_identity_359.validate_session(
+            issued.token, client_fingerprint="upgrade-qa", touch=False)
+        case = old.team_governance_359.create_case(
+            identity=actor, title="Preserved existing investigation",
+            client="QA", purpose="Synthetic upgrade preservation",
+            legal_basis="public_data")
+        case_id = case["case_id"]
+    finally:
+        previous.state.context.close()
+
+    desktop476.remember_workspace(old_root)
+    restored_root = desktop476.resolve_workspace(tmp_path / "new-build-installation")
+    assert restored_root == old_root.resolve()
+    upgraded = create_workspace_app486(base_dir=restored_root)
+    try:
+        new = upgraded.state.context
+        issued = new.team_identity_359.authenticate(
+            username="upgradeqa", password="Distinct!Upgrade-Test-486",
+            client_fingerprint="upgrade-qa-new")
+        actor = new.team_identity_359.validate_session(
+            issued.token, client_fingerprint="upgrade-qa-new", touch=False)
+        assert case_id in {
+            str(row["case_id"])
+            for row in new.team_governance_359.visible_cases(actor)
+        }
+    finally:
+        upgraded.state.context.close()
