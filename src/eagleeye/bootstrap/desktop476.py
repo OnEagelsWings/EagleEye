@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime,timezone
 import json
 import os
+import re
 from pathlib import Path
 import threading
 import tempfile
@@ -15,6 +16,7 @@ from .paths import default_runtime_root
 
 _STATUS_LOCK=threading.Lock()
 _SETTINGS_LOCK=threading.Lock()
+_START_STAGES={'starting','healthy','stopped','health-timeout','browser-requested','browser-unavailable','start-failed'}
 
 
 def settings_directory():
@@ -98,6 +100,7 @@ def resolve_workspace(install_dir):
 def write_start_status(root,stage,**details):
     # Status and diagnostics are intentionally credential-free. Only known
     # enum values, exception class names and numeric ports may be persisted.
+    stage=stage if stage in _START_STAGES else 'start-failed'
     allowed={}
     if details.get('browser') in {'firefox','default','unavailable'}:
         allowed['browser']=details['browser']
@@ -120,10 +123,19 @@ def diagnostics(root):
     status_path=root/'data/runtime_126_0/start-status.json'
     try:status=json.loads(status_path.read_text(encoding='utf-8'))
     except (OSError,ValueError):status={'stage':'unknown'}
+    safe_status={'stage':status.get('stage') if status.get('stage') in _START_STAGES else 'unknown'}
+    timestamp=status.get('updated_at')
+    if isinstance(timestamp,str) and len(timestamp)<=48 and re.fullmatch(r'[0-9T:+.\\-Z]+',timestamp):
+        safe_status['updated_at']=timestamp
+    if status.get('browser') in {'firefox','default','unavailable'}:
+        safe_status['browser']=status['browser']
+    error_type=status.get('error_type')
+    if isinstance(error_type,str) and error_type.isidentifier() and len(error_type)<=80:
+        safe_status['error_type']=error_type
     return {'build':BUILD,'workspace_directory':str(root),'database_present':any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
         'server_reachable':bool(runtime and runtime['build']==BUILD),'running_build':runtime['build'] if runtime else None,
         'version_conflict':bool(runtime and runtime['build']!=BUILD),'port':runtime['port'] if runtime else None,
-        'last_start':{k:status[k] for k in ('stage','updated_at','browser','error_type') if k in status},
+        'last_start':safe_status,
         'contains_credentials':False}
 
 
