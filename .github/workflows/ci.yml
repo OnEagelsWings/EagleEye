@@ -2,7 +2,7 @@ name: EagleEye CI
 
 on:
   push:
-    branches: [ main, eagleeye/build-400 ]
+    branches: [ main, eagleeye/build-400, build-485-first-case-pilot-gate ]
   pull_request:
 
 jobs:
