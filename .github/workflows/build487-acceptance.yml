@@ -56,7 +56,7 @@ jobs:
         shell: bash
         run: |
           git archive --format=zip --output=EagleEye_Build_487_LAPTOP.zip HEAD
-          python -c "import pathlib,zipfile,hashlib; p=pathlib.Path('EagleEye_Build_487_LAPTOP.zip'); z=zipfile.ZipFile(p); assert z.testzip() is None; assert {'START_EAGLEEYE_PRO.bat','INSTALL_EAGLEEYE_487.py','src/eagleeye/interfaces/web/app487.py','tests/test_build487_startup.py'}.issubset(z.namelist()); pathlib.Path('EagleEye_Build_487_LAPTOP.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name + chr(10))"
+          python -c "import pathlib,zipfile,hashlib; p=pathlib.Path('EagleEye_Build_487_LAPTOP.zip'); z=zipfile.ZipFile(p); assert z.testzip() is None; assert {'START_EAGLEEYE_PRO.bat','INSTALL_EAGLEEYE_487.py','src/eagleeye/interfaces/web/app487.py','tests/test_build487_sources.py'}.issubset(z.namelist()); pathlib.Path('EagleEye_Build_487_LAPTOP.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name + chr(10))"
       - uses: actions/upload-artifact@v4
         with:
           name: EagleEye_Build_487_LAPTOP_${{ matrix.os }}
