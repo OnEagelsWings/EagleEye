@@ -1,5 +1,6 @@
 name: EagleEye Build 483 Windows and Linux Operator Acceptance
 on:
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read

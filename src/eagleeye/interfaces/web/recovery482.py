@@ -126,7 +126,8 @@ def attach_recovery482(app, build):
             '<section class="card"><h2>3. Gefundene Quelle sichern</h2>'
             '<p>Originaldokument prüfen und importieren; danach als ungeprüfte Evidence'
             ' registrieren. Links allein stellen keine Provenienz sicher.</p>'
-            '<p><a href="' + _case_url("/documents458", case_id) +
+            '<p><a href="' + _case_url("/workbench/leads483", case_id) +
+            '">Gefundenen Webtreffer als ungeprüften Fallhinweis speichern</a> · <a href="' + _case_url("/documents458", case_id) +
             '">Dokument importieren</a> · <a href="' +
             _case_url("/workbench/bridge481", case_id) +
             '">Quelle → Evidence</a></p></section>'

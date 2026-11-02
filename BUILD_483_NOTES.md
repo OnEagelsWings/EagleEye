@@ -5,3 +5,6 @@
 - **Suchhinweis ist keine Evidence**: Kein Server-Fetch, keine automatische Claim-Anerkennung, kein KI-Schluss. Beschaffung der Originalbytes erst mit erlaubtem Quellenimport oder dem später explizit freigegebenen Crawler.
 - Vor externer Weitergabe personenbezogene Daten, Zweck und Rechtsgrundlage prüfen. Es werden keine Dork-Eingaben global gespeichert.
 - Installer/Windows-Startpaket auf 483 aktualisiert. Gezielte Windows-/Linux-Praxistests und vollständiger Fünfercheckpoint erst 485.
+
+- Benutzeroberfläche verlinkt den Fallhinweis nun direkt aus der Dork-Recherche. Ungeprüfter URL-Treffer ist weder Originalbeleg noch automatischer Claim.
+- Sicherheits-Regressionen für URL-Validierung, CSRF, Rollen, Idempotenz, Falltrennung und Manipulation ergänzt.
