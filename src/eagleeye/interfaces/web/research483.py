@@ -30,6 +30,7 @@ def validate_public_lead_url(value):
         url = urlsplit(raw)
         host = (url.hostname or "").rstrip(".").lower()
         port = url.port
+        host = host.encode('idna').decode('ascii').lower()
     except ValueError:
         raise HTTPException(422, "Ungültige URL.") from None
     if url.scheme != "https" or not host or url.username or url.password or port not in (None, 443):
