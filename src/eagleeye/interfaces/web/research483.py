@@ -28,7 +28,9 @@ def validate_public_lead_url(value):
         raise HTTPException(422, "Gültige öffentliche HTTPS-Adresse angeben (max. 1800 Zeichen).")
     try:
         url = urlsplit(raw)
-        host = (url.hostname or "").rstrip(".").lower()
+        # Canonicalize IDNA before stripping the terminal dot: Unicode dot
+        # equivalents (U+3002, U+FF0E, U+FF61) normalize to ASCII dots.
+        host = (url.hostname or "").encode("idna").decode("ascii").rstrip(".").lower()
         port = url.port
     except ValueError:
         raise HTTPException(422, "Ungültige URL.") from None
