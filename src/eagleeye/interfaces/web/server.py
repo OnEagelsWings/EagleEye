@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import shutil
 import socket
 import sqlite3
@@ -19,7 +20,7 @@ import uvicorn
 
 from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
-from eagleeye.bootstrap.desktop476 import write_start_status
+from eagleeye.bootstrap.desktop476 import write_start_status, _atomic_json
 
 from .app485 import create_workspace_app485 as create_workspace_app
 
@@ -88,17 +89,13 @@ def _runtime_path(root: Path) -> Path:
     return root / "data" / "runtime_126_0" / "workspace.json"
 
 
-def _write_runtime(root: Path, *, host: str, port: int) -> Path:
+def _write_runtime(root: Path, *, host: str, port: int, instance_id: str) -> Path:
     path = _runtime_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"pid": os.getpid(), "host": host, "port": int(port), "build": BUILD, "started_epoch": int(time.time())}
-    temp = path.with_suffix(".tmp")
-    temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    try:
-        temp.chmod(0o600)
-    except OSError:
-        pass
-    temp.replace(path)
+    payload = {"pid": os.getpid(), "host": host, "port": int(port), "build": BUILD,
+               "started_epoch": int(time.time()), "instance_id": instance_id}
+    # Unique temporary names and bounded retries protect Windows file locks.
+    _atomic_json(path, payload)
     return path
 
 
@@ -114,9 +111,20 @@ def _read_running_workspace(root: Path, *, timeout: float = 0.6, accept_other_bu
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(f"http://127.0.0.1:{port}/health", timeout=timeout) as response:
             health = json.loads(response.read(16 * 1024).decode("utf-8"))
-        if not isinstance(health,dict) or not health.get("ok") or (not accept_other_build and str(health.get("build")) != BUILD):
+            reported_instance = response.headers.get("X-EagleEye-Instance", "")
+        if not isinstance(health,dict) or not health.get("ok"):
             return None
-        return {**payload, "host": "127.0.0.1", "port": port,"build":str(health.get("build","unknown"))}
+        running_build = str(health.get("build", "unknown"))
+        expected_instance = str(payload.get("instance_id") or "")
+        # A matching build on an occupied loopback port is not proof that it
+        # belongs to this workspace. Never forward the local login token to
+        # a different service after a stale runtime file or port reuse.
+        if running_build == BUILD:
+            if not expected_instance or not secrets.compare_digest(expected_instance, reported_instance):
+                return None
+        elif not accept_other_build:
+            return None
+        return {**payload, "host": "127.0.0.1", "port": port, "build": running_build}
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError):
         return None
 
@@ -221,6 +229,15 @@ def serve_workspace(
         lock_context = workspace_runtime_lock(root, timeout=0.0)
         with lock_context:
             app = create_workspace_app(base_dir=root)
+            instance_id = secrets.token_hex(24)
+
+            @app.middleware("http")
+            async def bind_workspace_health(request, call_next):
+                response = await call_next(request)
+                if request.url.path == "/health":
+                    response.headers["X-EagleEye-Instance"] = instance_id
+                return response
+
             remote = app.state.context.remote_team_364
             ssl_certfile = None
             ssl_keyfile = None
@@ -239,7 +256,7 @@ def serve_workspace(
                 open_browser = False
                 scheme = "https"
             resolved_port = _free_port(host, int(port))
-            runtime_path = _write_runtime(root, host=host, port=resolved_port)
+            runtime_path = _write_runtime(root, host=host, port=resolved_port, instance_id=instance_id)
             runtime_info = {"host": host, "port": resolved_port}
             print(f"[EagleEye] Server startet auf {scheme}://{host}:{resolved_port}", flush=True)
             if remote_enabled:
