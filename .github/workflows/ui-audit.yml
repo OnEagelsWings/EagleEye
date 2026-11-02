@@ -1,6 +1,9 @@
 name: EagleEye UI Audit
 
 on:
+  # Independently audit the exact branch head if the stacked PR cannot merge.
+  push:
+    branches: [build-485-first-case-pilot-gate]
   pull_request:
   schedule:
     - cron: '15 5 * * 1'
