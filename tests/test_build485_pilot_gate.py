@@ -77,3 +77,38 @@ def test_pilot_rejects_failed_document_original_integrity(workspace,monkeypatch)
     response=client.get("/workbench/pilot485",params={"case_id":cid})
     assert response.status_code==409
     assert "Bestanden" not in response.text
+
+
+def test_pilot_rejects_modified_image_original(workspace,monkeypatch):
+    app,client,user,cid,*_=workspace
+    ctx=app.state.context
+    ctx.build354.ingest_image(case_id=cid,content=png_bytes(),
+        declared_media_type="image/png",filename="original.png")
+    monkeypatch.setattr(ctx.build354,"artifact_bytes",lambda ref:b"tampered image bytes")
+    response=client.get("/workbench/pilot485",params={"case_id":cid})
+    assert response.status_code==409
+    assert "Bestanden" not in response.text
+
+
+def test_pilot_rejects_missing_image_original(workspace,monkeypatch):
+    app,client,user,cid,*_=workspace
+    ctx=app.state.context
+    ctx.build354.ingest_image(case_id=cid,content=png_bytes(),
+        declared_media_type="image/png",filename="original.png")
+    def missing(ref):
+        raise FileNotFoundError("original missing")
+    monkeypatch.setattr(ctx.build354,"artifact_bytes",missing)
+    response=client.get("/workbench/pilot485",params={"case_id":cid})
+    assert response.status_code==409
+    assert "Bestanden" not in response.text
+
+
+def test_pilot_rejects_image_sha_metadata_tampering(workspace):
+    app,client,user,cid,*_=workspace
+    ctx=app.state.context
+    stored=ctx.build354.ingest_image(case_id=cid,content=png_bytes(),
+        declared_media_type="image/png",filename="original.png")
+    ctx.db.execute("UPDATE phase15_media_assets SET sha256=? WHERE media_id=?",
+                   ("0"*64,stored["media_id"]))
+    response=client.get("/workbench/pilot485",params={"case_id":cid})
+    assert response.status_code==409
