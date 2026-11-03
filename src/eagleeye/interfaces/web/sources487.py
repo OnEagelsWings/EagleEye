@@ -9,12 +9,36 @@ from datetime import datetime, timezone
 from html import escape
 from urllib.parse import urlencode
 from fastapi import HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .app364 import CSRF_COOKIE
 from .bridge481 import _reviewed_bytes
 from .findings478 import bounded_form, verify_post
 from .operations476 import case_access, page
 from .research483 import listed
+
+
+
+# Serve browser validation from a same-origin resource: app364's CSP blocks inline JS.
+_SOURCE487_VALIDATION_JS = """(function () {
+  const field = document.getElementById("source487-rationale");
+  const help = document.getElementById("source487-rationale-help");
+  if (!field || !help || !field.form) return;
+  function check() {
+    const count = Array.from(field.value).length;
+    const valid = count >= 20 && count <= 1200;
+    field.setCustomValidity(valid || count === 0 ? "" : "20 bis 1200 Unicode-Zeichen erforderlich.");
+    help.textContent = count + " / 1200 Unicode-Zeichen (mindestens 20).";
+    return valid;
+  }
+  field.addEventListener("input", check);
+  field.form.addEventListener("submit", function (event) {
+    if (!check()) {
+      event.preventDefault();
+      field.reportValidity();
+    }
+  });
+  check();
+})();"""
 
 
 def _hash(row):
@@ -103,6 +127,11 @@ def attach_sources487(app, build):
     ctx = app.state.context
     _init(ctx)
 
+    @app.get("/workbench/sources487/validation.js")
+    def source_validation_js():
+        return Response(_SOURCE487_VALIDATION_JS, media_type="application/javascript",
+                        headers={"Cache-Control": "no-store"})
+
     @app.get("/workbench/sources487", response_class=HTMLResponse)
     def source_page(request: Request, case_id: str = ""):
         user, case = case_access(app, request, case_id)
@@ -130,17 +159,7 @@ def attach_sources487(app, build):
                 '<label><input type="checkbox" name="confirm" value="yes" required>'
                 ' Nur manuelle Zuordnung, keine bewiesene Herkunft oder Wahrheit.</label>'
                 '<button type="submit">Original mit Suchhinweis verknüpfen</button></form>'
-                '<script>(function(){'
-                'const field=document.getElementById("source487-rationale");'
-                'const help=document.getElementById("source487-rationale-help");'
-                'function check(){const count=Array.from(field.value).length;'
-                'const valid=count>=20&&count<=1200;'
-                'field.setCustomValidity(valid||count===0?"":"20 bis 1200 Unicode-Zeichen erforderlich.");'
-                'help.textContent=count+" / 1200 Unicode-Zeichen (mindestens 20).";return valid;}'
-                'field.addEventListener("input",check);'
-                'field.form.addEventListener("submit",function(event){'
-                'if(!check()){event.preventDefault();field.reportValidity();}});'
-                'check();})();</script></section>'
+                '<script src="/workbench/sources487/validation.js" defer></script></section>'
             )
         entries = "".join(
             '<tr><td>' + escape(x["lead_id"]) + '</td><td><a href="/documents458?' +
