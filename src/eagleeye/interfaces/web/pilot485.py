@@ -65,6 +65,11 @@ def attach_pilot485(app,build):
             ("9. Freigegebener Export",str(stats["formal_exports"])+" Exportdatensätze","/?view=operations"),
             ("10. Quellenintegrität","Bestanden" if stats["integrity_ok"] else "Fehlgeschlagen","/workbench/closure"),
         ]
+        if int(str(build).split(".")[0]) >= 487:
+            from .sources487 import source_links
+            rows.insert(2, ("2a. Quellenzuordnung",
+                            str(len(source_links(ctx,user,case_id)))+" manuelle Verknüpfungen",
+                            "/workbench/sources487"))
         table="<table><thead><tr><th>Arbeitsschritt</th><th>Iststand</th><th>Aktion</th></tr></thead><tbody>"
         for title,status,path in rows:
             href=path+("&" if "?" in path else "?")+urlencode({"case_id":case_id})
