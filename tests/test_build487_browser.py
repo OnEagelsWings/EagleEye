@@ -14,6 +14,7 @@ def test_build487_first_run_and_case_workflow(tmp_path):
 def test_unicode_rationale_limits_in_rendered_chromium_form(workspace):
     """Real HTTP Chromium test includes the app's CSP and same-origin JS response."""
     import socket
+    from pathlib import Path
     import threading
     import time
     from urllib.parse import urlencode
@@ -48,7 +49,8 @@ def test_unicode_rationale_limits_in_rendered_chromium_form(workspace):
             browser = runtime.chromium.launch()
             try:
                 page = browser.new_page()
-                assert page.goto(base + "/security/login").status == 200
+                launch_token = (Path(app.state.base_dir) / "data/security_364/local_session_token").read_text(encoding="utf-8").strip()
+                assert page.goto(base + "/security/start?" + urlencode({"token": launch_token})).status == 200
                 page.locator('input[name="username"]').fill("qa471")
                 page.locator('input[name="password"]').fill("Build471!Password_88")
                 page.get_by_role("button", name="Anmelden", exact=True).click()
