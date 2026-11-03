@@ -118,17 +118,29 @@ def attach_sources487(app, build):
                                   escape(x["title"][:140]) + "</option>" for x in eligible)
             form = (
                 '<section class="card"><h2>Manuelle Quellenzuordnung</h2>'
-                '<form method="post" action="/workbench/sources487">'
+                '<form id="source487-form" method="post" action="/workbench/sources487">'
                 '<input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
                 '<input type="hidden" name="csrf" value="' +
                 escape(request.cookies.get(CSRF_COOKIE, ""), quote=True) + '">'
                 '<label>Recherchehinweis</label><select name="lead_id">' + lead_options + '</select>'
                 '<label>Geprüftes Original</label><select name="document_id">' + doc_options + '</select>'
                 '<label>Warum ordnest du Hinweis und Original einander zu?</label>'
-                '<textarea name="rationale" required minlength="20" maxlength="1200" rows="4"></textarea>'
+                '<textarea id="source487-rationale" name="rationale" required rows="4" aria-describedby="source487-rationale-help"></textarea>'
+                '<p id="source487-rationale-help" role="status" aria-live="polite">20–1200 Unicode-Zeichen (nicht UTF-16-Codeeinheiten).</p>'
                 '<label><input type="checkbox" name="confirm" value="yes" required>'
                 ' Nur manuelle Zuordnung, keine bewiesene Herkunft oder Wahrheit.</label>'
-                '<button type="submit">Original mit Suchhinweis verknüpfen</button></form></section>'
+                '<button type="submit">Original mit Suchhinweis verknüpfen</button></form>'
+                '<script>(function(){'
+                'const field=document.getElementById("source487-rationale");'
+                'const help=document.getElementById("source487-rationale-help");'
+                'function check(){const count=Array.from(field.value).length;'
+                'const valid=count>=20&&count<=1200;'
+                'field.setCustomValidity(valid||count===0?"":"20 bis 1200 Unicode-Zeichen erforderlich.");'
+                'help.textContent=count+" / 1200 Unicode-Zeichen (mindestens 20).";return valid;}'
+                'field.addEventListener("input",check);'
+                'field.form.addEventListener("submit",function(event){'
+                'if(!check()){event.preventDefault();field.reportValidity();}});'
+                'check();})();</script></section>'
             )
         entries = "".join(
             '<tr><td>' + escape(x["lead_id"]) + '</td><td><a href="/documents458?' +
