@@ -2,6 +2,7 @@
 import pytest
 from eagleeye.interfaces.web.app487 import create_workspace_app487
 from test_build475_onboarding_browser import run_onboarding
+from test_build471_local_ai import workspace
 
 def test_build487_first_run_and_case_workflow(tmp_path):
     run_onboarding(create_workspace_app487, tmp_path,
