@@ -11,7 +11,7 @@ from eagleeye.interfaces.web.app489 import create_workspace_app489
 from test_build471_local_ai import workspace
 from test_build488_integration import entities, form as review_form
 from test_build487_sources import lead, form as source_form
-from test_build481_evidence_bridge import document_approved
+from test_build481_evidence_bridge import document_approved, form as evidence_form
 
 pytestmark = pytest.mark.parametrize("workspace", [create_workspace_app489], indirect=True)
 
@@ -52,5 +52,32 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     original = client.get(original_links[0])
     assert original.status_code == 200
 
-    # Human review and source association do not promote claims automatically.
-    assert app.state.context.evidence_claims_dossier_447.case_claims(case_id) == []
+    # Source links and entity decisions never auto-promote evidence or claims.
+    store = app.state.context.evidence_claims_dossier_447
+    assert store.case_evidence(case_id) == []
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
+
+    # A second, explicit authenticated action promotes the reviewed original
+    # into *unreviewed* canonical Evidence, not into an accepted claim.
+    handoff = client.post(
+        "/workbench/bridge481", data=evidence_form(workspace),
+        follow_redirects=False,
+    )
+    assert handoff.status_code == 303, handoff.text[:400]
+    evidence = store.case_evidence(case_id)
+    assert len(evidence) == 1
+    assert evidence[0]["review_state"] == "unreviewed"
+    document = app.state.context.document_intelligence_458._document(workspace[4])
+    assert evidence[0]["content_sha256"] == document["document_sha256"]
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
+    assert store.verify_integrity()["valid"]
+
+    # Retrying a valid handoff must not duplicate canonical Evidence.
+    again = client.post(
+        "/workbench/bridge481", data=evidence_form(workspace),
+        follow_redirects=False,
+    )
+    assert again.status_code == 303
+    assert len(store.case_evidence(case_id)) == 1
