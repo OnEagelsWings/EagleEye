@@ -1,0 +1,23 @@
+name: EagleEye Build 490 Synthetic Journey Smoke
+on:
+  pull_request:
+    paths:
+      - 'tests/test_build490_synthetic_journey.py'
+      - '.github/workflows/build490-synthetic-smoke.yml'
+      - 'src/eagleeye/**'
+  workflow_dispatch:
+jobs:
+  synthetic-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+      - name: Focused synthetic journey
+        run: python -m pytest -q tests/test_build490_synthetic_journey.py
