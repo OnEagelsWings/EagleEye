@@ -43,7 +43,7 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     links = re.findall(r'href="([^"]+)"', checkpoint.text)
     original_links = [
         html.unescape(link) for link in links
-        if link.startswith("/documents458?")
+        if link.startswith("/documents458?") and "document_id=" in html.unescape(link)
     ]
     assert len(original_links) == 1
     target = urlsplit(original_links[0])
