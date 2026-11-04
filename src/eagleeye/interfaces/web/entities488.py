@@ -65,6 +65,17 @@ def attach_entities488(app, build, base_dir):
                 '<label>Begründung (20–1200 Zeichen)<textarea name="rationale" minlength="20" maxlength="1200" required></textarea></label>'
                 '<label><input type="checkbox" name="confirm" value="yes" required> Keine Identität oder Beweislage automatisch bestätigt.</label>'
                 '<button type="submit">Manuelle Prüfung protokollieren</button></form></section>')
+        # Retain visibility of audited decisions if a pair stops matching.
+        active_pairs = {tuple(sorted((c["left_entity_id"], c["right_entity_id"])))
+                        for c in candidates}
+        for pair, prior in reviewed.items():
+            if pair not in active_pairs:
+                cards.append(
+                    '<section class="card warn"><h2>Historische Prüfentscheidung – Kandidat nicht mehr aktuell</h2>'
+                    '<p>Entitäten: ' + escape(pair[0]) + ' ↔ ' + escape(pair[1]) +
+                    '</p><p>Entscheidung: ' + escape(prior["decision"]) +
+                    ' · ' + escape(prior["rationale"]) +
+                    '</p><p>Vor weiterer Verwendung Entitäten und Quellen erneut prüfen.</p></section>')
         body = ('<p>Fall: ' + escape(str(case.get("title") or "")) +
                 '. Vorschläge sind keine Identitätsnachweise. Keine automatischen Zusammenführungen.</p>' +
                 '<p><a href="/entities462?' + escape(urlencode({"case_id": case_id}), quote=True) +
