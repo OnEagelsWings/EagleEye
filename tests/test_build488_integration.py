@@ -11,9 +11,9 @@ from test_build478_findings import csrf_session
 pytestmark = pytest.mark.parametrize("workspace", [create_workspace_app488], indirect=True)
 
 
-def entities(workspace):
+def entities(workspace, tmp_path):
     app, client, user, cid, _doc, foreign, *_ = workspace
-    with EntityRegistry461(app.state.context.base_dir / "entity_registry_462.sqlite3") as store:
+    with EntityRegistry461(tmp_path / "entity_registry_462.sqlite3") as store:
         first = store.create_entity(case_id=cid, kind="person", label="Müller")
         second = store.create_entity(case_id=cid, kind="person", label="Müller")
         store.create_entity(case_id=foreign, kind="person", label="Müller")
@@ -31,9 +31,9 @@ def form(workspace, left, right, **changes):
     return data
 
 
-def test_review_persists_and_is_visible_without_merge(workspace):
+def test_review_persists_and_is_visible_without_merge(workspace, tmp_path):
     app, client, user, cid, *_ = workspace
-    left, right = entities(workspace)
+    left, right = entities(workspace, tmp_path)
     response = client.get("/workbench/entities488", params={"case_id": cid})
     assert response.status_code == 200
     assert "Müller" in response.text
@@ -44,7 +44,7 @@ def test_review_persists_and_is_visible_without_merge(workspace):
     assert len(rows) == 1 and rows[0]["decision"] == "needs_evidence"
     assert rows[0]["reviewed_by"] == user["username"]
     assert "needs_evidence" in client.get("/workbench/entities488", params={"case_id": cid}).text
-    with EntityRegistry461(app.state.context.base_dir / "entity_registry_462.sqlite3") as store:
+    with EntityRegistry461(tmp_path / "entity_registry_462.sqlite3") as store:
         assert len(store.graph(cid)["entities"]) == 2
         assert store.graph(cid)["relations"] == []
 
@@ -56,9 +56,9 @@ def test_review_persists_and_is_visible_without_merge(workspace):
     ({"decision": "identity_confirmed"}, {}, 422),
     ({"left_entity_id": "forged"}, {}, 409),
 ])
-def test_rejected_posts_do_not_create_reviews(workspace, change, headers, expected):
+def test_rejected_posts_do_not_create_reviews(workspace, tmp_path, change, headers, expected):
     app, client, user, cid, *_ = workspace
-    left, right = entities(workspace)
+    left, right = entities(workspace, tmp_path)
     response = client.post("/workbench/entities488",
                            data=form(workspace, left, right, **change),
                            headers=headers, follow_redirects=False)
@@ -66,9 +66,9 @@ def test_rejected_posts_do_not_create_reviews(workspace, change, headers, expect
     assert reviews_for_case(app.state.context, user, cid) == []
 
 
-def test_anonymous_and_foreign_case_denied(workspace):
+def test_anonymous_and_foreign_case_denied(workspace, tmp_path):
     app, client, user, cid, _doc, foreign, *_ = workspace
-    left, right = entities(workspace)
+    left, right = entities(workspace, tmp_path)
     with TestClient(app) as anon:
         assert anon.get("/workbench/entities488", params={"case_id": cid}).status_code == 401
     assert client.post("/workbench/entities488",
@@ -76,9 +76,9 @@ def test_anonymous_and_foreign_case_denied(workspace):
                        follow_redirects=False).status_code == 409
 
 
-def test_tampered_review_fails_closed(workspace):
+def test_tampered_review_fails_closed(workspace, tmp_path):
     app, client, user, cid, *_ = workspace
-    left, right = entities(workspace)
+    left, right = entities(workspace, tmp_path)
     assert client.post("/workbench/entities488", data=form(workspace, left, right),
                        follow_redirects=False).status_code == 303
     app.state.context.db.execute(
