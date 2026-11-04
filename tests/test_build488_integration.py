@@ -108,3 +108,30 @@ def test_historical_review_remains_visible_after_candidate_disappears(workspace,
                         follow_redirects=False)
     assert stale.status_code == 409
     assert len(reviews_for_case(app.state.context, user, cid)) == 1
+
+
+def test_review_cannot_be_silently_rewritten_or_injected(workspace, tmp_path):
+    """Immutable analyst decision; HTML in a rationale is displayed as text."""
+    app, client, user, cid, *_ = workspace
+    left, right = entities(workspace, tmp_path)
+    rationale = "Independent source needed: <script>alert('x')</script>"
+    first = client.post("/workbench/entities488",
+                        data=form(workspace, left, right, rationale=rationale),
+                        follow_redirects=False)
+    assert first.status_code == 303, first.text
+    displayed = client.get("/workbench/entities488", params={"case_id": cid})
+    assert displayed.status_code == 200
+    assert "<script>alert('x')</script>" not in displayed.text
+    assert "&lt;script&gt;" in displayed.text
+    # A forged change cannot replace a prior audited review, even if the
+    # candidate matcher still returns the pair.
+    changed = client.post("/workbench/entities488",
+                          data=form(workspace, left, right,
+                                    decision="not_same",
+                                    rationale="This is a new and conflicting analyst conclusion."),
+                          follow_redirects=False)
+    assert changed.status_code == 409
+    rows = reviews_for_case(app.state.context, user, cid)
+    assert len(rows) == 1
+    assert rows[0]["decision"] == "needs_evidence"
+    assert rows[0]["rationale"] == rationale
