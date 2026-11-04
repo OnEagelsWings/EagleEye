@@ -1,0 +1,86 @@
+"""Build 488: real authenticated entity review end-to-end smoke."""
+import pytest
+from fastapi.testclient import TestClient
+
+from eagleeye.interfaces.web.app488 import create_workspace_app488
+from eagleeye.application.entity_registry461 import EntityRegistry461
+from eagleeye.application.build488.reviews import reviews_for_case
+from test_build471_local_ai import workspace
+from test_build478_findings import csrf_session
+
+pytestmark = pytest.mark.parametrize("workspace", [create_workspace_app488], indirect=True)
+
+
+def entities(workspace):
+    app, client, user, cid, _doc, foreign, *_ = workspace
+    with EntityRegistry461(app.state.context.base_dir / "entity_registry_462.sqlite3") as store:
+        first = store.create_entity(case_id=cid, kind="person", label="Müller")
+        second = store.create_entity(case_id=cid, kind="person", label="Müller")
+        store.create_entity(case_id=foreign, kind="person", label="Müller")
+    return first["id"], second["id"]
+
+
+def form(workspace, left, right, **changes):
+    _app, _client, _user, cid, *_ = workspace
+    data = {"case_id": cid, "csrf": csrf_session(workspace),
+            "left_entity_id": left, "right_entity_id": right,
+            "decision": "needs_evidence",
+            "rationale": "These matching names require independent source verification.",
+            "confirm": "yes"}
+    data.update(changes)
+    return data
+
+
+def test_review_persists_and_is_visible_without_merge(workspace):
+    app, client, user, cid, *_ = workspace
+    left, right = entities(workspace)
+    response = client.get("/workbench/entities488", params={"case_id": cid})
+    assert response.status_code == 200
+    assert "Müller" in response.text
+    data = form(workspace, left, right)
+    for _ in range(2):
+        assert client.post("/workbench/entities488", data=data, follow_redirects=False).status_code == 303
+    rows = reviews_for_case(app.state.context, user, cid)
+    assert len(rows) == 1 and rows[0]["decision"] == "needs_evidence"
+    assert rows[0]["reviewed_by"] == user["username"]
+    assert "needs_evidence" in client.get("/workbench/entities488", params={"case_id": cid}).text
+    with EntityRegistry461(app.state.context.base_dir / "entity_registry_462.sqlite3") as store:
+        assert len(store.graph(cid)["entities"]) == 2
+        assert store.graph(cid)["relations"] == []
+
+
+@pytest.mark.parametrize("change,headers,expected", [
+    ({"csrf": "wrong"}, {}, 403),
+    ({}, {"Origin": "https://attacker.example"}, 403),
+    ({"confirm": ""}, {}, 422),
+    ({"decision": "identity_confirmed"}, {}, 422),
+    ({"left_entity_id": "forged"}, {}, 409),
+])
+def test_rejected_posts_do_not_create_reviews(workspace, change, headers, expected):
+    app, client, user, cid, *_ = workspace
+    left, right = entities(workspace)
+    response = client.post("/workbench/entities488",
+                           data=form(workspace, left, right, **change),
+                           headers=headers, follow_redirects=False)
+    assert response.status_code == expected, response.text
+    assert reviews_for_case(app.state.context, user, cid) == []
+
+
+def test_anonymous_and_foreign_case_denied(workspace):
+    app, client, user, cid, _doc, foreign, *_ = workspace
+    left, right = entities(workspace)
+    with TestClient(app) as anon:
+        assert anon.get("/workbench/entities488", params={"case_id": cid}).status_code == 401
+    assert client.post("/workbench/entities488",
+                       data=form(workspace, left, right, case_id=foreign),
+                       follow_redirects=False).status_code == 409
+
+
+def test_tampered_review_fails_closed(workspace):
+    app, client, user, cid, *_ = workspace
+    left, right = entities(workspace)
+    assert client.post("/workbench/entities488", data=form(workspace, left, right),
+                       follow_redirects=False).status_code == 303
+    app.state.context.db.execute(
+        "UPDATE entity_candidate_reviews_488 SET rationale='forged' WHERE case_id=?", (cid,))
+    assert client.get("/workbench/entities488", params={"case_id": cid}).status_code == 409
