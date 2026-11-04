@@ -79,7 +79,9 @@ def attach_entities488(app, build, base_dir):
         body = ('<p>Fall: ' + escape(str(case.get("title") or "")) +
                 '. Vorschläge sind keine Identitätsnachweise. Keine automatischen Zusammenführungen.</p>' +
                 '<p><a href="/entities462?' + escape(urlencode({"case_id": case_id}), quote=True) +
-                '">Entitäten bearbeiten</a></p>' +
+                '">Entitäten bearbeiten</a> · <a href="/workbench/sources487?' +
+                escape(urlencode({"case_id": case_id}), quote=True) +
+                '">Geprüfte Quellenzuordnungen ansehen</a></p>' +
                 ("".join(cards) or "<p>Keine passenden Kandidaten vorhanden.</p>"))
         return HTMLResponse(page("Entity-Prüfung 488", case_id, body, build),
                             headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})
