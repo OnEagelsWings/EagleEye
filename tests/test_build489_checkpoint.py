@@ -27,6 +27,9 @@ def test_checkpoint_integrates_real_human_review_and_original(workspace, tmp_pat
     assert "Integritätsgeprüfte Quellenzuordnungen (1)" in response.text
     assert user["username"] in response.text
     assert "belegt keine Entitätsidentität" in response.text
+    assert "/documents458?case_id=" in response.text
+    assert "document_id=" in response.text
+    assert "<th>Begründung</th>" in response.text
     assert app.state.context.evidence_claims_dossier_447.case_claims(cid) == []
 
 
