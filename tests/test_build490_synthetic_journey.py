@@ -81,3 +81,14 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     )
     assert again.status_code == 303
     assert len(store.case_evidence(case_id)) == 1
+
+    # The canonical record must retain an honest, auditable local-capture
+    # provenance. A manually entered research lead is NOT a network capture.
+    source_event = app.state.context.acquisition_events_422.get(evidence[0]["event_id"])
+    assert source_event["provenance"]["network_fetch_performed"] is False
+    assert source_event["provenance"]["document_id"] == workspace[4]
+    assert source_event["provenance"]["human_rationale"]
+    assert source_event["usage"]["truth_determined"] is False
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
+
