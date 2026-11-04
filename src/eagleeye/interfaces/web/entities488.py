@@ -43,6 +43,8 @@ def attach_entities488(app, build, base_dir):
                 cards.append("<section class='card'><b>" + escape(candidate["left_name"]) +
                              " ↔ " + escape(candidate["right_name"]) + "</b><p>Manuell: " +
                              escape(prior["decision"]) + " · " + escape(prior["rationale"]) +
+                             "</p><p>Protokolliert durch: " + escape(prior["reviewed_by"]) +
+                             " · " + escape(prior["reviewed_at"]) +
                              "</p></section>")
                 continue
             options = "".join('<option value="' + escape(d) + '">' + escape(label) +
@@ -75,6 +77,8 @@ def attach_entities488(app, build, base_dir):
                     '<p>Entitäten: ' + escape(pair[0]) + ' ↔ ' + escape(pair[1]) +
                     '</p><p>Entscheidung: ' + escape(prior["decision"]) +
                     ' · ' + escape(prior["rationale"]) +
+                    '</p><p>Protokolliert durch: ' + escape(prior["reviewed_by"]) +
+                    ' · ' + escape(prior["reviewed_at"]) +
                     '</p><p>Vor weiterer Verwendung Entitäten und Quellen erneut prüfen.</p></section>')
         body = ('<p>Fall: ' + escape(str(case.get("title") or "")) +
                 '. Vorschläge sind keine Identitätsnachweise. Keine automatischen Zusammenführungen.</p>' +
