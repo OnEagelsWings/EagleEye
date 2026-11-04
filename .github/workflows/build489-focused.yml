@@ -20,6 +20,6 @@ jobs:
       - name: Install package and tests
         run: python -m pip install -e '.[test]'
       - name: Build 489 focused smoke
-        run: python -m pytest -q tests/test_build489_checkpoint.py tests/test_build489_source_integrity.py tests/test_build489_checkpoint_rendering.py
+        run: python -m pytest -q tests/test_build489_checkpoint.py tests/test_build489_source_integrity.py tests/test_build489_checkpoint_rendering.py tests/test_build489_checkpoint_atomicity.py
       - name: Compile checkpoint
         run: python -m compileall -q src/eagleeye/interfaces/web/checkpoint489.py src/eagleeye/interfaces/web/app489.py
