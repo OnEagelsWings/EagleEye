@@ -84,3 +84,24 @@ def test_tampered_review_fails_closed(workspace, tmp_path):
     app.state.context.db.execute(
         "UPDATE entity_candidate_reviews_488 SET rationale='forged' WHERE case_id=?", (cid,))
     assert client.get("/workbench/entities488", params={"case_id": cid}).status_code == 409
+
+
+def test_historical_review_remains_visible_after_candidate_disappears(workspace, tmp_path, monkeypatch):
+    """An old analyst decision must remain visible even if matching rules change."""
+    app, client, user, cid, *_ = workspace
+    left, right = entities(workspace, tmp_path)
+    assert client.post("/workbench/entities488", data=form(workspace, left, right),
+                       follow_redirects=False).status_code == 303
+    import eagleeye.interfaces.web.entities488 as view
+    monkeypatch.setattr(view, "current_candidates", lambda ctx, base_dir, case_id: [])
+    page = client.get("/workbench/entities488", params={"case_id": cid})
+    assert page.status_code == 200
+    assert "Historische Prüfentscheidung" in page.text
+    assert "needs_evidence" in page.text
+    assert left in page.text and right in page.text
+    assert "erneut prüfen" in page.text
+    # Stale candidates must not be writable merely because an earlier review exists.
+    stale = client.post("/workbench/entities488", data=form(workspace, left, right),
+                        follow_redirects=False)
+    assert stale.status_code == 409
+    assert len(reviews_for_case(app.state.context, user, cid)) == 1
