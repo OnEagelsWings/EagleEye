@@ -69,11 +69,14 @@ def test_rejected_posts_do_not_create_reviews(workspace, tmp_path, change, heade
 def test_anonymous_and_foreign_case_denied(workspace, tmp_path):
     app, client, user, cid, _doc, foreign, *_ = workspace
     left, right = entities(workspace, tmp_path)
+    # Generate the authenticated CSRF form before opening a second TestClient:
+    # its lifespan shutdown closes the shared application context.
+    foreign_form = form(workspace, left, right, case_id=foreign)
+    assert client.post("/workbench/entities488",
+                       data=foreign_form,
+                       follow_redirects=False).status_code in (403, 409)
     with TestClient(app) as anon:
         assert anon.get("/workbench/entities488", params={"case_id": cid}).status_code == 401
-    assert client.post("/workbench/entities488",
-                       data=form(workspace, left, right, case_id=foreign),
-                       follow_redirects=False).status_code == 409
 
 
 def test_tampered_review_fails_closed(workspace, tmp_path):
