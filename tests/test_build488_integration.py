@@ -135,3 +135,17 @@ def test_review_cannot_be_silently_rewritten_or_injected(workspace, tmp_path):
     assert len(rows) == 1
     assert rows[0]["decision"] == "needs_evidence"
     assert rows[0]["rationale"] == rationale
+
+
+def test_entity_review_links_to_case_scoped_source_provenance(workspace, tmp_path):
+    """Review screen must expose the existing provenance workflow for the same case."""
+    _app, client, _user, cid, *_ = workspace
+    entities(workspace, tmp_path)
+    response = client.get("/workbench/entities488", params={"case_id": cid})
+    assert response.status_code == 200
+    from html import unescape
+    html = unescape(response.text)
+    from urllib.parse import urlencode
+    assert "/workbench/sources487?" + urlencode({"case_id": cid}) in html
+    # The link is navigation only: reviewing a candidate must not create evidence.
+    assert "Geprüfte Quellenzuordnungen ansehen" in response.text
