@@ -149,3 +149,26 @@ def test_entity_review_links_to_case_scoped_source_provenance(workspace, tmp_pat
     assert "/workbench/sources487?" + urlencode({"case_id": cid}) in html
     # The link is navigation only: reviewing a candidate must not create evidence.
     assert "Geprüfte Quellenzuordnungen ansehen" in response.text
+
+
+def test_active_and_historical_decisions_display_audit_actor_and_timestamp(workspace, tmp_path, monkeypatch):
+    """Analyst attribution must survive matcher changes without altering the ledger."""
+    app, client, user, cid, *_ = workspace
+    left, right = entities(workspace, tmp_path)
+    posted = client.post("/workbench/entities488", data=form(workspace, left, right),
+                         follow_redirects=False)
+    assert posted.status_code == 303
+    recorded = reviews_for_case(app.state.context, user, cid)[0]
+    active = client.get("/workbench/entities488", params={"case_id": cid})
+    assert active.status_code == 200
+    assert "Protokolliert durch:" in active.text
+    assert recorded["reviewed_by"] in active.text
+    assert recorded["reviewed_at"] in active.text
+    import eagleeye.interfaces.web.entities488 as view
+    monkeypatch.setattr(view, "current_candidates", lambda ctx, base_dir, case_id: [])
+    historical = client.get("/workbench/entities488", params={"case_id": cid})
+    assert historical.status_code == 200
+    assert "Historische Prüfentscheidung" in historical.text
+    assert recorded["reviewed_by"] in historical.text
+    assert recorded["reviewed_at"] in historical.text
+    assert reviews_for_case(app.state.context, user, cid) == [recorded]
