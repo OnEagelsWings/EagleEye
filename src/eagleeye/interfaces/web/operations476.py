@@ -54,7 +54,7 @@ def page(title, case_id, body, build):
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'
        '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a>'
-       '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a>' + ('<a href="'+link('/workbench/sources487')+'">Quellenzuordnung</a>' if int(str(build).split(".")[0]) >= 487 else '') + '</nav></header><main><h1>'+escape(title)+'</h1>'
+       '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a>' + ('<a href="'+link('/workbench/sources487')+'">Quellenzuordnung</a>' if int(str(build).split(".")[0]) >= 487 else '') + ('<a href="'+link('/workbench/entities488')+'">Entity-Prüfung</a>' if int(str(build).split(".")[0]) >= 488 else '') + '</nav></header><main><h1>'+escape(title)+'</h1>'
        +body+'<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
        ' Nur öffentliche oder synthetische, unkritische Quellen verwenden. KI-Entwürfe'
        ' und Beziehungen sind nicht automatisch bestätigte Tatsachen.</p>'
@@ -184,7 +184,9 @@ def attach_workbench(app, workspace_build):
                 ("4 · Entitäten und Graph",
                  [step(8,"Interaktiver Beziehungsgraph",
                        "Belegverknüpfungen und unbestätigte Beziehungen prüfen.",
-                       "/graph464"),
+                       "/graph464")] + ([step(9,"Entity-Kandidaten prüfen",
+                       "Ähnliche reale Fallentitäten manuell prüfen und auditieren – keine automatische Zusammenführung.",
+                       "/workbench/entities488")] if stage>=488 else []) + [
                   step(9,"KI-Ermittler",
                        "Quellengebundene Vorschläge – nicht bestätigte Tatsachen.",
                        "/assistant471")]),

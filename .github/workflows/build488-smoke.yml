@@ -1,0 +1,27 @@
+name: EagleEye Build 488 Focused Smoke
+on:
+  push:
+    branches: [build-488-case-entity-candidates]
+  pull_request:
+    branches: [build-487-case-source-provenance]
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+jobs:
+  candidate-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package and tests
+        run: python -m pip install -e '.[test]'
+      - name: Build 488 focused smoke
+        run: python -m pytest -q tests/test_build488_candidates.py tests/test_build488_reviews.py tests/test_build488_integration.py tests/test_build488_entity_label_xss.py
+      - name: Compile candidate and UI modules
+        run: python -m compileall -q src/eagleeye/application/build488 src/eagleeye/interfaces/web/entities488.py src/eagleeye/interfaces/web/app488.py
