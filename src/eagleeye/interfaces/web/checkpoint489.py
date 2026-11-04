@@ -33,9 +33,9 @@ def attach_checkpoint489(app, build):
         )
         source_rows = "".join(
             "<tr><td>" + escape(s["lead_id"]) + "</td><td>" +
-            escape(s["document_id"]) + "</td><td>" +
+            '<a href="/documents458?' + escape(urlencode({"case_id": case_id, "document_id": s["document_id"]}), quote=True) + '">' + escape(s["document_id"]) + "</a></td><td>" +
             escape(s["original_sha256"]) + "</td><td>" +
-            escape(s["created_by"]) + "</td></tr>"
+            escape(s["created_by"]) + "</td><td>" + escape(s["rationale"]) + "</td></tr>"
             for s in sources
         )
         body = (
@@ -53,8 +53,8 @@ def attach_checkpoint489(app, build):
             "</tbody></table><h2>Integritätsgeprüfte Quellenzuordnungen (" +
             str(len(sources)) +
             ")</h2><table><thead><tr><th>Hinweis</th><th>Original</th>"
-            "<th>Original SHA-256</th><th>Prüfer</th></tr></thead><tbody>" +
-            (source_rows or "<tr><td colspan='4'>Keine Zuordnungen</td></tr>") +
+            "<th>Original SHA-256</th><th>Prüfer</th><th>Begründung</th></tr></thead><tbody>" +
+            (source_rows or "<tr><td colspan='5'>Keine Zuordnungen</td></tr>") +
             "</tbody></table>"
         )
         return HTMLResponse(page("Prüfcheckpoint 489", case_id, body, build),
