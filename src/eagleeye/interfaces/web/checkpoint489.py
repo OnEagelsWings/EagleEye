@@ -27,6 +27,7 @@ def attach_checkpoint489(app, build):
             "<tr><td>" + escape(r["left_entity_id"]) + " ↔ " +
             escape(r["right_entity_id"]) + "</td><td>" +
             escape(r["decision"]) + "</td><td>" +
+            escape(r["rationale"]) + "</td><td>" +
             escape(r["reviewed_by"]) + "</td><td>" +
             escape(r["reviewed_at"]) + "</td></tr>"
             for r in reviews
@@ -48,8 +49,8 @@ def attach_checkpoint489(app, build):
             "'>Quellen und Originale</a></p>"
             "<h2>Auditierte Entitätsentscheidungen (" + str(len(reviews)) +
             ")</h2><table><thead><tr><th>Entitäten</th><th>Entscheidung</th>"
-            "<th>Prüfer</th><th>Zeit</th></tr></thead><tbody>" +
-            (review_rows or "<tr><td colspan='4'>Keine Entscheidungen</td></tr>") +
+            "<th>Begründung</th><th>Prüfer</th><th>Zeit</th></tr></thead><tbody>" +
+            (review_rows or "<tr><td colspan='5'>Keine Entscheidungen</td></tr>") +
             "</tbody></table><h2>Integritätsgeprüfte Quellenzuordnungen (" +
             str(len(sources)) +
             ")</h2><table><thead><tr><th>Hinweis</th><th>Original</th>"
