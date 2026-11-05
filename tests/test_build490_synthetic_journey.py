@@ -191,6 +191,10 @@ def test_synthetic_ai_review_rejects_incomplete_assessment_without_promotion(wor
     persisted = type(service)(app.state.context).history(user, case_id)[0]
     assert persisted["status"] == "review_required"
     assert persisted["truth_determined"] is False
+    # A rejected review must not discard or rewrite the cited source anchors.
+    assert persisted["sources"] == run["sources"]
+    assert persisted["run_id"] == run["run_id"]
+    assert persisted["claims_created"] == 0
     store = app.state.context.evidence_claims_dossier_447
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
