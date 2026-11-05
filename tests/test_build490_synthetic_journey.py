@@ -100,3 +100,19 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert graph.status_code == 200, graph.text[:400]
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
+
+
+def test_synthetic_graph_and_original_are_case_scoped(workspace):
+    """Graph and original navigation must not bypass case access control."""
+    from fastapi.testclient import TestClient
+
+    app, client, user, case_id, document_id, foreign_case, foreign_doc = workspace
+    assert client.get("/graph464", params={"case_id": foreign_case}).status_code == 403
+    assert client.get(
+        "/documents458", params={"case_id": foreign_case, "document_id": foreign_doc}
+    ).status_code == 403
+    with TestClient(app) as anonymous:
+        assert anonymous.get("/graph464", params={"case_id": case_id}).status_code == 401
+        assert anonymous.get(
+            "/documents458", params={"case_id": case_id, "document_id": document_id}
+        ).status_code == 401
