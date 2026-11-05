@@ -144,7 +144,8 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     # before the independent dossier approval and export. The graph must
     # resolve the original and must never promote an unreviewed hypothesis.
     from eagleeye.application.entity_registry461 import EntityRegistry461
-    graph_db = app.state.context.db_path.parent / "entity_registry_462.sqlite3"
+    # app464 binds the graph registry to the factory base_dir, not ctx.db_path.parent.
+    graph_db = tmp_path / "entity_registry_462.sqlite3"
     with EntityRegistry461(graph_db) as registry:
         graph_subject = registry.create_entity(
             case_id=case_id, kind="organization", label="Build 490 synthetic subject",
