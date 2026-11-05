@@ -473,3 +473,50 @@ def test_synthetic_independently_approved_dossier_export_has_real_artifacts(work
             assert hashlib.sha256(artifact.read_bytes()).hexdigest() == export["hashes"][artifact.name]
         assert ctx.human_review_449.verify_integrity()["valid"]
         assert ctx.evidence_claims_dossier_447.verify_integrity()["valid"]
+
+
+
+def test_synthetic_real_entity_graph_links_to_original_in_same_case(workspace, tmp_path):
+    """Persist real entity nodes and a source-backed edge in the active case.
+
+    A rendered graph alone is insufficient: the relation must survive a fresh
+    registry handle and resolve its original document without claiming identity.
+    """
+    from eagleeye.application.entity_registry461 import EntityRegistry461
+
+    app, client, user, case_id, document_id, foreign_case, foreign_doc = workspace
+    db_path = tmp_path / "entity_registry_462.sqlite3"
+    with EntityRegistry461(db_path) as registry:
+        subject = registry.create_entity(
+            case_id=case_id, kind="organization", label="Synthetic company"
+        )
+        source = registry.create_entity(
+            case_id=case_id, kind="document", label="Synthetic Source"
+        )
+        relation = registry.create_relation(
+            case_id=case_id, source_id=subject["id"], target_id=source["id"],
+            predicate="mentioned_in", source_refs=["doc458:" + document_id],
+        )
+    with EntityRegistry461(db_path) as registry:
+        graph = registry.graph(case_id)
+        other_graph = registry.graph(foreign_case)
+    assert {subject["id"], source["id"]}.issubset(
+        {node["id"] for node in graph["entities"]}
+    )
+    assert any(edge["id"] == relation["id"] for edge in graph["relations"])
+    assert not any(edge["id"] == relation["id"] for edge in other_graph["relations"])
+
+    page = client.get("/graph464", params={"case_id": case_id, "focus": relation["id"]})
+    assert page.status_code == 200, page.text[:400]
+    assert "mentioned_in" in page.text
+    assert "Synthetic Source" in page.text
+    assert "document_id=" + document_id in page.text
+    assert "nicht verifiziert" in page.text or "ungeprüft" in page.text
+    original = client.get(
+        "/documents458", params={"case_id": case_id, "document_id": document_id}
+    )
+    assert original.status_code == 200
+    foreign = client.get("/graph464", params={"case_id": foreign_case})
+    assert foreign.status_code == 200
+    assert relation["id"] not in foreign.text
+    assert subject["id"] not in foreign.text
