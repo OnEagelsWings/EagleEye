@@ -151,6 +151,20 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     package = Path(exported["export"]["paths"]["case_package"])
     assert package.is_file()
     assert hashlib.sha256(package.read_bytes()).hexdigest() == exported["export"]["package_hash"]
+    # Verify the real artifacts of THIS original-backed, reviewed case,
+    # not only the independent export fixture below.
+    from zipfile import ZipFile
+    exported_paths = exported["export"]["paths"]
+    exported_hashes = exported["export"]["hashes"]
+    for kind in ("json", "docx", "pdf", "manifest"):
+        artifact = Path(exported_paths[kind])
+        assert artifact.is_file() and artifact.stat().st_size > 0, kind
+        assert hashlib.sha256(artifact.read_bytes()).hexdigest() == exported_hashes[artifact.name]
+    with ZipFile(package) as archive:
+        assert archive.testzip() is None, "Case archive has a corrupt member"
+        members = {Path(name).name for name in archive.namelist()}
+        assert all(Path(exported_paths[kind]).name in members
+                   for kind in ("json", "docx", "pdf", "manifest"))
     assert len(store.exports(case_id)) == 1
     assert store.verify_integrity()["valid"]
     assert app.state.context.human_review_449.verify_integrity()["valid"]
