@@ -282,6 +282,16 @@ def test_synthetic_persisted_graph_relationship_is_not_identity_proof(workspace)
     assert other.status_code == 200
     assert first["media_id"] not in other.text
     assert second["media_id"] not in other.text
+    # Verify persisted originals through the existing operational inventory.
+    # A reachable graph alone does not prove persisted case-specific data.
+    from eagleeye.interfaces.web.pilot485 import pilot_counts
+    own_counts = pilot_counts(ctx, user, case_id)
+    foreign_counts = pilot_counts(ctx, user, foreign_case)
+    assert own_counts["images"] == 2
+    assert foreign_counts["images"] == 0
+    assert own_counts["integrity_ok"] is True
+    assert client.get("/workbench/pilot485", params={"case_id": case_id}).status_code == 200
+    assert client.get("/workbench/pilot485", params={"case_id": foreign_case}).status_code == 200
     store = ctx.evidence_claims_dossier_447
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
