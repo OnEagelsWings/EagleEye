@@ -92,6 +92,54 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
 
+    # Run the real local AI application against the SAME original-backed case
+    # before approving its Evidence/Claim/Dossier. Only model transport is
+    # deterministic; source anchoring, persistence and human review are real.
+    from unittest.mock import patch
+    from test_build471_local_ai import csrf as assistant_csrf, reply, provider
+    from eagleeye.application.review474 import review_items
+    assistant = app.state.assistant471
+    assistant_token = assistant_csrf(client, case_id)
+    assistant_calls = []
+    assistant_answer = reply(assistant, user, case_id, workspace[4])
+    with patch.object(assistant, "request", side_effect=provider(assistant_answer, assistant_calls)):
+        generated = client.post(
+            "/assistant471/generate",
+            data={"case_id": case_id, "csrf_token": assistant_token,
+                  "document_id": workspace[4], "model": "mistral:latest"},
+            follow_redirects=False,
+        )
+    assert generated.status_code == 303, generated.text[:400]
+    assert any(path == "/api/chat" for _, path, _ in assistant_calls)
+    ai_run = assistant.history(user, case_id)[0]
+    assert ai_run["status"] == "review_required"
+    assert ai_run["sources"]
+    assert ai_run["sources"][0]["anchor_id"] == assistant_answer["statements"][0]["citations"][0]["anchor_id"]
+    assert ai_run["truth_determined"] is False
+    assert len(store.case_claims(case_id)) == 0
+    ai_items = review_items(ai_run)
+    assert ai_items
+    review_data = {
+        "case_id": case_id, "csrf_token": assistant_token,
+        "run_id": ai_run["run_id"], "decision": "acknowledged",
+        "note": "All source-anchored AI items reviewed independently of claims.",
+    }
+    for item in ai_items:
+        review_data["verdict_" + item["item_id"]] = "unclear"
+        review_data["item_note_" + item["item_id"]] = (
+            "Only the synthetic original is available; no independent corroboration."
+        )
+    ai_review_response = client.post(
+        "/assistant471/review", data=review_data, follow_redirects=False,
+    )
+    assert ai_review_response.status_code == 303, ai_review_response.text[:400]
+    reviewed_ai = assistant.history(user, case_id)[0]
+    assert reviewed_ai["status"] == "acknowledged"
+    assert reviewed_ai["sources"] == ai_run["sources"]
+    assert reviewed_ai["truth_determined"] is False
+    assert reviewed_ai["claims_created"] == 0
+    assert len(store.case_claims(case_id)) == 0
+
     # Continue the SAME original-backed case into the existing independent
     # four-eyes dossier workflow. Do not seed a second synthetic case.
     from test_build449_integrated import complete_review
