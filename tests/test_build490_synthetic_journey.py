@@ -295,3 +295,34 @@ def test_synthetic_persisted_graph_relationship_is_not_identity_proof(workspace)
     store = ctx.evidence_claims_dossier_447
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
+
+
+def test_synthetic_independently_approved_dossier_export_has_real_artifacts(tmp_path):
+    """Exercise the existing four-eyes export service, not a mocked PDF/ZIP.
+
+    This remains a separate synthetic case from the source/AI journey above;
+    joining both into one continuous case is still a Build-490 release gate.
+    """
+    import hashlib
+    from pathlib import Path
+    from eagleeye_pro.core.app_context import AppContext
+    from test_build449_integrated import test_four_eyes_chain_evidence_claim_dossier_and_export
+
+    root = tmp_path / "approved_synthetic_dossier"
+    test_four_eyes_chain_evidence_claim_dossier_and_export(root)
+    with AppContext(base_dir=root) as ctx:
+        row = ctx.db.one("SELECT case_id, record_hash FROM dossier_export_447")
+        assert row is not None, "Four-eyes approval must create a real export record"
+        exports = ctx.evidence_claims_dossier_447.exports(row["case_id"])
+        assert len(exports) == 1
+        export = exports[0]
+        assert export["record_hash"] == row["record_hash"]
+        package = Path(export["paths"]["case_package"])
+        assert package.is_file()
+        assert hashlib.sha256(package.read_bytes()).hexdigest() == export["package_hash"]
+        for kind in ("json", "docx", "pdf", "manifest"):
+            artifact = Path(export["paths"][kind])
+            assert artifact.is_file() and artifact.stat().st_size > 0, kind
+            assert hashlib.sha256(artifact.read_bytes()).hexdigest() == export["hashes"][artifact.name]
+        assert ctx.human_review_449.verify_integrity()["valid"]
+        assert ctx.evidence_claims_dossier_447.verify_integrity()["valid"]
