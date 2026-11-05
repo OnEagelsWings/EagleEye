@@ -140,6 +140,37 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert reviewed_ai["claims_created"] == 0
     assert len(store.case_claims(case_id)) == 0
 
+    # Persist a real provenance-backed entity relation in this SAME case,
+    # before the independent dossier approval and export. The graph must
+    # resolve the original and must never promote an unreviewed hypothesis.
+    from eagleeye.application.entity_registry461 import EntityRegistry461
+    graph_db = app.state.context.base_dir / "entity_registry_462.sqlite3"
+    with EntityRegistry461(graph_db) as registry:
+        graph_subject = registry.create_entity(
+            case_id=case_id, kind="organization", label="Build 490 synthetic subject",
+        )
+        graph_source = registry.create_entity(
+            case_id=case_id, kind="document", label="Build 490 original source",
+        )
+        graph_relation = registry.create_relation(
+            case_id=case_id, source_id=graph_subject["id"],
+            target_id=graph_source["id"], predicate="mentioned_in",
+            source_refs=["doc458:" + workspace[4]],
+        )
+    with EntityRegistry461(graph_db) as registry:
+        own_graph = registry.graph(case_id)
+        foreign_graph = registry.graph(workspace[5])
+    assert any(edge["id"] == graph_relation["id"] for edge in own_graph["relations"])
+    assert all(edge["id"] != graph_relation["id"] for edge in foreign_graph["relations"])
+    graph_page = client.get("/graph464", params={
+        "case_id": case_id, "focus": graph_relation["id"],
+    })
+    assert graph_page.status_code == 200, graph_page.text[:400]
+    assert graph_subject["id"] in graph_page.text
+    assert "mentioned_in" in graph_page.text
+    assert "document_id=" + workspace[4] in graph_page.text
+    assert "nicht verifiziert" in graph_page.text or "ungeprüft" in graph_page.text
+
     # Continue the SAME original-backed case into the existing independent
     # four-eyes dossier workflow. Do not seed a second synthetic case.
     from test_build449_integrated import complete_review
