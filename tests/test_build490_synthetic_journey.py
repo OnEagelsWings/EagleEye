@@ -297,7 +297,7 @@ def test_synthetic_persisted_graph_relationship_is_not_identity_proof(workspace)
     assert store.case_dossiers(case_id) == []
 
 
-def test_synthetic_independently_approved_dossier_export_has_real_artifacts(tmp_path):
+def test_synthetic_independently_approved_dossier_export_has_real_artifacts(workspace, tmp_path):
     """Exercise the existing four-eyes export service, not a mocked PDF/ZIP.
 
     This remains a separate synthetic case from the source/AI journey above;
