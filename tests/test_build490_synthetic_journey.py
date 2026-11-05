@@ -223,6 +223,14 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
             assert hashlib.sha256(archive.read(matches[0])).hexdigest() == (
                 exported_hashes[artifact.name]
             ), f"Archived {kind} differs from approved export artifact"
+    # The actual approved export must carry the SAME case and original-backed
+    # evidence/claim identifiers, not merely produce valid but unrelated files.
+    import json
+    dossier_json = json.loads(Path(exported_paths["json"]).read_text(encoding="utf-8"))
+    serialized = json.dumps(dossier_json, ensure_ascii=False)
+    assert case_id in serialized, "Export JSON lost its originating case identifier"
+    assert evidence[0]["evidence_id"] in serialized, "Export JSON lost reviewed Evidence"
+    assert claim["claim_id"] in serialized, "Export JSON lost reviewed Claim"
     assert len(store.exports(case_id)) == 1
     assert store.verify_integrity()["valid"]
     assert app.state.context.human_review_449.verify_integrity()["valid"]
