@@ -139,17 +139,39 @@ def test_synthetic_source_bound_ai_requires_human_review(workspace):
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
 
+    # Build 474's existing review contract requires a verdict and a distinct
+    # explanation for EVERY statement, hypothesis and uncertainty. Use the
+    # actual item identifiers, not a bypass or a blanket acknowledgment.
+    from eagleeye.application.review474 import review_items
+    items = review_items(run)
+    assert items
+    assessment_form = {
+        "case_id": case_id, "csrf_token": token,
+        "run_id": run["run_id"], "decision": "acknowledged",
+        "note": "Originalquelle und alle Einzelbewertungen selbst geprüft.",
+    }
+    for item in items:
+        key = item["item_id"]
+        assessment_form["verdict_" + key] = "unclear"
+        assessment_form["item_note_" + key] = (
+            "Nur die vorliegende Quelle; unabhängige Bestätigung fehlt."
+        )
     reviewed = client.post(
-        "/assistant471/review",
-        data={"case_id": case_id, "csrf_token": token,
-              "run_id": run["run_id"], "decision": "acknowledged",
-              "note": "Originalquelle und Unsicherheiten selbst geprüft."},
-        follow_redirects=False,
+        "/assistant471/review", data=assessment_form, follow_redirects=False,
     )
     assert reviewed.status_code == 303, reviewed.text[:400]
     stored = type(service)(app.state.context).history(user, case_id)[0]
     assert stored["status"] == "acknowledged"
     assert stored["truth_determined"] is False
+    assert set(stored["review"]["assessments"]) == {
+        item["item_id"] for item in items
+    }
+    assert all(
+        entry["verdict"] == "unclear"
+        for entry in stored["review"]["assessments"].values()
+    )
+    assert stored["sources"] == run["sources"]
+    assert stored["claims_created"] == 0
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
     assert service.history(user, foreign_case) == []
