@@ -213,6 +213,16 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         members = {Path(name).name for name in archive.namelist()}
         assert all(Path(exported_paths[kind]).name in members
                    for kind in ("json", "docx", "pdf", "manifest"))
+        # The archive is the deliverable: each member must be byte-identical
+        # to its separately SHA-256-verified artifact, not merely share a name.
+        for kind in ("json", "docx", "pdf", "manifest"):
+            artifact = Path(exported_paths[kind])
+            matches = [name for name in archive.namelist()
+                       if Path(name).name == artifact.name]
+            assert len(matches) == 1, (kind, matches)
+            assert hashlib.sha256(archive.read(matches[0])).hexdigest() == (
+                exported_hashes[artifact.name]
+            ), f"Archived {kind} differs from approved export artifact"
     assert len(store.exports(case_id)) == 1
     assert store.verify_integrity()["valid"]
     assert app.state.context.human_review_449.verify_integrity()["valid"]
