@@ -92,3 +92,11 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
 
+
+    # The existing authenticated graph workspace must remain reachable from
+    # the same synthetic case after source/evidence handoff. This is a UI
+    # navigation gate, NOT proof that unreviewed candidate links are facts.
+    graph = client.get("/graph464", params={"case_id": case_id})
+    assert graph.status_code == 200, graph.text[:400]
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
