@@ -102,6 +102,59 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert store.case_dossiers(case_id) == []
 
 
+
+def test_synthetic_source_bound_ai_requires_human_review(workspace):
+    """Run the existing local assistant against the real imported original.
+
+    No network model is needed: only the Ollama transport is simulated, while
+    extraction, source anchors, persistence, and authenticated routes stay real.
+    """
+    from unittest.mock import patch
+    from test_build471_local_ai import csrf as assistant_csrf, reply, provider
+
+    app, client, user, case_id, doc_id, foreign_case, foreign_doc = workspace
+    service = app.state.assistant471
+    token = assistant_csrf(client, case_id)
+    calls = []
+    answer = reply(service, user, case_id, doc_id)
+    store = app.state.context.evidence_claims_dossier_447
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
+
+    with patch.object(service, "request", side_effect=provider(answer, calls)):
+        generated = client.post(
+            "/assistant471/generate",
+            data={"case_id": case_id, "csrf_token": token,
+                  "document_id": doc_id, "model": "mistral:latest"},
+            follow_redirects=False,
+        )
+    assert generated.status_code == 303, generated.text[:400]
+    assert any(path == "/api/chat" for _, path, _ in calls)
+    run = service.history(user, case_id)[0]
+    assert run["status"] == "review_required"
+    assert run["truth_determined"] is False
+    assert run["claims_created"] == 0
+    assert run["sources"][0]["anchor_id"] == answer["statements"][0]["citations"][0]["anchor_id"]
+    assert client.get("/assistant471", params={"case_id": case_id}).status_code == 200
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
+
+    reviewed = client.post(
+        "/assistant471/review",
+        data={"case_id": case_id, "csrf_token": token,
+              "run_id": run["run_id"], "decision": "acknowledged",
+              "note": "Originalquelle und Unsicherheiten selbst geprüft."},
+        follow_redirects=False,
+    )
+    assert reviewed.status_code == 303, reviewed.text[:400]
+    stored = type(service)(app.state.context).history(user, case_id)[0]
+    assert stored["status"] == "acknowledged"
+    assert stored["truth_determined"] is False
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
+    assert service.history(user, foreign_case) == []
+
+
 def test_synthetic_graph_and_original_are_case_scoped(workspace):
     """Graph and original navigation must not bypass case access control."""
     from fastapi.testclient import TestClient
