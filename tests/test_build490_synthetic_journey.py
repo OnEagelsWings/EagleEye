@@ -242,3 +242,46 @@ def test_synthetic_graph_and_original_are_case_scoped(workspace):
         assert anonymous.get(
             "/documents458", params={"case_id": case_id, "document_id": document_id}
         ).status_code in {401, 403}
+
+
+def test_synthetic_persisted_graph_relationship_is_not_identity_proof(workspace):
+    """Exercise stored media relationship data, not merely a graph HTTP 200.
+
+    The existing Build-354 similarity service and Build-484 operator view are
+    reused. Similarity remains a review candidate, never a confirmed identity.
+    """
+    from test_build482_operator import png_bytes
+
+    app, client, user, case_id, _, foreign_case, *_ = workspace
+    ctx = app.state.context
+    raw = png_bytes()
+    first = ctx.build354.ingest_image(
+        case_id=case_id, content=raw, declared_media_type="image/png",
+        filename="synthetic-a.png",
+    )
+    second = ctx.build354.ingest_image(
+        case_id=case_id, content=raw, declared_media_type="image/png",
+        filename="synthetic-b.png",
+    )
+    links = ctx.build354.similarity_links(case_id=case_id)
+    assert links, "Expected a persisted similarity relationship"
+    assert first["media_id"] != second["media_id"]
+    assert any(
+        {link["from_id"], link["to_id"]} ==
+        {first["media_id"], second["media_id"]}
+        for link in links
+    ), "Persisted link must refer to the two original media records"
+    operator = client.get("/workbench/media484", params={"case_id": case_id})
+    assert operator.status_code == 200, operator.text[:400]
+    assert first["media_id"] in operator.text
+    assert second["media_id"] in operator.text
+    assert "Ungeprüfte Bildähnlichkeit" in operator.text
+    graph = client.get("/graph464", params={"case_id": case_id})
+    assert graph.status_code == 200, graph.text[:400]
+    other = client.get("/workbench/media484", params={"case_id": foreign_case})
+    assert other.status_code == 200
+    assert first["media_id"] not in other.text
+    assert second["media_id"] not in other.text
+    store = ctx.evidence_claims_dossier_447
+    assert store.case_claims(case_id) == []
+    assert store.case_dossiers(case_id) == []
