@@ -92,6 +92,69 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert store.case_claims(case_id) == []
     assert store.case_dossiers(case_id) == []
 
+    # Continue the SAME original-backed case into the existing independent
+    # four-eyes dossier workflow. Do not seed a second synthetic case.
+    from test_build449_integrated import complete_review
+    reviewer = app.state.context.team_governance_359.create_user(
+        identity=user, username="reviewer490",
+        display_name="Independent Build 490 Reviewer",
+        global_role="reviewer", password="Build490ReviewerPassword!2026",
+    )
+    app.state.context.team_governance_359.assign_case_role(
+        identity=user, case_id=case_id, username=reviewer["username"],
+        case_role="reviewer", notes="Independent synthetic dossier review",
+    )
+    def independently_review(object_type, object_id, decision, note):
+        request = app.state.context.build449.request_review_449(
+            identity=user, object_type=object_type, object_id=object_id,
+            note="Synthetic original-backed case: independent verification.",
+            assigned_to=reviewer["username"],
+        )
+        result = complete_review(
+            app.state.context, reviewer, request, decision, note,
+        )
+        assert result["review"]["state"] == "completed"
+        return request
+
+    independently_review(
+        "evidence", evidence[0]["evidence_id"], "accepted",
+        "Original document hash and provenance inspected in this case.",
+    )
+    claim = store.propose_claim(
+        identity=user, case_id=case_id,
+        statement="Synthetic original document was imported into this case.",
+        support_evidence_ids=[evidence[0]["evidence_id"]],
+        uncertainty_note="Local synthetic capture; no external network verification.",
+    )
+    independently_review(
+        "claim", claim["claim_id"], "accepted_for_dossier",
+        "Limited to the original-backed local import, not external truth.",
+    )
+    dossier = store.build_dossier(
+        identity=user, case_id=case_id,
+        title="Build 490 Original-Backed Synthetic Case",
+    )
+    independently_review(
+        "dossier", dossier["revision_id"], "approved_for_export",
+        "Evidence, claim limits and provenance preserved in dossier.",
+    )
+    export_review = independently_review(
+        "dossier_export", dossier["revision_id"], "approve",
+        "Independent export authorization for this original-backed case.",
+    )
+    exported = app.state.context.build449.execute_approved_export_449(
+        identity=user, review_id=export_review["review_id"],
+        confirmation="EXPORT DOSSIER 447",
+    )
+    from pathlib import Path
+    import hashlib
+    package = Path(exported["export"]["paths"]["case_package"])
+    assert package.is_file()
+    assert hashlib.sha256(package.read_bytes()).hexdigest() == exported["export"]["package_hash"]
+    assert len(store.exports(case_id)) == 1
+    assert store.verify_integrity()["valid"]
+    assert app.state.context.human_review_449.verify_integrity()["valid"]
+
 
     # The existing authenticated graph workspace must remain reachable from
     # the same synthetic case after source/evidence handoff. This is a UI
@@ -99,7 +162,7 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     graph = client.get("/graph464", params={"case_id": case_id})
     assert graph.status_code == 200, graph.text[:400]
     assert store.case_claims(case_id) == []
-    assert store.case_dossiers(case_id) == []
+    assert len(store.case_dossiers(case_id)) == 1
 
 
 
