@@ -74,3 +74,34 @@ def test_build490_runtime_uses_explicit_database_without_legacy_copy(monkeypatch
     assert resolved.db_path == explicit
     assert explicit.parent.is_dir()
     assert not explicit.exists()
+
+
+def test_internal_release_default_runtime_is_separate(monkeypatch, tmp_path):
+    """Build 490–500 must not select the historical runtime root."""
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    monkeypatch.setattr(paths, "BUILD", "490.0")
+    internal = paths.default_runtime_root()
+    monkeypatch.setattr(paths, "BUILD", "398.0")
+    legacy = paths.default_runtime_root()
+    assert internal != legacy
+    assert not internal.exists()
+    assert not legacy.exists()
+
+
+def test_future_internal_release_does_not_copy_legacy_database(monkeypatch, tmp_path):
+    """The 490 fix must remain effective through the Build 500 release."""
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setattr(paths, "BUILD", "500.0")
+    data = tmp_path / "workspace" / "data"
+    data.mkdir(parents=True)
+    (data / "eagleeye_pro_95_0.db").write_bytes(b"legacy")
+    resolved = paths.RuntimePaths.resolve(
+        install_dir=tmp_path / "install", base_dir=tmp_path / "workspace"
+    )
+    assert resolved.db_path == data / "eagleeye.db"
+    assert not resolved.db_path.exists()
+    assert (data / "eagleeye_pro_95_0.db").read_bytes() == b"legacy"
