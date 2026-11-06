@@ -12,7 +12,7 @@ import time
 from contextlib import contextmanager
 from .runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
-from .paths import default_runtime_root
+from .paths import default_runtime_root, _internal_release_build
 
 _STATUS_LOCK=threading.Lock()
 _SETTINGS_LOCK=threading.Lock()
@@ -22,7 +22,7 @@ _START_STAGES={'starting','healthy','stopped','health-timeout','browser-requeste
 def settings_directory():
     configured=os.environ.get('EAGLEEYE_SETTINGS_DIR')
     if configured:return Path(configured).expanduser().resolve()
-    namespace = 'EagleEye-490' if BUILD == '490.0' else 'EagleEye'
+    namespace = 'EagleEye-490' if _internal_release_build() else 'EagleEye'
     if os.name=='nt':return Path(os.environ.get('LOCALAPPDATA',Path.home()/'AppData/Local'))/namespace
     return Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))/namespace
 
@@ -92,7 +92,7 @@ def resolve_workspace(install_dir):
             return root
         else:
             installed=_local_path(install_dir)
-            if BUILD == '490.0':
+            if _internal_release_build():
                 root=directory/'workspace'
             else:
                 candidates=[candidate for candidate in (installed,default_runtime_root())
