@@ -275,7 +275,9 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         if edge["id"] == graph_relation["id"]
     ]
     assert len(matching_edges) == 1
-    assert any(source["source_ref"] == "doc458:" + workspace[4]\n               for source in matching_edges[0]["sources"])\n    assert matching_edges[0]["source_verified"] is False
+    assert any(source["source_ref"] == "doc458:" + workspace[4]
+               for source in matching_edges[0]["sources"])
+    assert matching_edges[0]["source_verified"] is False
     assert not any(edge["id"] == graph_relation["id"]
                    for edge in other_after_export["relations"])
     assert store.verify_integrity()["valid"]
