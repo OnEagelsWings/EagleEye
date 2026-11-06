@@ -138,7 +138,7 @@ def diagnostics(root):
     error_type=status.get('error_type')
     if isinstance(error_type,str) and error_type.isidentifier() and len(error_type)<=80:
         safe_status['error_type']=error_type
-    return {'build':BUILD,'workspace_directory':str(root),'database_present':any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
+    return {'build':BUILD,'workspace_directory':str(root),'database_present':(root/'data'/'eagleeye.db').is_file() if _internal_release_build(BUILD) else any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
         'server_reachable':bool(runtime and runtime['build']==BUILD),'running_build':runtime['build'] if runtime else None,
         'version_conflict':bool(runtime and runtime['build']!=BUILD),'port':runtime['port'] if runtime else None,
         'last_start':safe_status,
