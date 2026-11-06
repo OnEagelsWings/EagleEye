@@ -8,6 +8,18 @@ def create_workspace_app489(*, base_dir=None, workspace_build="489.0"):
     app.version = workspace_build
     app.title = "EagleEye – Prüfcheckpoint 489"
     attach_checkpoint489(app, workspace_build)
+
+    # The inherited security middleware applies a same-origin default after
+    # endpoint headers have been created. This read-only evidence checkpoint
+    # deliberately needs the stricter no-referrer policy, including when a
+    # case title or source identifier is included in a navigation URL.
+    @app.middleware("http")
+    async def checkpoint_referrer_policy(request, call_next):
+        response = await call_next(request)
+        if request.url.path == "/workbench/checkpoint489":
+            response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
     return app
 
 
