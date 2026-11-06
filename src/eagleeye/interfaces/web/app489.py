@@ -6,7 +6,9 @@ from .checkpoint489 import attach_checkpoint489
 def create_workspace_app489(*, base_dir=None, workspace_build="489.0"):
     app = create_workspace_app488(base_dir=base_dir, workspace_build=workspace_build)
     app.version = workspace_build
-    app.title = "EagleEye – Prüfcheckpoint 489"
+    # Keep the application title aligned with the installed build. The
+    # checkpoint route remains available without labeling the entire app 489.
+    app.title = f"EagleEye – Build {workspace_build}"
     attach_checkpoint489(app, workspace_build)
 
     # The inherited security middleware applies a same-origin default after
