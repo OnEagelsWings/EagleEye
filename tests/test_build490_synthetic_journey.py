@@ -264,6 +264,20 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert evidence[0]["evidence_id"] in serialized, "Export JSON lost reviewed Evidence"
     assert claim["claim_id"] in serialized, "Export JSON lost reviewed Claim"
     assert len(store.exports(case_id)) == 1
+    # Export must not mutate or drop the graph provenance in the SAME case.
+    # Reopen the existing registry to verify persisted, case-isolated records
+    # rather than relying on the earlier in-memory graph response.
+    with EntityRegistry461(graph_db) as reopened:
+        after_export = reopened.graph(case_id)
+        other_after_export = reopened.graph(workspace[5])
+    matching_edges = [
+        edge for edge in after_export["relations"]
+        if edge["id"] == graph_relation["id"]
+    ]
+    assert len(matching_edges) == 1
+    assert "doc458:" + workspace[4] in matching_edges[0]["source_refs"]
+    assert not any(edge["id"] == graph_relation["id"]
+                   for edge in other_after_export["relations"])
     assert store.verify_integrity()["valid"]
     assert app.state.context.human_review_449.verify_integrity()["valid"]
 
