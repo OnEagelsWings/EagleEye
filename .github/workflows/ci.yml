@@ -5,6 +5,11 @@ on:
     branches: [ main, eagleeye/build-400, build-485-first-case-pilot-gate, build-486-windows-start-preservation, build-487-case-source-provenance ]
   pull_request:
 
+# Cancel obsolete CI attempts when a newer commit arrives on the same PR.
+concurrency:
+  group: eagleeye-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-validation:
     runs-on: ubuntu-latest
@@ -34,9 +39,15 @@ jobs:
       - name: Current import smoke
         run: python -c "from eagleeye.interfaces.web.server import serve_workspace; from eagleeye.interfaces.web.app489 import create_workspace_app489; from eagleeye_pro.version import BUILD; assert BUILD == '490.0'; print(BUILD)"
       - name: Build 458 focused integration tests
+        if: steps.cadence.outputs.full != 'true'
         run: pytest -q tests/test_build458_document_intelligence.py -k 'not test_build458_current_installer_and_next_checkpoint'
       - name: Compile current web and phase20 surfaces
         run: python -m compileall -q src/eagleeye/interfaces/web src/eagleeye/application/build458 eagleeye_pro/phase20
+      # Check known current-workflow regressions first: fail in seconds, not after
+      # an eight-minute repository checkpoint. The full gate remains mandatory.
+      - name: Current case and startup regression preflight
+        if: steps.cadence.outputs.full == 'true'
+        run: pytest -q -x tests/test_build489_checkpoint.py tests/test_build489_checkpoint_rendering.py tests/test_build486_startup.py
       - name: Full repository checkpoint regression
         if: steps.cadence.outputs.full == 'true'
         run: python tools/run_checkpoint_regression480.py
