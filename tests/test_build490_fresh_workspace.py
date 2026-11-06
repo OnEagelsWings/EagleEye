@@ -154,3 +154,40 @@ def test_internal_diagnostics_do_not_treat_legacy_database_as_current(monkeypatc
     monkeypatch.setattr(desktop476, "BUILD", "398.0")
     (data / "eagleeye.db").unlink()
     assert desktop476.diagnostics(root)["database_present"] is True
+
+
+def test_internal_release_rejects_explicit_legacy_database_workspace(monkeypatch, tmp_path):
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(tmp_path / "settings"))
+    legacy = tmp_path / "legacy398"
+    data = legacy / "data"
+    data.mkdir(parents=True)
+    old = data / "eagleeye_pro_95_0.db"
+    old.write_bytes(b"legacy database")
+    monkeypatch.setenv("EAGLEEYE_DATA_DIR", str(legacy))
+    import pytest
+    with pytest.raises(ValueError, match="ältere EagleEye-Datenbank"):
+        desktop476.resolve_workspace(tmp_path / "install")
+    assert old.read_bytes() == b"legacy database"
+    assert not (data / "eagleeye.db").exists()
+    assert not (tmp_path / "settings" / "workspace.json").exists()
+
+
+def test_internal_release_rejects_saved_legacy_database_workspace(monkeypatch, tmp_path):
+    monkeypatch.setattr(desktop476, "BUILD", "500.0")
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    settings = tmp_path / "settings"
+    settings.mkdir()
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    legacy = tmp_path / "legacy398"
+    data = legacy / "data"
+    data.mkdir(parents=True)
+    (data / "eagleeye_pro_95_0.db").write_bytes(b"legacy")
+    import json
+    original = json.dumps({"workspace_directory": str(legacy)})
+    (settings / "workspace.json").write_text(original, encoding="utf-8")
+    import pytest
+    with pytest.raises(ValueError, match="ältere EagleEye-Datenbank"):
+        desktop476.resolve_workspace(tmp_path / "install")
+    assert (settings / "workspace.json").read_text(encoding="utf-8") == original
+    assert not (data / "eagleeye.db").exists()
