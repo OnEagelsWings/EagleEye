@@ -18,6 +18,7 @@ pytestmark = pytest.mark.parametrize("workspace", [create_workspace_app489], ind
 
 def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_path):
     app, client, user, case_id, *_ = workspace
+    assert app.title == f"EagleEye – Build {app.version}"
     left, right = entities(workspace, tmp_path)
     response = client.post(
         "/workbench/entities488",
