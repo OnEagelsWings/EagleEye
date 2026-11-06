@@ -43,11 +43,12 @@ jobs:
         run: pytest -q tests/test_build458_document_intelligence.py -k 'not test_build458_current_installer_and_next_checkpoint'
       - name: Compile current web and phase20 surfaces
         run: python -m compileall -q src/eagleeye/interfaces/web src/eagleeye/application/build458 eagleeye_pro/phase20
-      # Check known current-workflow regressions first: fail in seconds, not after
-      # an eight-minute repository checkpoint. The full gate remains mandatory.
-      - name: Current case and startup regression preflight
+      # Fail fast on the active Build-490 integration rather than historical
+      # Build-486 exact-version contracts. Historical failures remain visible
+      # in the mandatory full checkpoint below.
+      - name: Current Build 490 regression preflight
         if: steps.cadence.outputs.full == 'true'
-        run: pytest -q -x tests/test_build489_checkpoint.py tests/test_build489_checkpoint_rendering.py tests/test_build486_startup.py
+        run: pytest -q -x tests/test_build490_synthetic_journey.py
       - name: Full repository checkpoint regression
         if: steps.cadence.outputs.full == 'true'
         run: python tools/run_checkpoint_regression480.py
