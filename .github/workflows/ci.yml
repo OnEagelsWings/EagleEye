@@ -52,6 +52,5 @@ jobs:
       - name: Full repository checkpoint regression
         if: steps.cadence.outputs.full == 'true'
         run: python tools/run_checkpoint_regression480.py
-      - name: Phase 18-20 checkpoint chain
-        if: steps.cadence.outputs.full == 'true'
-        run: python tools/run_checkpoint_regression480.py --phase18-20
+      # The repository-wide checkpoint already includes Phase 18-20 tests.
+      # Do not run the same suites twice in this workflow.
