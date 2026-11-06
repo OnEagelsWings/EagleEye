@@ -135,3 +135,22 @@ def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch
     assert resolved != old_workspace
     assert resolved != install
     assert (install / "data" / "eagleeye.db").read_bytes() == b"legacy"
+
+
+def test_internal_diagnostics_do_not_treat_legacy_database_as_current(monkeypatch, tmp_path):
+    """A legacy-only workspace must not appear initialized for Build 490/500."""
+    from eagleeye.interfaces.web import server
+
+    monkeypatch.setattr(server, "_read_running_workspace", lambda *args, **kwargs: None)
+    root = tmp_path / "workspace"
+    data = root / "data"
+    data.mkdir(parents=True)
+    (data / "eagleeye_pro_95_0.db").write_bytes(b"old database")
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(desktop476, "BUILD", build)
+        assert desktop476.diagnostics(root)["database_present"] is False
+    (data / "eagleeye.db").write_bytes(b"new database")
+    assert desktop476.diagnostics(root)["database_present"] is True
+    monkeypatch.setattr(desktop476, "BUILD", "398.0")
+    (data / "eagleeye.db").unlink()
+    assert desktop476.diagnostics(root)["database_present"] is True
