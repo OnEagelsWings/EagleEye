@@ -56,20 +56,21 @@ def test_checkpoint_denies_anonymous_and_foreign_case(workspace):
         password="Independent!Review_2026",
         client_fingerprint=fingerprint,
     )
-    with TestClient(app) as limited:
-        limited.cookies.set(COOKIE, session.token)
-        assert limited.get("/workbench/checkpoint489",
-                           params={"case_id": cid}).status_code == 200
-        response = limited.get("/workbench/checkpoint489",
-                               params={"case_id": foreign})
-        assert response.status_code in (403, 404)
-    # Reuse the active lifespan: nested TestClient shutdown closes shared case services.
+    # Switch credentials on the fixture's existing client. Nested TestClient
+    # contexts close the same shared database when their lifespan exits.
     original_token = client.cookies.get(COOKIE)
-    client.cookies.delete(COOKIE)
+    client.cookies.set(COOKIE, session.token)
     try:
+        assert client.get("/workbench/checkpoint489",
+                          params={"case_id": cid}).status_code == 200
+        response = client.get("/workbench/checkpoint489",
+                              params={"case_id": foreign})
+        assert response.status_code in (403, 404)
+        client.cookies.delete(COOKIE)
         assert client.get("/workbench/checkpoint489",
                           params={"case_id": cid}).status_code == 401
     finally:
+        client.cookies.delete(COOKIE)
         if original_token is not None:
             client.cookies.set(COOKIE, original_token)
 
