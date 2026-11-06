@@ -22,7 +22,7 @@ _START_STAGES={'starting','healthy','stopped','health-timeout','browser-requeste
 def settings_directory():
     configured=os.environ.get('EAGLEEYE_SETTINGS_DIR')
     if configured:return Path(configured).expanduser().resolve()
-    namespace = 'EagleEye-490' if _internal_release_build() else 'EagleEye'
+    namespace = 'EagleEye-490' if _internal_release_build(BUILD) else 'EagleEye'
     if os.name=='nt':return Path(os.environ.get('LOCALAPPDATA',Path.home()/'AppData/Local'))/namespace
     return Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))/namespace
 
@@ -92,7 +92,7 @@ def resolve_workspace(install_dir):
             return root
         else:
             installed=_local_path(install_dir)
-            if _internal_release_build():
+            if _internal_release_build(BUILD):
                 root=directory/'workspace'
             else:
                 candidates=[candidate for candidate in (installed,default_runtime_root())
