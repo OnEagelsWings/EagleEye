@@ -22,8 +22,9 @@ _START_STAGES={'starting','healthy','stopped','health-timeout','browser-requeste
 def settings_directory():
     configured=os.environ.get('EAGLEEYE_SETTINGS_DIR')
     if configured:return Path(configured).expanduser().resolve()
-    if os.name=='nt':return Path(os.environ.get('LOCALAPPDATA',Path.home()/'AppData/Local'))/'EagleEye'
-    return Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))/'EagleEye'
+    namespace = 'EagleEye-490' if BUILD == '490.0' else 'EagleEye'
+    if os.name=='nt':return Path(os.environ.get('LOCALAPPDATA',Path.home()/'AppData/Local'))/namespace
+    return Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))/namespace
 
 
 def _local_path(value):
