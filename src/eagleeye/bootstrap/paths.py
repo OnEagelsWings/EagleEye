@@ -8,10 +8,21 @@ from pathlib import Path
 from eagleeye_pro.version import BUILD
 
 
+def _internal_release_build() -> bool:
+    """Keep the internal 490–500 line separate from historical installations."""
+    try:
+        major = int(str(BUILD).split(".", 1)[0])
+    except (TypeError, ValueError):
+        return False
+    return 490 <= major <= 500
+
+
 def default_runtime_root() -> Path:
     if os.name == "nt":
-        return Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))/"EagleEye"/"Spearhead"
-    return Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))/"eagleeye-spearhead"
+        parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
+        return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
+    parent = Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))
+    return parent / ("eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +94,7 @@ class RuntimePaths:
             legacy_db = data_dir / "eagleeye_pro_95_0.db"
             # New internal-release workspaces must never import a legacy DB
             # implicitly. Explicit migrations require a separate reviewed action.
-            if BUILD != "490.0" and not resolved_db.exists() and legacy_db.exists():
+            if not _internal_release_build() and not resolved_db.exists() and legacy_db.exists():
                 shutil.copy2(legacy_db, resolved_db)
                 for suffix in ("-wal", "-shm"):
                     sidecar = Path(str(legacy_db) + suffix)
