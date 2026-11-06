@@ -4,6 +4,12 @@ on:
     paths:
       - 'tests/test_build490_synthetic_journey.py'
       - 'tests/test_build490_real_server_start.py'
+      - 'tests/test_build490_package_contract.py'
+      - 'START_EAGLEEYE_PRO.bat'
+      - 'START_EAGLEEYE_PRO.sh'
+      - 'INSTALL_EAGLEEYE_490.py'
+      - 'pyproject.toml'
+      - 'eagleeye_pro/version.py'
       - '.github/workflows/build490-synthetic-smoke.yml'
       - 'src/eagleeye/**'
   workflow_dispatch:
@@ -21,4 +27,4 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e '.[test]'
       - name: Focused synthetic journey
-        run: python -m pytest -q tests/test_build490_synthetic_journey.py tests/test_build490_real_server_start.py
+        run: python -m pytest -q tests/test_build490_synthetic_journey.py tests/test_build490_real_server_start.py tests/test_build490_package_contract.py
