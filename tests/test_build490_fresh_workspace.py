@@ -105,3 +105,33 @@ def test_future_internal_release_does_not_copy_legacy_database(monkeypatch, tmp_
     assert resolved.db_path == data / "eagleeye.db"
     assert not resolved.db_path.exists()
     assert (data / "eagleeye_pro_95_0.db").read_bytes() == b"legacy"
+
+
+def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch, tmp_path):
+    """A future release must not regress to the legacy desktop settings."""
+    monkeypatch.setattr(desktop476, "BUILD", "500.0")
+    from eagleeye.bootstrap import paths
+    monkeypatch.setattr(paths, "BUILD", "500.0")
+    monkeypatch.delenv("EAGLEEYE_SETTINGS_DIR", raising=False)
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    settings = desktop476.settings_directory()
+    assert settings.name == "EagleEye-490"
+    old = settings.parent / "EagleEye"
+    old.mkdir(parents=True)
+    old_workspace = tmp_path / "legacy398"
+    old_workspace.mkdir()
+    (old / "workspace.json").write_text(
+        '{"workspace_directory": "' + str(old_workspace).replace("\\\\", "\\\\\\\\") + '"}',
+        encoding="utf-8",
+    )
+    install = tmp_path / "install"
+    (install / "data").mkdir(parents=True)
+    (install / "data" / "eagleeye.db").write_bytes(b"legacy")
+    resolved = desktop476.resolve_workspace(install)
+    assert resolved == settings / "workspace"
+    assert resolved != old_workspace
+    assert resolved != install
+    assert (install / "data" / "eagleeye.db").read_bytes() == b"legacy"
