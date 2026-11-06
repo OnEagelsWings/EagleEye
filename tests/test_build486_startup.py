@@ -15,6 +15,10 @@ def isolated_settings(monkeypatch, tmp_path):
     settings = tmp_path / "settings"
     monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
     monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    # Historical Build-486 bootstrap contracts must run under their original
+    # build identity; the active 490–500 namespace intentionally forbids
+    # implicit reuse of Build-398 data (covered separately by Build-490 tests).
+    monkeypatch.setattr(desktop476, "BUILD", "486.0")
     return settings
 
 
