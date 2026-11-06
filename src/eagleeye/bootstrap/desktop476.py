@@ -92,9 +92,12 @@ def resolve_workspace(install_dir):
             return root
         else:
             installed=_local_path(install_dir)
-            candidates=[candidate for candidate in (installed,default_runtime_root())
-                if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db'))]
-            root=candidates[0] if candidates else directory/'workspace'
+            if BUILD == '490.0':
+                root=directory/'workspace'
+            else:
+                candidates=[candidate for candidate in (installed,default_runtime_root())
+                    if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db'))]
+                root=candidates[0] if candidates else directory/'workspace'
         root.mkdir(parents=True,exist_ok=True)
         _atomic_json(settings,{'workspace_directory':str(root)})
         return root
