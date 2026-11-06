@@ -5,6 +5,8 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from eagleeye_pro.version import BUILD
+
 
 def default_runtime_root() -> Path:
     if os.name == "nt":
@@ -79,7 +81,9 @@ class RuntimePaths:
         if db_path is None:
             resolved_db = data_dir / "eagleeye.db"
             legacy_db = data_dir / "eagleeye_pro_95_0.db"
-            if not resolved_db.exists() and legacy_db.exists():
+            # New internal-release workspaces must never import a legacy DB
+            # implicitly. Explicit migrations require a separate reviewed action.
+            if BUILD != "490.0" and not resolved_db.exists() and legacy_db.exists():
                 shutil.copy2(legacy_db, resolved_db)
                 for suffix in ("-wal", "-shm"):
                     sidecar = Path(str(legacy_db) + suffix)
