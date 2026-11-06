@@ -8,10 +8,10 @@ from pathlib import Path
 from eagleeye_pro.version import BUILD
 
 
-def _internal_release_build() -> bool:
+def _internal_release_build(build: str | None = None) -> bool:
     """Keep the internal 490–500 line separate from historical installations."""
     try:
-        major = int(str(BUILD).split(".", 1)[0])
+        major = int(str(BUILD if build is None else build).split(".", 1)[0])
     except (TypeError, ValueError):
         return False
     return 490 <= major <= 500
