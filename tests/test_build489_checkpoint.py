@@ -42,7 +42,7 @@ def test_checkpoint_denies_anonymous_and_foreign_case(workspace):
     restricted = ctx.team_governance_359.create_user(
         identity=admin, username="restricted489",
         display_name="Restricted checkpoint reviewer",
-        global_role="reviewer", password="Restricted489!Password_2026",
+        global_role="reviewer", password="Independent!Review_2026",
     )
     ctx.team_governance_359.assign_case_role(
         identity=admin, case_id=cid, username=restricted["username"],
@@ -53,7 +53,7 @@ def test_checkpoint_denies_anonymous_and_foreign_case(workspace):
     fingerprint = hashlib.sha256(b"testclient||testclient").hexdigest()
     session = ctx.team_identity_359.authenticate(
         username=restricted["username"],
-        password="Restricted489!Password_2026",
+        password="Independent!Review_2026",
         client_fingerprint=fingerprint,
     )
     with TestClient(app) as limited:
