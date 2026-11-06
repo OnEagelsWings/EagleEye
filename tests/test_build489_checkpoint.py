@@ -35,9 +35,34 @@ def test_checkpoint_integrates_real_human_review_and_original(workspace, tmp_pat
 
 
 def test_checkpoint_denies_anonymous_and_foreign_case(workspace):
-    app, client, user, cid, doc, foreign, *_ = workspace
-    response = client.get("/workbench/checkpoint489", params={"case_id": foreign})
-    assert response.status_code in (403, 404)
+    app, client, admin, cid, doc, foreign, *_ = workspace
+    # The fixture's initial admin created BOTH cases and legitimately has
+    # access to both. Test cross-case denial with a genuinely restricted user.
+    ctx = app.state.context
+    restricted = ctx.team_governance_359.create_user(
+        identity=admin, username="restricted489",
+        display_name="Restricted checkpoint reviewer",
+        global_role="reviewer", password="Restricted489!Password_2026",
+    )
+    ctx.team_governance_359.assign_case_role(
+        identity=admin, case_id=cid, username=restricted["username"],
+        case_role="reviewer", notes="Only the primary synthetic case",
+    )
+    import hashlib
+    from eagleeye.interfaces.web.app448 import COOKIE
+    fingerprint = hashlib.sha256(b"testclient||testclient").hexdigest()
+    session = ctx.team_identity_359.authenticate(
+        username=restricted["username"],
+        password="Restricted489!Password_2026",
+        client_fingerprint=fingerprint,
+    )
+    with TestClient(app) as limited:
+        limited.cookies.set(COOKIE, session.token)
+        assert limited.get("/workbench/checkpoint489",
+                           params={"case_id": cid}).status_code == 200
+        response = limited.get("/workbench/checkpoint489",
+                               params={"case_id": foreign})
+        assert response.status_code in (403, 404)
     with TestClient(app) as anon:
         assert anon.get("/workbench/checkpoint489",
                         params={"case_id": cid}).status_code == 401
