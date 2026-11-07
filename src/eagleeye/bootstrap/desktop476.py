@@ -64,7 +64,11 @@ def _settings_guard():
 
 
 def remember_workspace(path):
-    root=_local_path(path);root.mkdir(parents=True,exist_ok=True)
+    root=_local_path(path)
+    # The folder picker must enforce the same isolation gate as startup.
+    # Validate before creating directories or persisting a selection.
+    _reject_legacy_internal_workspace(root)
+    root.mkdir(parents=True,exist_ok=True)
     with _settings_guard() as directory:
         _atomic_json(directory/'workspace.json',{'workspace_directory':str(root)})
     return root
