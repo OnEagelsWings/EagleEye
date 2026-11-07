@@ -63,8 +63,10 @@ def _settings_guard():
             yield directory
 
 
-def remember_workspace(path):
+def remember_workspace(path, install_dir=None):
     root=_local_path(path)
+    if install_dir is not None:
+        _reject_internal_install_as_workspace(root, install_dir)
     # The folder picker must enforce the same isolation gate as startup.
     # Validate before creating directories or persisting a selection.
     _reject_legacy_internal_workspace(root)
@@ -168,14 +170,14 @@ def diagnostics(root):
         'contains_credentials':False}
 
 
-def choose_workspace():
+def choose_workspace(install_dir=None):
     import tkinter
     from tkinter import filedialog
     window=tkinter.Tk();window.withdraw()
     try:
         selected=filedialog.askdirectory(title='EagleEye: bisherigen oder neuen Arbeitsordner wählen')
     finally:window.destroy()
-    return remember_workspace(selected) if selected else None
+    return remember_workspace(selected, install_dir=install_dir) if selected else None
 
 
 def main(argv=None):
@@ -187,7 +189,7 @@ def main(argv=None):
     args=parser.parse_args(argv)
     root=None
     try:
-        root=choose_workspace() if args.choose_workspace else resolve_workspace(args.install_root)
+        root=choose_workspace(args.install_root) if args.choose_workspace else resolve_workspace(args.install_root)
         if root is None:return 0
         print('EagleEye '+BUILD+' | Arbeitsordner: '+str(root),flush=True)
         if args.diagnose:
