@@ -281,3 +281,34 @@ def test_folder_picker_rejects_program_directory_before_persisting(monkeypatch, 
     workspace = tmp_path / "Eigene-Daten"
     assert desktop476.remember_workspace(workspace, install_dir=install) == workspace.resolve()
     assert workspace.is_dir()
+
+
+def test_internal_release_rejects_nested_install_data_without_mutation(monkeypatch, tmp_path):
+    """A data subdirectory of the program installation is not an isolated workspace."""
+    import json
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "500.0")
+    settings = tmp_path / "settings"
+    settings.mkdir()
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    install = tmp_path / "EagleEye-Programm"
+    nested = install / "data" / "Fälle-Übung"
+    nested.mkdir(parents=True)
+    marker = nested / "existing-case.txt"
+    marker.write_text("unchanged", encoding="utf-8")
+
+    monkeypatch.setenv("EAGLEEYE_DATA_DIR", str(nested))
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.resolve_workspace(install)
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.remember_workspace(nested, install_dir=install)
+    assert marker.read_text(encoding="utf-8") == "unchanged"
+    assert not (settings / "workspace.json").exists()
+
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR")
+    saved = json.dumps({"workspace_directory": str(nested)})
+    (settings / "workspace.json").write_text(saved, encoding="utf-8")
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.resolve_workspace(install)
+    assert (settings / "workspace.json").read_text(encoding="utf-8") == saved
