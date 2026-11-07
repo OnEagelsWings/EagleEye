@@ -264,3 +264,20 @@ def test_internal_release_never_uses_program_directory_as_workspace(monkeypatch,
         desktop476.resolve_workspace(install)
     assert original.read_bytes() == b"existing installation database"
     assert (settings / "workspace.json").read_text(encoding="utf-8") == saved
+
+
+def test_folder_picker_rejects_program_directory_before_persisting(monkeypatch, tmp_path):
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    settings = tmp_path / "settings"
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    install = tmp_path / "EagleEye-Programm"
+    install.mkdir()
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.remember_workspace(install, install_dir=install)
+    assert not (settings / "workspace.json").exists()
+
+    workspace = tmp_path / "Eigene-Daten"
+    assert desktop476.remember_workspace(workspace, install_dir=install) == workspace.resolve()
+    assert workspace.is_dir()
