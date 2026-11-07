@@ -312,3 +312,34 @@ def test_internal_release_rejects_nested_install_data_without_mutation(monkeypat
     with pytest.raises(ValueError, match="getrennt"):
         desktop476.resolve_workspace(install)
     assert (settings / "workspace.json").read_text(encoding="utf-8") == saved
+
+
+def test_internal_release_rejects_workspace_containing_program_tree(monkeypatch, tmp_path):
+    """A workspace parent is not isolated when it contains the installation."""
+    import json
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    settings = tmp_path / "settings"
+    settings.mkdir()
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    root = tmp_path / "gemeinsamer-Ordner"
+    install = root / "Programm-Übung"
+    install.mkdir(parents=True)
+    marker = install / "do-not-touch.txt"
+    marker.write_text("legacy install unchanged", encoding="utf-8")
+
+    monkeypatch.setenv("EAGLEEYE_DATA_DIR", str(root))
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.resolve_workspace(install)
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.remember_workspace(root, install_dir=install)
+    assert not (settings / "workspace.json").exists()
+
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR")
+    saved = json.dumps({"workspace_directory": str(root)})
+    (settings / "workspace.json").write_text(saved, encoding="utf-8")
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.resolve_workspace(install)
+    assert (settings / "workspace.json").read_text(encoding="utf-8") == saved
+    assert marker.read_text(encoding="utf-8") == "legacy install unchanged"
