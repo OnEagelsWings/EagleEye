@@ -215,3 +215,22 @@ def test_folder_picker_persists_fresh_internal_workspace(monkeypatch, tmp_path):
     root = tmp_path / "Fälle-Übung"
     assert desktop476.remember_workspace(root) == root.resolve()
     assert desktop476.resolve_workspace(tmp_path / "install") == root.resolve()
+
+
+def test_internal_release_rejects_orphaned_legacy_sqlite_sidecars(monkeypatch, tmp_path):
+    """An interrupted legacy database must not be silently adopted."""
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(tmp_path / "settings"))
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    for suffix in ("-wal", "-shm"):
+        root = tmp_path / ("legacy" + suffix)
+        data = root / "data"
+        data.mkdir(parents=True)
+        sidecar = data / ("eagleeye_pro_95_0.db" + suffix)
+        sidecar.write_bytes(b"legacy sidecar")
+        with pytest.raises(ValueError, match="ältere EagleEye-Datenbank"):
+            desktop476.remember_workspace(root)
+        assert sidecar.read_bytes() == b"legacy sidecar"
+    assert not (tmp_path / "settings" / "workspace.json").exists()
