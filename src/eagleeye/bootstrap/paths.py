@@ -88,6 +88,15 @@ class RuntimePaths:
 
         data_dir = runtime_root / "data"
         reports_dir = runtime_root / "reports"
+        if _internal_release_build():
+            # A pre-existing symlink must not redirect a fresh installation into
+            # another installation or an unrelated data directory.
+            workspace = runtime_root.resolve()
+            installation = Path(install_dir).resolve()
+            for directory in (data_dir, reports_dir):
+                target = directory.resolve()
+                if not target.is_relative_to(workspace) or target.is_relative_to(installation):
+                    raise ValueError("Internal release data directories must stay inside the workspace")
         values = {
             "evidence_dir": data_dir / "evidence_vault",
             "capture_dir": data_dir / "search_captures",
