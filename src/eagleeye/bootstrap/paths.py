@@ -80,6 +80,12 @@ class RuntimePaths:
             if chosen.is_relative_to(installation):
                 raise ValueError("Internal release database must be separate from installation")
 
+        if _internal_release_build():
+            workspace = runtime_root.resolve()
+            installation = Path(install_dir).resolve()
+            if workspace == installation or workspace.is_relative_to(installation) or installation.is_relative_to(workspace):
+                raise ValueError("Internal release workspace must be separate from installation")
+
         data_dir = runtime_root / "data"
         reports_dir = runtime_root / "reports"
         values = {
