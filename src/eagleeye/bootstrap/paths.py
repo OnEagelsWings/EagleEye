@@ -70,6 +70,16 @@ class RuntimePaths:
         }:
             raise ValueError("Internal release cannot use a legacy database path")
 
+        # A renamed legacy database must not bypass internal workspace isolation.
+        if db_path is not None and _internal_release_build():
+            chosen = Path(db_path).resolve()
+            workspace = runtime_root.resolve()
+            if not chosen.is_relative_to(workspace) or chosen == workspace:
+                raise ValueError("Internal release database must stay inside its workspace")
+            installation = Path(install_dir).resolve()
+            if chosen.is_relative_to(installation):
+                raise ValueError("Internal release database must be separate from installation")
+
         data_dir = runtime_root / "data"
         reports_dir = runtime_root / "reports"
         values = {
