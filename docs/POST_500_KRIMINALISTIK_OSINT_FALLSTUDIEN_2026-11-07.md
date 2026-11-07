@@ -174,3 +174,132 @@ Kritische Negativtests: gelöschter Originalbeleg; doppelte Medienuploads; gefä
 - [National Institute of Justice: Wrongful Convictions and DNA Exonerations](https://nij.ojp.gov/topics/articles/wrongful-convictions-and-dna-exonerations-understanding-role-forensic-science)
 
 **Forschungsgrenze:** Die 34 Katalogeinträge sind öffentlich quellenbasierte Fallskizzen, keine vollständig eingelesenen Gerichts-/Ermittlungsakten. Vor praktischer Umsetzung jeden Fall und Lizenzstatus einzeln erneut sichten und die veröffentlichten Originaldokumente/Beilagen erschließen. Bei fehlender Detailtiefe „nicht öffentlich dokumentiert“ eintragen, niemals einen Verfahrensschritt erfinden.
+
+---
+
+## 8. Ergänzung 07.11.2026: KLEINE REPRODUZIERBARE OSINT-FÄLLE UND INVESTIGATIVE RECHERCHEWEGE
+
+**Anlass:** Der Anwender möchte ausdrücklich kleinere veröffentlichte OSINT-Recherchen, Personensuchen und investigative Reportagen, die nicht nur die Endergebnisse, sondern die **wirklich durchgeführten Suchschritte**, verworfenen Möglichkeiten, Quellen und Verifikationen offenlegen. Dieser Bestand gehört in die **Post-500-Fall- und Methodenbibliothek (501–505)**; er darf **keine neue Build-500-Freigabehürde** werden.
+
+### 8.1 Qualitätskategorien für Übungsquellen
+
+- **M1: Schrittweise rekonstruiert:** Suchausgangspunkt, charakteristische Merkmale, Suchorte/Abfragen, Vergleichsmaterial und konkreter Prüfpfad im Beitrag sichtbar. Häufig fehlen historische, gelöschte oder lizenzierte Originaldateien; das wird als Reproduktionslücke notiert.
+- **M2: Methodenreportage:** Interviews/Reporternotizen geben nachvollziehbare Abfolge und Quellenklassen wieder, aber keine komplette Such-Session oder alle Originaldokumente.
+- **M3: Ergebnisbeschreibung:** Rechercheansatz ist ersichtlich, aber viele Zwischenschritte fehlen; **nicht** als vollständig reproduzierbare Übung ausgeben.
+
+**Zusätzliche Kennzeichnung** für jeden Fall: zulässiger Quellenzugang, Asset-Lizenz und Verfügbarkeit, personenbezogene Risiken, Stand der Tatsachen-/Gerichtsprüfung, frühester gesicherter Zeitpunkt, methodische Einschränkungen, synthetische Ersatzdaten nötig: ja/nein.
+
+### 8.2 Kleine öffentliche Suchfälle – besonders geeignet für Einstiegsübungen
+
+| ID | Öffentlicher Fall / Quelle | Dokumentierte Abfolge und überprüfbarer Wendepunkt | M | Übung in EagleEye |
+|---|---|---|---|---|
+| **S01** | [Kumbo/Kumfutu: Geolokalisierung eines Brandvideos, Bellingcat 2018](https://www.bellingcat.com/resources/case-studies/2018/11/21/geolocation-infrastructure-destruction-cameroon-case-study-kumbo-kumfutu/) | Video mit vorläufiger Ortsbehauptung → auffälliges **rotes Dach**, Shops und unfertiges Gebäude benennen → Luftbilder absuchen → Position durch weitere Bilddetails prüfen. Keine Identifizierung eines konkreten Täters allein durch Ortsbestimmung. | M1 | 1 Video, 3 visuelle Marker, 2 konkurrierende Orte; Quellenanker auf Frames |
+| **S02** | [Prag: Datierung durch wechselnde Galerieaufschrift, Bellingcat 2018](https://www.bellingcat.com/resources/how-tos/2018/10/24/dali-warhol-boshirov-determining-time-alleged-photograph-skripal-suspect-chepiga/) | Öffentliches Foto mit Uploaddatum → temporäres Detail an Kunstgalerie → archivierte Bilder von VK, Street View, Suchmaschinen und Tourismusplattformen → engeres **Zeitintervall**, kein exaktes Aufnahmedatum. Die Echtheit eines möglichen Social-Media-Profils wird dadurch **nicht** bewiesen. | M1 | Aufnahmezeit ≠ Uploadzeit; Negativbeleg und Zeitintervall statt Punktdatum |
+| **S03** | [Moskauer Gruppenfoto: Herkunftsort verifizieren, Bellingcat 2022](https://www.bellingcat.com/resources/2022/10/28/how-we-geolocated-a-photo-of-a-russian-missile-programming-team/) | Anonym eingesandtes Gruppenfoto → Ortsangabe **unbestätigt** → Tor, Treppe, Ziegel, Fenster, Regenrinne katalogisieren → geogetaggtes unabhängiges Referenzbild auf VK → Mikro-Merkmale abgleichen. | M1 | Hinweise aus anonymer Quelle, Geoverifikation und Personenzuordnung gesondert |
+| **S04** | [Ein Foto zeigt eine Buk-Stellung: Standort aus öffentlich bekannten Straßenmerkmalen, Bellingcat 2014](https://www.bellingcat.com/resources/case-studies/2014/07/18/identifying-the-location-of-the-mh17-linked-missile-launcher-from-one-photograph/) | Ein Ausgangsfoto → auffälliger Laden und gestreifter Wohnblock → andere lokal beschriftete Dashcam-/Fahrvideos → Straßenzug auf Karte nachverfolgen → Standort der Aufnahme rekonstruieren. | M1 | Such-Pivot `Foto→Geschäft→Fahrvideo→Satellitenkarte`, alle Schritte als nachvollziehbare Evidence-Links |
+| **S05** | [Falsch zugeordnetes Aldi-Video in den Niederlanden, Bellingcat 2021](https://www.bellingcat.com/resources/2021/11/01/a-beginners-guide-to-social-media-verification/) | TikTok behauptet Pandemie-Panikkäufe in Haarlem → Screenshot als Reverse-Image-Suche (Bing) → älterer YouTube-Upload zu **Kiel 2011** → Schild einer deutschen Friseurkette als Zusatzmarker. | M1 | absichtliche Fehlbeschriftung; ursprünglichen Kontext finden und Falschclaim widerrufen |
+| **S06** | [12 Fotos im Fall Babiš: Ort/Zeit, aber nicht Freiwilligkeit, Bellingcat 2019](https://www.bellingcat.com/news/2019/02/07/wheres-babis-geolocating-the-alleged-father-son-kidnapping-mystery/) | Öffentlich verbreitete und wieder entfernte Fotos → Medienarchive und alternative Versionen → einzelne Bilder an Geomerkmalen abgleichen → teils nur ungefähre zeitliche Einordnung → **12/12 Orte** lokalisiert, kein Schluss auf Freiwilligkeit. | M1 | viele unabhängige Bildanker, unterschiedliche Prüfsicherheit; sensibles Ergebnis begrenzen |
+| **S07** | [Historische Foto-Rätsel des Zweiten Weltkriegs, Bellingcat 2023](https://www.bellingcat.com/news/2023/08/04/solving-world-war-ii-photo-mysteries-with-open-source-techniques/) | Archivfotos mit unklarem Aufnahmeort → sichtbare Landschafts-/Gebäudemerkmale → historische Karten und Vergleichsbilder → Orts- und Datierungshypothesen prüfen. | M1/M2 | datenschutzarmes Anfängertraining mit historischen Bildern, keine aktuelle Zielperson |
+| **S08** | [Colombia: Bildmanipulations-/Kontextprüfung, Bellingcat 2023](https://www.bellingcat.com/resources/2023/05/02/testing-for-manipulation-a-case-study-from-colombia/) | virale Fotos/Video mit behauptetem Ort → Straßenkreuzung in Street View vergleichen → historische Satellitenbilder zur Erklärung veränderter Merkmale → Bilder und weitergehende Gruppenbehauptungen separat bewerten. | M1 | manipulierten Kontext aufdecken, ohne aus visuellem Match Urheberschaft abzuleiten |
+| **S09** | [Memphis Belle: historische Luftaufnahmen geolokalisieren, Bellingcat 2020](https://www.bellingcat.com/resources/2020/08/12/historic-bombing-runs-the-memphis-belle-case/) | Filmsequenzen aus Kriegsdokumentation → auffällige Landschafts-/Infrastrukturpunkte → Karten und weitere Bildquellen → Aufnahmepositionen identifizieren. | M1/M2 | historische Bild-/Videobefunde, Raum-Zeit-Unsicherheit |
+| **S10** | [Künstler-/Bauwerkmerkmale statt EXIF: Bellingcat-Tutorial OpenStreetMap](https://www.bellingcat.com/resources/how-tos/2023/05/08/finding-geolocation-leads-with-bellingcats-openstreetmap-search-tool/) | Objektklasse (z. B. Supermarkt/Eisenbahn/Brücke) erkennen → OSM-Objekte nach Merkmalen filtern → Kartenkandidaten mit Bild vergleichen → falsche Kandidaten ausschließen. **Methodenübung, kein konkretes abgeschlossenes Strafverfahren.** | M1 | nachvollziehbare Query-Bedingung, Trefferliste, Kandidaten-Widerlegung |
+
+### 8.3 Kleine bis mittlere journalistische Recherchen mit transparentem Arbeitsweg
+
+| ID | Reportage und veröffentlichte Methodik | Rechercheverlauf | M | EagleEye-Kompetenz |
+|---|---|---|---|---|
+| **J01** | [Ein Journalist findet einen gesuchten ehemaligen ruandischen Militärangehörigen, GIJN 2020](https://gijn.org/stories/how-they-did-it-tracking-down-a-rwandan-genocide-suspect/) | historische Gerichtsverfahren → Verwaltungs- und Asylunterlagen → rechtmäßige Dokumentenanfragen → Quervergleich und Vor-Ort-Verifikation. **Historische, veröffentlichte Ermittlung; keine aktuellen privaten Aufenthaltsdaten ins Lernmaterial.** | M2 | Rechercheplan/Document-Pivot, Identifizierung nur nach unabhängiger Prüfung |
+| **J02** | [Argentinien: Vernachlässigte Pferde / illegale Pferdefleischlieferkette, GIJN 2025](https://gijn.org/stories/unravelled-mystery-field-starving-horses-argentina/) | alte Lokalnachricht → lokale NGO und Rechtsvertretung → Gerichtsakten → Schlachtbetriebe, Preise, Geschäftsbeziehungen und europäische Abnehmer → Gegenanfragen. Reporter beschreibt auch **nicht beantwortete Interviewanfragen**. | M2 | Folgerecherche aus kleinem Hinweis, Dokumente/Zeugen/Handelsgraph, offene Fragen |
+| **J03** | [Basel: Wo sind freie private Parkplätze?, CORRECTIV/Bajour 2023](https://correctiv.org/aktuelles/international/2023/06/27/klima-quartierparking-parkplatz-not-in-basel-leser-decken-tausende-freie-parkplaetze-auf/) | Crowd-Meldungen → Adressen mit drei übereinstimmenden Meldungen als vorläufig bestätigt → Detailerhebung → Immobilienbesitzer befragen → Ausschluss bekannter öffentlicher Parkhäuser erklären. **Kein Straffall**, jedoch nahezu ideale kleine dokumentierte Recherche. | M2 | Crowdsourcing, korrelierte Aussagen ≠ drei unabhängige Belege, Auswahlverzerrung |
+| **J04** | [Somalia: Holzkohlehandel, CORRECTIV 2022](https://correctiv.org/aktuelles/2022/12/12/hauptsache-kohle/) | anonyme Smartphone-Hinweise → Fotos → Satellitenabgleich → Einzelinterviews → lokale journalistische Prüfung. Starker **Quellenschutz** erforderlich. | M2 | Remote-Feldhinweise und Satellitenvergleich; anonyme Quelle nicht automatisch legitimiert |
+| **J05** | [Bangladesch: vermeintlich falsche Sozialhilfe-Bezieherinnen, GIJN 2019](https://gijn.org/?p=135684) | Beschwerden aus Dörfern → Auskunftsbegehren zu rund 7.500 Empfängern → Stichprobenmethodik → ergänzende Verwaltungsakten und Feldbesuche → Hypothese über Systemfehler revidieren/erweitern. | M2 | seriöse Stichprobe, Verzerrung, Dokument↔Interview↔Sachverhalt |
+| **J06** | [OpenCorporates: deutsche Handelsregistereinträge verknüpfen, GIJN 2019](https://gijn.org/stories/how-they-did-it-gathering-data-on-over-5-million-german-companies/) | unstrukturierte Bekanntmachungen → Identifikatoren und Registergericht prüfen → Registerabgleich → Namens-/Organrollen mit Fehlerflag → Qualität vor Vollständigkeit. | M2 | deutsches Register, Entity Resolution, Dubletten, gleichnamige Personen, falsche Positivtreffer |
+| **J07** | [US-Krankenhausschulden: Gerichtsdaten auswerten, ProPublica/MLK50](https://www.propublica.org/article/what-it-looks-like-when-a-hospital-we-investigated-erases-millions-in-medical-debt) | Erledigungsmitteilungen des Gerichts → Fallnummern in Online-Zahlungsregister zurückverfolgen → Betrag aggregieren → Einschränkung bei Erlass und unvollstreckbaren Schulden offenlegen. | M2 | Dokument-ID-Abgleich, transparente Rechnungen, Zahlen mit nicht abgedecktem Rest |
+| **J08** | [UK Post Office / Horizon: kleine Lokal-/Fachredaktionen decken Fehlverurteilungen auf, GIJN 2025](https://gijn.org/stories/exposing-uk-post-office-scandal/) | frühe Betroffenenhinweise → technische Systemprobleme als Alternativhypothese → weitere gleichartige Fälle → langjährige Dokumenten-/Expertenrecherche → spätere gerichtliche Feststellungen. | M2 | Gegenhypothese, Fehlerkorrektur, Hypothesenpflege über Jahre |
+| **J09** | [ProPublica: Videobelege zu mutmaßlich unzulässigen Festnahmetechniken, 2026](https://www.propublica.org/article/videos-ice-dhs-immigration-agents-using-chokeholds-citizens) | Social-Media-/Lokalmedien-/Gerichtsrecherche → Kontextverifikation → acht unabhängige Fachgutachter → Betroffenen-/Zeugenanfragen → Vorwürfe gegen Dokumente prüfen → Anfrage an betroffene Behörden. **Bewertung der Reporter/Experten, keine pauschale gerichtliche Feststellung.** | M2 | externe Expertise, Gegenseite anhören, Kontext/Zeitlinie, methodischer Vorbehalt |
+| **J10** | [Öffentliches Yachttracking und Bildabgleich, Bellingcat 2015](https://www.bellingcat.com/resources/case-studies/2015/08/19/yachtspotting/) | Fotos und öffentliche Reise-/Schiffsdaten → Merkmale des Schiffsinterieurs → Orts-/Zeitvergleich → Beziehungsbehauptungen kritisch abgrenzen. **Nur rückblickende veröffentlichte Belege; keine Live-Verfolgung privater Personen.** | M1/M2 | Orts-/Zeit-Korrelation ist kein Identitäts- oder Tatnachweis |
+| **J11** | [Gaza: Wie BBC Verify öffentliche Trainingsvideos und Orte verifizierte, GIJN 2024](https://gijn.org/stories/bbc-open-source-investigate-gaza/) | Themenbezogene öffentliche Kanäle organisieren → Videoarchiv anlegen → anhand von Satellitenmerkmalen Trainingsorte lokalisieren → historische Satellitenstände prüfen → redaktionell abgleichen. | M2 | viele Teilbelege, Video-/Ort-Deduplikation und zeitliche Kontextprüfung |
+| **J12** | [Forensic Architecture / Al-Haq: Shireen Abu Akleh, Methodikbericht 2022](https://forensic-architecture.org/investigation/the-extrajudicial-killing-of-shireen-abu-akleh-extended-report/) | 30+ Videos/Fotos/Zeugnisse/Spuren → synchronisierte Medien-Timeline → Geolokalisierung, Audio- und 3D-Raumanalyse → Bericht mit Einzelschritten und Belegbezügen. **Fachliche Schlussfolgerungen der Autoren, nicht mit Gerichtsurteil gleichsetzen.** | M1 (umfangreich) | multimodale Synchronisation und alternative Erklärungen |
+| **J13** | [Syrien: verschwundene Kinder, internationale Reportagerecherche 2026](https://gijn.org/stories/uncovering-syrias-stolen-children/) | Presse-/Social-Media-Hinweise → Dokumente verschiedener Einrichtungen → Datenbank mit überprüften Fällen → Interviews/Quervergleiche. **Besonders schutzbedürftige Minderjährige: nur synthetische Modelle übernehmen.** | M2 | datensparsames Abgleichen und sichere Quellen-/Opferrechte |
+| **J14** | [Kryptowährungs-Börse unter neuem Namen, GIJN 2026](https://gijn.org/?p=2836007) | Sanktions- und Unternehmenshinweise → offen dokumentierte Geschäfts- und Zahlungsbeziehungen → zusätzliche journalistische Nachweise. **Verdeckte Originalmethoden nicht als automatisierbare EagleEye-Funktion nachbauen.** | M2 | Corporate-Entity-Resolution, wirtschaftliche Identität getrennt von Claim |
+| **J15** | [OCCRP-Recherchehandbuch zur Personensuche, GIJN 2026](https://gijn.org/stories/reporters-notebook-how-to-track-down-people-who-dont-want-to-be-found/) | methodische Übersicht zu öffentlichen Datenspuren, Archiven, Datenbanken und Gegenprüfung; ausdrücklich: ein mit Mail/Telefon angezeigtes Profil **belegt nicht** die Inhaberschaft. **Methodenartikel, kein vollständig reproduzierbarer Einzelfall.** | M2 | Suchhypothesen, Fehlidentifikationen, Datenminimierung, rechtmäßige Quelle |
+
+### 8.4 Konkreter Standard einer „Rechercheweg-Karte“ in EagleEye
+
+Diese Karte wird **über die vorhandenen Fall-/Evidence-/Review-/Lernservices** umgesetzt; wenn ein Feld fehlt, möglichst zunächst als strukturierte Metadaten statt neuer Hauptnavigation:
+
+```text
+Fall-ID / methodische Übungs-ID:
+Fragestellung und erlaubter Untersuchungsumfang:
+Ausgangshinweis: Wortlaut, Kontext, Provenienz, Stand der Prüfung:
+Suchschritt-ID:
+  Hypothese:
+  verwendete Quelle/Toolversion/Datum:
+  nachvollziehbare Suchbedingungen (sensible Kennungen redigieren):
+  gefundenes Original und URI/Archiv-ID:
+  Originalhash (falls Datei verfügbar):
+  relevanter Ausschnitt/Seiten- oder Frameanker:
+  Warum dieser Fund zum nächsten Suchschritt führte:
+  Alternative Erklärung / Fehlzuordnung:
+  Beurteilung: unbestätigt / teilweise / unabhängig geprüft / widerlegt:
+  Bearbeiter und Auditzeit:
+  zulässiger nächster Schritt / explizite Genehmigung:
+Ergebnis und Aussagegrenzen:
+Quellen-/Lizenz-/Datenschutzprüfung:
+Menschlicher Review und Korrekturen:
+Übertragbare methodische Lehre (erst nach Freigabe):
+```
+
+Ein **negativer Suchschritt** (kein Treffer, ungültiger Link, verworfene Hypothese, keine Berechtigung) bleibt sichtbar. Damit kann EagleEye später unterscheiden: „nicht gefunden“ ist **nicht** „gibt es nicht“.
+
+### 8.5 Priorisierte Miniübungen und konkrete Soll-Ergebnisse
+
+**Übung E01, 20–30 Minuten – falsches TikTok-/Kiel-Video (S05):**
+- Nur veröffentlichte Standbilder und Kontextaussagen aus dem Bellingcat-Beispiel bzw. rechtmäßig frei verwendbares Ersatzmaterial.
+- Lernziel: Reverse-Image-Fund, **2011er Erst-/Frühveröffentlichung**, widersprechender Orts-/Zeit-Claim, zwei Quellenanker.
+- Fehlerfall: aktuelles Uploaddatum wird als Aufnahmedatum angenommen.
+
+**Übung E02, 30–45 Minuten – Kumbo-Dach (S01):**
+- Sichtbare Dach-/Straßenmerkmale in annotiertem Bild; mindestens zwei alternative Kartenausschnitte anbieten.
+- Lernziel: 3 Marker dokumentieren, nachvollziehbar einen Kartenkandidaten verwerfen, Ortsbestimmung **ohne** Täterzuordnung.
+- Fehlerfall: ein einzelnes rotes Dach wird voreilig als zweifelsfrei passend gewertet.
+
+**Übung E03, 30–60 Minuten – Prag-Galerie (S02):**
+- Historische Fassadenansichten mit verschiedenen Ausstellungsaufschriften und **getrennten** Aufnahme-/Uploadzeitpunkten.
+- Lernziel: frühestes/spätestes mögliches Aufnahmedatum als Intervall mit Provenienz und konkurrierender Erklärung.
+- Fehlerfall: nachträglich hochgeladenes Bild als zeitgenössisches Datum behandeln.
+
+**Übung E04, 45–90 Minuten – deutsches Firmenregister (J06):**
+- Kleine **synthetische** Handelsregisterbekanntmachungen mit gleichen Namen, verschiedenen Registergerichten und überlappenden Jahreszahlen.
+- Lernziel: Gesellschaften anhand Registerkennung unterscheiden, Organrolle mit Zeitraum, keine unbestätigte Familienbeziehung.
+- Fehlerfall: Name+Ort als Personenidentität missbrauchen.
+
+**Übung E05, 60–120 Minuten – Recherche vom lokalen Hinweis zum Dossier (J02 oder J05):**
+- Anonymisierte Ausgangsmeldung, einige Gerichts-/Registerdokumente, eine Aussage und ein entlastendes Dokument.
+- Lernziel: Recherchewelle planen, Belege und Aussagen trennen, einen Suchpivot begründen, Widerspruch im Bericht offenlegen.
+- Fehlerfall: Hypothese als erwiesene Straftat darstellen.
+
+**Übung E06, 60–120 Minuten – Personensuche als historische Dokumentenprüfung (J01):**
+- Nur **synthetische** Personendaten und allgemein zugängliche Verfahrensdokumente, keine aktuelle reale Privatperson.
+- Lernziel: 2 gleichnamige Personen getrennt halten, Dokumentenbezug und rechtmäßige Quelle prüfen, frühere falsche Zuordnung zurücknehmen.
+- Fehlerfall: Telefonnummer, Account oder räumliche Nähe als exakte Identifizierung ausgeben.
+
+### 8.6 Ergänzung der bestehenden Post-500-Builds
+
+- **501–505 (Fallbibliothek):** vor allem E01–E04 als erste öffentliche/synthetische, rechtlich freigegebene Einsteigerkarten; die umfangreicheren Fälle als Modulreferenzen. Gleicher sechs Bereiche umfassender Workflow, keine siebte Hauptnavigation.
+- **506–510 (Evidence-Provenienz):** Suchschritt→Original/Derivat→Folgesuche→Claim-Anker inklusive **Fehlschritten** und Datenrechten durchgängig testen.
+- **511–520 (Geo-/Chrono-/Bildprüfung):** E02/E03 und GVC-Bildvergleich, unabhängige Referenzen und Zeitfenster statt eindimensionalem „Match“.
+- **521–535 (Netzwerk-/Dokumentmethoden):** E04/E05 und behördliche/sekundäre Datensätze, öffentliche Firmen-/Registeridentitäten, Aussagen versus externe Fachberichte.
+- **536–540 (Fehlerkontrolle):** E06 plus Mayfield und Post-Office-Fälle; auch nach Neustart/Restore wird eine **zurückgenommene** Entity-Kante nicht als aktueller Treffer angezeigt.
+- **541–545 (Montessori-Lernwerkstatt):** vorbereitete Mini-Fälle nach Schwierigkeitsgrad; Hinweise stufenweise; Selbstkontrolle anhand veröffentlichter Suchwege; Reflexion „warum dieser Pivot?“ statt reiner Trefferquote.
+- **546–550 (Pilot/Qualität):** neue Übungsfälle als zusätzliche Regressionen, aber unverändert drei robuste übergreifende Pilotdossiers und formale Review-/Integritätsprüfungen.
+
+### 8.7 Juristische und reproduktionstechnische Sicherungen
+
+1. Öffentlich dokumentierte Journalistenrecherche ist nicht automatisch ein für private Ermittler **zulässiger** Suchvorgang. Keine unbefugten Kontozugriffe, Passwortreset-Tricks, De-Anonymisierung nicht öffentlicher Konten, Täuschungshandlungen oder Übernahme verdeckter behördlicher Befugnisse als Standardaufgabe.
+2. Veröffentlichung eines Fotos/Videos bedeutet nicht, dass die Datei frei lizenziert und in die App redistributierbar ist. Falls Rechte/Original unklar sind: **nur Originalquelle verlinken und synthetisches Ersatzmaterial erzeugen**, Quelle im Literaturverzeichnis sichern.
+3. „Personensuche“ als Übung nur mit öffentlichen historischen Fällen oder synthetischen Personen. Bei aktuellen Vermisstenfällen nur gesondert legitimierte Aufträge mit Einwilligung/Zuständigkeit und schützendem Umgang mit Daten, keine eigenständige Veröffentlichung privater Adressen/Bewegungsmuster.
+4. Der **Nachvollziehbarkeitsgrad M1/M2/M3** ist etwas anderes als die **Beweis- und Gerichtsqualität A/B/C/D** des Hauptdokuments; beide separat anzeigen.
+5. Eigene Testerfolge sind nur dann „reproduziert“, wenn ein unabhängiger Bearbeiter mit zulässigen öffentlich zugänglichen oder rechtmäßig lizenzierten Eingabedaten die gleichen entscheidenden **Zwischenschritte** durchführen kann. Eine mit Quelle beschriftete, nachträglich erstellte Erzählung allein reicht nicht.
+
+**Zusammenfassung:** Diese Ergänzung verschiebt den Schwerpunkt des Nach-500-Lernens von spektakulären großen Fällen zu **kleinen, reproduzierbaren Fallketten**, in denen Suchentscheidungen, verworfene Treffer, Gegenprüfung und Quellenanker im Mittelpunkt stehen – weiterhin ohne Änderungen am Build-500-Release-Gate.
