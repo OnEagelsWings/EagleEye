@@ -87,8 +87,12 @@ def _reject_legacy_internal_workspace(root):
 
 def _reject_internal_install_as_workspace(root, install_dir):
     """An internal-release data workspace must not be the program directory."""
-    if _internal_release_build(BUILD) and root == _local_path(install_dir):
-        raise ValueError('Programm- und Arbeitsordner müssen für Build 490–500 getrennt sein.')
+    if _internal_release_build(BUILD):
+        installed = _local_path(install_dir)
+        # A nested workspace (e.g. <install>/data) is just as unsafe as the
+        # installation root: upgrades and removals must not touch case data.
+        if root == installed or installed in root.parents:
+            raise ValueError('Programm- und Arbeitsordner müssen für Build 490–500 getrennt sein.')
 
 
 def resolve_workspace(install_dir):
