@@ -117,6 +117,15 @@ class RuntimePaths:
             "secure_storage_dir": data_dir / "secure_storage",
             "collaboration_dir": reports_dir / "collaboration_bundles",
         }
+        if _internal_release_build():
+            # Validate every existing nested directory before creating anything:
+            # a symlink in evidence_vault or another module directory must not
+            # redirect writes to an older installation or outside the workspace.
+            workspace = runtime_root.resolve()
+            for directory in values.values():
+                target = directory.resolve()
+                if not target.is_relative_to(workspace):
+                    raise ValueError("Internal release module directories must stay inside the workspace")
         for path in (data_dir, reports_dir, *values.values()):
             path.mkdir(parents=True, exist_ok=True)
 
