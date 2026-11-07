@@ -108,6 +108,9 @@ class _Response:
 
 
 def test_running_server_requires_matching_workspace_instance(tmp_path, monkeypatch):
+    # Validate the historical 486 contract against its own build identity.
+    # The active server correctly rejects older builds by default.
+    monkeypatch.setattr(server, "BUILD", "486.0")
     root = tmp_path / "workspace"
     nonce = "a" * 48
     server._write_runtime(root, host="127.0.0.1", port=8765, instance_id=nonce)
@@ -132,6 +135,7 @@ def test_running_server_requires_matching_workspace_instance(tmp_path, monkeypat
 
 
 def test_browser_readiness_does_not_trust_unrelated_local_server(monkeypatch):
+    monkeypatch.setattr(server, "BUILD", "486.0")
     class _Opener:
         def __init__(self, instance):
             self.instance = instance
