@@ -5,6 +5,7 @@ on:
       - 'tests/test_build490_synthetic_journey.py'
       - 'tests/test_build490_real_server_start.py'
       - 'tests/test_build490_package_contract.py'
+      - 'tests/test_build490_fresh_workspace.py'
       - 'START_EAGLEEYE_PRO.bat'
       - 'START_EAGLEEYE_PRO.sh'
       - 'INSTALL_EAGLEEYE_490.py'
@@ -27,4 +28,4 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e '.[test]'
       - name: Focused synthetic journey
-        run: python -m pytest -q tests/test_build490_synthetic_journey.py tests/test_build490_real_server_start.py tests/test_build490_package_contract.py
+        run: python -m pytest -q tests/test_build490_synthetic_journey.py tests/test_build490_real_server_start.py tests/test_build490_package_contract.py tests/test_build490_fresh_workspace.py
