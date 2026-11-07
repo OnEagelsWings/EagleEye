@@ -83,6 +83,12 @@ def _reject_legacy_internal_workspace(root):
         raise ValueError('Dieser Arbeitsordner enthält eine ältere EagleEye-Datenbank. Für Build 490–500 bitte einen eigenen neuen Arbeitsordner wählen.')
 
 
+def _reject_internal_install_as_workspace(root, install_dir):
+    """An internal-release data workspace must not be the program directory."""
+    if _internal_release_build(BUILD) and root == _local_path(install_dir):
+        raise ValueError('Programm- und Arbeitsordner müssen für Build 490–500 getrennt sein.')
+
+
 def resolve_workspace(install_dir):
     with _settings_guard() as directory:
         explicit=os.environ.get('EAGLEEYE_DATA_DIR')
@@ -103,6 +109,7 @@ def resolve_workspace(install_dir):
             if not root.is_dir():
                 raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bestehende Daten nicht überschreiben; bitte den bisherigen Datenordner auswählen.')
             _reject_legacy_internal_workspace(root)
+            _reject_internal_install_as_workspace(root, install_dir)
             return root
         else:
             installed=_local_path(install_dir)
@@ -113,6 +120,7 @@ def resolve_workspace(install_dir):
                     if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db'))]
                 root=candidates[0] if candidates else directory/'workspace'
         _reject_legacy_internal_workspace(root)
+        _reject_internal_install_as_workspace(root, install_dir)
         root.mkdir(parents=True,exist_ok=True)
         _atomic_json(settings,{'workspace_directory':str(root)})
         return root
