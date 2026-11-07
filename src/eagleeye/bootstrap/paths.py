@@ -102,6 +102,13 @@ class RuntimePaths:
                         shutil.copy2(sidecar, Path(str(resolved_db) + suffix))
         else:
             resolved_db = Path(db_path)
+            # An explicit database override must not bypass the internal
+            # release boundary or point back at a legacy SQLite database.
+            if _internal_release_build() and resolved_db.name in {
+                "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
+                "eagleeye_pro_95_0.db-shm",
+            }:
+                raise ValueError("Internal release cannot use a legacy database path")
             resolved_db.parent.mkdir(parents=True, exist_ok=True)
 
         return cls(
