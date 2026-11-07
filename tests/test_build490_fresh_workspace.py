@@ -234,3 +234,33 @@ def test_internal_release_rejects_orphaned_legacy_sqlite_sidecars(monkeypatch, t
             desktop476.remember_workspace(root)
         assert sidecar.read_bytes() == b"legacy sidecar"
     assert not (tmp_path / "settings" / "workspace.json").exists()
+
+
+def test_internal_release_never_uses_program_directory_as_workspace(monkeypatch, tmp_path):
+    """An explicit or previously saved install-root selection must fail closed."""
+    import json
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    settings = tmp_path / "settings"
+    settings.mkdir()
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    install = tmp_path / "Programm-Übung"
+    install.mkdir()
+    (install / "data").mkdir()
+    original = install / "data" / "eagleeye.db"
+    original.write_bytes(b"existing installation database")
+
+    monkeypatch.setenv("EAGLEEYE_DATA_DIR", str(install))
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.resolve_workspace(install)
+    assert original.read_bytes() == b"existing installation database"
+    assert not (settings / "workspace.json").exists()
+
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR")
+    saved = json.dumps({"workspace_directory": str(install)})
+    (settings / "workspace.json").write_text(saved, encoding="utf-8")
+    with pytest.raises(ValueError, match="getrennt"):
+        desktop476.resolve_workspace(install)
+    assert original.read_bytes() == b"existing installation database"
+    assert (settings / "workspace.json").read_text(encoding="utf-8") == saved
