@@ -1,4 +1,5 @@
 from eagleeye_pro.version import BUILD as RUNTIME_BUILD, SCHEMA_VERSION
+from eagleeye_pro.version import historical_schema_compatible
 
 
 class Build440Phase19QualificationService:
@@ -44,7 +45,7 @@ class Build440Phase19QualificationService:
                 component_integrity[name] = False
         last = self.qualification440.latest()
         checks = {
-            "version_coherent": RUNTIME_BUILD == SCHEMA_VERSION and int(RUNTIME_BUILD.split(".")[0]) >= int(self.BUILD.split(".")[0]),
+            "version_coherent": historical_schema_compatible(RUNTIME_BUILD, SCHEMA_VERSION, self.BUILD) and int(RUNTIME_BUILD.split(".")[0]) >= int(self.BUILD.split(".")[0]),
             "qualification_record_integrity": status["integrity_valid"],
             "all_current_component_integrity": all(component_integrity.values()),
             "passing_phase19_qualification": bool(last and last["result"] == "pass"),

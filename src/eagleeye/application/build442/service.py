@@ -1,4 +1,5 @@
 from eagleeye_pro.version import BUILD as RUNTIME_BUILD, SCHEMA_VERSION
+from eagleeye_pro.version import historical_schema_compatible
 
 
 class Build442SurfaceHardeningService:
@@ -42,7 +43,7 @@ class Build442SurfaceHardeningService:
         return {
             **status,
             "version_coherent": (
-                RUNTIME_BUILD == SCHEMA_VERSION
+                historical_schema_compatible(RUNTIME_BUILD, SCHEMA_VERSION, self.BUILD)
                 and int(RUNTIME_BUILD.split(".")[0]) >= int(self.BUILD.split(".")[0])
             ),
             "phase": 20,

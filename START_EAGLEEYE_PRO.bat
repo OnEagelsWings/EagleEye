@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 487
+title EagleEye Build 490
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -20,10 +20,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
-%PYTHON% INSTALL_EAGLEEYE_487.py
+set "EAGLEEYE_SETTINGS_DIR=%CD%\.eagleeye-config-490"
+set "EAGLEEYE_DATA_DIR=%CD%\.eagleeye-data-490"
+%PYTHON% INSTALL_EAGLEEYE_490.py
 if errorlevel 1 goto :failed
 
-set "RUNTIME_PY=.eagleeye-runtime\Scripts\python.exe"
+set "RUNTIME_PY=.eagleeye-runtime-490\Scripts\python.exe"
 if not exist "%RUNTIME_PY%" goto :failed
 
 "%RUNTIME_PY%" -I -m eagleeye.bootstrap.desktop476 --install-root "%CD%"
@@ -32,8 +34,8 @@ exit /b 0
 
 :failed
 echo.
-echo EagleEye Build 487 did not install or start successfully.
-echo Run: %PYTHON% INSTALL_EAGLEEYE_487.py --check
+echo EagleEye Build 490 did not install or start successfully.
+echo Run: %PYTHON% INSTALL_EAGLEEYE_490.py --check
 echo.
 pause
 exit /b 1

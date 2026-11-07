@@ -5,11 +5,24 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from eagleeye_pro.version import BUILD
+
+
+def _internal_release_build(build: str | None = None) -> bool:
+    """Keep the internal 490–500 line separate from historical installations."""
+    try:
+        major = int(str(BUILD if build is None else build).split(".", 1)[0])
+    except (TypeError, ValueError):
+        return False
+    return 490 <= major <= 500
+
 
 def default_runtime_root() -> Path:
     if os.name == "nt":
-        return Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))/"EagleEye"/"Spearhead"
-    return Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))/"eagleeye-spearhead"
+        parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
+        return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
+    parent = Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))
+    return parent / ("eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +64,28 @@ class RuntimePaths:
         else:
             runtime_root = Path(base_dir)
 
+        if db_path is not None and _internal_release_build() and Path(db_path).name in {
+            "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
+            "eagleeye_pro_95_0.db-shm",
+        }:
+            raise ValueError("Internal release cannot use a legacy database path")
+
+        # A renamed legacy database must not bypass internal workspace isolation.
+        if db_path is not None and _internal_release_build():
+            chosen = Path(db_path).resolve()
+            workspace = runtime_root.resolve()
+            if not chosen.is_relative_to(workspace) or chosen == workspace:
+                raise ValueError("Internal release database must stay inside its workspace")
+            installation = Path(install_dir).resolve()
+            if chosen.is_relative_to(installation):
+                raise ValueError("Internal release database must be separate from installation")
+
+        if _internal_release_build():
+            workspace = runtime_root.resolve()
+            installation = Path(install_dir).resolve()
+            if workspace == installation or workspace.is_relative_to(installation) or installation.is_relative_to(workspace):
+                raise ValueError("Internal release workspace must be separate from installation")
+
         data_dir = runtime_root / "data"
         reports_dir = runtime_root / "reports"
         values = {
@@ -79,7 +114,9 @@ class RuntimePaths:
         if db_path is None:
             resolved_db = data_dir / "eagleeye.db"
             legacy_db = data_dir / "eagleeye_pro_95_0.db"
-            if not resolved_db.exists() and legacy_db.exists():
+            # New internal-release workspaces must never import a legacy DB
+            # implicitly. Explicit migrations require a separate reviewed action.
+            if not _internal_release_build() and not resolved_db.exists() and legacy_db.exists():
                 shutil.copy2(legacy_db, resolved_db)
                 for suffix in ("-wal", "-shm"):
                     sidecar = Path(str(legacy_db) + suffix)

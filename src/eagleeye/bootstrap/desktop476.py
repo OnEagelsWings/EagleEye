@@ -12,7 +12,7 @@ import time
 from contextlib import contextmanager
 from .runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
-from .paths import default_runtime_root
+from .paths import default_runtime_root, _internal_release_build
 
 _STATUS_LOCK=threading.Lock()
 _SETTINGS_LOCK=threading.Lock()
@@ -22,8 +22,9 @@ _START_STAGES={'starting','healthy','stopped','health-timeout','browser-requeste
 def settings_directory():
     configured=os.environ.get('EAGLEEYE_SETTINGS_DIR')
     if configured:return Path(configured).expanduser().resolve()
-    if os.name=='nt':return Path(os.environ.get('LOCALAPPDATA',Path.home()/'AppData/Local'))/'EagleEye'
-    return Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))/'EagleEye'
+    namespace = 'EagleEye-490' if _internal_release_build(BUILD) else 'EagleEye'
+    if os.name=='nt':return Path(os.environ.get('LOCALAPPDATA',Path.home()/'AppData/Local'))/namespace
+    return Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))/namespace
 
 
 def _local_path(value):
@@ -62,11 +63,39 @@ def _settings_guard():
             yield directory
 
 
-def remember_workspace(path):
-    root=_local_path(path);root.mkdir(parents=True,exist_ok=True)
+def remember_workspace(path, install_dir=None):
+    root=_local_path(path)
+    if install_dir is not None:
+        _reject_internal_install_as_workspace(root, install_dir)
+    # The folder picker must enforce the same isolation gate as startup.
+    # Validate before creating directories or persisting a selection.
+    _reject_legacy_internal_workspace(root)
+    root.mkdir(parents=True,exist_ok=True)
     with _settings_guard() as directory:
         _atomic_json(directory/'workspace.json',{'workspace_directory':str(root)})
     return root
+
+
+def _reject_legacy_internal_workspace(root):
+    """Never initialize the internal release inside an existing legacy database root."""
+    if not _internal_release_build(BUILD):
+        return
+    # Older installations can also keep the database directly at the
+    # workspace root. Neither layout may be adopted by Build 490–500.
+    if any((directory / ('eagleeye_pro_95_0.db' + suffix)).exists()
+           for directory in (root, root / 'data')
+           for suffix in ('', '-wal', '-shm')):
+        raise ValueError('Dieser Arbeitsordner enthält eine ältere EagleEye-Datenbank. Für Build 490–500 bitte einen eigenen neuen Arbeitsordner wählen.')
+
+
+def _reject_internal_install_as_workspace(root, install_dir):
+    """An internal-release data workspace must not be the program directory."""
+    if _internal_release_build(BUILD):
+        installed = _local_path(install_dir)
+        # A nested workspace (e.g. <install>/data) is just as unsafe as the
+        # installation root: upgrades and removals must not touch case data.
+        if root == installed or installed in root.parents or root in installed.parents:
+            raise ValueError('Programm- und Arbeitsordner müssen für Build 490–500 getrennt sein.')
 
 
 def resolve_workspace(install_dir):
@@ -88,12 +117,19 @@ def resolve_workspace(install_dir):
                 raise ValueError('Arbeitsordner-Konfiguration unlesbar. Bestehende Daten bleiben unverändert; bitte den bisherigen Datenordner ausdrücklich auswählen.') from exc
             if not root.is_dir():
                 raise ValueError('Der gespeicherte Arbeitsordner fehlt. Bestehende Daten nicht überschreiben; bitte den bisherigen Datenordner auswählen.')
+            _reject_legacy_internal_workspace(root)
+            _reject_internal_install_as_workspace(root, install_dir)
             return root
         else:
             installed=_local_path(install_dir)
-            candidates=[candidate for candidate in (installed,default_runtime_root())
-                if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db'))]
-            root=candidates[0] if candidates else directory/'workspace'
+            if _internal_release_build(BUILD):
+                root=directory/'workspace'
+            else:
+                candidates=[candidate for candidate in (installed,default_runtime_root())
+                    if any((candidate/'data'/name).is_file() for name in ('eagleeye.db','eagleeye_pro_95_0.db'))]
+                root=candidates[0] if candidates else directory/'workspace'
+        _reject_legacy_internal_workspace(root)
+        _reject_internal_install_as_workspace(root, install_dir)
         root.mkdir(parents=True,exist_ok=True)
         _atomic_json(settings,{'workspace_directory':str(root)})
         return root
@@ -134,21 +170,21 @@ def diagnostics(root):
     error_type=status.get('error_type')
     if isinstance(error_type,str) and error_type.isidentifier() and len(error_type)<=80:
         safe_status['error_type']=error_type
-    return {'build':BUILD,'workspace_directory':str(root),'database_present':any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
+    return {'build':BUILD,'workspace_directory':str(root),'database_present':(root/'data'/'eagleeye.db').is_file() if _internal_release_build(BUILD) else any((root/'data'/n).is_file() for n in ('eagleeye.db','eagleeye_pro_95_0.db')),
         'server_reachable':bool(runtime and runtime['build']==BUILD),'running_build':runtime['build'] if runtime else None,
         'version_conflict':bool(runtime and runtime['build']!=BUILD),'port':runtime['port'] if runtime else None,
         'last_start':safe_status,
         'contains_credentials':False}
 
 
-def choose_workspace():
+def choose_workspace(install_dir=None):
     import tkinter
     from tkinter import filedialog
     window=tkinter.Tk();window.withdraw()
     try:
         selected=filedialog.askdirectory(title='EagleEye: bisherigen oder neuen Arbeitsordner wählen')
     finally:window.destroy()
-    return remember_workspace(selected) if selected else None
+    return remember_workspace(selected, install_dir=install_dir) if selected else None
 
 
 def main(argv=None):
@@ -160,7 +196,7 @@ def main(argv=None):
     args=parser.parse_args(argv)
     root=None
     try:
-        root=choose_workspace() if args.choose_workspace else resolve_workspace(args.install_root)
+        root=choose_workspace(args.install_root) if args.choose_workspace else resolve_workspace(args.install_root)
         if root is None:return 0
         print('EagleEye '+BUILD+' | Arbeitsordner: '+str(root),flush=True)
         if args.diagnose:

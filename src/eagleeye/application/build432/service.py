@@ -1,4 +1,5 @@
 from eagleeye_pro.version import BUILD as RUNTIME_BUILD,SCHEMA_VERSION
+from eagleeye_pro.version import historical_schema_compatible
 class Build432SocialPublicAdaptersService:
  BUILD='432.0'
  def __init__(self,db,audit,*,build431,social432,actor='local-analyst'):self.db=db;self.audit=audit;self.build431=build431;self.social432=social432;self.actor=actor
@@ -13,4 +14,4 @@ class Build432SocialPublicAdaptersService:
  def case_social_report(self,case_id):return self.social432.case_report(case_id)
  def run_case_selftest(self,**kw):return self.social432.run_case_selftest(**kw)
  def social_status(self):
-  s=self.social432.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':12,'case_specific_selftest':True,'production_release_ready':False}
+  s=self.social432.status();return {**s,'version_coherent':historical_schema_compatible(RUNTIME_BUILD, SCHEMA_VERSION, self.BUILD) and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':12,'case_specific_selftest':True,'production_release_ready':False}
