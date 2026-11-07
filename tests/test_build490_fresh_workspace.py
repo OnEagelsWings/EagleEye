@@ -459,3 +459,32 @@ def test_legacy_runtime_overlapping_installation_contract_unchanged(monkeypatch,
     resolved = paths.RuntimePaths.resolve(install_dir=install, base_dir=install)
     assert resolved.data_dir == install / "data"
     assert resolved.data_dir.is_dir()
+
+
+def test_internal_release_rejects_redirected_data_and_reports(monkeypatch, tmp_path):
+    """Symlinked workspace subfolders cannot redirect writes into legacy data."""
+    import os
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    workspace = tmp_path / "new-workspace"
+    legacy = tmp_path / "Build398"
+    legacy.mkdir()
+    marker = legacy / "untouched.txt"
+    marker.write_text("legacy", encoding="utf-8")
+    workspace.mkdir()
+    for folder in ("data", "reports"):
+        redirect = workspace / folder
+        try:
+            redirect.symlink_to(legacy, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("Directory symlinks unavailable on this platform")
+        for build in ("490.0", "500.0"):
+            monkeypatch.setattr(paths, "BUILD", build)
+            with pytest.raises(ValueError, match="inside the workspace"):
+                paths.RuntimePaths.resolve(
+                    install_dir=tmp_path / "new-install", base_dir=workspace
+                )
+        redirect.unlink()
+    assert marker.read_text(encoding="utf-8") == "legacy"
+    assert not (legacy / "eagleeye.db").exists()
