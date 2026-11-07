@@ -429,3 +429,33 @@ def test_internal_explicit_database_can_use_workspace_subfolder(monkeypatch, tmp
     assert resolved.db_path == db
     assert db.parent.is_dir()
     assert not db.exists()
+
+
+def test_internal_runtime_rejects_overlapping_installation_without_mutation(monkeypatch, tmp_path):
+    """Direct RuntimePaths callers must not bypass desktop workspace isolation."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    install = tmp_path / "Programm-Übung"
+    install.mkdir()
+    marker = install / "original.txt"
+    marker.write_text("unchanged", encoding="utf-8")
+    cases = (install, install / "nested-workspace", tmp_path)
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(paths, "BUILD", build)
+        for root in cases:
+            with pytest.raises(ValueError, match="separate from installation"):
+                paths.RuntimePaths.resolve(install_dir=install, base_dir=root)
+            assert not (root / "data").exists()
+            assert marker.read_text(encoding="utf-8") == "unchanged"
+
+
+def test_legacy_runtime_overlapping_installation_contract_unchanged(monkeypatch, tmp_path):
+    """The new guard applies only to the internal release line."""
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setattr(paths, "BUILD", "398.0")
+    install = tmp_path / "legacy-program"
+    resolved = paths.RuntimePaths.resolve(install_dir=install, base_dir=install)
+    assert resolved.data_dir == install / "data"
+    assert resolved.data_dir.is_dir()
