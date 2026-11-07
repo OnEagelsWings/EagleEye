@@ -79,7 +79,7 @@ def _reject_legacy_internal_workspace(root):
     if not _internal_release_build(BUILD):
         return
     data = root / 'data'
-    if (data / 'eagleeye_pro_95_0.db').exists():
+    if any((data / ('eagleeye_pro_95_0.db' + suffix)).exists() for suffix in ('', '-wal', '-shm')):
         raise ValueError('Dieser Arbeitsordner enthält eine ältere EagleEye-Datenbank. Für Build 490–500 bitte einen eigenen neuen Arbeitsordner wählen.')
 
 
