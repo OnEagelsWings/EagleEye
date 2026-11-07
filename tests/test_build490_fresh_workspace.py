@@ -488,3 +488,30 @@ def test_internal_release_rejects_redirected_data_and_reports(monkeypatch, tmp_p
         redirect.unlink()
     assert marker.read_text(encoding="utf-8") == "legacy"
     assert not (legacy / "eagleeye.db").exists()
+
+
+def test_internal_release_rejects_nested_module_symlink_before_writes(monkeypatch, tmp_path):
+    """An evidence subfolder cannot redirect new case files into Build 398."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    workspace = tmp_path / "new-workspace"
+    data = workspace / "data"
+    data.mkdir(parents=True)
+    legacy = tmp_path / "Build398"
+    legacy.mkdir()
+    marker = legacy / "untouched.txt"
+    marker.write_text("legacy", encoding="utf-8")
+    try:
+        (data / "evidence_vault").symlink_to(legacy, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Directory symlinks unavailable on this platform")
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(paths, "BUILD", build)
+        with pytest.raises(ValueError, match="module directories"):
+            paths.RuntimePaths.resolve(
+                install_dir=tmp_path / "new-install", base_dir=workspace
+            )
+    assert marker.read_text(encoding="utf-8") == "legacy"
+    assert not (legacy / "eagleeye.db").exists()
+    assert not (workspace / "reports").exists()
