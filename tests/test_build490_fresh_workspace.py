@@ -191,3 +191,27 @@ def test_internal_release_rejects_saved_legacy_database_workspace(monkeypatch, t
         desktop476.resolve_workspace(tmp_path / "install")
     assert (settings / "workspace.json").read_text(encoding="utf-8") == original
     assert not (data / "eagleeye.db").exists()
+
+
+def test_folder_picker_cannot_persist_legacy_workspace(monkeypatch, tmp_path):
+    """The interactive picker must not bypass the internal-release isolation gate."""
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(tmp_path / "settings"))
+    legacy = tmp_path / "legacy398"
+    data = legacy / "data"
+    data.mkdir(parents=True)
+    (data / "eagleeye_pro_95_0.db").write_bytes(b"legacy")
+    with pytest.raises(ValueError, match="ältere EagleEye-Datenbank"):
+        desktop476.remember_workspace(legacy)
+    assert not (tmp_path / "settings" / "workspace.json").exists()
+    assert (data / "eagleeye_pro_95_0.db").read_bytes() == b"legacy"
+
+
+def test_folder_picker_persists_fresh_internal_workspace(monkeypatch, tmp_path):
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(tmp_path / "settings"))
+    root = tmp_path / "Fälle-Übung"
+    assert desktop476.remember_workspace(root) == root.resolve()
+    assert desktop476.resolve_workspace(tmp_path / "install") == root.resolve()
