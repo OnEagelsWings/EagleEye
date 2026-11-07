@@ -343,3 +343,30 @@ def test_internal_release_rejects_workspace_containing_program_tree(monkeypatch,
         desktop476.resolve_workspace(install)
     assert (settings / "workspace.json").read_text(encoding="utf-8") == saved
     assert marker.read_text(encoding="utf-8") == "legacy install unchanged"
+
+
+def test_internal_release_rejects_root_level_legacy_sqlite_without_mutation(monkeypatch, tmp_path):
+    """Some older workspaces store their database at the root, not in data/."""
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "500.0")
+    settings = tmp_path / "new-settings"
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    install = tmp_path / "new-install"
+    install.mkdir()
+    for suffix in ("", "-wal", "-shm"):
+        root = tmp_path / ("legacy-root" + (suffix or "-db"))
+        root.mkdir()
+        original = root / ("eagleeye_pro_95_0.db" + suffix)
+        original.write_bytes(b"legacy original")
+        with pytest.raises(ValueError, match="ältere EagleEye-Datenbank"):
+            desktop476.remember_workspace(root, install_dir=install)
+        assert original.read_bytes() == b"legacy original"
+        assert not (root / "data" / "eagleeye.db").exists()
+        assert not (settings / "workspace.json").exists()
+        monkeypatch.setenv("EAGLEEYE_DATA_DIR", str(root))
+        with pytest.raises(ValueError, match="ältere EagleEye-Datenbank"):
+            desktop476.resolve_workspace(install)
+        monkeypatch.delenv("EAGLEEYE_DATA_DIR")
+        assert original.read_bytes() == b"legacy original"
