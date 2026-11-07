@@ -91,7 +91,7 @@ def _reject_internal_install_as_workspace(root, install_dir):
         installed = _local_path(install_dir)
         # A nested workspace (e.g. <install>/data) is just as unsafe as the
         # installation root: upgrades and removals must not touch case data.
-        if root == installed or installed in root.parents:
+        if root == installed or installed in root.parents or root in installed.parents:
             raise ValueError('Programm- und Arbeitsordner müssen für Build 490–500 getrennt sein.')
 
 
