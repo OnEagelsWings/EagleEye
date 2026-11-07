@@ -370,3 +370,26 @@ def test_internal_release_rejects_root_level_legacy_sqlite_without_mutation(monk
             desktop476.resolve_workspace(install)
         monkeypatch.delenv("EAGLEEYE_DATA_DIR")
         assert original.read_bytes() == b"legacy original"
+
+
+def test_internal_release_rejects_explicit_legacy_database_override(monkeypatch, tmp_path):
+    """A direct RuntimePaths caller cannot reopen the Build 398 SQLite file."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    legacy_dir = tmp_path / "Build398"
+    legacy_dir.mkdir()
+    legacy = legacy_dir / "eagleeye_pro_95_0.db"
+    legacy.write_bytes(b"original legacy database")
+    workspace = tmp_path / "new-workspace"
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(paths, "BUILD", build)
+        for suffix in ("", "-wal", "-shm"):
+            with pytest.raises(ValueError, match="legacy database"):
+                paths.RuntimePaths.resolve(
+                    install_dir=tmp_path / "new-install",
+                    base_dir=workspace,
+                    db_path=str(legacy) + suffix,
+                )
+    assert legacy.read_bytes() == b"original legacy database"
+    assert not workspace.exists()
