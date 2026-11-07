@@ -131,6 +131,13 @@ class RuntimePaths:
 
         if db_path is None:
             resolved_db = data_dir / "eagleeye.db"
+            if _internal_release_build():
+                # A pre-existing default DB symlink could otherwise bypass the
+                # explicit db_path containment check and open a legacy database.
+                target = resolved_db.resolve()
+                workspace = runtime_root.resolve()
+                if not target.is_relative_to(workspace) or target.is_relative_to(Path(install_dir).resolve()):
+                    raise ValueError("Internal release database must stay inside its workspace")
             legacy_db = data_dir / "eagleeye_pro_95_0.db"
             # New internal-release workspaces must never import a legacy DB
             # implicitly. Explicit migrations require a separate reviewed action.
