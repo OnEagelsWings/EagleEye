@@ -393,3 +393,39 @@ def test_internal_release_rejects_explicit_legacy_database_override(monkeypatch,
                 )
     assert legacy.read_bytes() == b"original legacy database"
     assert not workspace.exists()
+
+
+def test_internal_explicit_database_cannot_escape_workspace(monkeypatch, tmp_path):
+    """Reject renamed legacy SQLite files and traversal before creating folders."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    workspace = tmp_path / "new-workspace"
+    install = tmp_path / "new-install"
+    old = tmp_path / "Build398" / "renamed.sqlite3"
+    old.parent.mkdir()
+    old.write_bytes(b"legacy bytes")
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(paths, "BUILD", build)
+        for chosen in (old, workspace / ".." / "Build398" / "renamed.sqlite3"):
+            with pytest.raises(ValueError, match="inside its workspace"):
+                paths.RuntimePaths.resolve(
+                    install_dir=install, base_dir=workspace, db_path=chosen
+                )
+    assert old.read_bytes() == b"legacy bytes"
+    assert not workspace.exists()
+
+
+def test_internal_explicit_database_can_use_workspace_subfolder(monkeypatch, tmp_path):
+    """A legitimate explicitly chosen workspace-local database remains supported."""
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setattr(paths, "BUILD", "500.0")
+    workspace = tmp_path / "Fälle"
+    db = workspace / "custom" / "new.sqlite3"
+    resolved = paths.RuntimePaths.resolve(
+        install_dir=tmp_path / "program", base_dir=workspace, db_path=db
+    )
+    assert resolved.db_path == db
+    assert db.parent.is_dir()
+    assert not db.exists()
