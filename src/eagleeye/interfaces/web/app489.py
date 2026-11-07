@@ -15,10 +15,12 @@ def create_workspace_app489(*, base_dir=None, workspace_build="489.0"):
     # endpoint headers have been created. This read-only evidence checkpoint
     # deliberately needs the stricter no-referrer policy, including when a
     # case title or source identifier is included in a navigation URL.
+    # Apply the same protection to original-document and graph drill-downs:
+    # their case-scoped query parameters must not leak via outbound referrers.
     @app.middleware("http")
     async def checkpoint_referrer_policy(request, call_next):
         response = await call_next(request)
-        if request.url.path == "/workbench/checkpoint489":
+        if request.url.path in {"/workbench/checkpoint489", "/documents458", "/graph464"}:
             response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
