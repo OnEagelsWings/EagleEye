@@ -52,6 +52,8 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
     assert len(parse_qs(target.query)["document_id"]) == 1
     original = client.get(original_links[0])
     assert original.status_code == 200
+    assert checkpoint.headers["referrer-policy"] == "no-referrer"
+    assert original.headers["referrer-policy"] == "no-referrer"
 
     # Source links and entity decisions never auto-promote evidence or claims.
     store = app.state.context.evidence_claims_dossier_447
@@ -168,6 +170,7 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         "case_id": case_id, "focus": graph_relation["id"],
     })
     assert graph_page.status_code == 200, graph_page.text[:400]
+    assert graph_page.headers["referrer-policy"] == "no-referrer"
     assert graph_subject["id"] in graph_page.text
     assert "mentioned_in" in graph_page.text
     assert "document_id=" + workspace[4] in graph_page.text
