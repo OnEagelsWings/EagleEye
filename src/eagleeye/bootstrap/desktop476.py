@@ -80,8 +80,11 @@ def _reject_legacy_internal_workspace(root):
     """Never initialize the internal release inside an existing legacy database root."""
     if not _internal_release_build(BUILD):
         return
-    data = root / 'data'
-    if any((data / ('eagleeye_pro_95_0.db' + suffix)).exists() for suffix in ('', '-wal', '-shm')):
+    # Older installations can also keep the database directly at the
+    # workspace root. Neither layout may be adopted by Build 490–500.
+    if any((directory / ('eagleeye_pro_95_0.db' + suffix)).exists()
+           for directory in (root, root / 'data')
+           for suffix in ('', '-wal', '-shm')):
         raise ValueError('Dieser Arbeitsordner enthält eine ältere EagleEye-Datenbank. Für Build 490–500 bitte einen eigenen neuen Arbeitsordner wählen.')
 
 
