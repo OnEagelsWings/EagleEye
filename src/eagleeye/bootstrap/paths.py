@@ -64,8 +64,12 @@ class RuntimePaths:
         else:
             runtime_root = Path(base_dir)
 
-        if db_path is not None and _internal_release_build() and Path(db_path).is_symlink():
-            raise ValueError("Internal release database cannot be a symbolic link")
+        if db_path is not None and _internal_release_build():
+            # SQLite can write to WAL/SHM siblings even when the main DB is safe.
+            # Reject redirected sidecars before creating any workspace folders.
+            candidate = Path(db_path)
+            if any(Path(str(candidate) + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
+                raise ValueError("Internal release database and sidecars cannot be symbolic links")
 
         if db_path is not None and _internal_release_build() and Path(db_path).name in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
