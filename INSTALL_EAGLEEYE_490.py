@@ -116,6 +116,8 @@ print(json.dumps({
         payload = json.loads(completed.stdout.strip().splitlines()[-1])
     except (ValueError, IndexError, json.JSONDecodeError):
         return {"ready": False, "reason": "probe_output_invalid"}
+    if not isinstance(payload, dict):
+        return {"ready": False, "reason": "probe_output_invalid"}
     server_file = Path(str(payload.get("server_file") or "")).resolve()
     runtime_root = (root / RUNTIME_DIR).resolve()
     try:
