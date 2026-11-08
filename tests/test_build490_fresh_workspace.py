@@ -515,3 +515,29 @@ def test_internal_release_rejects_nested_module_symlink_before_writes(monkeypatc
     assert marker.read_text(encoding="utf-8") == "legacy"
     assert not (legacy / "eagleeye.db").exists()
     assert not (workspace / "reports").exists()
+
+
+def test_internal_release_rejects_workspace_local_database_alias(monkeypatch, tmp_path):
+    """An existing SQLite symlink must not alias another case DB in the same workspace."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    workspace = tmp_path / "new-workspace"
+    data = workspace / "data"
+    data.mkdir(parents=True)
+    existing = data / "other-case.sqlite3"
+    existing.write_bytes(b"existing case unchanged")
+    alias = data / "eagleeye.db"
+    try:
+        alias.symlink_to(existing)
+    except (OSError, NotImplementedError):
+        pytest.skip("File symlinks unavailable on this platform")
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(paths, "BUILD", build)
+        for chosen in (None, alias):
+            with pytest.raises(ValueError, match="symbolic link"):
+                paths.RuntimePaths.resolve(
+                    install_dir=tmp_path / "program", base_dir=workspace, db_path=chosen
+                )
+    assert existing.read_bytes() == b"existing case unchanged"
+    assert not (workspace / "reports").exists()
