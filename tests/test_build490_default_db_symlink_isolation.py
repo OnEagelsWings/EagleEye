@@ -22,7 +22,7 @@ def test_internal_default_database_symlink_cannot_escape_workspace(tmp_path, mon
     except (OSError, NotImplementedError):
         pytest.skip("Symlinks are unavailable in this environment")
 
-    with pytest.raises(ValueError, match="Internal release database cannot be a symbolic link"):
+    with pytest.raises(ValueError, match="Internal release database cannot contain symbolic links"):
         paths.RuntimePaths.resolve(install_dir=install, base_dir=workspace)
 
     assert legacy.read_bytes() == b"legacy data must remain untouched"
