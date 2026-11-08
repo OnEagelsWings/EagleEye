@@ -88,7 +88,7 @@ class RuntimePaths:
             # Checking the root itself matters even when all child paths resolve
             # consistently beneath that redirected root.
             if any(part.is_symlink() for part in (runtime_root, *runtime_root.parents)):
-                raise ValueError("Internal release workspace cannot contain a symbolic link")
+                raise ValueError("Internal release workspace cannot be a symbolic link")
             workspace = runtime_root.resolve()
             installation = Path(install_dir).resolve()
             if workspace == installation or workspace.is_relative_to(installation) or installation.is_relative_to(workspace):
