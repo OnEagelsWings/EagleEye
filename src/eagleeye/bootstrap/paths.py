@@ -126,18 +126,18 @@ class RuntimePaths:
                 target = directory.resolve()
                 if not target.is_relative_to(workspace):
                     raise ValueError("Internal release module directories must stay inside the workspace")
+        # Validate the default DB target before creating any directories. A
+        # rejected symlink must not leave a partially initialized workspace.
+        if db_path is None and _internal_release_build():
+            target = (data_dir / "eagleeye.db").resolve()
+            workspace = runtime_root.resolve()
+            if not target.is_relative_to(workspace) or target.is_relative_to(Path(install_dir).resolve()):
+                raise ValueError("Internal release database must stay inside its workspace")
         for path in (data_dir, reports_dir, *values.values()):
             path.mkdir(parents=True, exist_ok=True)
 
         if db_path is None:
             resolved_db = data_dir / "eagleeye.db"
-            if _internal_release_build():
-                # A pre-existing default DB symlink could otherwise bypass the
-                # explicit db_path containment check and open a legacy database.
-                target = resolved_db.resolve()
-                workspace = runtime_root.resolve()
-                if not target.is_relative_to(workspace) or target.is_relative_to(Path(install_dir).resolve()):
-                    raise ValueError("Internal release database must stay inside its workspace")
             legacy_db = data_dir / "eagleeye_pro_95_0.db"
             # New internal-release workspaces must never import a legacy DB
             # implicitly. Explicit migrations require a separate reviewed action.
