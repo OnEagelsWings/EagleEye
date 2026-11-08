@@ -84,6 +84,11 @@ class RuntimePaths:
                 raise ValueError("Internal release database must be separate from installation")
 
         if _internal_release_build():
+            # Do not allow a workspace alias to point at a different installation.
+            # Checking the root itself matters even when all child paths resolve
+            # consistently beneath that redirected root.
+            if runtime_root.is_symlink():
+                raise ValueError("Internal release workspace cannot be a symbolic link")
             workspace = runtime_root.resolve()
             installation = Path(install_dir).resolve()
             if workspace == installation or workspace.is_relative_to(installation) or installation.is_relative_to(workspace):
