@@ -565,3 +565,28 @@ def test_internal_release_rejects_redirected_sqlite_sidecars_before_mutation(mon
         assert outside.read_bytes() == b"legacy sidecar"
         assert link.is_symlink()
         assert not (root / "reports").exists()
+
+
+def test_internal_explicit_database_rejects_symlinked_sqlite_sidecars(monkeypatch, tmp_path):
+    """An explicit DB cannot redirect SQLite WAL/SHM writes into legacy data."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    legacy = tmp_path / "Build398"
+    legacy.mkdir()
+    target = legacy / "untouched.sqlite3"
+    target.write_bytes(b"legacy untouched")
+    for build in ("490.0", "500.0"):
+        monkeypatch.setattr(paths, "BUILD", build)
+        for suffix in ("-wal", "-shm"):
+            root = tmp_path / (build + suffix)
+            root.mkdir()
+            explicit = root / "custom.sqlite3"
+            Path(str(explicit) + suffix).symlink_to(target)
+            with pytest.raises(ValueError, match="symbolic links"):
+                paths.RuntimePaths.resolve(
+                    install_dir=tmp_path / "install", base_dir=root,
+                    db_path=explicit,
+                )
+            assert not (root / "data").exists()
+            assert target.read_bytes() == b"legacy untouched"
