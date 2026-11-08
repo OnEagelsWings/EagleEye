@@ -21,7 +21,7 @@ def test_rejected_default_db_symlink_has_no_workspace_side_effects(tmp_path, mon
     except (OSError, NotImplementedError):
         pytest.skip("Creating symlinks is not permitted on this host")
 
-    with pytest.raises(ValueError, match="Internal release database cannot be a symbolic link"):
+    with pytest.raises(ValueError, match="Internal release database cannot contain symbolic links"):
         paths.RuntimePaths.resolve(install_dir=installation, base_dir=workspace)
 
     assert legacy.read_bytes() == b"legacy-untouched"
