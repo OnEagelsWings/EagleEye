@@ -31,6 +31,7 @@ def _runtime_python(root: Path) -> Path:
 def _source_fingerprint(root: Path) -> str:
     digest = hashlib.sha256()
     roots = [
+        root / "INSTALL_EAGLEEYE_490.py",
         root / "pyproject.toml",
         root / "EAGLEEYE_PRO_458_0.py",
         root / "RELEASE_MANIFEST_BUILD_458_0.json",
