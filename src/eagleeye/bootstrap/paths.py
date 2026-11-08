@@ -64,6 +64,9 @@ class RuntimePaths:
         else:
             runtime_root = Path(base_dir)
 
+        if db_path is not None and _internal_release_build() and Path(db_path).is_symlink():
+            raise ValueError("Internal release database cannot be a symbolic link")
+
         if db_path is not None and _internal_release_build() and Path(db_path).name in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
             "eagleeye_pro_95_0.db-shm",
@@ -129,6 +132,8 @@ class RuntimePaths:
         # Validate the default DB target before creating any directories. A
         # rejected symlink must not leave a partially initialized workspace.
         if db_path is None and _internal_release_build():
+            if (data_dir / "eagleeye.db").is_symlink():
+                raise ValueError("Internal release database cannot be a symbolic link")
             target = (data_dir / "eagleeye.db").resolve()
             workspace = runtime_root.resolve()
             if not target.is_relative_to(workspace) or target.is_relative_to(Path(install_dir).resolve()):
