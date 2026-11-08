@@ -69,7 +69,7 @@ class RuntimePaths:
             # Reject redirected sidecars before creating any workspace folders.
             candidate = Path(db_path)
             if any(Path(str(candidate) + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
-                raise ValueError("Internal release database and sidecars cannot be symbolic links")
+                raise ValueError("Internal release database cannot be a symbolic link (including WAL/SHM sidecars)")
 
         if db_path is not None and _internal_release_build() and Path(db_path).name in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
@@ -142,7 +142,7 @@ class RuntimePaths:
         # rejected symlink must not leave a partially initialized workspace.
         if db_path is None and _internal_release_build():
             if any(Path(str(data_dir / "eagleeye.db") + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
-                raise ValueError("Internal release database and sidecars cannot be symbolic links")
+                raise ValueError("Internal release database cannot be a symbolic link (including WAL/SHM sidecars)")
             target = (data_dir / "eagleeye.db").resolve()
             workspace = runtime_root.resolve()
             if not target.is_relative_to(workspace) or target.is_relative_to(Path(install_dir).resolve()):
