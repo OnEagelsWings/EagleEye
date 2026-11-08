@@ -63,7 +63,8 @@ def _source_fingerprint(root: Path) -> str:
 def _read_receipt(root: Path) -> dict:
     path = root / RUNTIME_DIR / RECEIPT
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
     except (OSError, ValueError, json.JSONDecodeError):
         return {}
 
