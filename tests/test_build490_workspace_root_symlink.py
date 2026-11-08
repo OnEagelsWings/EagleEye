@@ -26,3 +26,25 @@ def test_internal_workspace_root_symlink_is_rejected_before_writes(tmp_path, mon
     assert marker.read_text(encoding="utf-8") == "untouched"
     assert not (legacy_workspace / "data").exists()
     assert not (legacy_workspace / "reports").exists()
+
+
+@pytest.mark.parametrize("build", ["490", "500"])
+def test_internal_workspace_symlinked_parent_is_rejected_before_writes(tmp_path, monkeypatch, build):
+    monkeypatch.setattr(paths, "BUILD", build)
+    installation = tmp_path / "installed"
+    installation.mkdir()
+    legacy_parent = tmp_path / "legacy-parent"
+    legacy_parent.mkdir()
+    marker = legacy_parent / "existing.txt"
+    marker.write_text("untouched", encoding="utf-8")
+    alias = tmp_path / "parent-alias"
+    try:
+        alias.symlink_to(legacy_parent, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Creating symlinks is not permitted on this host")
+
+    with pytest.raises(ValueError, match="Internal release workspace cannot be a symbolic link"):
+        paths.RuntimePaths.resolve(install_dir=installation, base_dir=alias / "internal")
+
+    assert marker.read_text(encoding="utf-8") == "untouched"
+    assert not (legacy_parent / "internal").exists()
