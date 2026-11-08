@@ -541,3 +541,27 @@ def test_internal_release_rejects_workspace_local_database_alias(monkeypatch, tm
                 )
     assert existing.read_bytes() == b"existing case unchanged"
     assert not (workspace / "reports").exists()
+
+
+def test_internal_release_rejects_redirected_sqlite_sidecars_before_mutation(monkeypatch, tmp_path):
+    """SQLite must not follow pre-planted WAL/SHM symlinks outside the workspace."""
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setattr(paths, "BUILD", "490.0")
+    for suffix in ("-wal", "-shm"):
+        root = tmp_path / ("workspace" + suffix)
+        data = root / "data"
+        data.mkdir(parents=True)
+        outside = tmp_path / ("legacy" + suffix)
+        outside.write_bytes(b"legacy sidecar")
+        link = data / ("eagleeye.db" + suffix)
+        try:
+            link.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            pytest.skip("Symlinks unavailable on this platform")
+        with pytest.raises(ValueError, match="sidecars"):
+            paths.RuntimePaths.resolve(install_dir=tmp_path / "install", base_dir=root)
+        assert outside.read_bytes() == b"legacy sidecar"
+        assert link.is_symlink()
+        assert not (root / "reports").exists()
