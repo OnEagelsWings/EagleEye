@@ -605,3 +605,28 @@ def test_workspace_picker_rejects_redirected_data_directory(monkeypatch, tmp_pat
         desktop476.remember_workspace(root, install_dir=tmp_path / 'install')
     assert not (tmp_path / 'settings' / 'workspace.json').exists()
     assert (root / 'data').is_symlink()
+
+
+def test_folder_picker_rejects_redirected_evidence_module_before_saving(monkeypatch, tmp_path):
+    """A redirected evidence vault must not persist a poisoned workspace selection."""
+    import os
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    settings = tmp_path / "settings"
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(settings))
+    root = tmp_path / "fresh-workspace"
+    data = root / "data"
+    data.mkdir(parents=True)
+    legacy_vault = tmp_path / "old-evidence"
+    legacy_vault.mkdir()
+    marker = legacy_vault / "original.txt"
+    marker.write_text("unchanged", encoding="utf-8")
+    try:
+        (data / "evidence_vault").symlink_to(legacy_vault, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Directory symlinks require privileges on this platform")
+    with pytest.raises(ValueError, match="umgeleitete Datenverzeichnisse"):
+        desktop476.remember_workspace(root)
+    assert marker.read_text(encoding="utf-8") == "unchanged"
+    assert not (settings / "workspace.json").exists()
