@@ -82,6 +82,11 @@ def _reject_legacy_internal_workspace(root):
         return
     # Older installations can also keep the database directly at the
     # workspace root. Neither layout may be adopted by Build 490–500.
+    # Reject redirected workspace subdirectories before persisting a selection.
+    # Otherwise a folder picker could save an alias into a legacy data tree.
+    for directory in (root / 'data', root / 'reports'):
+        if directory.is_symlink() or not directory.resolve().is_relative_to(root.resolve()):
+            raise ValueError('Arbeitsordner enthält umgeleitete Datenverzeichnisse; bitte einen eigenen lokalen Ordner wählen.')
     if any((directory / ('eagleeye_pro_95_0.db' + suffix)).exists()
            for directory in (root, root / 'data')
            for suffix in ('', '-wal', '-shm')):
