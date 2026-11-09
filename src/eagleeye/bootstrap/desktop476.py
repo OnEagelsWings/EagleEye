@@ -84,7 +84,17 @@ def _reject_legacy_internal_workspace(root):
     # workspace root. Neither layout may be adopted by Build 490–500.
     # Reject redirected workspace subdirectories before persisting a selection.
     # Otherwise a folder picker could save an alias into a legacy data tree.
-    for directory in (root / 'data', root / 'reports'):
+    # Check nested evidence and report module roots *before* the folder picker
+    # persists the selection. RuntimePaths.resolve also validates these paths,
+    # but a failed launch must not leave a poisoned workspace.json behind.
+    module_roots = (
+        root / 'data', root / 'reports',
+        root / 'data' / 'evidence_vault',
+        root / 'data' / 'search_captures',
+        root / 'data' / 'secure_storage',
+        root / 'reports' / 'report_builder_pro_89',
+    )
+    for directory in module_roots:
         if directory.is_symlink() or not directory.resolve().is_relative_to(root.resolve()):
             raise ValueError('Arbeitsordner enthält umgeleitete Datenverzeichnisse; bitte einen eigenen lokalen Ordner wählen.')
     if any((directory / ('eagleeye_pro_95_0.db' + suffix)).exists()
