@@ -590,3 +590,18 @@ def test_internal_explicit_database_rejects_symlinked_sqlite_sidecars(monkeypatc
                 )
             assert not (root / "data").exists()
             assert target.read_bytes() == b"legacy untouched"
+
+
+def test_workspace_picker_rejects_redirected_data_directory(monkeypatch, tmp_path):
+    import pytest
+    monkeypatch.setattr(desktop476, 'BUILD', '490.0')
+    monkeypatch.setenv('EAGLEEYE_SETTINGS_DIR', str(tmp_path / 'settings'))
+    root = tmp_path / 'fresh'
+    root.mkdir()
+    legacy = tmp_path / 'legacy398'
+    legacy.mkdir()
+    (root / 'data').symlink_to(legacy, target_is_directory=True)
+    with pytest.raises(ValueError, match='umgeleitete Datenverzeichnisse'):
+        desktop476.remember_workspace(root, install_dir=tmp_path / 'install')
+    assert not (tmp_path / 'settings' / 'workspace.json').exists()
+    assert (root / 'data').is_symlink()
