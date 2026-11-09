@@ -108,8 +108,29 @@ CREATE INDEX ix_audit_case ON audit(case_id);
 CREATE INDEX ix_cases_owner ON cases(owner_id);
 """
 
+MIGRATION_3 = """
+ALTER TABLE cases ADD COLUMN opsec_level INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE cases ADD COLUMN codename TEXT NOT NULL DEFAULT '';
+ALTER TABLE cases ADD COLUMN egress_profile TEXT NOT NULL DEFAULT '';
+CREATE TABLE opsec_acks (
+    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    level INTEGER NOT NULL, acked_at TEXT NOT NULL, PRIMARY KEY (case_id, user_id, level)
+);
+CREATE TABLE egress_log (
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, ts TEXT NOT NULL, username TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT '', host TEXT NOT NULL, path TEXT NOT NULL DEFAULT '', query TEXT NOT NULL DEFAULT '',
+    status INTEGER NOT NULL DEFAULT 0, egress TEXT NOT NULL DEFAULT '', exposure TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX ix_egress_case ON egress_log(case_id);
+CREATE TABLE exports (
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, export_id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL,
+    username TEXT NOT NULL, ts TEXT NOT NULL, sha256 TEXT NOT NULL DEFAULT '', options TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX ix_exports_case ON exports(case_id)
+"""
+
 #: (Version, SQL, optionale Python-Nacharbeit) – Nacharbeit wird von außen registriert (Hash-Kette versiegeln)
-MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2)]
+MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 
@@ -297,7 +318,7 @@ class Database:
         if self.dialect != "postgres":
             return
         for table in self.tables():
-            if table in {"schema_version", "settings", "case_members"}:
+            if table in {"schema_version", "settings", "case_members", "opsec_acks"}:
                 continue
             with self.tx():
                 self._run(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")

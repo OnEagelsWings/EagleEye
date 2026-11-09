@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import secrets
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -17,7 +18,9 @@ from .auth import SUPERVISORS
 from .crypto import Vault
 from .db import ConflictError, Database, now_iso
 from .matching import confidence_label, fold, normalize, score_candidate
-from .sources import SOURCE_MAP, SOURCES, Http, SourceError, geocode, research_links
+from . import opsec as ops
+from .opsec import DIRECT, EXPOSURE, LEVELS, SOURCE_EXPOSURE, EgressProfile, OpsecBlocked
+from .sources import SOURCE_MAP, SOURCES, Http, RecordingHttp, SourceError, geocode, research_links
 
 
 class NotFound(Exception):
@@ -108,6 +111,46 @@ MISSING_FIELDS = [
 ]
 
 
+def strip_image_metadata(content: bytes) -> tuple[bytes, list[str]]:
+    """Entfernt EXIF/GPS/XMP/Kommentare durch Neucodierung – schützt Quellen (Aufnahmeort, Gerät, Zeit)."""
+    from io import BytesIO
+
+    from PIL import Image, ImageOps
+
+    try:
+        img = Image.open(BytesIO(content))
+        img.load()
+    except Exception as exc:  # noqa: BLE001
+        raise Invalid("Datei ist kein gültiges Bild.") from exc
+    removed = []
+    exif = img.getexif()
+    if exif:
+        removed.append("EXIF")
+        if exif.get_ifd(0x8825):
+            removed.append("GPS-Position")
+        if exif.get(0x010F) or exif.get(0x0110):
+            removed.append("Kameramodell")
+        if exif.get(0x0132) or exif.get_ifd(0x8769).get(0x9003):
+            removed.append("Aufnahmezeit")
+    for key in ("xmp", "XML:com.adobe.xmp", "comment", "icc_profile", "photoshop"):
+        if key in img.info:
+            removed.append({"comment": "Kommentar", "icc_profile": "Farbprofil", "photoshop": "Photoshop-Daten"}.get(key, "XMP"))
+    fmt = (img.format or "PNG").upper()
+    img = ImageOps.exif_transpose(img)  # Ausrichtung übernehmen, bevor EXIF wegfällt
+    if img.mode not in {"RGB", "RGBA", "L", "LA"}:
+        img = img.convert("RGBA")
+    clean = Image.new(img.mode, img.size)  # neues Bild ohne jegliche Metadaten
+    clean.paste(img)
+    buf = BytesIO()
+    if fmt in {"JPEG", "MPO"}:
+        clean.convert("RGB").save(buf, "JPEG", quality=92)
+    elif fmt == "WEBP":
+        clean.save(buf, "WEBP", quality=92)
+    else:
+        clean.save(buf, "PNG")
+    return buf.getvalue(), sorted(set(removed))
+
+
 def _age(birth: str) -> int | None:
     try:
         b = date.fromisoformat(birth[:10])
@@ -127,6 +170,191 @@ class Platform:
         (self.data_dir / "photos").mkdir(parents=True, exist_ok=True)
         self._audit_lock = threading.Lock()
         self._presence: dict[int, dict[int, tuple[str, float, str]]] = {}
+        #: erzeugt den HTTP-Client für ein Egress-Profil (in Tests austauschbar)
+        self.http_factory = lambda profile, ua: Http(profile=profile, user_agent=ua)
+        #: prüft vor jeder Abfrage, ob der Anonymisierungs-Ausgang erreichbar ist (fail closed)
+        self.proxy_check = ops.check_proxy_reachable
+
+    # ------------------------------------------------------------------ OPSEC: Egress-Profile & Einstellungen
+    def _setting(self, key: str, default: str = "") -> str:
+        row = self.db.one("SELECT value FROM settings WHERE key = ?", (key,))
+        return row["value"] if row else default
+
+    def _set_setting(self, key: str, value: str) -> None:
+        with self.db.tx():
+            self.db.run_in_tx("DELETE FROM settings WHERE key = ?", (key,))
+            self.db.run_in_tx("INSERT INTO settings (key, value) VALUES (?, ?)", (key, value))
+
+    def egress_profiles(self) -> list[EgressProfile]:
+        raw = self._setting("egress_profiles")
+        items = json.loads(self.vault.decrypt_text(raw)) if raw else []
+        return [DIRECT] + [EgressProfile(**i) for i in items]
+
+    def egress_profile(self, pid: str) -> EgressProfile:
+        for prof in self.egress_profiles():
+            if prof.id == pid:
+                return prof
+        raise NotFound("Netzausgang nicht gefunden.")
+
+    def save_egress_profile(self, data: dict[str, Any]) -> EgressProfile:
+        data = dict(data)
+        if data.get("id"):
+            old = self.egress_profile(data["id"])
+            if old.kind == "direkt":
+                raise Invalid("Der Direktzugang kann nicht geändert werden.")
+            if "***" in (data.get("proxy_url") or ""):  # maskiertes Passwort unverändert übernehmen
+                data["proxy_url"] = old.proxy_url
+        try:
+            prof = ops.validate_profile(data)
+        except ValueError as exc:
+            raise Invalid(str(exc)) from exc
+        items = [p_ for p_ in self.egress_profiles() if p_.kind != "direkt" and p_.id != prof.id]
+        items.append(prof)
+        self._set_setting("egress_profiles", self.vault.encrypt_text(json.dumps([vars(i) for i in items])))
+        self.log(None, "Netzausgang gespeichert", f"{prof.name} ({ops.EgressProfile.as_dict(prof)['proxy_url']})")
+        return prof
+
+    def delete_egress_profile(self, pid: str) -> None:
+        if pid == "direkt":
+            raise Invalid("Der Direktzugang kann nicht gelöscht werden.")
+        prof = self.egress_profile(pid)
+        used = self.db.scalar("SELECT COUNT(*) AS n FROM cases WHERE egress_profile = ?", (pid,))
+        if used:
+            raise Invalid(f"Wird noch von {used} Fall/Fällen verwendet.")
+        items = [p_ for p_ in self.egress_profiles() if p_.kind != "direkt" and p_.id != pid]
+        self._set_setting("egress_profiles", self.vault.encrypt_text(json.dumps([vars(i) for i in items])))
+        if self._setting("default_egress") == pid:
+            self._set_setting("default_egress", "direkt")
+        self.log(None, "Netzausgang gelöscht", prof.name)
+
+    def opsec_settings(self) -> dict[str, Any]:
+        return {"default_egress": self._setting("default_egress", "direkt"), "default_level": int(self._setting("default_opsec_level", "1"))}
+
+    def save_opsec_settings(self, data: dict[str, Any]) -> dict[str, Any]:
+        if "default_egress" in data:
+            self.egress_profile(data["default_egress"])
+            self._set_setting("default_egress", data["default_egress"])
+        if "default_level" in data:
+            if int(data["default_level"]) not in LEVELS:
+                raise Invalid("Unbekannte OPSEC-Stufe.")
+            self._set_setting("default_opsec_level", str(int(data["default_level"])))
+        self.log(None, "OPSEC-Voreinstellungen geändert", json.dumps(data, ensure_ascii=False))
+        return self.opsec_settings()
+
+    # ------------------------------------------------------------------ OPSEC: Netzausgang je Fall (fail closed)
+    def case_profile(self, case: dict[str, Any]) -> EgressProfile:
+        pid = case.get("egress_profile") or self._setting("default_egress", "direkt")
+        try:
+            return self.egress_profile(pid)
+        except NotFound as exc:
+            raise OpsecBlocked("Der für diesen Fall gewählte Netzausgang existiert nicht mehr. Bitte im OPSEC-Reiter neu wählen.") from exc
+
+    def case_http(self, case: dict[str, Any]) -> RecordingHttp:
+        lv = ops.level(case.get("opsec_level"))
+        prof = self.case_profile(case)
+        if lv.require_egress and prof.kind == "direkt":
+            raise OpsecBlocked(f"OPSEC-Stufe {lv.key} „{lv.name}“ erlaubt keine Direktabfragen. Bitte im OPSEC-Reiter einen "
+                               "Anonymisierungs-Ausgang (Proxy/Tor) wählen – die Administration richtet ihn unter Verwaltung → OPSEC ein.")
+        if prof.kind == "proxy":
+            self.proxy_check(prof)
+        ua = prof.user_agent or (ops.NEUTRAL_UA if lv.neutral_user_agent else "")
+        inner = self.http if (prof.kind == "direkt" and not ua) else self.http_factory(prof, ua)
+        user = current_user.get()
+        uname = user["username"] if user else "system"
+        cid = case["id"]
+
+        def record(entry: dict[str, Any]) -> None:
+            self.db.insert("egress_log", {"case_id": cid, "ts": now_iso(), "username": uname, "source": entry["source"], "host": entry["host"],
+                                          "path": entry["path"], "query": entry["query"], "status": entry["status"], "egress": entry["egress"],
+                                          "exposure": SOURCE_EXPOSURE.get(entry["source"], "plattform")})
+        return RecordingHttp(inner, record, egress=prof.name)
+
+    def _geocode(self, case: dict[str, Any], text: str) -> tuple[float, float] | None:
+        """Ortsauflösung nur, wenn die OPSEC-Stufe es erlaubt – nie mit Direkt-Fallback."""
+        if not self.auto_geocode or not ops.level(case.get("opsec_level")).auto_geocode:
+            return None
+        try:
+            return geocode(text, self.case_http(case))
+        except OpsecBlocked:
+            return None
+
+    # ------------------------------------------------------------------ OPSEC: Briefing, Status, Exporte
+    def briefing_done(self, case: dict[str, Any], user: dict[str, Any] | None) -> bool:
+        lv = ops.level(case.get("opsec_level"))
+        if not lv.briefing or user is None:
+            return True
+        return bool(self.db.one("SELECT 1 AS x FROM opsec_acks WHERE case_id = ? AND user_id = ? AND level = ?", (case["id"], user["id"], lv.key)))
+
+    def require_briefing(self, case: dict[str, Any]) -> None:
+        if not self.briefing_done(case, current_user.get()):
+            lv = ops.level(case.get("opsec_level"))
+            raise OpsecBlocked(f"Für OPSEC-Stufe {lv.key} bitte zuerst das OPSEC-Briefing im Reiter „OPSEC“ lesen und bestätigen.")
+
+    def ack_briefing(self, case_id: int) -> dict[str, Any]:
+        case = self.get_case(case_id)
+        user = current_user.get()
+        lv = ops.level(case["opsec_level"])
+        if not lv.briefing:
+            raise Invalid("Für diese OPSEC-Stufe ist kein Briefing nötig.")
+        if user and not self.briefing_done(case, user):
+            self.db.insert("opsec_acks", {"case_id": case_id, "user_id": user["id"], "level": lv.key, "acked_at": now_iso()}, returning=False)
+            self.log(case_id, "OPSEC-Briefing bestätigt", f"Stufe {lv.key} „{lv.name}“: {len(ops.BRIEFING[lv.key])} Regeln bestätigt")
+        return self.opsec_status(case_id)
+
+    def can_export(self, case: dict[str, Any], user: dict[str, Any] | None) -> bool:
+        if user is None:
+            return True
+        lv = ops.level(case.get("opsec_level"))
+        role = self.member_role(case, user)
+        if role and role in lv.export_roles and user["role"] != "leser":
+            return True
+        if role == "leser" and "leser" in lv.export_roles:
+            return True
+        return user["role"] == "leitung" and "leitung" in lv.export_roles and not case.get("restricted")
+
+    def register_export(self, case_id: int, kind: str, content: bytes | None = None, options: dict[str, Any] | None = None) -> str:
+        """Prüft die Exportberechtigung und vergibt eine Export-Kennung (für Rückverfolgung bei Abfluss)."""
+        case = self.get_case(case_id)
+        user = current_user.get()
+        if not self.can_export(case, user):
+            lv = ops.level(case["opsec_level"])
+            raise Forbidden(f"OPSEC-Stufe {lv.key}: Exporte dürfen nur {', '.join(lv.export_roles)} erstellen.")
+        export_id = f"EX-{datetime.now():%y%m%d}-{secrets.token_hex(3).upper()}"
+        self.db.insert("exports", {"case_id": case_id, "export_id": export_id, "kind": kind, "username": user["username"] if user else "system",
+                                   "ts": now_iso(), "sha256": hashlib.sha256(content).hexdigest() if content else "",
+                                   "options": json.dumps(options or {}, ensure_ascii=False)})
+        return export_id
+
+    def finish_export(self, export_id: str, content: bytes) -> None:
+        self.db.execute("UPDATE exports SET sha256 = ? WHERE export_id = ?", (hashlib.sha256(content).hexdigest(), export_id))
+
+    def opsec_status(self, case_id: int) -> dict[str, Any]:
+        case = self.get_case(case_id)
+        lv = ops.level(case["opsec_level"])
+        user = current_user.get()
+        try:
+            prof = self.case_profile(case).as_dict()
+        except OpsecBlocked as exc:
+            prof = {"id": case["egress_profile"], "name": "fehlt", "kind": "?", "error": str(exc)}
+        warnings = []
+        if lv.require_egress and prof.get("kind") == "direkt":
+            warnings.append("Kein Anonymisierungs-Ausgang gewählt – automatische Abfragen sind blockiert.")
+        if lv.force_restricted and not case["restricted"]:
+            warnings.append("Fall ist nicht vertraulich, obwohl die Stufe es verlangt.")
+        acks = self.db.all("SELECT a.user_id, a.acked_at, u.display_name FROM opsec_acks a JOIN users u ON u.id = a.user_id "
+                           "WHERE a.case_id = ? AND a.level = ? ORDER BY a.acked_at", (case_id, lv.key))
+        team_ids = {i for i in [case["owner_id"], case["reviewer_id"]] if i} | {m["user_id"] for m in self.db.all("SELECT user_id FROM case_members WHERE case_id = ?", (case_id,))}
+        missing = [] if not lv.briefing else [u["display_name"] for u in self.db.all("SELECT id, display_name FROM users") if u["id"] in team_ids and u["id"] not in {a["user_id"] for a in acks}]
+        hosts = self.db.all("SELECT host, exposure, egress, COUNT(*) AS n, MIN(ts) AS first_ts, MAX(ts) AS last_ts FROM egress_log "
+                            "WHERE case_id = ? GROUP BY host, exposure, egress ORDER BY n DESC", (case_id,))
+        recent = self.db.all("SELECT * FROM egress_log WHERE case_id = ? ORDER BY id DESC LIMIT 100", (case_id,))
+        exports = self.db.all("SELECT export_id, kind, username, ts, sha256 FROM exports WHERE case_id = ? ORDER BY id DESC", (case_id,))
+        direct = int(self.db.scalar("SELECT COUNT(*) AS n FROM egress_log WHERE case_id = ? AND egress = ?", (case_id, DIRECT.name)) or 0)
+        return {"level": ops.level_dict(lv), "codename": case["codename"], "profile": prof, "warnings": warnings,
+                "briefing": ops.BRIEFING.get(lv.key, []), "briefing_done": self.briefing_done(case, user),
+                "acks": acks, "acks_missing": missing, "hosts": hosts, "recent": recent, "exports": exports,
+                "totals": {"requests": sum(h["n"] for h in hosts), "hosts": len({h["host"] for h in hosts}), "direct_requests": direct},
+                "can_export": self.can_export(case, user)}
 
     # ------------------------------------------------------------------ Protokoll (Hash-Kette)
     def log(self, case_id: int | None, action: str, detail: str = "") -> None:
@@ -236,6 +464,13 @@ class Platform:
             raise Invalid("Bitte den Zweck der Recherche nachvollziehbar beschreiben (mind. 10 Zeichen).")
         if len(legal) < 3:
             raise Invalid("Bitte Rechtsgrundlage bzw. Auftrag/Einwilligung angeben.")
+        default_level = int(self._setting("default_opsec_level", "1"))
+        lv = ops.level(payload.get("opsec_level") or default_level)
+        codename = (payload.get("codename") or "").strip().upper()[:40] or (ops.new_codename() if lv.codename else "")
+        egress = payload.get("egress_profile") or ""
+        if egress:
+            self.egress_profile(egress)
+        restricted = bool(payload.get("restricted")) or lv.force_restricted
         year = datetime.now().year
         count = (self.db.one("SELECT COUNT(*) AS n FROM cases WHERE reference LIKE ?", (f"EE-{year}-%",)) or {"n": 0})["n"]
         ts = now_iso()
@@ -245,8 +480,9 @@ class Platform:
             "status": "offen", "notes": payload.get("notes") or "", "created_at": ts, "updated_at": ts,
             "owner_id": self._uid(), "due_date": (payload.get("due_date") or "").strip(),
             "priority": payload.get("priority") if payload.get("priority") in {"niedrig", "normal", "hoch", "dringend"} else ("dringend" if ctype == "vermisst" else "normal"),
-            "restricted": 1 if payload.get("restricted") else 0})
-        self.log(cid, "Fall angelegt", f"{CASE_TYPES[ctype]}: {title} · Zweck: {purpose} · Grundlage: {legal}")
+            "restricted": 1 if restricted else 0, "opsec_level": lv.key, "codename": codename, "egress_profile": egress})
+        self.log(cid, "Fall angelegt", f"{CASE_TYPES[ctype]}: {title} · Zweck: {purpose} · Grundlage: {legal} · OPSEC-Stufe {lv.key}"
+                 + (f" · Deckname {codename}" if codename else ""))
         subject = payload.get("subject")
         if subject and (subject.get("label") or "").strip():
             self.create_entity(cid, {**subject, "type": "person", "is_subject": True})
@@ -273,6 +509,10 @@ class Platform:
                 continue
             r["case_type_label"] = CASE_TYPES.get(r["case_type"], r["case_type"])
             r["my_role"] = self.member_role(r, user) if user else None
+            if ops.level(r["opsec_level"]).codename and r["codename"]:
+                r["display_name"], r["subject_label"], r["title"] = r["codename"], None, f"Deckname {r['codename']}"
+            else:
+                r["display_name"] = r["subject_label"] or r["title"]
             r["overdue"] = bool(r["due_date"]) and r["due_date"] < today and r["status"] not in {"freigegeben", "abgeschlossen", "archiviert"}
             mine = bool(user) and r["my_role"] in {"bearbeiter", "pruefer"}
             if view == "mine" and not mine:
@@ -302,8 +542,26 @@ class Platform:
         user = current_user.get()
         perms = self.permissions(case, user)
         basic = {"title", "purpose", "legal_basis", "client", "analyst", "notes"}
-        team = {"owner_id", "reviewer_id", "due_date", "priority", "restricted"}
+        team = {"owner_id", "reviewer_id", "due_date", "priority", "restricted", "opsec_level", "codename", "egress_profile"}
         values = {k: v for k, v in payload.items() if k in basic | team | {"status"} and v is not None}
+        if "opsec_level" in values:
+            new_lv = int(values["opsec_level"])
+            if new_lv not in LEVELS:
+                raise Invalid("Unbekannte OPSEC-Stufe.")
+            values["opsec_level"] = new_lv
+            if new_lv < case["opsec_level"] and len((payload.get("opsec_reason") or "").strip()) < 10:
+                raise Invalid("Das Absenken der OPSEC-Stufe bitte begründen (mind. 10 Zeichen).")
+            lv_new = ops.level(new_lv)
+            if lv_new.force_restricted:
+                values["restricted"] = 1
+            if lv_new.codename and not (values.get("codename") or case["codename"]):
+                values["codename"] = ops.new_codename()
+        if "codename" in values:
+            values["codename"] = str(values["codename"]).strip().upper()[:40]
+        if "egress_profile" in values and values["egress_profile"]:
+            self.egress_profile(values["egress_profile"])
+        if "restricted" in values and not values["restricted"] and ops.level(values.get("opsec_level", case["opsec_level"])).force_restricted:
+            raise Invalid("Diese OPSEC-Stufe verlangt einen vertraulichen Fall.")
         if set(values) & (basic | team) and "manage" not in perms:
             raise Forbidden("Nur Fallverantwortliche oder die Teamleitung dürfen Stammdaten und Team ändern.")
         for key in ("owner_id", "reviewer_id"):
@@ -330,7 +588,8 @@ class Platform:
         changed = [k for k in values if k != "updated_at"]
         names = {u["id"]: u["display_name"] for u in self.db.all("SELECT id, display_name FROM users")}
         labels = {"owner_id": "Verantwortlich", "reviewer_id": "Prüfperson", "due_date": "Fällig", "priority": "Priorität",
-                  "restricted": "Vertraulich", "status": "Status"}
+                  "restricted": "Vertraulich", "status": "Status", "opsec_level": "OPSEC-Stufe", "codename": "Deckname",
+                  "egress_profile": "Netzausgang"}
 
         def fmt(k: str) -> str:
             if k in {"owner_id", "reviewer_id"}:
@@ -340,6 +599,9 @@ class Platform:
             return f"{labels[k]} → {values[k]}" if k in labels else k
 
         detail = ", ".join(fmt(k) for k in changed)
+        if "opsec_level" in changed and values["opsec_level"] != case["opsec_level"]:
+            self.log(case_id, "OPSEC-Stufe geändert", f"{case['opsec_level']} → {values['opsec_level']}"
+                     + (f" · Begründung: {payload.get('opsec_reason')}" if payload.get("opsec_reason") else ""))
         self.log(case_id, "Status geändert" if changed == ["status"] else "Fall geändert", detail)
         return self.get_case(case_id)
 
@@ -436,8 +698,8 @@ class Platform:
         for ident in payload.get("identifiers") or []:
             if (ident.get("value") or "").strip():
                 self.add_identifier(case_id, eid, ident, log=False)
-        if self.auto_geocode and etype == "ort":
-            coords = geocode(label, self.http)
+        if etype == "ort":
+            coords = self._geocode(self.get_case(case_id), label)
             if coords:
                 data.update({"lat": coords[0], "lon": coords[1]})
                 self.db.update("entities", eid, {"data": data})
@@ -492,20 +754,13 @@ class Platform:
             raise Invalid("Nur JPG, PNG oder WEBP erlaubt.")
         if len(content) > 8_000_000:
             raise Invalid("Bild ist größer als 8 MB.")
-        try:
-            from io import BytesIO
-
-            from PIL import Image
-            img = Image.open(BytesIO(content))
-            img.verify()
-        except Exception as exc:  # noqa: BLE001
-            raise Invalid("Datei ist kein gültiges Bild.") from exc
+        content, removed = strip_image_metadata(content)
         name = f"{entity_id}_{hashlib.sha256(content).hexdigest()[:16]}{'.jpg' if ext == '.jpeg' else ext}.enc"
         if e["photo"]:
             (self.data_dir / "photos" / e["photo"]).unlink(missing_ok=True)
         (self.data_dir / "photos" / name).write_bytes(self.vault.encrypt(content))
         self.db.update("entities", entity_id, {"photo": name})
-        self.log(case_id, "Foto hinterlegt", e["label"])
+        self.log(case_id, "Foto hinterlegt", e["label"] + (f" · Metadaten entfernt: {', '.join(removed)}" if removed else " · keine Metadaten enthalten"))
         return self.get_entity(case_id, entity_id)
 
     def photo_bytes(self, case_id: int, entity_id: int) -> tuple[bytes, str] | None:
@@ -582,15 +837,24 @@ class Platform:
     def run_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None) -> dict[str, Any]:
         case = self.get_case(case_id)
         subject = self.get_entity(case_id, entity_id)
-        plan = self.plan_search(case_id, entity_id, source_keys)
-        if not plan:
+        lv = ops.level(case["opsec_level"])
+        self.require_briefing(case)
+        full_plan = self.plan_search(case_id, entity_id, source_keys)
+        plan = [x for x in full_plan if EXPOSURE[SOURCE_EXPOSURE.get(x[0], "plattform")]["rank"] <= lv.max_exposure]
+        blocked = [x for x in full_plan if x not in plan]
+        if not full_plan:
             raise Invalid("Keine passenden Identifikatoren für die gewählten Quellen. Bitte z. B. Name, Benutzername oder E-Mail ergänzen.")
+        if not plan:
+            raise OpsecBlocked(f"Alle gewählten Quellen überschreiten die für OPSEC-Stufe {lv.key} erlaubte Exposition.")
+        http = self.case_http(case)  # wirft OpsecBlocked, wenn der Ausgang fehlt oder nicht erreichbar ist
         sid = self.db.insert("searches", {"case_id": case_id, "entity_id": entity_id, "started_at": now_iso(),
                                           "queries": [{"source": k, "kind": kd, "value": v} for k, kd, v in plan]})
-        status: list[dict[str, Any]] = []
+        status: list[dict[str, Any]] = [{"source": SOURCE_MAP[k].label, "query": v, "ok": False, "count": 0,
+                                         "message": f"Durch OPSEC-Stufe {lv.key} gesperrt (Exposition „{EXPOSURE[SOURCE_EXPOSURE.get(k, 'plattform')]['label']}“)"}
+                                        for k, _, v in blocked]
         candidates: list[dict[str, Any]] = []
         with ThreadPoolExecutor(max_workers=8) as pool:
-            futures = {pool.submit(SOURCE_MAP[k].run, kd, v, self.http): (k, kd, v) for k, kd, v in plan}
+            futures = {pool.submit(SOURCE_MAP[k].run, kd, v, http): (k, kd, v) for k, kd, v in plan}
             for fut in as_completed(futures):
                 k, kd, v = futures[fut]
                 try:
@@ -617,9 +881,11 @@ class Platform:
                 continue
         self.db.update("searches", sid, {"finished_at": now_iso(), "source_status": status, "result_count": new})
         ok = sum(1 for s in status if s["ok"])
-        self.log(case_id, "Suche ausgeführt", f"{subject['label']}: {len(plan)} Abfragen, {ok} erfolgreich, {new} neue Treffer")
+        self.log(case_id, "Suche ausgeführt", f"{subject['label']}: {len(plan)} Abfragen über „{http.egress}“, {ok} erfolgreich, {new} neue Treffer"
+                 + (f", {len(blocked)} durch OPSEC gesperrt" if blocked else ""))
         self.touch(case_id)
-        return {"search_id": sid, "case": case["reference"], "queries": len(plan), "new_findings": new,
+        return {"search_id": sid, "case": case["reference"], "queries": len(plan), "new_findings": new, "egress": http.egress,
+                "blocked": len(blocked),
                 "total_candidates": len(candidates), "status": sorted(status, key=lambda s: (s["ok"], s["source"]))}
 
     def list_searches(self, case_id: int) -> list[dict[str, Any]]:
@@ -862,8 +1128,8 @@ class Platform:
             self._entity(case_id, entity_id)
         lat, lon = payload.get("lat"), payload.get("lon")
         location = (payload.get("location") or "").strip()
-        if location and (lat in (None, "") or lon in (None, "")) and self.auto_geocode:
-            coords = geocode(location, self.http)
+        if location and (lat in (None, "") or lon in (None, "")):
+            coords = self._geocode(self.get_case(case_id), location)
             lat, lon = coords if coords else (None, None)
         eid = self.db.insert("events", {
             "case_id": case_id, "entity_id": entity_id, "occurred_at": when, "kind": payload.get("kind") or "Ereignis",

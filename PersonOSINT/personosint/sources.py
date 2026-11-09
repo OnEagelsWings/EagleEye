@@ -42,21 +42,53 @@ class HttpResponse:
 
 
 class Http:
-    """Minimaler HTTP-Client mit Host-Allowlist; in Tests austauschbar."""
+    """Minimaler HTTP-Client mit Host-Allowlist; in Tests austauschbar.
 
-    def __init__(self, timeout: float = 12.0):
+    Mit einem Egress-Profil laufen alle Anfragen ausschließlich über den dort hinterlegten Proxy
+    (keine Ausnahmen über no_proxy, DNS-Auflösung beim Proxy).
+    """
+
+    def __init__(self, timeout: float = 12.0, profile: Any = None, user_agent: str = ""):
+        from .opsec import DIRECT, build_opener
+
         self.timeout = timeout
-        self._ctx = ssl.create_default_context()
+        self.profile = profile or DIRECT
+        self.user_agent = user_agent or USER_AGENT
+        self._opener = build_opener(self.profile)
 
     def get(self, url: str, headers: dict[str, str] | None = None) -> HttpResponse:
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json, text/html;q=0.8", **(headers or {})})
+        req = urllib.request.Request(url, headers={"User-Agent": self.user_agent, "Accept": "application/json, text/html;q=0.8", **(headers or {})})
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout, context=self._ctx) as resp:  # noqa: S310 - Allowlist pro Quelle
+            with self._opener.open(req, timeout=self.timeout) as resp:  # noqa: S310 - Allowlist pro Quelle
                 return HttpResponse(resp.status, resp.read(2_000_000), resp.geturl())
         except urllib.error.HTTPError as exc:
             return HttpResponse(exc.code, exc.read(200_000) if exc.fp else b"", url)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise SourceError(f"Quelle nicht erreichbar: {getattr(exc, 'reason', exc)}") from exc
+
+
+class RecordingHttp:
+    """Hüllt einen HTTP-Client ein und meldet jede Außenabfrage an das Außenkontakt-Protokoll."""
+
+    def __init__(self, inner: Any, record: Any, source_key: str = "", egress: str = "direkt"):
+        self.inner, self.record, self.source_key, self.egress = inner, record, source_key, egress
+
+    def for_source(self, key: str) -> "RecordingHttp":
+        return RecordingHttp(self.inner, self.record, key, self.egress)
+
+    def get(self, url: str, headers: dict[str, str] | None = None) -> HttpResponse:
+        status = 0
+        try:
+            resp = self.inner.get(url, headers)
+            status = resp.status
+            return resp
+        except SourceError:
+            status = -1
+            raise
+        finally:
+            parts = urlsplit(url)
+            self.record({"source": self.source_key, "host": parts.hostname or "", "path": parts.path[:200],
+                         "query": parts.query[:300], "status": status, "egress": self.egress})
 
 
 @dataclass
@@ -72,6 +104,8 @@ class Source:
     runner: Callable[["Source", str, str, Http], list[dict[str, Any]]] = field(repr=False, default=None)  # type: ignore[assignment]
 
     def run(self, kind: str, value: str, http: Http) -> list[dict[str, Any]]:
+        if isinstance(http, RecordingHttp):
+            http = http.for_source(self.key)
         out = self.runner(self, kind, value, http)
         for item in out:
             host = (urlsplit(item.get("url", "")).hostname or "")
@@ -412,4 +446,13 @@ def research_links(subject: dict[str, Any], identifiers: Iterable[dict[str, Any]
     add("Bildersuche", "Bing Visual Search", "https://www.bing.com/visualsearch")
     add("Bildersuche", "Yandex Bilder", "https://yandex.com/images/")
     add("Bildersuche", "TinEye", "https://tineye.com/")
+    from .opsec import EXPOSURE, link_exposure
+
+    for link in links:
+        level, hint = link_exposure(link["label"], link["group"])
+        link["exposure"] = level
+        link["exposure_label"] = EXPOSURE[level]["label"]
+        link["exposure_rank"] = EXPOSURE[level]["rank"]
+        if hint:
+            link["hint"] = (link.get("hint", "") + " " + hint).strip()
     return links

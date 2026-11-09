@@ -271,3 +271,14 @@ body.readonly .w { display: none !important; }
 .admin-tabs { display: flex; gap: .3rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .ok-box { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; border-radius: 8px; padding: .6rem .8rem; }
 .bad-box { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; border-radius: 8px; padding: .6rem .8rem; }
+
+/* ---- OPSEC ---- */
+.opsec-1 { background: #e2e8f0; color: #334155; }
+.opsec-2 { background: #fef3c7; color: #92400e; }
+.opsec-3 { background: #7f1d1d; color: #fff; }
+.opsec-strip { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: .45rem .7rem; font-size: .85rem; margin-bottom: .6rem; }
+.opsec-cards .type-card { padding: .7rem; }
+.link-blocked { display: block; padding: .18rem 0; font-size: .88rem; color: var(--muted); cursor: help; }
+ul.rules li { margin: .2rem 0; }
+.veil { filter: blur(6px); cursor: pointer; transition: filter .15s; user-select: none; }
+.veil.open { filter: none; user-select: auto; }

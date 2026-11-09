@@ -23,6 +23,8 @@ from .crypto import Vault
 from .db import SCHEMA_VERSION, ConflictError, Database, now_iso, redact_url
 from .demo import seed_demo
 from .dossier import build_dossier, build_poster, render_graph_png, safe_filename
+from . import opsec as ops
+from .opsec import OpsecBlocked
 from .service import (CASE_STATUSES, CASE_TYPES, ENTITY_TYPES, EVENT_KINDS, IDENTIFIER_KINDS, MEMBER_ROLES, MISSING_FIELDS,
                       PERSON_FIELDS, RELATIONS, RISK_FACTORS, Forbidden, Invalid, NotFound, Platform, current_user,
                       seal_audit_chain)
@@ -83,7 +85,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 
-    for exc_type, status in ((NotFound, 404), (Invalid, 422), (Forbidden, 403), (ConflictError, 409), (BackupError, 422)):
+    for exc_type, status in ((NotFound, 404), (Invalid, 422), (Forbidden, 403), (ConflictError, 409), (BackupError, 422), (OpsecBlocked, 428)):
         def _handler(_: Request, exc: Exception, status: int = status):
             return JSONResponse({"detail": str(exc)}, status_code=status)
         app.add_exception_handler(exc_type, _handler)
@@ -315,6 +317,51 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         p.emergency_access(cid, payload.get("reason", ""))
         return {"ok": True}
 
+    # ---------------------------------------------------------------- OPSEC
+    @app.get("/api/egress-profiles")
+    def egress_list(_: dict = Depends(user_ok)) -> list[dict]:
+        return [{"id": e.id, "name": e.name, "kind": e.kind, "notes": e.notes} for e in p.egress_profiles()]
+
+    @app.get("/api/admin/opsec")
+    def admin_opsec(_: dict = Depends(admin_ok)) -> dict:
+        usage = {r["egress_profile"]: r["n"] for r in db.all("SELECT egress_profile, COUNT(*) AS n FROM cases GROUP BY egress_profile")}
+        return {"profiles": [e.as_dict() | {"cases": usage.get(e.id, 0)} for e in p.egress_profiles()], "settings": p.opsec_settings(),
+                "levels": {k: ops.level_dict(v) for k, v in ops.LEVELS.items()},
+                "level_usage": {r["opsec_level"]: r["n"] for r in db.all("SELECT opsec_level, COUNT(*) AS n FROM cases GROUP BY opsec_level")}}
+
+    @app.post("/api/admin/egress-profiles", status_code=201)
+    def admin_save_profile(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        return p.save_egress_profile(payload).as_dict()
+
+    @app.delete("/api/admin/egress-profiles/{pid}", status_code=204)
+    def admin_delete_profile(pid: str, _: dict = Depends(admin_ok)) -> Response:
+        p.delete_egress_profile(pid)
+        return Response(status_code=204)
+
+    @app.post("/api/admin/egress-profiles/{pid}/test")
+    def admin_test_profile(pid: str, _: dict = Depends(admin_ok)) -> dict:
+        prof = p.egress_profile(pid)
+        res = ops.egress_test(prof)
+        direct = ops.egress_test(ops.DIRECT) if prof.kind != "direkt" else res
+        res["direct_ip"] = direct.get("ip")
+        res["anonymized"] = bool(res.get("ok") and direct.get("ok") and res["ip"] != direct["ip"])
+        if res.get("ok") and prof.kind != "direkt" and not res["anonymized"]:
+            res["warning"] = "Die Ausgangs-IP entspricht der Direkt-IP – dieser Ausgang anonymisiert NICHT."
+        p.log(None, "Netzausgang getestet", f"{prof.name}: " + (f"IP {res['ip']}" if res.get("ok") else f"Fehler {res.get('error')}"))
+        return res
+
+    @app.put("/api/admin/opsec-settings")
+    def admin_opsec_settings(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        return p.save_opsec_settings(payload)
+
+    @app.get("/api/cases/{cid}/opsec")
+    def case_opsec(cid: int, _: dict = READ) -> dict:
+        return p.opsec_status(cid)
+
+    @app.post("/api/cases/{cid}/opsec/briefing")
+    def case_briefing(cid: int, _: dict = READ) -> dict:
+        return p.ack_briefing(cid)
+
     # ---------------------------------------------------------------- Meta
     @app.get("/api/meta")
     def meta(_: dict = Depends(user_ok)) -> dict[str, Any]:
@@ -323,7 +370,9 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
                 "roles": ROLES, "role_help": ROLE_HELP,
                 "risk_factors": {k: v[0] for k, v in RISK_FACTORS.items() if k not in {"kind", "jugendlich", "senior"}},
                 "person_fields": PERSON_FIELDS, "missing_fields": MISSING_FIELDS, "sources": p.available_sources(),
-                "data_dir": str(settings.data_dir), "database": db.dialect}
+                "data_dir": str(settings.data_dir), "database": db.dialect,
+                "opsec_levels": {k: ops.level_dict(v) for k, v in ops.LEVELS.items()}, "exposure": ops.EXPOSURE,
+                "source_exposure": ops.SOURCE_EXPOSURE, "opsec_defaults": p.opsec_settings()}
 
     # ---------------------------------------------------------------- Fälle
     @app.get("/api/cases")
@@ -410,8 +459,14 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         return Response(status_code=204)
 
     @app.get("/api/cases/{cid}/entities/{eid}/research-links")
-    def research(cid: int, eid: int, _: dict = READ) -> list[dict]:
-        return p.links_for(cid, eid)
+    def research(cid: int, eid: int, case: dict = READ) -> list[dict]:
+        lv = ops.level(case["opsec_level"])
+        links = p.links_for(cid, eid)
+        for link in links:
+            if link["exposure_rank"] > lv.max_link_exposure:
+                link["blocked"] = f"Durch OPSEC-Stufe {lv.key} gesperrt: {ops.EXPOSURE[link['exposure']]['help']}"
+                link["url"] = ""
+        return links
 
     # ---------------------------------------------------------------- Suche & Treffer
     @app.post("/api/cases/{cid}/search")
@@ -454,10 +509,13 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
 
     @app.get("/api/cases/{cid}/graph.png")
     def graph_png(cid: int, min_confidence: int = 0, case: dict = READ) -> Response:
+        export_id = p.register_export(cid, "Netzwerkgrafik")
         gr = p.graph(cid, min_confidence)
         subj = p.subject(cid)
-        return _download(render_graph_png(gr, highlight={subj["id"]} if subj else None),
-                         f"Netzwerk_{safe_filename(case['reference'])}.png", "image/png")
+        content = render_graph_png(gr, highlight={subj["id"]} if subj else None)
+        p.finish_export(export_id, content)
+        p.log(cid, "Netzwerkgrafik exportiert", export_id)
+        return _download(content, f"Netzwerk_{safe_filename(case['reference'])}_{export_id}.png", "image/png")
 
     @app.get("/api/cases/{cid}/paths")
     def paths(cid: int, a: int, b: int, max_len: int = 5, _: dict = READ) -> dict:
@@ -509,15 +567,21 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     # ---------------------------------------------------------------- Export
     @app.get("/api/cases/{cid}/export/dossier.docx")
     def export_dossier(cid: int, include_unreviewed: bool = False, include_audit: bool = True, include_graph: bool = True, case: dict = READ) -> Response:
+        opts = {"include_unreviewed": include_unreviewed, "include_audit": include_audit, "include_graph": include_graph}
+        export_id = p.register_export(cid, "Dossier", options=opts)
         subj = p.subject(cid)
-        content = build_dossier(p, cid, {"include_unreviewed": include_unreviewed, "include_audit": include_audit, "include_graph": include_graph})
-        name = f"Dossier_{safe_filename(subj['label'] if subj else case['title'])}_{case['reference']}.docx"
+        content = build_dossier(p, cid, opts, export_id=export_id)
+        p.finish_export(export_id, content)
+        label = case["codename"] if ops.level(case["opsec_level"]).codename and case["codename"] else (subj["label"] if subj else case["title"])
+        name = f"Dossier_{safe_filename(label)}_{case['reference']}_{export_id}.docx"
         return _download(content, name, DOCX)
 
     @app.get("/api/cases/{cid}/export/poster.docx")
     def export_poster(cid: int, case: dict = READ) -> Response:
+        export_id = p.register_export(cid, "Suchplakat")
         try:
-            content = build_poster(p, cid)
+            content = build_poster(p, cid, export_id)
+            p.finish_export(export_id, content)
         except ValueError as exc:
             raise Invalid(str(exc)) from exc
         subj = p.subject(cid)
@@ -525,10 +589,13 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
 
     @app.get("/api/cases/{cid}/export/case.json")
     def export_json(cid: int, case: dict = READ) -> Response:
-        payload = {"case": case, "entities": p.list_entities(cid), "links": p.list_links(cid), "findings": p.list_findings(cid),
+        export_id = p.register_export(cid, "Falldaten (JSON)")
+        payload = {"export_id": export_id, "case": case, "entities": p.list_entities(cid), "links": p.list_links(cid), "findings": p.list_findings(cid),
                    "events": p.list_events(cid), "tasks": p.list_tasks(cid), "audit": p.audit(cid)}
-        p.log(cid, "Datenexport (JSON)", "Vollständiger Fallexport")
-        return _download(json.dumps(payload, ensure_ascii=False, indent=2).encode(), f"Fall_{case['reference']}.json", "application/json")
+        content = json.dumps(payload, ensure_ascii=False, indent=2).encode()
+        p.finish_export(export_id, content)
+        p.log(cid, "Datenexport (JSON)", f"Vollständiger Fallexport · {export_id}")
+        return _download(content, f"Fall_{case['reference']}_{export_id}.json", "application/json")
 
     # ---------------------------------------------------------------- Oberfläche
     app.mount("/static", StaticFiles(directory=STATIC), name="static")

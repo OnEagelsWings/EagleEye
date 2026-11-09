@@ -46,6 +46,16 @@ services:
     networks: [backend, frontend]
     # bewusst kein "ports:" – erreichbar nur über Caddy (HTTPS)
 
+  # Optionaler Anonymisierungs-Ausgang (OPSEC-Stufe 2/3):  docker compose --profile tor up -d
+  # In EagleEye unter Verwaltung → OPSEC einen Ausgang mit Adresse http://tor:9080 anlegen und testen.
+  tor:
+    build: ./tor
+    profiles: ["tor"]
+    restart: unless-stopped
+    networks: [frontend]
+    volumes:
+      - tordata:/var/lib/tor
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -69,6 +79,7 @@ secrets:
     file: ./secrets/app.key
 
 volumes:
+  tordata:
   pgdata:
   appdata:
   caddydata:

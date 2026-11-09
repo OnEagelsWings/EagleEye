@@ -1,8 +1,13 @@
-# EagleEye PersonOSINT 1.1
+# EagleEye PersonOSINT 1.2
 
 **Investigativrecherche · Personensuche · Vermisstenrecherche · Verbindungsanalyse · Word-Dossiers**
 
 > **Neu in 1.1 (Ausbauphase 1 – Teambetrieb):** Anmeldung mit Pflicht-Zwei-Faktor, Rollen, Fallteams, Vier-Augen-Freigabe, vertrauliche Fälle (Quellenschutz), PostgreSQL, Docker-Server mit HTTPS, verschlüsselte Fotos und Sicherungen, manipulationssicheres Protokoll. Details unten.
+>
+> **Neu in 1.2 – OPSEC-Struktur:** drei OPSEC-Stufen je Fall mit technisch durchgesetzten Regeln, Netzausgänge über
+> Proxy/Tor mit *fail closed*, Expositionsklassen für Quellen und Links, Außenkontakt-Protokoll, Metadaten-Bereinigung
+> von Fotos und Exporten, Export-Register mit Export-ID, Briefing-Bestätigung, Decknamen und Schnellsperre.
+> Siehe [OPSEC_KONZEPT.md](OPSEC_KONZEPT.md).
 
 EagleEye PersonOSINT ist eine lokale OSINT-Plattform, die auf den Grundsätzen von EagleEye Build 380 aufbaut
 (nur öffentliche Quellen, menschliche Prüfung, Zweckbindung, Protokollierung). Sie wurde als schlankes,
@@ -168,6 +173,21 @@ kopieren, dort `docker compose exec app python -m personosint restore /backups/D
 | `EAGLEEYE_COOKIE_SECURE` | `1` hinter HTTPS |
 | `EAGLEEYE_SESSION_IDLE_MINUTES` / `EAGLEEYE_SESSION_MAX_HOURS` | Inaktivitäts- und Höchstdauer einer Sitzung |
 | `EAGLEEYE_BACKUP_DIR`, `EAGLEEYE_BACKUP_HOUR`, `EAGLEEYE_BACKUP_KEEP`, `EAGLEEYE_BACKUP_PASSPHRASE` | Sicherungen |
+
+## OPSEC (Schutz von Recherche, Recherchierenden und Quellen)
+
+Kurzfassung – vollständig in [OPSEC_KONZEPT.md](OPSEC_KONZEPT.md):
+
+| Stufe | Wann | Was die Software erzwingt |
+|---|---|---|
+| 1 · Standard | unkritische Recherchen | Kennzeichnung der Exposition, Metadaten-Bereinigung, Export-Register |
+| 2 · Erhöht | Zielperson soll nichts merken | zusätzlich: nur über Anonymisierungs-Ausgang (blockiert statt direkt), neutraler User-Agent, Deckname, Briefing, Karte nur auf Klick |
+| 3 · Streng | gefährdete Quellen | zusätzlich: Fall zwingend vertraulich, keine sichtbaren Zugriffe, keine automatische Verortung, Export nur durch Bearbeitung/Prüfung |
+
+* **Netzausgang einrichten:** Verwaltung → 🛡 OPSEC → „Ausgang anlegen“ (HTTP-Proxy mit CONNECT). Tor im Docker-Stack:
+  `docker compose --profile tor up -d`, dann Ausgang `http://tor:9080` anlegen und **testen** (zeigt Ausgangs-IP).
+* **Im Fall:** Reiter **🛡 OPSEC** – Stufe, Ausgang, Briefing, Außenkontakt-Protokoll („Wer konnte was sehen?“), Export-Register.
+* **Schnellsperre:** `Strg+Alt+L`.
 
 ## Datenschutz, Ethik und Sicherheit
 

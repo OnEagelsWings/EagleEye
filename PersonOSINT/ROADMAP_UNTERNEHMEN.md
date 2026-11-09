@@ -41,6 +41,12 @@ erfahrenen Entwickler und vor jeder Phase zu verfeinern.
 > (Abrechnung folgt in Phase 4). Nachweis: 34 automatisierte Tests auf SQLite **und** PostgreSQL, Browser-Abnahme
 > (Ersteinrichtung → 2FA → Fall → Prüfung → Freigabe) und Docker-Stack (PostgreSQL + App + Caddy/HTTPS) inkl.
 > Sicherung im Container und Wiederherstellung nach SQLite.
+>
+> **Ergänzt in Version 1.2 – OPSEC-Struktur** (siehe [OPSEC_KONZEPT.md](OPSEC_KONZEPT.md)): OPSEC-Stufen je Fall,
+> Netzausgänge über Proxy/Tor mit *fail closed*, Expositionsklassen, Außenkontakt-Protokoll, Metadaten-Bereinigung,
+> Export-Register, Briefing, Decknamen, Schnellsperre. Nachweis: 42 Tests (SQLite + PostgreSQL), davon Routing-Test
+> mit echtem lokalem Proxy trotz `no_proxy`-Ausnahme, Browser-Abnahme mit Proxy-Mitschnitt (alle automatischen Abfragen
+> liefen über den Ausgang).
 
 **Ziel:** Mehrere Personen arbeiten sicher am selben Datenbestand.
 

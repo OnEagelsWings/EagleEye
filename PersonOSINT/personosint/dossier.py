@@ -175,6 +175,31 @@ def _hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(link)
 
 
+def scrub_and_mark(doc: Document, p: Platform, case: dict[str, Any], export_id: str, kind: str) -> None:
+    """OPSEC: Dokument-Metadaten neutralisieren und Export-Kennung als Wasserzeichen in die Fußzeile setzen."""
+    from . import opsec as ops
+    from .service import current_user
+
+    lv = ops.level(case.get("opsec_level"))
+    cp = doc.core_properties
+    now = datetime.now()
+    cp.author = cp.last_modified_by = ""
+    cp.comments = cp.keywords = cp.subject = cp.category = cp.content_status = ""
+    cp.title = case["codename"] if lv.codename and case.get("codename") else kind
+    cp.created = cp.modified = now
+    cp.revision = 1
+    if not export_id:
+        return
+    user = current_user.get()
+    for sec in doc.sections:
+        fp = sec.footer.add_paragraph()
+        fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = fp.add_run(f"Export-ID {export_id} · {user['display_name'] if user else 'System'} · {now:%d.%m.%Y %H:%M}"
+                         + (f" · OPSEC-Stufe {lv.key} „{lv.name}“ – Weitergabe nur an das Fallteam" if lv.key >= 2 else ""))
+        run.font.size = Pt(7)
+        run.font.color.rgb = GREY
+
+
 def _base_document(title: str, reference: str) -> Document:
     doc = Document()
     st = doc.styles["Normal"]
@@ -216,7 +241,7 @@ def _fmt_ts(ts: str | None) -> str:
 
 # --------------------------------------------------------------------------- Dossier
 
-def build_dossier(p: Platform, case_id: int, options: dict[str, Any] | None = None) -> bytes:
+def build_dossier(p: Platform, case_id: int, options: dict[str, Any] | None = None, export_id: str = "") -> bytes:
     opts = {"include_unreviewed": False, "include_audit": True, "include_graph": True, "include_links": False, **(options or {})}
     ov = p.overview(case_id)
     case, subj = ov["case"], ov["subject"]
@@ -232,12 +257,15 @@ def build_dossier(p: Platform, case_id: int, options: dict[str, Any] | None = No
     missing = case["case_type"] == "vermisst"
     name = subj["label"] if subj else case["title"]
 
-    doc = _base_document(name, case["reference"])
+    from . import opsec as ops
+
+    lv = ops.level(case.get("opsec_level"))
+    doc = _base_document(case["codename"] if lv.codename and case.get("codename") else name, case["reference"])
     # ---- Deckblatt
     for _ in range(3):
         doc.add_paragraph()
     p0 = doc.add_paragraph()
-    r = p0.add_run("VERTRAULICH – NUR FÜR DEN DIENSTGEBRAUCH")
+    r = p0.add_run("VERTRAULICH – NUR FÜR DEN DIENSTGEBRAUCH" + (f" · OPSEC-STUFE {lv.key} ({lv.name.upper()})" if lv.key >= 2 else ""))
     r.bold, r.font.size, r.font.color.rgb = True, Pt(10), RGBColor(0xB9, 0x1C, 0x1C)
     p1 = doc.add_paragraph()
     r = p1.add_run("Vermisstendossier" if missing else "Recherchedossier" if case["case_type"] == "investigativ" else "Personendossier")
@@ -255,7 +283,8 @@ def build_dossier(p: Platform, case_id: int, options: dict[str, Any] | None = No
             doc.add_picture(io.BytesIO(photo[0]), width=Cm(5.5))
     doc.add_paragraph()
     team = p.case_team(case)
-    _kv(doc, [("Aktenzeichen (intern)", case["reference"]), ("Fall", case["title"]), ("Fallart", case["case_type_label"]),
+    _kv(doc, [("Aktenzeichen (intern)", case["reference"]), ("Deckname", case.get("codename")), ("Export-ID", export_id),
+              ("Fall", case["title"]), ("Fallart", case["case_type_label"]),
               ("Status", case["status"]), ("Auftraggeber", case["client"]),
               ("Bearbeitung", (team["owner"] or {}).get("display_name") or case["analyst"]),
               ("Prüfung (Vier-Augen)", (team["reviewer"] or {}).get("display_name")),
@@ -435,13 +464,15 @@ def build_dossier(p: Platform, case_id: int, options: dict[str, Any] | None = No
     if opts["include_audit"]:
         doc.add_heading("Bearbeitungsprotokoll (Auszug)", 2)
         _table(doc, ["Zeit", "Aktion", "Details"], [[_fmt_ts(a["ts"]), a["action"], a["detail"][:160]] for a in p.audit(case_id)[:60]], [3, 4, 9.5])
-    p.log(case_id, "Dossier exportiert", f"Word-Dossier ({'inkl.' if opts['include_unreviewed'] else 'ohne'} ungeprüfte Treffer)")
+    scrub_and_mark(doc, p, case, export_id, "Dossier")
+    p.log(case_id, "Dossier exportiert", f"Word-Dossier ({'inkl.' if opts['include_unreviewed'] else 'ohne'} ungeprüfte Treffer)"
+          + (f" · {export_id}" if export_id else ""))
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
 
 
-def build_poster(p: Platform, case_id: int) -> bytes:
+def build_poster(p: Platform, case_id: int, export_id: str = "") -> bytes:
     """Einseitiges Vermissten-Suchplakat (Word, DIN A4)."""
     case = p.get_case(case_id)
     subj = p.subject(case_id)
@@ -503,7 +534,8 @@ def build_poster(p: Platform, case_id: int) -> bytes:
     foot = doc.add_paragraph(f"Stand: {datetime.now():%d.%m.%Y} · Bitte nur in Abstimmung mit Angehörigen und Polizei verbreiten.")
     foot.alignment = WD_ALIGN_PARAGRAPH.CENTER
     foot.runs[0].font.size = Pt(8)
-    p.log(case_id, "Suchplakat exportiert", subj["label"])
+    scrub_and_mark(doc, p, case, "", "Suchplakat")  # Plakat ist zur Veröffentlichung gedacht: keine personenbezogene Export-Kennung
+    p.log(case_id, "Suchplakat exportiert", subj["label"] + (f" · {export_id}" if export_id else ""))
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()

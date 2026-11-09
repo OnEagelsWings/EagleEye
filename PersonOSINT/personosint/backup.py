@@ -23,7 +23,11 @@ HEADER_PASS = b"EEBAK1P"
 HEADER_KEY = b"EEBAK1K"
 #: Reihenfolge nach Fremdschlüsseln; Sitzungen werden bewusst nicht gesichert
 TABLE_ORDER = ["users", "cases", "case_members", "entities", "identifiers", "searches", "findings", "links",
-               "events", "tasks", "audit", "settings"]
+               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports"]
+
+
+#: Einstellungen, die verschlüsselt gespeichert werden (z. B. Proxy-Zugangsdaten)
+ENCRYPTED_SETTINGS = {"egress_profiles"}
 
 
 class BackupError(Exception):
@@ -60,6 +64,10 @@ def create_backup(db: Database, vault: Vault, data_dir: Path, out_dir: Path, pas
                 for r in rows:
                     if r.get("totp_secret"):
                         r["totp_secret"] = "PLAIN:" + vault.decrypt_text(r["totp_secret"])
+            if table == "settings":
+                for r in rows:
+                    if r["key"] in ENCRYPTED_SETTINGS and r["value"]:
+                        r["value"] = "PLAIN:" + vault.decrypt_text(r["value"])
             payload = json.dumps(rows, ensure_ascii=False, default=str).encode()
             z.writestr(f"tables/{table}.json", payload)
             manifest["tables"][table] = {"rows": len(rows), "sha256": hashlib.sha256(payload).hexdigest()}
@@ -145,6 +153,8 @@ def restore_backup(path: Path, db: Database, vault: Vault, data_dir: Path, passp
             for r in rows:
                 if table == "users" and str(r.get("totp_secret", "")).startswith("PLAIN:"):
                     r["totp_secret"] = vault.encrypt_text(r["totp_secret"][6:])
+                if table == "settings" and r.get("key") in ENCRYPTED_SETTINGS and str(r.get("value", "")).startswith("PLAIN:"):
+                    r["value"] = vault.encrypt_text(r["value"][6:])
                 db.run_in_tx(sql, [r.get(c) for c in cols])
     db.reset_sequences()
     photos = data_dir / "photos"

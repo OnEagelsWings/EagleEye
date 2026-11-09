@@ -83,6 +83,9 @@
   const typeBadge = (t) => ({ vermisst: "b-red", personensuche: "b-blue", verbindungen: "b-purple" }[t] || "");
   const statusBadge = (s) => ({ neu: "b-blue", "bestätigt": "b-green", verworfen: "b-grey" }[s] || "");
   const scoreColor = (s) => (s >= 75 ? "#059669" : s >= 45 ? "#d97706" : s >= 20 ? "#64748b" : "#cbd5e1");
+  const EXPO_BADGE = { passiv: "b-green", plattform: "b-blue", sichtbar: "b-amber", zielkontakt: "b-red" };
+  const expoBadge = (key) => `<span class="badge ${EXPO_BADGE[key] || ""}" title="${esc(state.meta.exposure[key].help)}">${esc(state.meta.exposure[key].label)}</span>`;
+  const opsecBadge = (lvl) => `<span class="badge opsec-${lvl}" title="${esc(state.meta.opsec_levels[lvl].summary)}">OPSEC ${lvl} · ${esc(state.meta.opsec_levels[lvl].name)}</span>`;
   const help = (title, items, open = false) => `<details class="help"${open ? " open" : ""}><summary>💡 ${esc(title)}</summary><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul></details>`;
 
   // ------------------------------------------------------------------ Seitenleiste
@@ -96,9 +99,10 @@
     const list = state.cases.filter((c) => !q || `${c.title} ${c.reference} ${c.subject_label || ""}`.toLowerCase().includes(q));
     $("#case-list").innerHTML = list.length ? list.map((c) => `
       <a class="case-item ${c.id === state.caseId ? "active" : ""}" href="#/case/${c.id}/overview">
-        <span class="t">${esc(c.subject_label || c.title)}</span>
+        <span class="t">${c.opsec_level >= 2 ? "🛡 " : ""}${esc(c.display_name || c.subject_label || c.title)}</span>
         <span class="m"><span class="badge ${typeBadge(c.case_type)}">${esc(c.case_type_label)}</span>${esc(c.reference)}
         ${c.restricted ? '<span class="badge b-grey" title="Vertraulicher Fall – nur für das Fallteam sichtbar">🔒</span>' : ""}
+        ${c.opsec_level >= 2 ? `<span class="badge opsec-${c.opsec_level}">OPSEC ${c.opsec_level}</span>` : ""}
         ${c.open_findings ? `<span class="badge b-amber" title="Ungeprüfte Treffer">${c.open_findings} offen</span>` : ""}
         ${c.status === "zur Prüfung" ? '<span class="badge b-purple">zur Prüfung</span>' : c.status === "freigegeben" ? '<span class="badge b-green">freigegeben</span>' : c.status === "abgeschlossen" ? '<span class="badge b-green">abgeschlossen</span>' : ""}
         ${c.overdue ? `<span class="badge b-red" title="Fällig am ${esc(c.due_date)}">überfällig</span>` : ""}
@@ -172,7 +176,7 @@
 
   // ------------------------------------------------------------------ Neuer Fall (Assistent)
   async function openNewCase() {
-    try { state.users = await api("GET", "/api/users"); } catch (_) { /* vorhandene Liste nutzen */ }
+    try { state.users = await api("GET", "/api/users"); state.egress = await api("GET", "/api/egress-profiles"); } catch (_) { /* vorhandene Listen nutzen */ }
     const types = [
       ["investigativ", "📰", "Investigativrecherche", "Akteure, Netzwerke und Belege für eine Recherche – mit Quellenschutz und Gegenrecherche."],
       ["personensuche", "🔎", "Personensuche", "Eine Person identifizieren, Online-Präsenz und Lebensumfeld aufklären."],
@@ -198,6 +202,11 @@
             <label class="field"><span>Prüfperson (Vier-Augen)</span><select name="reviewer_id">${opt("", "– später festlegen –")}${state.users.filter((u) => u.id !== state.auth.user.id && u.role !== "leser").map((u) => opt(u.id, `${u.display_name} (${u.role_label})`)).join("")}</select></label>
             <label class="field"><span>Fällig am</span><input type="date" name="due_date"></label>
             <label class="field"><span>Priorität</span><select name="priority">${["normal", "hoch", "dringend", "niedrig"].map((x) => opt(x, x)).join("")}</select></label></div>
+          <label class="field"><span>🛡 OPSEC-Stufe</span></label>
+          <div class="type-cards opsec-cards">${[1, 2, 3].map((k) => `<button type="button" class="type-card" data-lvl="${k}">${opsecBadge(k)}<div class="small muted" style="margin-top:.35rem">${esc(state.meta.opsec_levels[k].summary)}</div></button>`).join("")}</div>
+          <input type="hidden" name="opsec_level" value="2">
+          <label class="field" style="margin-top:.6rem"><span>Netzausgang für automatische Abfragen</span><select name="egress_profile">${opt("", "Voreinstellung der Organisation")}${(state.egress || []).map((e) => opt(e.id, e.name + (e.kind === "direkt" ? " – ohne Anonymisierung" : ""))).join("")}</select>
+            <small>Ab Stufe 2 nur über einen Anonymisierungs-Ausgang (Proxy/Tor); fehlt er, werden Abfragen blockiert statt direkt gesendet.</small></label>
           <label class="check"><input type="checkbox" name="restricted" checked> <span><b>🔒 Vertraulicher Fall (Quellenschutz)</b><br><span class="small muted">Nur das Fallteam sieht den Fall – auch Teamleitung und Administration nicht. Empfohlen für investigative Recherchen.</span></span></label>
         </section>
         <section data-step="3" class="hidden">
@@ -222,8 +231,16 @@
       if (b.dataset.type === "vermisst") form.legal_basis_sel.value = "Auftrag von Angehörigen (Vermisstensuche)";
       if (b.dataset.type === "investigativ") form.legal_basis_sel.value = "Journalistische Recherche (Medienprivileg)";
       form.restricted.checked = b.dataset.type === "investigativ";
+      setLvl(b.dataset.type === "investigativ" ? Math.max(2, state.meta.opsec_defaults.default_level) : state.meta.opsec_defaults.default_level);
     });
     form.legal_basis_sel.value = "Journalistische Recherche (Medienprivileg)";
+    const setLvl = (k) => {
+      form.opsec_level.value = k;
+      $$(".opsec-cards .type-card", m.el).forEach((x) => x.classList.toggle("selected", Number(x.dataset.lvl) === Number(k)));
+      if (Number(k) === 3) { form.restricted.checked = true; form.restricted.disabled = true; } else form.restricted.disabled = false;
+    };
+    $$(".opsec-cards .type-card", m.el).forEach((b) => (b.onclick = () => setLvl(b.dataset.lvl)));
+    setLvl(Math.max(2, state.meta.opsec_defaults.default_level));
     form.legal_basis_sel.onchange = () => $("#lb-other", m.el).classList.toggle("hidden", !form.legal_basis_sel.value.startsWith("Sonstige"));
     const show = () => {
       $$("[data-step]", m.el).forEach((s) => s.classList.toggle("hidden", Number(s.dataset.step) !== step));
@@ -243,7 +260,8 @@
       const idents = [["location", d.s_loc], ["username", d.s_user], ["email", d.s_email], ["phone", d.s_phone], ["employer", d.s_emp]]
         .filter((x) => x[1]).map(([kind, value]) => ({ kind, value }));
       const payload = { case_type: d.case_type, title: d.title, purpose: d.purpose, legal_basis: legal, client: d.client,
-        due_date: d.due_date, priority: d.priority, restricted: form.restricted.checked,
+        due_date: d.due_date, priority: d.priority, restricted: form.restricted.checked || d.opsec_level === "3",
+        opsec_level: Number(d.opsec_level), egress_profile: d.egress_profile,
         subject: d.s_name ? { label: d.s_name, data: { geburtsdatum: d.s_birth, wohnort: d.s_loc, vermisst_status: d.case_type === "vermisst" ? "vermisst" : "" }, identifiers: idents } : null };
       const c = await guard(() => api("POST", "/api/cases", payload), "Fall angelegt");
       if (d.reviewer_id) await guard(() => api("PATCH", `/api/cases/${c.id}`, { reviewer_id: Number(d.reviewer_id) }));
@@ -256,7 +274,7 @@
   // ------------------------------------------------------------------ Fallansicht
   const TABS = [
     ["overview", "Übersicht"], ["persons", "Personen & Profile"], ["search", "Suche & Treffer"], ["graph", "Verbindungen"],
-    ["timeline", "Zeitleiste & Karte"], ["tasks", "Aufgaben"], ["dossier", "Dossier & Export"], ["audit", "Protokoll"],
+    ["timeline", "Zeitleiste & Karte"], ["tasks", "Aufgaben"], ["dossier", "Dossier & Export"], ["opsec", "🛡 OPSEC"], ["audit", "Protokoll"],
   ];
 
   async function renderCase() {
@@ -266,8 +284,9 @@
     $("#main").innerHTML = `
       <div class="case-header">
         <div><div class="ref">${esc(c.reference)} · <span class="badge ${typeBadge(c.case_type)}">${esc(c.case_type_label)}</span></div>
-          <h1>${esc(c.title)}</h1></div>
+          ${c.codename && c.opsec_level >= 2 ? `<h1>${esc(c.codename)} <span class="small muted veil" style="font-weight:400" title="Klartitel – zum Anzeigen klicken" tabindex="0">${esc(c.title)}</span></h1>` : `<h1>${esc(c.title)}</h1>`}</div>
         <div class="actions">
+          <a href="#/case/${c.id}/opsec" style="text-decoration:none">${opsecBadge(c.opsec_level)}</a>
           ${c.restricted ? '<span class="badge b-grey" title="Nur das Fallteam sieht diesen Fall">🔒 vertraulich</span>' : ""}
           <select id="case-status" aria-label="Fallstatus" style="width:auto" ${ov.permissions.includes("write") || ov.permissions.includes("review") ? "" : "disabled"}>${state.meta.case_statuses.map((s) => opt(s, "Status: " + s, c.status)).join("")}</select>
           <button class="btn ${ov.permissions.includes("manage") ? "" : "hidden"}" id="case-edit">✎ Fall & Team</button>
@@ -284,8 +303,10 @@
       loadCases(); renderCase();
     };
     startPresence(c.id);
+    $$(".veil").forEach((v) => (v.onclick = () => v.classList.toggle("open")));
     $("#case-edit").onclick = () => editCase(c);
-    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, audit: tabAudit }[state.tab] || tabOverview;
+    document.title = "EagleEye";  // Browsertitel verrät nie Fall- oder Personennamen
+    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, opsec: tabOpsec, audit: tabAudit }[state.tab] || tabOverview;
     await r($("#tab"), ov);
     markWrite();
   }
@@ -452,7 +473,8 @@
       <tr><td>Prüfung (Vier-Augen)</td><td>${t.reviewer ? esc(t.reviewer.display_name) : '<span class="muted">nicht zugewiesen</span>'}</td></tr>
       ${t.members.length ? `<tr><td>Weitere</td><td>${t.members.map((m) => `${esc(m.display_name)} <span class="muted small">(${esc(state.meta.member_roles[m.role])})</span>`).join(", ")}</td></tr>` : ""}
       <tr><td>Fällig</td><td>${c.due_date ? esc(new Date(c.due_date).toLocaleDateString("de-DE")) : "–"} · Priorität ${esc(c.priority)}</td></tr>
-      <tr><td>Vertraulich</td><td>${c.restricted ? "🔒 ja – nur Fallteam" : "nein"}</td></tr></table>
+      <tr><td>Vertraulich</td><td>${c.restricted ? "🔒 ja – nur Fallteam" : "nein"}</td></tr>
+      <tr><td>OPSEC</td><td>${opsecBadge(c.opsec_level)} <a class="small" href="#/case/${c.id}/opsec">Regeln & Spuren →</a></td></tr></table>
       ${hint ? `<div class="small muted" style="margin-top:.4rem">${hint}</div>` : ""}
       ${btns.length ? `<div class="workflow">${btns.join("")}</div>` : ""}</div>`;
   }
@@ -592,12 +614,17 @@
       const g = {};
       links.forEach((l) => (g[l.group] = g[l.group] || []).push(l));
       const rl = $("#rlinks");
-      if (rl) rl.innerHTML = Object.entries(g).map(([name, ls]) => `<div class="link-group"><h4>${esc(name)}</h4>${ls.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.hint || l.url)}">↗ ${esc(l.label)}</a>`).join("")}</div>`).join("");
+      if (rl) rl.innerHTML = `<div class="opsec-strip" style="column-span:all">🛡 Diese Links öffnen sich in <b>Ihrem Browser</b> – nicht über den OPSEC-Ausgang. ${ov.case.opsec_level >= 2 ? "Nur in der getrennten Recherche-Umgebung und ausgeloggt verwenden." : "Bei sensiblen Recherchen eine getrennte Recherche-Umgebung nutzen."}</div>` +
+        Object.entries(g).map(([name, ls]) => `<div class="link-group"><h4>${esc(name)}</h4>${ls.map((l) => l.blocked
+          ? `<span class="link-blocked" title="${esc(l.blocked)}">⛔ ${esc(l.label)} ${expoBadge(l.exposure)}</span>`
+          : `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.hint || l.url)}">↗ ${esc(l.label)} ${l.exposure !== "passiv" ? expoBadge(l.exposure) : ""}</a>`).join("")}</div>`).join("");
     }
   }
 
   // ------------------------------------------------------------------ Tab: Suche & Treffer
   async function tabSearch(el, ov) {
+    const op = await api("GET", `/api/cases/${ov.case.id}/opsec`);
+    const lvl = state.meta.opsec_levels[ov.case.opsec_level];
     const [ents, findings, searches] = await Promise.all([
       api("GET", `/api/cases/${ov.case.id}/entities`), api("GET", `/api/cases/${ov.case.id}/findings`), api("GET", `/api/cases/${ov.case.id}/searches`)]);
     const persons = ents.filter((e) => e.type === "person");
@@ -625,10 +652,14 @@
           </div>
           <div class="card">
             <div class="card-head"><h3>2. Quellen</h3><div class="right"><button class="btn btn-sm" id="s-all">alle</button><button class="btn btn-sm" id="s-none">keine</button></div></div>
+            <div class="opsec-strip">${opsecBadge(lvl.key)} Ausgang: <b>${esc(op.profile.name)}</b>${op.briefing_done ? "" : ` · <a href="#/case/${ov.case.id}/opsec">⚠ Briefing bestätigen</a>`}
+              ${op.warnings.map((w) => `<div class="small" style="color:#92400e">⚠ ${esc(w)}</div>`).join("")}</div>
             ${Object.entries(srcGroups).map(([g, list]) => `<div class="src-group"><h4>${esc(g)}</h4>${list.map((s) => {
-              const ok = s.kinds.some((k) => kinds.has(k));
+              const expo = state.meta.source_exposure[s.key] || "plattform";
+              const lvBlocked = state.meta.exposure[expo].rank > lvl.max_exposure;
+              const ok = s.kinds.some((k) => kinds.has(k)) && !lvBlocked;
               return `<label class="check ${ok ? "" : "src-disabled"}" title="${esc(s.description)}"><input type="checkbox" name="src" value="${s.key}" ${ok ? "checked" : "disabled"}>
-                <span>${esc(s.label)}<br><span class="small muted">${ok ? esc(s.description) : "benötigt: " + esc(s.kind_labels.join(" oder "))}</span></span></label>`; }).join("")}</div>`).join("")}
+                <span>${esc(s.label)} ${expoBadge(expo)}<br><span class="small muted">${lvBlocked ? `durch OPSEC-Stufe ${lvl.key} gesperrt` : ok ? esc(s.description) : "benötigt: " + esc(s.kind_labels.join(" oder "))}</span></span></label>`; }).join("")}</div>`).join("")}
             <button class="btn btn-primary btn-lg" id="s-run" style="width:100%;justify-content:center;margin-top:.8rem" ${person ? "" : "disabled"}>🔎 Suche starten</button>
           </div>
           <div class="card" id="s-status">${renderSearchStatus(state.lastSearch, searches)}</div>
@@ -659,7 +690,7 @@
         state.lastSearch = await api("POST", `/api/cases/${ov.case.id}/search`, { entity_id: state.searchEntity, sources });
         toast(`${state.lastSearch.new_findings} neue Treffer`, "ok");
         state.findingFilter = "neu";
-      } catch (e) { toast(e.message, "err"); }
+      } catch (e) { toast(e.message, "err"); if (e.status === 428) state.lastSearch = { blockedMsg: e.message }; }
       renderCase();
     };
     $$("[data-ff]", el).forEach((b) => b.onclick = () => { state.findingFilter = b.dataset.ff; renderCase(); });
@@ -709,8 +740,9 @@
   }
 
   function renderSearchStatus(last, searches) {
+    if (last && last.blockedMsg) return `<h3>🛡 Durch OPSEC blockiert</h3><div class="bad-box small">${esc(last.blockedMsg)}</div>`;
     if (last) {
-      return `<h3>Ergebnis der Suche</h3><div class="small">${last.queries} Abfragen · <b>${last.new_findings} neue Treffer</b> (${last.total_candidates} gefunden)</div>
+      return `<h3>Ergebnis der Suche</h3><div class="small">${last.queries} Abfragen über <b>${esc(last.egress)}</b> · <b>${last.new_findings} neue Treffer</b> (${last.total_candidates} gefunden)${last.blocked ? ` · ${last.blocked} durch OPSEC gesperrt` : ""}</div>
         <ul class="source-status" style="padding-left:1rem">${last.status.map((s) => `<li>${s.ok ? "✅" : "⚠️"} <b>${esc(s.source)}</b> – „${esc(s.query)}“: ${s.ok ? s.count + " Treffer" : esc(s.message)}</li>`).join("")}</ul>
         ${last.status.some((s) => !s.ok) ? `<div class="small muted">Nicht erreichbare Quellen deuten meist auf fehlende Internetverbindung, Firewall oder Rate-Limits hin. Später erneut versuchen.</div>` : ""}`;
     }
@@ -881,13 +913,20 @@
               <button class="btn btn-sm btn-danger" data-del-ev="${e.id}" style="padding:0 .4rem">×</button></div></li>`).join("")}</ul>`
             : `<div class="empty"><div class="big">🕒</div>Noch keine Ereignisse.${ov.case.case_type === "vermisst" ? "<br>Beginnen Sie mit der <b>letzten Sichtung</b>." : ""}</div>`}
         </div>
-        <div class="card"><div class="card-head"><h2>Karte</h2><span class="right small muted">Kartendaten © OpenStreetMap-Mitwirkende</span></div><div id="map"></div></div>
+        <div class="card"><div class="card-head"><h2>Karte</h2><span class="right small muted">${state.meta.opsec_levels[ov.case.opsec_level].map_tiles || state.tilesOn === ov.case.id ? "Kartendaten © OpenStreetMap-Mitwirkende" : `<button class="btn btn-sm" id="tiles-on" title="Der Kartenserver sieht dann, welchen Ausschnitt Sie betrachten">🛡 Kartenhintergrund laden</button>`}</span></div><div id="map"></div></div>
       </div>`;
     $("#ev-new").onclick = () => newEvent(ov, persons);
     $$("[data-del-ev]", el).forEach((b) => b.onclick = async () => { if (await confirmDlg("Ereignis löschen?")) { await guard(() => api("DELETE", `/api/cases/${ov.case.id}/events/${b.dataset.delEv}`)); renderCase(); } });
     const map = L.map("map", { zoomControl: true }).setView([51.16, 10.45], 6);
     state.map = map;
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    if (state.meta.opsec_levels[ov.case.opsec_level].map_tiles || state.tilesOn === ov.case.id) {
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    }
+    const tb = $("#tiles-on");
+    if (tb) tb.onclick = async () => {
+      if (!(await confirmDlg("Kartenhintergrund laden? Ihr Browser fragt dann Kartenkacheln bei OpenStreetMap ab – der Server sieht Ihre IP-Adresse und den betrachteten Ausschnitt.", "Laden"))) return;
+      state.tilesOn = ov.case.id; renderCase();
+    };
     const pts = [];
     events.forEach((e, i) => {
       if (e.lat == null || e.lon == null) return;
@@ -956,6 +995,8 @@
       <div class="grid g2">
         <div class="card">
           <h2>📄 Word-Dossier</h2>
+          <div class="opsec-strip small">🛡 Jeder Export erhält eine <b>Export-ID</b> (Fußzeile, Dateiname, Export-Register im OPSEC-Reiter); Dokument-Metadaten werden neutralisiert.
+            ${ov.case.opsec_level >= 2 ? "Weitergabe nur an das Fallteam, möglichst verschlüsselt." : ""}</div>
           <p class="muted">Ein strukturiertes, druckfertiges Dokument (.docx) für Auftraggeber, Behörden oder die Akte.</p>
           <ol class="small">
             <li>Deckblatt mit Foto, Aktenzeichen und Vertraulichkeitsvermerk</li>
@@ -998,6 +1039,70 @@
     };
   }
 
+  // ------------------------------------------------------------------ Tab: OPSEC
+  async function tabOpsec(el, ov) {
+    const [op, egress] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/opsec`), api("GET", "/api/egress-profiles")]);
+    const lv = op.level, c = ov.case, manage = ov.permissions.includes("manage");
+    el.innerHTML = `
+      ${help("Was bedeutet OPSEC hier?", [
+        "<b>Operative Sicherheit</b> schützt die Recherche, die Recherchierenden und ihre Quellen: Die Zielperson soll nicht bemerken, dass recherchiert wird, und niemand soll auf Ihre Organisation oder Quellen schließen können.",
+        "Die <b>OPSEC-Stufe</b> legt fest, welche Abfragen erlaubt sind und über welchen Netzausgang sie laufen. Die Regeln werden technisch durchgesetzt – fehlt der Anonymisierungs-Ausgang, wird blockiert statt direkt gesendet.",
+        "Das <b>Außenkontakt-Protokoll</b> zeigt, welche Stellen welche Spuren dieser Recherche gesehen haben können.",
+        "Das <b>Export-Register</b> ordnet jede Datei, die EagleEye verlassen hat, einer Person und einem Zeitpunkt zu."], false)}
+      ${op.warnings.map((w) => `<div class="bad-box" style="margin-bottom:.6rem">⚠ ${esc(w)}</div>`).join("")}
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-head"><h2>Stufe</h2>${opsecBadge(lv.key)}${c.codename ? `<span class="badge b-grey">Deckname ${esc(c.codename)}</span>` : ""}
+            <div class="right">${manage ? '<button class="btn btn-sm" id="op-level">Stufe ändern</button>' : ""}</div></div>
+          <p class="small">${esc(lv.summary)}</p>
+          <ul class="small rules">${lv.rules.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Netzausgang</h2></div>
+          <p><b>${esc(op.profile.name)}</b> ${op.profile.kind === "direkt" ? '<span class="badge b-amber">nicht anonymisiert</span>' : '<span class="badge b-green">Proxy/Anonymisierung</span>'}</p>
+          <p class="small muted">${esc(op.profile.notes || "")}</p>
+          ${manage ? `<div class="row"><select id="op-egress" class="grow">${opt("", "Voreinstellung der Organisation", c.egress_profile)}${egress.map((e) => opt(e.id, e.name, c.egress_profile)).join("")}</select><button class="btn btn-sm btn-primary" id="op-egress-save">Übernehmen</button></div>` : ""}
+          <p class="small muted" style="margin-top:.5rem">Ausgänge richtet die Administration unter Verwaltung → OPSEC ein (z. B. Tor über HTTP-Tunnel, VPN-Gateway, Recherche-Proxy). Bei Störung werden Abfragen blockiert, nie direkt gesendet.</p>
+          <h3 style="margin-top:.8rem">Spuren in Zahlen</h3>
+          <div class="grid g3"><div class="kpi"><div class="v">${op.totals.requests}</div><div class="k">Außenabfragen</div></div>
+            <div class="kpi"><div class="v">${op.totals.hosts}</div><div class="k">kontaktierte Stellen</div></div>
+            <div class="kpi"><div class="v" style="color:${op.totals.direct_requests && lv.key >= 2 ? "var(--red)" : "inherit"}">${op.totals.direct_requests}</div><div class="k">davon direkt</div></div></div>
+        </div>
+      </div>
+      ${lv.briefing ? `<div class="card"><div class="card-head"><h2>OPSEC-Briefing</h2>${op.briefing_done ? '<span class="badge b-green">von Ihnen bestätigt</span>' : '<span class="badge b-red">noch nicht bestätigt</span>'}</div>
+        <form id="op-brief">${op.briefing.map((b, i) => `<label class="check"><input type="checkbox" ${op.briefing_done ? "checked disabled" : ""} required data-b="${i}"> <span>${esc(b)}</span></label>`).join("")}
+        ${op.briefing_done ? "" : '<button class="btn btn-primary" style="margin-top:.5rem">Alle Regeln gelesen und bestätigt</button>'}</form>
+        <p class="small" style="margin-top:.6rem"><b>Bestätigt:</b> ${op.acks.map((a) => `${esc(a.display_name)} (${fmtTs(a.acked_at)})`).join(", ") || "–"}
+        ${op.acks_missing.length ? `<br><b style="color:var(--red)">Fehlt noch:</b> ${op.acks_missing.map(esc).join(", ")}` : ""}</p></div>` : ""}
+      <div class="card"><div class="card-head"><h2>Außenkontakt-Protokoll</h2><span class="right small muted">Welche Stellen haben Anfragen dieser Recherche gesehen?</span></div>
+        ${op.hosts.length ? `<table class="tbl"><tr><th>Stelle (Host)</th><th>Exposition</th><th>Ausgang</th><th>Anfragen</th><th>Erste / letzte</th></tr>
+          ${op.hosts.map((h) => `<tr><td><code>${esc(h.host)}</code></td><td>${expoBadge(h.exposure || "plattform")}</td><td>${esc(h.egress)}</td><td>${h.n}</td><td class="small">${fmtTs(h.first_ts)} / ${fmtTs(h.last_ts)}</td></tr>`).join("")}</table>
+          <details style="margin-top:.6rem"><summary class="small">Letzte ${op.recent.length} Einzelanfragen anzeigen</summary><table class="tbl small"><tr><th>Zeit</th><th>Person</th><th>Quelle</th><th>Anfrage</th><th>Status</th></tr>
+          ${op.recent.map((r) => `<tr><td class="nowrap">${fmtTs(r.ts)}</td><td>${esc(r.username)}</td><td>${esc(r.source)}</td><td><code>${esc(r.host)}${esc(r.path)}${r.query ? "?" + esc(r.query) : ""}</code></td><td>${r.status === -1 ? "Fehler" : r.status}</td></tr>`).join("")}</table></details>`
+          : '<div class="small muted">Noch keine automatischen Außenabfragen in diesem Fall.</div>'}
+        <p class="small muted" style="margin-top:.5rem">Manuell geöffnete Recherchelinks und Kartenkacheln laufen über Ihren Browser und erscheinen hier nicht.</p></div>
+      <div class="card"><div class="card-head"><h2>Export-Register</h2><span class="right small muted">${op.can_export ? "Sie dürfen exportieren." : "Sie dürfen auf dieser Stufe nicht exportieren."}</span></div>
+        ${op.exports.length ? `<table class="tbl"><tr><th>Export-ID</th><th>Art</th><th>Person</th><th>Zeit</th><th>SHA-256</th></tr>${op.exports.map((x) => `<tr><td><code>${esc(x.export_id)}</code></td><td>${esc(x.kind)}</td><td>${esc(x.username)}</td><td>${fmtTs(x.ts)}</td><td><code class="small">${esc((x.sha256 || "").slice(0, 16))}…</code></td></tr>`).join("")}</table>`
+          : '<div class="small muted">Noch keine Exporte.</div>'}
+        <p class="small muted" style="margin-top:.5rem">Taucht ein Dokument außerhalb des Teams auf, lässt es sich über die Export-ID (Fußzeile/Dateiname) bzw. den SHA-256-Hash zuordnen.</p></div>`;
+    const bf = $("#op-brief", el);
+    if (bf && !op.briefing_done) bf.onsubmit = async (e) => { e.preventDefault(); await guard(() => api("POST", `/api/cases/${c.id}/opsec/briefing`), "Briefing bestätigt"); renderCase(); };
+    const es = $("#op-egress-save", el);
+    if (es) es.onclick = async () => { await guard(() => api("PATCH", `/api/cases/${c.id}`, { egress_profile: $("#op-egress").value }), "Netzausgang übernommen"); renderCase(); };
+    const lb = $("#op-level", el);
+    if (lb) lb.onclick = () => {
+      const m = modal("OPSEC-Stufe ändern", `<div class="type-cards">${[1, 2, 3].map((k) => `<button type="button" class="type-card ${k === lv.key ? "selected" : ""}" data-lvl="${k}">${opsecBadge(k)}<div class="small muted" style="margin-top:.3rem">${esc(state.meta.opsec_levels[k].summary)}</div></button>`).join("")}</div>
+        <label class="field" style="margin-top:.8rem"><span>Begründung (Pflicht beim Absenken)</span><textarea id="lv-reason"></textarea></label>`,
+        `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="lv-ok">Übernehmen</button>`);
+      let sel = lv.key;
+      $$("[data-lvl]", m.el).forEach((b) => (b.onclick = () => { sel = Number(b.dataset.lvl); $$("[data-lvl]", m.el).forEach((x) => x.classList.toggle("selected", x === b)); }));
+      $("#lv-ok", m.el).onclick = async () => {
+        try { await guard(() => api("PATCH", `/api/cases/${c.id}`, { opsec_level: sel, opsec_reason: $("#lv-reason", m.el).value }), "OPSEC-Stufe geändert"); } catch (_) { return; }
+        m.close(); loadCases(); renderCase();
+      };
+    };
+  }
+
   // ------------------------------------------------------------------ Tab: Protokoll
   async function tabAudit(el, ov) {
     const rows = await api("GET", `/api/cases/${ov.case.id}/audit`);
@@ -1021,8 +1126,13 @@
       <ul class="small"><li>Recherchieren Sie nur mit legitimem Zweck und Rechtsgrundlage. Keine Recherche zur Belästigung, Verfolgung oder Diskriminierung.</li>
         <li>Alle Daten bleiben lokal auf diesem Rechner (${esc(state.meta.data_dir)}). Löschen Sie Fälle nach Abschluss.</li>
         <li>Bei Vermisstenfällen: Polizei informieren (Notruf 110). Keine eigenmächtigen Maßnahmen, die die Person oder Ermittlungen gefährden.</li></ul>
+      <h3>OPSEC</h3>
+      <ul class="small"><li>Jeder Fall hat eine <b>OPSEC-Stufe</b> (1 Standard · 2 Erhöht · 3 Streng). Die Regeln stehen im Reiter <b>🛡 OPSEC</b> und werden technisch durchgesetzt.</li>
+        <li>Ab Stufe 2 laufen automatische Abfragen nur über einen Anonymisierungs-Ausgang; ist er gestört, wird <b>blockiert statt direkt gesendet</b>.</li>
+        <li>Abzeichen <b>Passiv · Plattform · Sichtbar · Zielkontakt</b> zeigen, wer eine Abfrage bemerken kann. Recherchelinks öffnen sich in Ihrem Browser – nur in der getrennten Recherche-Umgebung nutzen.</li>
+        <li>Jeder Export trägt eine <b>Export-ID</b>; Foto- und Dokument-Metadaten werden entfernt.</li></ul>
       <h3>Tastatur & Graph</h3>
-      <p class="small">Esc schließt Dialoge. Im Graphen: Ziehen = verschieben, Mausrad = Zoom, Doppelklick = Knoten lösen.</p>
+      <p class="small"><b>Strg+Alt+L</b> sperrt sofort (Bildschirm leeren, abmelden). Esc schließt Dialoge. Im Graphen: Ziehen = verschieben, Mausrad = Zoom, Doppelklick = Knoten lösen.</p>
       <p class="small muted">Version ${esc(state.meta.version)} · API-Dokumentation: <a href="/api/docs" target="_blank">/api/docs</a></p>`, `<button class="btn btn-primary" data-close>Verstanden</button>`);
   }
 
@@ -1104,12 +1214,14 @@
     const initials = u.display_name.split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
     $("#user-menu").innerHTML = `<button class="user-btn" id="um-btn" aria-haspopup="true"><span class="av">${esc(initials)}</span><span class="nm">${esc(u.display_name)}</span></button>
       <div class="user-drop hidden" id="um-drop"><div class="who"><b>${esc(u.display_name)}</b><br><span class="muted">${esc(u.role_label)} · @${esc(u.username)}</span></div>
+      <button id="um-lock">🔒 Sofort sperren <span class="small muted">(Strg+Alt+L)</span></button>
       <a href="#/account">🔑 Mein Konto & Sicherheit</a>${u.role === "admin" ? '<a href="#/admin/users">⚙️ Verwaltung</a>' : ""}
       <button id="um-out">⎋ Abmelden</button></div>`;
     const drop = $("#um-drop");
     $("#um-btn").onclick = (e) => { e.stopPropagation(); drop.classList.toggle("hidden"); };
     document.addEventListener("click", () => drop.classList.add("hidden"));
     $("#um-out").onclick = async () => { await api("POST", "/api/auth/logout"); state.auth = null; location.hash = "#/"; showAuth(); };
+    $("#um-lock").onclick = quickLock;
     $("#btn-new-case").classList.toggle("hidden", !state.auth.can_create_cases);
   }
 
@@ -1145,7 +1257,7 @@
   // ------------------------------------------------------------------ Verwaltung (Administration)
   async function renderAdmin(section) {
     if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
-    const tabs = [["users", "👤 Benutzer"], ["security", "🛡️ Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    const tabs = [["users", "👤 Benutzer"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["restricted", "🔒 Vertrauliche Fälle"]];
     $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
     const el = $("#adm");
     if (section === "users") {
@@ -1217,6 +1329,50 @@
         try { const r = await guard(() => api("POST", "/api/admin/backups")); toast(`Sicherung erstellt und geprüft (${r.tables.cases} Fälle)`, "ok"); } catch (_) { /* gemeldet */ }
         renderAdmin("backups");
       };
+    } else if (section === "opsec") {
+      const o = await api("GET", "/api/admin/opsec");
+      el.innerHTML = `<div class="card"><div class="card-head"><h2>Netzausgänge (Egress-Profile)</h2><div class="right"><button class="btn btn-primary" id="eg-new">＋ Ausgang anlegen</button></div></div>
+        <p class="small muted">Automatische Abfragen laufen über den Ausgang des Falls. Ab OPSEC-Stufe 2 ist ein Anonymisierungs-Ausgang Pflicht; ist er gestört, wird blockiert (fail closed).
+        Unterstützt werden HTTP-Proxys mit CONNECT – z. B. <b>Tor</b> mit <code>HTTPTunnelPort</code> (Docker: <code>docker compose --profile tor up -d</code>, Adresse <code>http://tor:9080</code>), ein VPN-Gateway oder ein kommerzieller Recherche-Proxy. Zugangsdaten werden verschlüsselt gespeichert.</p>
+        <table class="tbl"><tr><th>Name</th><th>Art</th><th>Adresse</th><th>User-Agent</th><th>Fälle</th><th></th></tr>
+        ${o.profiles.map((e) => `<tr><td><b>${esc(e.name)}</b>${o.settings.default_egress === e.id ? ' <span class="badge b-blue">Voreinstellung</span>' : ""}<br><span class="small muted">${esc(e.notes || "")}</span></td>
+          <td>${e.kind === "direkt" ? '<span class="badge b-amber">direkt</span>' : '<span class="badge b-green">Proxy</span>'}</td><td><code class="small">${esc(e.proxy_url || "–")}</code></td>
+          <td class="small">${esc(e.user_agent || "Standard je Stufe")}</td><td>${e.cases}</td>
+          <td class="nowrap"><button class="btn btn-sm" data-eg-test="${esc(e.id)}">Testen</button>${e.kind !== "direkt" ? ` <button class="btn btn-sm" data-eg-edit="${esc(e.id)}">Bearbeiten</button> <button class="btn btn-sm btn-danger" data-eg-del="${esc(e.id)}">×</button>` : ""}</td></tr>
+          <tr class="hidden" id="egr-${esc(e.id)}"><td colspan="6"></td></tr>`).join("")}</table></div>
+        <div class="grid g2"><div class="card"><h2>Voreinstellungen</h2>
+          <label class="field"><span>Standard-OPSEC-Stufe für neue Fälle</span><select id="os-level">${[1, 2, 3].map((k) => opt(k, `${k} – ${o.levels[k].name}`, o.settings.default_level)).join("")}</select></label>
+          <label class="field"><span>Standard-Netzausgang</span><select id="os-egress">${o.profiles.map((e) => opt(e.id, e.name, o.settings.default_egress)).join("")}</select></label>
+          <button class="btn btn-primary" id="os-save">Speichern</button></div>
+        <div class="card"><h2>Stufen im Überblick</h2><table class="tbl small"><tr><th>Regel</th>${[1, 2, 3].map((k) => `<th>${opsecBadge(k)}</th>`).join("")}</tr>
+          ${[["Anonymisierungs-Ausgang Pflicht", "require_egress"], ["Briefing-Bestätigung", "briefing"], ["Deckname in Listen", "codename"], ["Fall zwingend vertraulich", "force_restricted"],
+             ["Automatische Verortung (OSM)", "auto_geocode"], ["Kartenhintergrund automatisch", "map_tiles"], ["Neutraler User-Agent", "neutral_user_agent"]]
+            .map(([l, k]) => `<tr><td>${l}</td>${[1, 2, 3].map((n) => `<td>${o.levels[n][k] ? "✓" : "–"}</td>`).join("")}</tr>`).join("")}
+          <tr><td>Höchste Exposition (automatisch)</td>${[1, 2, 3].map((n) => `<td>${esc(Object.values(state.meta.exposure).find((x) => x.rank === o.levels[n].max_exposure).label)}</td>`).join("")}</tr>
+          <tr><td>Höchste Exposition (Links)</td>${[1, 2, 3].map((n) => `<td>${esc(Object.values(state.meta.exposure).find((x) => x.rank === o.levels[n].max_link_exposure).label)}</td>`).join("")}</tr>
+          <tr><td>Fälle</td>${[1, 2, 3].map((n) => `<td>${o.level_usage[n] || 0}</td>`).join("")}</tr></table></div></div>`;
+      const editProfile = (e) => {
+        const m = modal(e ? "Netzausgang bearbeiten" : "Netzausgang anlegen", `<form id="egf">
+          <label class="field"><span>Name</span><input name="name" value="${esc(e ? e.name : "")}" placeholder="z. B. Tor, VPN Frankfurt"></label>
+          <label class="field"><span>Proxy-Adresse</span><input name="proxy_url" value="${esc(e ? e.proxy_url : "")}" placeholder="http://tor:9080 oder http://benutzer:passwort@proxy.example:3128"><small>HTTP-Proxy mit CONNECT. DNS-Auflösung erfolgt beim Proxy. Maskiertes Passwort (***) bleibt beim Speichern erhalten.</small></label>
+          <label class="field"><span>User-Agent (optional)</span><input name="user_agent" value="${esc(e ? e.user_agent : "")}" placeholder="leer = je OPSEC-Stufe neutral"></label>
+          <label class="field"><span>Notiz</span><input name="notes" value="${esc(e ? e.notes : "")}"></label></form>`,
+          `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="egf-save">Speichern</button>`);
+        $("#egf-save", m.el).onclick = async () => { const d = formData($("#egf", m.el)); if (e) d.id = e.id; await guard(() => api("POST", "/api/admin/egress-profiles", d), "Gespeichert"); m.close(); renderAdmin("opsec"); };
+      };
+      $("#eg-new").onclick = () => editProfile(null);
+      $$("[data-eg-edit]", el).forEach((b) => (b.onclick = () => editProfile(o.profiles.find((x) => x.id === b.dataset.egEdit))));
+      $$("[data-eg-del]", el).forEach((b) => (b.onclick = async () => { if (await confirmDlg("Netzausgang löschen?")) { await guard(() => api("DELETE", `/api/admin/egress-profiles/${b.dataset.egDel}`), "Gelöscht"); renderAdmin("opsec"); } }));
+      $$("[data-eg-test]", el).forEach((b) => (b.onclick = async () => {
+        const row = $(`#egr-${CSS.escape(b.dataset.egTest)}`); row.classList.remove("hidden");
+        row.firstElementChild.innerHTML = '<span class="spinner dark"></span> Prüfe Ausgangs-IP …';
+        try {
+          const r = await api("POST", `/api/admin/egress-profiles/${b.dataset.egTest}/test`);
+          row.firstElementChild.innerHTML = r.ok ? `<div class="${r.warning ? "bad-box" : "ok-box"}">Ausgangs-IP: <b>${esc(r.ip)}</b> · Direkt-IP: ${esc(r.direct_ip || "?")}${r.warning ? "<br>⚠ " + esc(r.warning) : r.anonymized ? " · ✓ anonymisiert" : ""}</div>`
+            : `<div class="bad-box">Test fehlgeschlagen: ${esc(r.error || "")}</div>`;
+        } catch (e) { row.firstElementChild.innerHTML = `<div class="bad-box">${esc(e.message)}</div>`; }
+      }));
+      $("#os-save").onclick = async () => { await guard(() => api("PUT", "/api/admin/opsec-settings", { default_level: Number($("#os-level").value), default_egress: $("#os-egress").value }), "Gespeichert"); state.meta = await api("GET", "/api/meta"); renderAdmin("opsec"); };
     } else if (section === "restricted") {
       const list = await api("GET", "/api/admin/restricted-cases");
       el.innerHTML = `<div class="card"><h2>Vertrauliche Fälle</h2><p class="small muted">Inhalte und Titel sind für die Administration nicht sichtbar. Fällt die verantwortliche Person aus, kann ein <b>Notfallzugriff</b> (nur lesend) mit Begründung erteilt werden – er wird dauerhaft im Fallprotokoll vermerkt und ist für das Fallteam sichtbar.</p>
@@ -1236,11 +1392,25 @@
     return `${words[a[0] % words.length]}-${words[a[1] % words.length]}-${(a[2] % 900) + 100}-${"!#$%&?"[a[3] % 6]}x`;
   }
 
+  /* Schnellsperre: Bildschirminhalt sofort entfernen und Sitzung beenden (z. B. bei Schulterblick oder Verlassen des Platzes). */
+  async function quickLock() {
+    stopPresence();
+    $("#main").innerHTML = ""; $("#case-list").innerHTML = ""; $("#modal-root").innerHTML = "";
+    if (state.graph) { state.graph.destroy(); state.graph = null; }
+    if (state.map) { state.map.remove(); state.map = null; }
+    document.title = "EagleEye";
+    try { await api("POST", "/api/auth/logout"); } catch (_) { /* Sitzung ggf. schon beendet */ }
+    state.auth = null; state.ov = null; state.cases = [];
+    history.replaceState(null, "", "/#/");
+    showAuth();
+  }
+
   // ------------------------------------------------------------------ Start
   let started = false;
   async function startApp() {
     state.meta = await api("GET", "/api/meta");
     state.users = await api("GET", "/api/users");
+    state.egress = await api("GET", "/api/egress-profiles");
     renderUserMenu();
     await loadCases();
     if (!started) {
@@ -1253,6 +1423,7 @@
   async function init() {
     $("#btn-new-case").onclick = openNewCase;
     $("#btn-help").onclick = openHelp;
+    document.addEventListener("keydown", (e) => { if (e.ctrlKey && e.altKey && (e.key === "l" || e.key === "L") && state.auth && state.auth.authenticated) { e.preventDefault(); quickLock(); } });
     $("#btn-menu").onclick = () => $("#sidebar").classList.toggle("open");
     $("#case-filter").oninput = renderCaseList;
     $$("#case-views button").forEach((b) => (b.onclick = async () => {
