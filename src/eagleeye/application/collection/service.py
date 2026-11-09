@@ -334,7 +334,10 @@ class ProviderCollection120Service:
                 WHERE run_id=?""",
                 (attempts, error_class, error_text, completed, run_id),
             )
-            self._record_run_failure(definition)
+            # Revoked case approval is not a provider outage. Preserve the failed
+            # run/audit trail, but do not trip the shared provider circuit breaker.
+            if not isinstance(exc, ProviderAuthorizationError):
+                self._record_run_failure(definition)
             self._event(case_id, provider_key, run_id, approved_by, "ProviderRunFailed", {
                 "error_class": error_class, "error": error_text[:1000],
             })
