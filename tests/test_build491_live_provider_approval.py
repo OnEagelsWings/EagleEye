@@ -134,6 +134,7 @@ def test_live_run_rechecks_approval_before_candidate_intake():
     service._event = Mock()
     service._execute_request = Mock(return_value=(
         ProviderTransportResponse(
+            requested_url="https://example.org/record",
             status_code=200, final_url="https://example.org/record",
             body=b"{}", headers={}, elapsed_ms=5,
         ), 1,
