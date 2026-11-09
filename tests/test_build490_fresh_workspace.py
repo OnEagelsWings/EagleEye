@@ -630,3 +630,24 @@ def test_folder_picker_rejects_redirected_evidence_module_before_saving(monkeypa
         desktop476.remember_workspace(root)
     assert marker.read_text(encoding="utf-8") == "unchanged"
     assert not (settings / "workspace.json").exists()
+
+
+def test_build490_rejects_in_workspace_evidence_alias(monkeypatch, tmp_path):
+    """A symlink to a sibling store must not merge distinct evidence namespaces."""
+    import pytest
+    from eagleeye.bootstrap.paths import RuntimePaths
+    import eagleeye.bootstrap.paths as paths
+
+    monkeypatch.setattr(paths, "BUILD", "490.0")
+    root = tmp_path / "fresh"
+    evidence = root / "data" / "evidence_vault"
+    other = root / "data" / "search_captures"
+    other.mkdir(parents=True)
+    try:
+        evidence.symlink_to(other, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Directory symlinks are not supported by this test environment")
+    with pytest.raises(ValueError, match="module directories cannot be symbolic links"):
+        RuntimePaths.resolve(install_dir=tmp_path / "install", base_dir=root)
+    assert evidence.is_symlink()
+    assert not (root / "data" / "eagleeye.db").exists()
