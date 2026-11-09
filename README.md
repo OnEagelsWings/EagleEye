@@ -3,6 +3,7 @@
 Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
 Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem
 Netzwerkgraphen, Zeitleiste/Karte und **Word-Dossiers** (.docx) inkl. Vermissten-Suchplakat.
+Ausbauplan: [`PersonOSINT/ROADMAP_UNTERNEHMEN.md`](PersonOSINT/ROADMAP_UNTERNEHMEN.md).
 Start: `PersonOSINT/START_PERSONOSINT.bat` (Windows) bzw. `PersonOSINT/start_personosint.sh` (Linux/macOS).
 
 ## Build 478 – Eigene Arbeitsbefunde mit Originalfundstelle
