@@ -20,7 +20,10 @@ services:
       retries: 10
 
   app:
-    build: ..
+    build:
+      context: ..
+      args:
+        WITH_PDF: ${EAGLEEYE_WITH_PDF:-1}
     image: eagleeye-app:latest
     restart: unless-stopped
     depends_on:

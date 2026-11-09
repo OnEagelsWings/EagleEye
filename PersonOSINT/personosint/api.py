@@ -22,7 +22,7 @@ from .config import Settings, default_data_dir
 from .crypto import Vault
 from .db import SCHEMA_VERSION, ConflictError, Database, now_iso, redact_url
 from .demo import seed_demo
-from .dossier import build_dossier, build_poster, render_graph_png, safe_filename
+from .dossier import build_poster, render_graph_png, safe_filename
 from . import opsec as ops
 from .opsec import OpsecBlocked
 from .service import (CASE_STATUSES, CASE_TYPES, ENTITY_TYPES, EVENT_KINDS, IDENTIFIER_KINDS, MEMBER_ROLES, MISSING_FIELDS,
@@ -367,6 +367,95 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def sources_list(_: dict = Depends(user_ok)) -> list[dict]:
         return p.available_sources()
 
+    # ---------------------------------------------------------------- Schritt 3: Belege, Dossier-Vorschau, Berichtslayout
+    @app.get("/api/cases/{cid}/evidence")
+    def evidence_list(cid: int, _: dict = READ) -> list[dict]:
+        rows = db.all("SELECT * FROM evidence WHERE case_id = ? ORDER BY id DESC", (cid,))
+        for r in rows:
+            r.pop("file", None)
+        return rows
+
+    @app.post("/api/cases/{cid}/evidence", status_code=201)
+    def evidence_capture(cid: int, payload: dict = Body(...), case: dict = WRITE) -> dict:
+        from . import evidence as ev
+
+        p.require_briefing(case)
+        url = (payload.get("url") or "").strip()
+        fid = int(payload.get("finding_id") or 0) or None
+        if fid and not url:
+            row = db.one("SELECT url FROM findings WHERE id = ? AND case_id = ?", (fid, cid))
+            url = row["url"] if row else ""
+        try:
+            row = ev.capture(p, cid, url, finding_id=fid, fact_id=int(payload.get("fact_id") or 0) or None, note=payload.get("note", ""))
+        except ev.EvidenceError as exc:
+            raise Invalid(str(exc)) from exc
+        row.pop("file", None)
+        return row
+
+    @app.post("/api/cases/{cid}/evidence/confirmed")
+    def evidence_capture_confirmed(cid: int, case: dict = WRITE) -> dict:
+        from . import evidence as ev
+
+        p.require_briefing(case)
+        return ev.capture_confirmed(p, cid)
+
+    @app.get("/api/cases/{cid}/evidence/{eid}/download")
+    def evidence_download(cid: int, eid: int, _: dict = READ) -> Response:
+        from . import evidence as ev
+
+        try:
+            row, data = ev.content_of(p, cid, eid)
+        except ev.EvidenceError as exc:
+            raise Invalid(str(exc)) from exc
+        p.log(cid, "Beleg heruntergeladen", f"B{eid:04d} · {row['url']}")
+        # immer als Anhang und ohne Ausführung im Browser (archivierte Seiten können Skripte enthalten)
+        return _download(data, f"Beleg_B{eid:04d}{ev.EXT.get(row['content_type'], '.bin')}", "application/octet-stream")
+
+    @app.get("/api/cases/{cid}/export/beweispaket.zip")
+    def export_evidence(cid: int, case: dict = READ) -> Response:
+        from . import evidence as ev
+
+        export_id = p.register_export(cid, "Beweispaket")
+        content = ev.package(p, cid, export_id)
+        p.finish_export(export_id, content)
+        p.log(cid, "Beweispaket exportiert", export_id)
+        return _download(content, f"Beweispaket_{case['reference']}_{export_id}.zip", "application/zip")
+
+    @app.get("/api/cases/{cid}/dossier/preview")
+    def dossier_preview(cid: int, template: str = "", include_unreviewed: bool = False, _: dict = READ) -> dict:
+        from . import report
+
+        return report.preview(p, cid, template, {"include_unreviewed": include_unreviewed})
+
+    @app.get("/api/report/templates")
+    def report_templates(_: dict = Depends(user_ok)) -> dict:
+        from . import report
+
+        return {"templates": report.TEMPLATES, "sections": report.SECTION_LABELS, "pdf": report.pdf_available()}
+
+    @app.get("/api/admin/branding")
+    def admin_branding(_: dict = Depends(admin_ok)) -> dict:
+        return p.branding()
+
+    @app.put("/api/admin/branding")
+    def admin_branding_save(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        return p.save_branding(payload)
+
+    @app.post("/api/admin/branding/logo")
+    async def admin_branding_logo(file: UploadFile = File(...), _: dict = Depends(admin_ok)) -> dict:
+        return p.set_branding_logo(await file.read())
+
+    @app.delete("/api/admin/branding/logo")
+    def admin_branding_logo_delete(_: dict = Depends(admin_ok)) -> dict:
+        return p.set_branding_logo(None)
+
+    @app.get("/api/branding/logo")
+    def branding_logo(_: dict = Depends(user_ok)) -> Response:
+        logo = p.branding_logo()
+        if not logo:
+            raise NotFound("Kein Logo hinterlegt.")
+        return Response(logo.read_bytes(), media_type="image/png", headers={"Cache-Control": "no-store"})
+
     @app.get("/api/cases/{cid}/candidates")
     def case_candidates(cid: int, entity_id: int, include_reviewed: bool = False, _: dict = READ) -> list[dict]:
         return p.candidates(cid, entity_id, include_reviewed)
@@ -644,15 +733,24 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
 
     # ---------------------------------------------------------------- Export
     @app.get("/api/cases/{cid}/export/dossier.docx")
-    def export_dossier(cid: int, include_unreviewed: bool = False, include_audit: bool = True, include_graph: bool = True, case: dict = READ) -> Response:
+    def export_dossier(cid: int, include_unreviewed: bool = False, include_audit: bool = True, include_graph: bool = True,
+                       template: str = "", format: str = "docx", case: dict = READ) -> Response:  # noqa: A002
+        from . import report
+
         opts = {"include_unreviewed": include_unreviewed, "include_audit": include_audit, "include_graph": include_graph}
-        export_id = p.register_export(cid, "Dossier", options=opts)
+        template = template if template in report.TEMPLATES else report.default_template(case)
+        export_id = p.register_export(cid, f"Dossier ({report.TEMPLATES[template]['label']}{', PDF' if format == 'pdf' else ''})", options={**opts, "template": template})
         subj = p.subject(cid)
-        content = build_dossier(p, cid, opts, export_id=export_id)
+        content = report.build(p, cid, template, opts, export_id=export_id)
+        if format == "pdf":
+            try:
+                content = report.to_pdf(content)
+            except Exception as exc:  # noqa: BLE001
+                raise Invalid(f"PDF-Erzeugung nicht möglich: {exc}") from exc
         p.finish_export(export_id, content)
         label = case["codename"] if ops.level(case["opsec_level"]).codename and case["codename"] else (subj["label"] if subj else case["title"])
-        name = f"Dossier_{safe_filename(label)}_{case['reference']}_{export_id}.docx"
-        return _download(content, name, DOCX)
+        name = f"Dossier_{safe_filename(label)}_{case['reference']}_{export_id}.{'pdf' if format == 'pdf' else 'docx'}"
+        return _download(content, name, "application/pdf" if format == "pdf" else DOCX)
 
     @app.get("/api/cases/{cid}/export/poster.docx")
     def export_poster(cid: int, case: dict = READ) -> Response:

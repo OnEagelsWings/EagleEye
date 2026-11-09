@@ -23,7 +23,7 @@ HEADER_PASS = b"EEBAK1P"
 HEADER_KEY = b"EEBAK1K"
 #: Reihenfolge nach Fremdschlüsseln; Sitzungen werden bewusst nicht gesichert
 TABLE_ORDER = ["users", "cases", "case_members", "entities", "identifiers", "searches", "findings", "links",
-               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports", "facts"]
+               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports", "facts", "evidence"]
 
 
 #: Einstellungen, die verschlüsselt gespeichert werden (z. B. Proxy-Zugangsdaten)
@@ -78,6 +78,16 @@ def create_backup(db: Database, vault: Vault, data_dir: Path, out_dir: Path, pas
                     content = vault.decrypt(f.read_bytes())
                     z.writestr(f"photos/{f.name}", content)
                     manifest["files"][f.name] = hashlib.sha256(content).hexdigest()
+        # Belege (verschlüsselt gespeichert) und Firmenlogo (unkritisch) – getrennt aufgeführt
+        for folder, encrypted in (("evidence", True), ("branding", False)):
+            src_dir = data_dir / folder
+            entries = manifest.setdefault(f"{folder}_files", {})
+            if src_dir.exists():
+                for f in sorted(src_dir.iterdir()):
+                    if f.is_file():
+                        content = vault.decrypt(f.read_bytes()) if encrypted else f.read_bytes()
+                        z.writestr(f"{folder}/{f.name}", content)
+                        entries[f.name] = hashlib.sha256(content).hexdigest()
         z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
     raw = buf.getvalue()
     if passphrase:
@@ -124,6 +134,10 @@ def verify_backup(path: Path, vault: Vault | None = None, passphrase: str = "") 
     for name, digest in manifest["files"].items():
         if hashlib.sha256(z.read(f"photos/{name}")).hexdigest() != digest:
             problems.append(f"Foto {name} beschädigt")
+    for folder in ("evidence", "branding"):
+        for name, digest in (manifest.get(f"{folder}_files") or {}).items():
+            if hashlib.sha256(z.read(f"{folder}/{name}")).hexdigest() != digest:
+                problems.append(f"Datei {folder}/{name} beschädigt")
     return {"ok": not problems, "problems": problems, "created_at": manifest["created_at"],
             "tables": {k: v["rows"] for k, v in manifest["tables"].items()}, "photos": len(manifest["files"]),
             "source_dialect": manifest["source_dialect"]}
@@ -162,6 +176,12 @@ def restore_backup(path: Path, db: Database, vault: Vault, data_dir: Path, passp
     for name in manifest["files"]:
         safe = Path(name).name  # keine Pfadangaben aus dem Archiv übernehmen
         (photos / safe).write_bytes(vault.encrypt(z.read(f"photos/{name}")))
+    for folder, encrypted in (("evidence", True), ("branding", False)):
+        target = data_dir / folder
+        for name in manifest.get(f"{folder}_files") or {}:
+            target.mkdir(parents=True, exist_ok=True)
+            content = z.read(f"{folder}/{name}")
+            (target / Path(name).name).write_bytes(vault.encrypt(content) if encrypted else content)
     return check
 
 

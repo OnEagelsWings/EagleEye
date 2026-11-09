@@ -736,6 +736,8 @@ class Platform:
         case = self.get_case(case_id)
         for e in self.db.all("SELECT photo FROM entities WHERE case_id = ? AND photo != ''", (case_id,)):
             (self.data_dir / "photos" / e["photo"]).unlink(missing_ok=True)
+        for ev in self.db.all("SELECT file FROM evidence WHERE case_id = ? AND file != ''", (case_id,)):
+            (self.data_dir / "evidence" / ev["file"]).unlink(missing_ok=True)
         self.db.execute("DELETE FROM cases WHERE id = ?", (case_id,))
         # Personenbezogene Protokolltexte schwärzen; Hashes bleiben, damit die Kette prüfbar bleibt
         self.db.execute("UPDATE audit SET detail = '[gelöscht]', redacted = 1 WHERE case_id = ?", (case_id,))
@@ -1007,6 +1009,50 @@ class Platform:
             r["category"] = meta.get("category", "Sonstiges")
         return rows
 
+    # ------------------------------------------------------------------ Schritt 3: Berichtslayout
+    BRANDING_KEYS = ("org_name", "footer", "disclaimer", "color")
+
+    def branding(self) -> dict[str, Any]:
+        raw = self._setting("branding")
+        data = json.loads(raw) if raw else {}
+        data["has_logo"] = self.branding_logo() is not None
+        return data
+
+    def save_branding(self, payload: dict[str, Any]) -> dict[str, Any]:
+        data = {k: str(payload.get(k) or "").strip()[:1000] for k in self.BRANDING_KEYS}
+        if data["color"] and not re.fullmatch(r"#?[0-9a-fA-F]{6}", data["color"]):
+            raise Invalid("Farbe bitte als Hex-Wert angeben, z. B. #0F2A4A.")
+        self._set_setting("branding", json.dumps(data, ensure_ascii=False))
+        self.log(None, "Berichtslayout geändert", data["org_name"])
+        return self.branding()
+
+    def branding_logo(self) -> Path | None:
+        folder = self.data_dir / "branding"
+        for name in ("logo.png", "logo.jpg"):
+            if (folder / name).exists():
+                return folder / name
+        return None
+
+    def set_branding_logo(self, content: bytes | None) -> dict[str, Any]:
+        folder = self.data_dir / "branding"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("logo.png", "logo.jpg"):
+            (folder / name).unlink(missing_ok=True)
+        if content:
+            if len(content) > 2_000_000:
+                raise Invalid("Logo größer als 2 MB.")
+            clean, _ = strip_image_metadata(content)
+            from io import BytesIO
+
+            from PIL import Image
+            img = Image.open(BytesIO(clean))
+            img.thumbnail((1200, 400))
+            buf = BytesIO()
+            img.save(buf, "PNG")
+            (folder / "logo.png").write_bytes(buf.getvalue())
+        self.log(None, "Firmenlogo " + ("hinterlegt" if content else "entfernt"), "")
+        return self.branding()
+
     # ------------------------------------------------------------------ Schritt 2: Kandidaten, Bewertung, Red Flags
     def candidates(self, case_id: int, entity_id: int, include_reviewed: bool = False) -> list[dict[str, Any]]:
         subject = self.get_entity(case_id, entity_id)
@@ -1094,9 +1140,12 @@ class Platform:
                               "WHERE case_id = ? AND finding_id IS NOT NULL ORDER BY id", (case_id,)):
             fa["predicate_label"] = predicate_label(fa["predicate"])
             facts.setdefault(fa["finding_id"], []).append(fa)
+        ev = {r["finding_id"]: r["n"] for r in self.db.all("SELECT finding_id, COUNT(*) AS n FROM evidence WHERE case_id = ? AND finding_id IS NOT NULL "
+                                                         "GROUP BY finding_id", (case_id,))}
         for r in rows:
             r["confidence"] = confidence_label(r["score"])
             r["facts"] = facts.get(r["id"], [])
+            r["evidence_count"] = ev.get(r["id"], 0)
         return rows
 
     def add_manual_finding(self, case_id: int, payload: dict[str, Any]) -> dict[str, Any]:

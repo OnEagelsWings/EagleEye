@@ -715,6 +715,13 @@
       const list = findings.filter((f) => (!state.findingFilter || f.status === state.findingFilter) && (!q || `${f.title} ${f.snippet} ${f.source}`.toLowerCase().includes(q)));
       $("#f-list").innerHTML = list.length ? list.map(findingCard).join("") :
         `<div class="empty"><div class="big">${state.findingFilter === "neu" && findings.length ? "✅" : "🔎"}</div>${state.findingFilter === "neu" && findings.length ? "Alle Treffer sind geprüft." : "Keine Treffer in dieser Ansicht."}</div>`;
+      $$("[data-ev]", $("#f-list")).forEach((b) => b.onclick = async () => {
+        b.disabled = true; b.innerHTML = '<span class="spinner dark"></span> sichere …';
+        try { const r = await api("POST", `/api/cases/${ov.case.id}/evidence`, { finding_id: Number(b.dataset.ev) }); toast(`Beleg gesichert – SHA-256 ${r.sha256.slice(0, 12)}…`, "ok"); }
+        catch (e) { toast(e.message, "err"); }
+        renderCase();
+      });
+      if (!state.ov.permissions.includes("write")) $$("[data-ev]", $("#f-list")).forEach((x) => x.classList.add("hidden"));
       $$("[data-review]", $("#f-list")).forEach((b) => b.onclick = async () => {
         const card = b.closest(".finding");
         const note = $("input", card) ? $("input", card).value : "";
@@ -772,6 +779,8 @@
             ${f.status === "neu" ? `<input placeholder="Prüfnotiz (optional) – z. B. Foto passt, Ort bestätigt" style="flex:1;min-width:180px;padding:.3rem .5rem;font-size:.85rem">
               <button class="btn btn-sm btn-success" data-review="bestätigt">✓ Bestätigen</button><button class="btn btn-sm" data-review="verworfen">✗ Verwerfen</button>`
               : `<button class="btn btn-sm" data-review="neu">↺ Erneut prüfen</button>`}
+            ${f.url && f.url.startsWith("http") ? `<button class="btn btn-sm ev-btn" data-ev="${f.id}" title="Seite über den Fall-Netzausgang abrufen, verschlüsselt archivieren und mit SHA-256 versiegeln">📎 Beleg sichern</button>` : ""}
+            ${f.evidence_count ? `<span class="badge b-green" title="gesicherte Belege">📎 ${f.evidence_count} gesichert</span>` : ""}
           </div>
         </div>
       </div></div>`;
@@ -1029,51 +1038,74 @@
   // ------------------------------------------------------------------ Tab: Dossier
   async function tabDossier(el, ov) {
     const c = ov.counts, missing = ov.case.case_type === "vermisst";
+    const meta = state.reportMeta || (state.reportMeta = await api("GET", "/api/report/templates"));
+    const tpl = state.dossierTpl && meta.templates[state.dossierTpl] ? state.dossierTpl : (missing ? "vermisst" : "volldossier");
+    const unrev = !!state.dossierUnrev;
+    const [pv, evid, op] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/dossier/preview?template=${tpl}&include_unreviewed=${unrev}`),
+      api("GET", `/api/cases/${ov.case.id}/evidence`), api("GET", `/api/cases/${ov.case.id}/opsec`)]);
+    const canWrite = ov.permissions.includes("write");
+    const bar = (d) => d == null ? '<span class="muted small">–</span>' : `<div class="dens"><div style="width:${d}%;background:${d >= 75 ? "var(--green)" : d >= 50 ? "var(--amber)" : "var(--red)"}"></div></div><span class="small">${d} %</span>`;
     el.innerHTML = `
+      ${help("So entsteht das Top-Dossier", [
+        "Vorlage wählen – jede Vorlage stellt die passenden Kapitel zusammen. Die Vorschau zeigt je Kapitel die <b>Belegdichte</b>: Anteil der Aussagen, die mehrfach belegt, aus zuverlässiger Quelle bestätigt oder als Beleg gesichert sind.",
+        "Jede Aussage im Dossier trägt ihren <b>Admiralty-Code</b> und eine Fußnote. Das Quellenverzeichnis nennt Abrufzeit, Verlässlichkeit und – falls gesichert – den <b>SHA-256-Hash</b> und eine Archivkopie.",
+        "<b>Belege sichern</b> ruft eine Fundstelle über den Netzausgang des Falls ab, archiviert sie verschlüsselt und versiegelt sie. Das <b>Beweispaket</b> enthält alle Belege mit Manifest und Prüfanleitung.",
+        "In das Dossier gelangen nur geprüfte Aussagen – ungeprüfte nur auf Wunsch und deutlich markiert."], false)}
       <div class="grid g2">
-        <div class="card">
-          <h2>📄 Word-Dossier</h2>
-          <div class="opsec-strip small">🛡 Jeder Export erhält eine <b>Export-ID</b> (Fußzeile, Dateiname, Export-Register im OPSEC-Reiter); Dokument-Metadaten werden neutralisiert.
-            ${ov.case.opsec_level >= 2 ? "Weitergabe nur an das Fallteam, möglichst verschlüsselt." : ""}</div>
-          <p class="muted">Ein strukturiertes, druckfertiges Dokument (.docx) für Auftraggeber, Behörden oder die Akte.</p>
-          <ol class="small">
-            <li>Deckblatt mit Foto, Aktenzeichen und Vertraulichkeitsvermerk</li>
-            <li>Zusammenfassung mit Kernaussagen${missing ? " und Gefährdungseinschätzung" : ""}</li>
-            <li>Auftrag, Zweck und Rechtsgrundlage</li>
-            <li>Personenprofil und Identifikatoren</li>
-            ${missing ? "<li>Vermisstenangaben (letzte Sichtung, Beschreibung, Gefährdung)</li>" : ""}
-            <li>Zeitleiste</li>
-            <li>Netzwerkgrafik, Schlüsselakteure und alle Verbindungen</li>
-            <li>Bestätigte Erkenntnisse mit Quellenbelegen [1], [2] …</li>
-            <li>Offene Punkte, Vorschläge und Quellenverzeichnis</li>
-            <li>Methodik, Hinweise und Bearbeitungsprotokoll</li>
-          </ol>
-          <form id="dx">
-            <label class="check"><input type="checkbox" name="include_graph" checked> <span>Netzwerkgrafik einbetten</span></label>
-            <label class="check"><input type="checkbox" name="include_audit" checked> <span>Bearbeitungsprotokoll anhängen</span></label>
-            <label class="check"><input type="checkbox" name="include_unreviewed"> <span>Ungeprüfte Treffer gesondert aufführen (deutlich als „nicht verifiziert“ markiert)</span></label>
-          </form>
-          ${c.open_findings ? `<div class="warn">⚠️ ${c.open_findings} Treffer sind noch ungeprüft und erscheinen standardmäßig nicht im Dossier. <a href="#/case/${ov.case.id}/search">Jetzt prüfen →</a></div>` : ""}
-          <button class="btn btn-primary btn-lg" id="dx-go">⬇ Word-Dossier herunterladen</button>
+        <div>
+          <div class="card"><h2>1. Vorlage</h2>
+            <div class="tpl-cards">${Object.entries(meta.templates).map(([k, t]) => `<button type="button" class="type-card ${k === tpl ? "selected" : ""}" data-tpl="${k}"><b>${esc(t.label)}</b><div class="small muted">${esc(t.description)}</div></button>`).join("")}</div>
+            <label class="check" style="margin-top:.6rem"><input type="checkbox" id="dx-unrev" ${unrev ? "checked" : ""}> <span>Ungeprüfte Aussagen aufnehmen (deutlich als „ungeprüft“ markiert)</span></label>
+            <label class="check"><input type="checkbox" id="dx-graph" checked> <span>Netzwerkgrafik einbetten</span></label>
+            <label class="check"><input type="checkbox" id="dx-audit" checked> <span>Bearbeitungsprotokoll anhängen (falls Kapitel in der Vorlage)</span></label>
+          </div>
+          <div class="card"><div class="card-head"><h2>2. Inhalt & Belegdichte</h2><span class="right">${pv.overall.density != null ? `Gesamt ${bar(pv.overall.density)}` : ""}</span></div>
+            <table class="tbl"><tr><th>Kapitel</th><th>Aussagen</th><th>Belegdichte</th></tr>
+            ${pv.sections.map((x, i) => `<tr><td>${i + 1}. ${esc(x.label)}</td><td>${x.statements || "–"}</td><td>${bar(x.density)}</td></tr>`).join("")}</table>
+            ${pv.warnings.map((w) => `<div class="warn small" style="margin:.5rem 0 0">⚠ ${esc(w)}</div>`).join("")}
+            ${pv.ai ? '<div class="ok-box small" style="margin-top:.5rem">✓ Freigegebene KI-Zusammenfassung wird in die Management Summary übernommen.</div>' : ""}
+          </div>
         </div>
         <div>
-          ${missing ? `<div class="card"><h2>🆘 Suchplakat</h2><p class="muted">Einseitiges Plakat (Word, DIN A4) mit Foto, Beschreibung, letzter Sichtung und Polizeikontakt – zum Anpassen und Drucken.</p>
-            <a class="btn btn-primary" href="/api/cases/${ov.case.id}/export/poster.docx">⬇ Suchplakat (Word)</a>
-            <div class="small muted" style="margin-top:.5rem">Bitte nur in Abstimmung mit Angehörigen und Polizei veröffentlichen.</div></div>` : ""}
-          <div class="card"><h2>Weitere Exporte</h2>
-            <div class="row"><a class="btn" href="/api/cases/${ov.case.id}/graph.png">🕸️ Netzwerkgrafik (PNG)</a><a class="btn" href="/api/cases/${ov.case.id}/export/case.json">🗂️ Vollständige Falldaten (JSON)</a></div></div>
-          <div class="card"><h3>Inhalt im Überblick</h3>
-            <table class="tbl"><tr><td>Bestätigte Erkenntnisse</td><td><b>${c.confirmed}</b></td></tr><tr><td>Ungeprüfte Treffer</td><td>${c.open_findings}</td></tr>
-            <tr><td>Personen / Einträge</td><td>${c.persons} / ${c.entities}</td></tr><tr><td>Verbindungen</td><td>${c.links}</td></tr>
-            <tr><td>Ereignisse in Zeitleiste</td><td>${c.events}</td></tr><tr><td>Offene Aufgaben</td><td>${c.open_tasks}</td></tr><tr><td>Bisherige Exporte</td><td>${c.exports}</td></tr></table></div>
+          <div class="card"><h2>3. Erstellen</h2>
+            <div class="opsec-strip small">🛡 Jeder Export erhält eine <b>Export-ID</b> (Fußzeile, Dateiname, Register im OPSEC-Reiter); Metadaten werden neutralisiert.${op.can_export ? "" : " <b>Sie dürfen auf dieser OPSEC-Stufe nicht exportieren.</b>"}</div>
+            <div class="row"><button class="btn btn-primary btn-lg" data-fmt="docx">⬇ Word (.docx)</button>
+              ${meta.pdf ? '<button class="btn btn-lg" data-fmt="pdf">⬇ PDF/A</button>' : '<span class="small muted">PDF/A: LibreOffice auf dem Server installieren</span>'}</div>
+            <div class="row" style="margin-top:.7rem"><a class="btn" href="/api/cases/${ov.case.id}/export/beweispaket.zip">🗄 Beweispaket (${evid.length} Belege)</a>
+              <a class="btn" href="/api/cases/${ov.case.id}/graph.png">🕸️ Netzwerkgrafik</a><a class="btn" href="/api/cases/${ov.case.id}/export/case.json">🗂️ Falldaten (JSON)</a>
+              ${missing ? `<a class="btn" href="/api/cases/${ov.case.id}/export/poster.docx">🆘 Suchplakat</a>` : ""}</div>
+          </div>
+          <div class="card"><div class="card-head"><h2>📎 Belege (${evid.length})</h2>
+            <div class="right">${canWrite ? `<button class="btn btn-sm" id="ev-all" title="Alle bestätigten Treffer mit Webadresse sichern">Bestätigte Treffer sichern</button>` : ""}</div></div>
+            ${canWrite ? `<form class="row" id="ev-form"><input name="url" class="grow" placeholder="https://… Fundstelle sichern" required><button class="btn btn-sm btn-primary">Sichern</button></form>` : ""}
+            ${evid.length ? `<div style="overflow-x:auto"><table class="tbl small" style="margin-top:.5rem"><tr><th>Beleg</th><th>Fundstelle</th><th>Abruf</th><th>SHA-256</th><th></th></tr>
+              ${evid.map((e) => `<tr><td>B${String(e.id).padStart(4, "0")}</td><td><b>${esc(e.title || "")}</b><br><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url.slice(0, 60))}</a>${e.archive_url ? ` · <a href="${esc(e.archive_url)}" target="_blank" rel="noopener noreferrer">Archiv</a>` : ""}</td>
+                <td class="nowrap">${fmtTs(e.retrieved_at)}<br><span class="muted">HTTP ${e.status} · ${Math.round(e.size / 1024)} KB · ${esc(e.egress)}</span></td><td><code>${esc(e.sha256.slice(0, 16))}…</code></td>
+                <td><a class="btn btn-sm" href="/api/cases/${ov.case.id}/evidence/${e.id}/download" title="Originaldatei (als Download, wird nicht im Browser ausgeführt)">⬇</a></td></tr>`).join("")}</table></div>`
+              : '<div class="small muted" style="margin-top:.5rem">Noch keine Belege. Treffer-Karten haben eine Schaltfläche „📎 Beleg sichern“.</div>'}
+          </div>
         </div>
       </div>`;
-    $("#dx-go").onclick = () => {
-      const f = $("#dx");
-      const q = new URLSearchParams({ include_graph: f.include_graph.checked, include_audit: f.include_audit.checked, include_unreviewed: f.include_unreviewed.checked });
+    $$("[data-tpl]", el).forEach((b) => (b.onclick = () => { state.dossierTpl = b.dataset.tpl; renderCase(); }));
+    $("#dx-unrev").onchange = (e) => { state.dossierUnrev = e.target.checked; renderCase(); };
+    $$("[data-fmt]", el).forEach((b) => (b.onclick = () => {
+      const q = new URLSearchParams({ template: tpl, format: b.dataset.fmt, include_unreviewed: unrev, include_graph: $("#dx-graph").checked, include_audit: $("#dx-audit").checked });
       window.location.href = `/api/cases/${ov.case.id}/export/dossier.docx?${q}`;
-      toast("Dossier wird erstellt …", "ok");
-      setTimeout(() => { if (state.tab === "dossier") renderCase(); }, 2500);
+      toast(b.dataset.fmt === "pdf" ? "PDF/A wird erstellt (kann einige Sekunden dauern) …" : "Dossier wird erstellt …", "ok");
+      setTimeout(() => { if (state.tab === "dossier") renderCase(); }, 4000);
+    }));
+    const ef = $("#ev-form", el);
+    if (ef) ef.onsubmit = async (e) => {
+      e.preventDefault(); const btn = $("button", ef); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+      try { const r = await api("POST", `/api/cases/${ov.case.id}/evidence`, formData(ef)); toast(`Beleg B${String(r.id).padStart(4, "0")} gesichert`, "ok"); } catch (err) { toast(err.message, "err"); }
+      renderCase();
+    };
+    const ea = $("#ev-all", el);
+    if (ea) ea.onclick = async () => {
+      ea.disabled = true; ea.innerHTML = '<span class="spinner dark"></span> sichere …';
+      try { const r = await api("POST", `/api/cases/${ov.case.id}/evidence/confirmed`); toast(`${r.captured} Belege gesichert` + (r.errors.length ? `, ${r.errors.length} Fehler` : ""), r.errors.length ? "err" : "ok"); }
+      catch (err) { toast(err.message, "err"); }
+      renderCase();
     };
   }
 
@@ -1364,7 +1396,7 @@
   // ------------------------------------------------------------------ Verwaltung (Administration)
   async function renderAdmin(section) {
     if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
-    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["restricted", "🔒 Vertrauliche Fälle"]];
     $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
     const el = $("#adm");
     if (section === "users") {
@@ -1422,6 +1454,22 @@
         $("#vres").innerHTML = r.ok ? `<div class="ok-box">✓ Intakt – ${r.entries} Einträge geprüft (${r.redacted} geschwärzt).<br><span class="small">Kopf-Hash: <code>${esc(r.head)}</code></span></div>`
           : `<div class="bad-box"><b>⚠ Protokoll verändert!</b><br>Eintrag #${r.broken_at} (${fmtTs(r.ts)}): ${esc(r.problem)}</div>`;
       };
+    } else if (section === "branding") {
+      const b = await api("GET", "/api/admin/branding");
+      el.innerHTML = `<div class="grid g2"><div class="card"><h2>Berichtslayout</h2><p class="small muted">Gilt für alle Dossiers (Word/PDF): Kopfzeile, Überschriftenfarbe, Fußzeile, Logo auf dem Deckblatt und Hinweistext im Kapitel Methodik.</p>
+        <form id="br">
+          <label class="field"><span>Name der Organisation (Kopfzeile)</span><input name="org_name" value="${esc(b.org_name || "")}" placeholder="z. B. Recherchebüro Nord"></label>
+          <label class="field"><span>Fußzeile</span><input name="footer" value="${esc(b.footer || "")}" placeholder="Firma · Anschrift · Kontakt"></label>
+          <label class="field"><span>Akzentfarbe (Überschriften)</span><input name="color" type="color" value="${esc(b.color || "#0f2a4a")}" style="width:90px;height:38px;padding:2px"></label>
+          <label class="field"><span>Hinweis / Haftungsausschluss</span><textarea name="disclaimer" placeholder="z. B. Dieses Dossier beruht auf öffentlich zugänglichen Quellen …">${esc(b.disclaimer || "")}</textarea></label>
+          <button class="btn btn-primary">Speichern</button></form></div>
+        <div class="card"><h2>Logo</h2>${b.has_logo ? `<img src="/api/branding/logo?${Date.now()}" alt="Logo" style="max-width:100%;max-height:120px;border:1px solid var(--line);border-radius:8px;padding:.5rem;background:#fff">` : '<div class="muted small">Kein Logo hinterlegt.</div>'}
+          <div class="row" style="margin-top:.6rem"><label class="btn btn-sm">⬆ Logo hochladen (PNG/JPG)<input type="file" id="br-logo" accept="image/png,image/jpeg" hidden></label>
+          ${b.has_logo ? '<button class="btn btn-sm btn-danger" id="br-del">Entfernen</button>' : ""}</div>
+          <p class="small muted">Metadaten des Bildes werden entfernt; das Logo wird auf max. 1200×400 Pixel verkleinert.</p></div></div>`;
+      $("#br").onsubmit = async (e) => { e.preventDefault(); await guard(() => api("PUT", "/api/admin/branding", formData(e.target)), "Gespeichert"); renderAdmin("branding"); };
+      $("#br-logo").onchange = async (e) => { const fd = new FormData(); fd.append("file", e.target.files[0]); await guard(() => api("POST", "/api/admin/branding/logo", fd), "Logo gespeichert"); renderAdmin("branding"); };
+      const bd = $("#br-del"); if (bd) bd.onclick = async () => { await guard(() => api("DELETE", "/api/admin/branding/logo"), "Logo entfernt"); renderAdmin("branding"); };
     } else if (section === "backups") {
       const [list, sys] = await Promise.all([api("GET", "/api/admin/backups"), api("GET", "/api/admin/system")]);
       el.innerHTML = `<div class="card"><div class="card-head"><h2>Sicherungen</h2><div class="right"><button class="btn btn-primary" id="bk-now">💾 Jetzt sichern</button></div></div>

@@ -5,8 +5,11 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     EAGLEEYE_PERSONOSINT_DATA=/data EAGLEEYE_HOST=0.0.0.0 EAGLEEYE_PORT=8380
 
-# Kein apt nötig: Pillow bringt eine Unicode-Schrift für die Netzwerkgrafik mit
-RUN useradd --system --uid 10001 --home /data eagleeye
+# Optional: LibreOffice für den PDF/A-Export der Dossiers (WITH_PDF=1, ca. 400 MB zusätzlich)
+ARG WITH_PDF=1
+RUN if [ "$WITH_PDF" = "1" ]; then apt-get update && apt-get install -y --no-install-recommends libreoffice-writer-nogui fonts-dejavu-core \
+      && rm -rf /var/lib/apt/lists/*; fi \
+    && useradd --system --uid 10001 --home /data eagleeye
 
 WORKDIR /app
 COPY requirements.txt .
