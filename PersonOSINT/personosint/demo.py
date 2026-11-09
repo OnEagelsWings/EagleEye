@@ -112,7 +112,7 @@ def seed_demo(p: Platform) -> int:
         for cat, title, url, snip, status, score, reasons, data in demo_findings:
             p.db.insert("findings", {"case_id": cid, "entity_id": sid, "source": "Beispieldaten", "category": cat, "title": title, "url": url,
                                      "snippet": snip, "query": "Lena Hoffmann", "data": data, "score": score, "reasons": reasons,
-                                     "fingerprint": hashlib.sha1(url.encode()).hexdigest(), "status": status,
+                                     "fingerprint": hashlib.sha1(url.encode(), usedforsecurity=False).hexdigest(), "status": status,
                                      "review_note": "Beispielprüfung" if status != "neu" else "", "created_at": now_iso(),
                                      "reviewed_at": now_iso() if status != "neu" else None})
         tasks = p.list_tasks(cid)

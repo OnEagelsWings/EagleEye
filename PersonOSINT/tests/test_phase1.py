@@ -63,7 +63,9 @@ def test_setup_login_and_mandatory_2fa(tmp_path, backend):
     assert again.get("/api/auth/state").json()["state"] == "mfa"
     assert again.get("/api/cases").status_code == 401
     assert again.post("/api/auth/mfa", json={"code": "12345"}).status_code == 422
-    assert again.post("/api/auth/mfa", json={"code": totp_code(secret)}).status_code == 200
+    assert again.post("/api/auth/mfa", json={"code": totp_code(secret)}).status_code == 422          # Wiederverwendung gesperrt
+    import time as _t
+    assert again.post("/api/auth/mfa", json={"code": totp_code(secret, _t.time() + 30)}).status_code == 200
     assert again.get("/api/cases").status_code == 200
 
     actions = [a["action"] for a in again.get("/api/admin/audit").json()]

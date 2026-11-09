@@ -249,8 +249,22 @@ def sec_auftrag(ctx: Ctx, doc) -> tuple[int, int]:
         c = ctx.case
         _kv(doc, [("Zweck der Recherche", c["purpose"]), ("Rechtsgrundlage / Auftrag", c["legal_basis"]), ("Auftraggeber / Redaktion", c["client"]),
                   ("Verantwortlich", (ctx.team["owner"] or {}).get("display_name")), ("Prüfung (Vier-Augen)", (ctx.team["reviewer"] or {}).get("display_name")),
-                  ("Status", c["status"]), ("OPSEC-Stufe", f"{ctx.lv.key} – {ctx.lv.name}"), ("Hinweise", c["notes"])])
+                  ("Status", c["status"]), ("OPSEC-Stufe", f"{ctx.lv.key} – {ctx.lv.name}"), ("Löschfrist", c.get("retention_until")),
+                  ("Auftragsprüfung", _mandate_text(c)), ("Hinweise", c["notes"])])
     return 0, 0
+
+
+def _mandate_text(case: dict[str, Any]) -> str:
+    import json
+
+    raw = case.get("mandate_check") or ""
+    if not raw:
+        return "nicht dokumentiert"
+    m = json.loads(raw)
+    txt = f"durchgeführt von {m['checked_by']} am {_fmt_ts(m['checked_at'])}: "
+    if m["warnings"]:
+        return txt + f"{len(m['warnings'])} Warnsignal(e), angenommen mit Begründung: {m['override_reason']}"
+    return txt + "keine Warnsignale"
 
 
 def sec_identitaet(ctx: Ctx, doc) -> tuple[int, int]:

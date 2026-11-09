@@ -1,4 +1,4 @@
-# EagleEye PersonOSINT 1.3
+# EagleEye PersonOSINT 1.4
 
 **Investigativrecherche · Personensuche · Vermisstenrecherche · Verbindungsanalyse · Word-Dossiers**
 
@@ -13,6 +13,11 @@
 > (OpenSanctions, ICIJ Offshore Leaks), strukturierte Aussagen statt Textschnipsel, Kandidatengruppen gegen Namensvettern,
 > Admiralty-Bewertung, Widersprüche, Red Flags, Beweissicherung mit SHA-256, Top-Dossier mit Management Summary und
 > Belegdichte (Word/PDF/A), Überwachung mit Benachrichtigungen und lokale KI-Zusammenfassung mit Fußnotenprüfung.
+>
+> **Neu in 1.4 – Betriebsreife:** Auftragsprüfung gegen Missbrauch (Warnsignale, Annahme nur durch Teamleitung mit Begründung),
+> Löschfristen mit Erinnerung und Übersicht, Sicherheitsprüfung mit acht behobenen Befunden ([SECURITY_REVIEW.md](SECURITY_REVIEW.md)),
+> Entwürfe für Verarbeitungsverzeichnis, DSFA, Löschkonzept und TOM ([docs/compliance](docs/compliance/README.md)),
+> Pilot- und Abnahmeplan ([docs/pilot](docs/pilot/Pilot_und_Abnahme.md)) sowie Schulungsunterlagen ([docs/schulung](docs/schulung/)).
 
 EagleEye PersonOSINT ist eine lokale OSINT-Plattform, die auf den Grundsätzen von EagleEye Build 380 aufbaut
 (nur öffentliche Quellen, menschliche Prüfung, Zweckbindung, Protokollierung). Sie wurde als schlankes,
@@ -260,6 +265,14 @@ Kurzfassung – vollständig in [OPSEC_KONZEPT.md](OPSEC_KONZEPT.md):
 * Nur öffentliche Quellen, keine Logins, kein Umgehen von Zugangsschranken.
 * Die Anwendung lauscht als Einzelplatz nur auf `127.0.0.1`; technische Schutzmaßnahmen siehe *Teambetrieb → Sicherheit*.
 * Fälle lassen sich vollständig löschen (inkl. Fotos); Protokolltexte werden dabei geschwärzt.
+* **Auftragsprüfung** im Fall-Assistenten: Fragen nach Beziehung zur Zielperson, Schutzsituation (Frauenhaus, Kontaktverbot,
+  Auskunftssperre), reiner Anschriftenermittlung ohne Anspruch und – bei Vermisstenfällen – freiwilligem Kontaktabbruch.
+  Bei Warnsignalen darf nur die Teamleitung den Auftrag mit Begründung annehmen; das Ergebnis steht im Protokoll und im Dossier.
+* **Löschfristen:** beim Abschluss automatisch gesetzt (Standard in *Verwaltung → Löschfristen*), Erinnerung bei Erreichen,
+  Übersicht fälliger Fälle. Gelöscht wird bewusst nur durch Menschen.
+* Rechtliche Entwürfe (Verarbeitungsverzeichnis, DSFA, Löschkonzept, TOM, Auftragsprüfung): [docs/compliance](docs/compliance/README.md) –
+  vor dem Einsatz von DSB und Rechtsberatung prüfen lassen.
+* Sicherheitsprüfung und Restrisiken: [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
 * Vermisstenfälle: Die Plattform unterstützt Angehörige und Fachstellen, ersetzt aber keine Polizeiarbeit.
 
 ## Entwicklung

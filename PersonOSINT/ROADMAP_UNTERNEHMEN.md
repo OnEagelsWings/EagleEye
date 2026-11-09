@@ -253,3 +253,17 @@ Vor der kommerziellen Nutzung sind diese Punkte mit Fachanwalt bzw. Datenschutzb
 3. Phase 1.1–1.5 umsetzen: Login, Rollen, PostgreSQL, Docker-Betrieb.
 4. Beweissicherung (4.1) als ersten Mehrwert für zahlende Kunden vorziehen.
 5. Pilotbetrieb mit 2–3 echten Aufträgen, Rückmeldungen der Analysten sammeln, Plan anpassen.
+
+
+---
+
+## Stand Version 1.4 – Restarbeiten
+
+| Restarbeit | Stand |
+|---|---|
+| Sicherheitsprüfung | erledigt (intern): bandit, pip-audit, Zugriffstest aller Endpunkte, 8 Befunde behoben – [SECURITY_REVIEW.md](SECURITY_REVIEW.md). Externer Penetrationstest weiterhin empfohlen. |
+| Rechtliche Vorbereitung | Software: Auftragsprüfung + Löschfristen umgesetzt. Unterlagen als Entwürfe in [docs/compliance](docs/compliance/README.md) – Prüfung durch DSB/Anwalt offen. |
+| Pilot | Plan, Testfälle und Abnahmeprotokoll in [docs/pilot](docs/pilot/Pilot_und_Abnahme.md) – Durchführung mit dem Team offen. |
+| Schulung | Analysten-Handbuch, Admin-Handbuch, OPSEC-Kurzkarte in [docs/schulung](docs/schulung/) – Durchführung offen. |
+| Live-Test der Quellen | offen: in der Entwicklungsumgebung waren die Dienste nicht erreichbar; im Pilot je Quelle „Testen“ (Pilotplan V4). |
+| Docker-Produktionsbuild | Image ohne PDF gebaut und getestet; PDF/A in gleichwertigem Ubuntu-Image getestet; Debian-Build mit LibreOffice im Pilot prüfen. |

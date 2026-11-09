@@ -194,7 +194,14 @@ CREATE TABLE ai_drafts (
 )
 """
 
-MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6)]
+MIGRATION_7 = """
+ALTER TABLE users ADD COLUMN totp_last INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE cases ADD COLUMN retention_until TEXT NOT NULL DEFAULT '';
+ALTER TABLE cases ADD COLUMN mandate_check TEXT NOT NULL DEFAULT ''
+"""
+
+MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6),
+                                     (7, MIGRATION_7)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 

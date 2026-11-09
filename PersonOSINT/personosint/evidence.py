@@ -7,10 +7,8 @@ import csv
 import hashlib
 import html
 import io
-import ipaddress
 import json
 import re
-import socket
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -31,21 +29,10 @@ def check_target(url: str, resolve: bool = True) -> str:
     parts = urlsplit(url.strip())
     if parts.scheme not in {"http", "https"} or not parts.hostname:
         raise EvidenceError("Nur http(s)-Adressen können gesichert werden.")
-    host = parts.hostname.lower()
-    if host in {"localhost"} or host.endswith((".local", ".internal", ".localhost", ".lan")):
+    from .opsec import is_internal_host
+
+    if is_internal_host(parts.hostname, resolve):
         raise EvidenceError("Interne Adressen können nicht gesichert werden.")
-    try:
-        ips = [ipaddress.ip_address(host)]
-    except ValueError:
-        ips = []
-        if resolve:
-            try:
-                ips = [ipaddress.ip_address(i[4][0]) for i in socket.getaddrinfo(host, None)]
-            except OSError:
-                ips = []  # nicht auflösbar: der Abruf schlägt dann ohnehin fehl
-    for ip in ips:
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            raise EvidenceError("Interne Adressen können nicht gesichert werden.")
     return url.strip()
 
 
@@ -67,6 +54,13 @@ def _extract(content: bytes) -> tuple[str, str, str]:
         return "", content[:1500].decode("utf-8"), "text/plain"
     except UnicodeDecodeError:
         return "", "", "application/octet-stream"
+
+
+def _csv_safe(value: Any) -> Any:
+    """Tabellenkalkulationen werten =, +, -, @ am Zellanfang als Formel – entschärfen."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
 
 
 EXT = {"text/html": ".html", "application/json": ".json", "application/pdf": ".pdf", "text/plain": ".txt"}
@@ -157,7 +151,7 @@ def package(p, case_id: int, export_id: str) -> bytes:
         if manifest:
             w = csv.DictWriter(out, fieldnames=list({k: None for m in manifest for k in m}), delimiter=";")
             w.writeheader()
-            w.writerows(manifest)
+            w.writerows([{k: _csv_safe(v) for k, v in m.items()} for m in manifest])
         z.writestr("manifest.csv", out.getvalue())
         z.writestr("manifest.json", json.dumps({"fall": case["reference"], "export_id": export_id, "erstellt": datetime.now().isoformat(timespec="seconds"),
                                                 "belege": manifest}, ensure_ascii=False, indent=2))

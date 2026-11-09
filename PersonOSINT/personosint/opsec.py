@@ -212,12 +212,45 @@ class _StrictProxyHandler(urllib.request.ProxyHandler):
         return self.parent.open(req, timeout=req.timeout)
 
 
+def is_internal_host(host: str, resolve: bool) -> bool:
+    """True, wenn ein Ziel auf interne Netze zeigt (localhost, private/link-local Adressen, Cloud-Metadaten)."""
+    import ipaddress
+
+    host = (host or "").lower().strip("[]")
+    if not host or host == "localhost" or host.endswith((".local", ".internal", ".localhost", ".lan")):
+        return True
+    try:
+        ips = [ipaddress.ip_address(host)]
+    except ValueError:
+        if not resolve:
+            return False
+        try:
+            ips = [ipaddress.ip_address(i[4][0]) for i in socket.getaddrinfo(host, None)]
+        except OSError:
+            return False
+    return any(ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified for ip in ips)
+
+
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Folgt Weiterleitungen nur zu öffentlichen http(s)-Zielen."""
+
+    def __init__(self, resolve: bool):
+        super().__init__()
+        self.resolve = resolve
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
+        parts = urlsplit(newurl)
+        if parts.scheme not in {"http", "https"} or is_internal_host(parts.hostname or "", self.resolve):
+            raise urllib.error.HTTPError(newurl, 403, "Weiterleitung auf internes Ziel blockiert", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def build_opener(profile: EgressProfile) -> urllib.request.OpenerDirector:
     ctx = ssl.create_default_context()
     if profile.kind == "proxy":
         handler = _StrictProxyHandler({"http": profile.proxy_url, "https": profile.proxy_url})
-        return urllib.request.build_opener(handler, urllib.request.HTTPSHandler(context=ctx))
-    return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+        return urllib.request.build_opener(handler, urllib.request.HTTPSHandler(context=ctx), _SafeRedirectHandler(resolve=False))
+    return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx), _SafeRedirectHandler(resolve=True))
 
 
 def check_proxy_reachable(profile: EgressProfile, timeout: float = 4.0) -> None:

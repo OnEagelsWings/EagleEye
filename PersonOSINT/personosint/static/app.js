@@ -46,6 +46,7 @@
     return d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   }
   function fmtLocal(s) { return (s || "").replace("T", " "); }
+  function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); return m ? `${m[3]}.${m[2]}.${m[1]}` : (d || ""); }
 
   function modal(title, body, foot, opts = {}) {
     const root = $("#modal-root");
@@ -210,6 +211,14 @@
           <label class="field" style="margin-top:.6rem"><span>Netzausgang für automatische Abfragen</span><select name="egress_profile">${opt("", "Voreinstellung der Organisation")}${(state.egress || []).map((e) => opt(e.id, e.name + (e.kind === "direkt" ? " – ohne Anonymisierung" : ""))).join("")}</select>
             <small>Ab Stufe 2 nur über einen Anonymisierungs-Ausgang (Proxy/Tor); fehlt er, werden Abfragen blockiert statt direkt gesendet.</small></label>
           <label class="check"><input type="checkbox" name="restricted" checked> <span><b>🔒 Vertraulicher Fall (Quellenschutz)</b><br><span class="small muted">Nur das Fallteam sieht den Fall – auch Teamleitung und Administration nicht. Empfohlen für investigative Recherchen.</span></span></label>
+          <div class="mandate" id="mandate">
+            <h3 style="margin:.9rem 0 .2rem">⚖ Auftragsprüfung</h3>
+            <p class="small muted" style="margin:0 0 .4rem">Schutz vor Missbrauch (Stalking, häusliche Gewalt, Umgehung von Schutzanordnungen). Die Antworten werden im Fall und im Dossier dokumentiert.</p>
+            ${(state.meta.mandate_questions || []).map((q) => `<div class="mq" data-mq="${esc(q.key)}" data-risk="${q.risk ? 1 : 0}"><div class="small">${esc(q.text)}</div>
+              <div class="mq-ans"><label><input type="radio" name="mq_${esc(q.key)}" value="1"> Ja</label><label><input type="radio" name="mq_${esc(q.key)}" value="0"> Nein</label></div></div>`).join("")}
+            <div id="mq-warn" class="bad-box hidden small"></div>
+            <label class="field hidden" id="mq-reason"><span>Begründung, warum der Auftrag trotz Warnsignalen zulässig ist (mind. 30 Zeichen)</span><textarea name="mandate_reason"></textarea></label>
+          </div>
         </section>
         <section data-step="3" class="hidden">
           <p class="muted small">Optional – Sie können die Person auch später erfassen. Mehr Angaben = bessere Treffer.</p>
@@ -233,6 +242,7 @@
       if (b.dataset.type === "vermisst") form.legal_basis_sel.value = "Auftrag von Angehörigen (Vermisstensuche)";
       if (b.dataset.type === "investigativ") form.legal_basis_sel.value = "Journalistische Recherche (Medienprivileg)";
       form.restricted.checked = b.dataset.type === "investigativ";
+      mqVisible();
       setLvl(b.dataset.type === "investigativ" ? Math.max(2, state.meta.opsec_defaults.default_level) : state.meta.opsec_defaults.default_level);
     });
     form.legal_basis_sel.value = "Journalistische Recherche (Medienprivileg)";
@@ -244,6 +254,30 @@
     $$(".opsec-cards .type-card", m.el).forEach((b) => (b.onclick = () => setLvl(b.dataset.lvl)));
     setLvl(Math.max(2, state.meta.opsec_defaults.default_level));
     form.legal_basis_sel.onchange = () => $("#lb-other", m.el).classList.toggle("hidden", !form.legal_basis_sel.value.startsWith("Sonstige"));
+    function mqVisible() {
+      $$("[data-mq]", m.el).forEach((q) => q.classList.toggle("hidden", q.dataset.mq === "freiwillig" && form.case_type.value !== "vermisst"));
+      mqEval();
+    }
+    function mqEval() {
+      const answers = {}, warnings = [];
+      let missing = 0;
+      $$("[data-mq]", m.el).forEach((q) => {
+        if (q.classList.contains("hidden")) return;
+        const v = $("input:checked", q);
+        if (!v) { missing++; return; }
+        answers[q.dataset.mq] = v.value === "1";
+        if (answers[q.dataset.mq] === (q.dataset.risk === "1")) warnings.push($(".small", q).textContent);
+        q.classList.toggle("mq-risk", answers[q.dataset.mq] === (q.dataset.risk === "1"));
+      });
+      const lead = ["leitung", "admin"].includes(state.auth.user.role);
+      const box = $("#mq-warn", m.el);
+      box.classList.toggle("hidden", !warnings.length);
+      box.innerHTML = warnings.length ? `<b>⚠ ${warnings.length} Warnsignal(e).</b> ${lead ? "Der Auftrag darf nur nach eigener Prüfung und mit ausführlicher Begründung angenommen werden." : "Solche Aufträge darf nur die Teamleitung annehmen. Bitte Teamleitung einbinden oder den Auftrag ablehnen."}` : "";
+      $("#mq-reason", m.el).classList.toggle("hidden", !(warnings.length && lead));
+      return { answers, warnings, missing, lead };
+    }
+    $$("[data-mq] input", m.el).forEach((i) => (i.onchange = mqEval));
+    mqVisible();
     const show = () => {
       $$("[data-step]", m.el).forEach((s) => s.classList.toggle("hidden", Number(s.dataset.step) !== step));
       $$(".wizard-steps span", m.el).forEach((s, i) => s.classList.toggle("on", i < step));
@@ -256,6 +290,10 @@
       if (step === 2) {
         if (!d.title) return toast("Bitte einen Falltitel angeben.", "err");
         if ((d.purpose || "").length < 10) return toast("Bitte den Zweck nachvollziehbar beschreiben (mind. 10 Zeichen).", "err");
+        const mq = mqEval();
+        if (mq.missing) return toast("Bitte alle Fragen der Auftragsprüfung beantworten.", "err");
+        if (mq.warnings.length && !mq.lead) return toast("Auftragsprüfung: Warnsignale – nur die Teamleitung darf diesen Auftrag annehmen.", "err");
+        if (mq.warnings.length && (d.mandate_reason || "").trim().length < 30) return toast("Bitte die Annahme trotz Warnsignalen ausführlich begründen (mind. 30 Zeichen).", "err");
       }
       if (step < 3) { step++; show(); return; }
       const legal = d.legal_basis_sel.startsWith("Sonstige") ? d.legal_basis_other : d.legal_basis_sel;
@@ -264,6 +302,7 @@
       const payload = { case_type: d.case_type, title: d.title, purpose: d.purpose, legal_basis: legal, client: d.client,
         due_date: d.due_date, priority: d.priority, restricted: form.restricted.checked || d.opsec_level === "3",
         opsec_level: Number(d.opsec_level), egress_profile: d.egress_profile,
+        mandate_check: (state.meta.mandate_questions || []).length ? { answers: mqEval().answers, override_reason: d.mandate_reason || "" } : null,
         subject: d.s_name ? { label: d.s_name, data: { geburtsdatum: d.s_birth, wohnort: d.s_loc, vermisst_status: d.case_type === "vermisst" ? "vermisst" : "" }, identifiers: idents } : null };
       const c = await guard(() => api("POST", "/api/cases", payload), "Fall angelegt");
       if (d.reviewer_id) await guard(() => api("PATCH", `/api/cases/${c.id}`, { reviewer_id: Number(d.reviewer_id) }));
@@ -290,6 +329,7 @@
         <div class="actions">
           <a href="#/case/${c.id}/opsec" style="text-decoration:none">${opsecBadge(c.opsec_level)}</a>
           ${c.restricted ? '<span class="badge b-grey" title="Nur das Fallteam sieht diesen Fall">🔒 vertraulich</span>' : ""}
+          ${c.retention_until ? `<span class="badge ${c.retention_until <= new Date().toISOString().slice(0, 10) ? "b-red" : "b-grey"}" title="Löschfrist laut Löschkonzept – danach Fall löschen oder Verlängerung begründen">🗑 Löschfrist ${esc(fmtDate(c.retention_until))}</span>` : ""}
           <select id="case-status" aria-label="Fallstatus" style="width:auto" ${ov.permissions.includes("write") || ov.permissions.includes("review") ? "" : "disabled"}>${state.meta.case_statuses.map((s) => opt(s, "Status: " + s, c.status)).join("")}</select>
           <button class="btn ${ov.permissions.includes("manage") ? "" : "hidden"}" id="case-edit">✎ Fall & Team</button>
           <a class="btn btn-primary" href="#/case/${c.id}/dossier">⬇ Dossier</a>
@@ -360,6 +400,7 @@
         <label class="field"><span>Prüfperson (Vier-Augen)</span><select name="reviewer_id">${userOpts(c.reviewer_id, (u) => u.role !== "leser")}</select></label>
         <label class="field"><span>Fällig am</span><input type="date" name="due_date" value="${esc(c.due_date)}"></label>
         <label class="field"><span>Priorität</span><select name="priority">${["niedrig", "normal", "hoch", "dringend"].map((x) => opt(x, x, c.priority)).join("")}</select></label>
+        <label class="field"><span>🗑 Löschfrist</span><input type="date" name="retention_until" value="${esc(c.retention_until || "")}"><small>Wird beim Abschluss automatisch gesetzt (Standard der Organisation). Verlängerung bitte in den Notizen begründen.</small></label>
       </div>
       <label class="check"><input type="checkbox" name="restricted" ${c.restricted ? "checked" : ""}> <span><b>🔒 Vertraulich (Quellenschutz)</b> – nur das Fallteam hat Zugriff, auch nicht Teamleitung/Administration.</span></label>
       <h4 style="margin:.8rem 0 .3rem">Weitere Teammitglieder</h4>
@@ -378,7 +419,7 @@
     };
     $("#ec-save", m.el).onclick = async () => {
       const f = $("#ec", m.el), d = formData(f);
-      const payload = { title: d.title, purpose: d.purpose, legal_basis: d.legal_basis, client: d.client, notes: d.notes, due_date: d.due_date, priority: d.priority,
+      const payload = { title: d.title, purpose: d.purpose, legal_basis: d.legal_basis, client: d.client, notes: d.notes, due_date: d.due_date, priority: d.priority, retention_until: d.retention_until || "",
         owner_id: d.owner_id ? Number(d.owner_id) : 0, reviewer_id: d.reviewer_id ? Number(d.reviewer_id) : 0, restricted: f.restricted.checked, version: c.version };
       if (payload.restricted && !c.restricted && !(await confirmDlg("Fall als vertraulich markieren? Teamleitung und Administration verlieren dann den Zugriff (Notfallzugriff nur mit protokollierter Begründung).", "Vertraulich machen"))) return;
       try {
@@ -1363,7 +1404,8 @@
 
     if (st.setup_required) {
       card(`<h2>Ersteinrichtung</h2><p class="muted small">Legen Sie das erste Konto an. Es erhält die Rolle <b>Administration</b> und kann weitere Teammitglieder einladen.</p>${errBox}
-        <form id="af"><label class="field"><span>Benutzername</span><input name="username" autocomplete="username" required placeholder="z. B. m.sprenger"></label>
+        <form id="af">${st.setup_code_required ? `<label class="field"><span>Einrichtungscode</span><input name="setup_code" required autocomplete="off" placeholder="XXXX-XXXX-XXXX"><small>Schutz vor Fremdzugriff: Der Code steht im Server-Protokoll (Konsole bzw. „docker compose logs app“).</small></label>` : ""}
+        <label class="field"><span>Benutzername</span><input name="username" autocomplete="username" required placeholder="z. B. m.sprenger"></label>
         <label class="field"><span>Anzeigename</span><input name="display_name" required placeholder="Vor- und Nachname"></label>
         <label class="field"><span>Passwort</span><input type="password" name="password" autocomplete="new-password" required></label><div class="pw-rules">${PW_RULES}</div>
         <label class="field"><span>Passwort wiederholen</span><input type="password" name="password2" autocomplete="new-password" required></label>
@@ -1482,7 +1524,7 @@
   // ------------------------------------------------------------------ Verwaltung (Administration)
   async function renderAdmin(section) {
     if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
-    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["ai", "🤖 KI-Assistent"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["ai", "🤖 KI-Assistent"], ["retention", "🗑 Löschfristen"], ["restricted", "🔒 Vertrauliche Fälle"]];
     $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
     const el = $("#adm");
     if (section === "users") {
@@ -1691,6 +1733,19 @@
         } catch (e) { row.firstElementChild.innerHTML = `<div class="bad-box">${esc(e.message)}</div>`; }
       }));
       $("#os-save").onclick = async () => { await guard(() => api("PUT", "/api/admin/opsec-settings", { default_level: Number($("#os-level").value), default_egress: $("#os-egress").value }), "Gespeichert"); state.meta = await api("GET", "/api/meta"); renderAdmin("opsec"); };
+    } else if (section === "retention") {
+      const r = await api("GET", "/api/admin/retention");
+      el.innerHTML = `<div class="card"><div class="card-head"><h2>🗑 Löschfristen</h2></div>
+        <p class="small muted">Personenbezogene Daten dürfen nur so lange gespeichert werden, wie es der Zweck verlangt (Art. 5 Abs. 1 lit. e DSGVO). Beim Abschluss eines Falls wird die Löschfrist automatisch gesetzt;
+        ist sie erreicht, erhalten die verantwortliche Person und die Teamleitung eine Erinnerung. Gelöscht wird nie automatisch – die Entscheidung bleibt beim Menschen und wird protokolliert.</p>
+        <div class="row"><label class="field" style="max-width:260px"><span>Standard: Monate nach Abschluss</span><input type="number" min="1" max="120" id="rt-months" value="${r.months}"></label>
+          <button class="btn btn-primary" id="rt-save" style="align-self:center">Speichern</button></div>
+        ${r.without_deadline ? `<div class="bad-box small">${r.without_deadline} abgeschlossene/archivierte Fälle haben keine Löschfrist – bitte im Fall unter „Fall & Team“ nachtragen.</div>` : ""}
+        <h3>Fällig oder in den nächsten 30 Tagen fällig</h3>
+        <table class="tbl"><tr><th>Aktenzeichen</th><th>Titel</th><th>Verantwortlich</th><th>Status</th><th>Löschfrist</th></tr>
+        ${r.cases.map((c) => `<tr><td>${esc(c.reference)}</td><td>${esc(c.title)}</td><td>${esc(c.owner_name || "–")}</td><td>${esc(c.status)}</td>
+          <td><span class="badge ${c.due ? "b-red" : "b-amber"}">${esc(fmtDate(c.retention_until))}${c.due ? " – erreicht" : ""}</span></td></tr>`).join("") || '<tr><td colspan="5" class="muted">Keine fälligen Löschfristen.</td></tr>'}</table></div>`;
+      $("#rt-save").onclick = async () => { await guard(() => api("PUT", "/api/admin/retention", { months: Number($("#rt-months").value) }), "Löschfrist gespeichert"); renderAdmin("retention"); };
     } else if (section === "restricted") {
       const list = await api("GET", "/api/admin/restricted-cases");
       el.innerHTML = `<div class="card"><h2>Vertrauliche Fälle</h2><p class="small muted">Inhalte und Titel sind für die Administration nicht sichtbar. Fällt die verantwortliche Person aus, kann ein <b>Notfallzugriff</b> (nur lesend) mit Begründung erteilt werden – er wird dauerhaft im Fallprotokoll vermerkt und ist für das Fallteam sichtbar.</p>

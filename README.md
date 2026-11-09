@@ -1,4 +1,4 @@
-## EagleEye PersonOSINT 1.3 – Personen- und Investigativrecherche mit Top-Dossier
+## EagleEye PersonOSINT 1.4 – Personen- und Investigativrecherche mit Top-Dossier
 
 Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
 Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem

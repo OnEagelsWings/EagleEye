@@ -84,12 +84,20 @@ def totp_code(secret: str, at: float | None = None, step: int = 30, digits: int 
     return str(value).zfill(digits)
 
 
-def verify_totp(secret: str, code: str, window: int = 1) -> bool:
+def totp_counter(secret: str, code: str, window: int = 1) -> int | None:
+    """Zeitschritt des passenden Codes (für den Wiederverwendungsschutz) oder None."""
     code = re.sub(r"\s", "", code or "")
     if not re.fullmatch(r"\d{6}", code):
-        return False
+        return None
     now = time.time()
-    return any(hmac.compare_digest(totp_code(secret, now + i * 30), code) for i in range(-window, window + 1))
+    for i in range(-window, window + 1):
+        if hmac.compare_digest(totp_code(secret, now + i * 30), code):
+            return int((now + i * 30) // 30)
+    return None
+
+
+def verify_totp(secret: str, code: str, window: int = 1) -> bool:
+    return totp_counter(secret, code, window) is not None
 
 
 def totp_uri(secret: str, username: str, issuer: str = "EagleEye PersonOSINT") -> str:
@@ -260,7 +268,10 @@ class Auth:
     def verify_mfa(self, sess: dict[str, Any], user: dict[str, Any], code: str) -> None:
         if not user["totp_enabled"]:
             raise AuthError("Für dieses Konto ist keine Zwei-Faktor-Anmeldung eingerichtet.", 422)
-        if not verify_totp(self.vault.decrypt_text(user["totp_secret"]), code):
+        counter = totp_counter(self.vault.decrypt_text(user["totp_secret"]), code)
+        if counter is not None and counter <= int(user.get("totp_last") or 0):
+            raise AuthError("Dieser Code wurde bereits verwendet – bitte den nächsten Code abwarten.", 422)
+        if counter is None:
             failed = user["failed_logins"] + 1
             self.db.update("users", user["id"], {"failed_logins": failed})
             if failed >= self.settings.max_failed_logins:
@@ -268,7 +279,7 @@ class Auth:
                 self.db.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
                 raise AuthError("Zu viele falsche Codes – Konto vorübergehend gesperrt.", 423)
             raise AuthError("Der Code ist falsch oder abgelaufen.", 422)
-        self.db.update("users", user["id"], {"failed_logins": 0, "last_login": now_iso()})
+        self.db.update("users", user["id"], {"failed_logins": 0, "last_login": now_iso(), "totp_last": counter})
         self.db.update("sessions", sess["id"], {"mfa_passed": 1})
 
     def begin_totp_setup(self, user: dict[str, Any]) -> dict[str, str]:
@@ -280,9 +291,10 @@ class Auth:
     def confirm_totp_setup(self, sess: dict[str, Any], user: dict[str, Any], code: str) -> None:
         if not user["totp_secret"]:
             raise AuthError("Bitte die Einrichtung zuerst starten.", 422)
-        if not verify_totp(self.vault.decrypt_text(user["totp_secret"]), code):
+        counter = totp_counter(self.vault.decrypt_text(user["totp_secret"]), code)
+        if counter is None:
             raise AuthError("Der Code passt nicht. Uhrzeit des Smartphones prüfen und erneut versuchen.", 422)
-        self.db.update("users", user["id"], {"totp_enabled": 1, "last_login": now_iso()})
+        self.db.update("users", user["id"], {"totp_enabled": 1, "last_login": now_iso(), "totp_last": counter})
         self.db.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user["id"], sess["id"]))
         self.db.update("sessions", sess["id"], {"mfa_passed": 1})
 

@@ -320,3 +320,13 @@ h4.src-head { margin: 1rem 0 .3rem; font-size: .8rem; text-transform: uppercase;
 .watch.off { opacity: .6; }
 .bad-text { color: var(--red); }
 .ai-draft { border: 1px solid var(--line); border-radius: 8px; padding: .6rem .7rem; background: #fafafa; }
+
+/* Auftragsprüfung */
+.mandate { border: 1px solid var(--line, #e2e8f0); border-radius: 8px; padding: .6rem .8rem; margin-top: .8rem; }
+.mq { padding: .35rem 0; border-top: 1px dashed #e2e8f0; display: flex; gap: .8rem; align-items: center; justify-content: space-between; }
+.mq:first-of-type { border-top: 0; }
+.mq-ans { display: flex; gap: .7rem; white-space: nowrap; }
+.mq-ans label { display: flex; gap: .25rem; align-items: center; font-size: .85rem; }
+.mq-ans input { width: auto; }
+.mq.mq-risk .small { color: var(--red, #b91c1c); font-weight: 600; }
+@media (max-width: 640px) { .mq { flex-direction: column; align-items: flex-start; } }

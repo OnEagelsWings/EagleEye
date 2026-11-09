@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import secrets
 import threading
 import time
 from datetime import datetime
@@ -25,6 +26,7 @@ from .demo import seed_demo
 from .dossier import build_poster, render_graph_png, safe_filename
 from . import opsec as ops
 from .opsec import OpsecBlocked
+from .service import MANDATE_QUESTIONS
 from .service import (CASE_STATUSES, CASE_TYPES, ENTITY_TYPES, EVENT_KINDS, IDENTIFIER_KINDS, MEMBER_ROLES, MISSING_FIELDS,
                       PERSON_FIELDS, RELATIONS, RISK_FACTORS, Forbidden, Invalid, NotFound, Platform, current_user,
                       seal_audit_chain)
@@ -138,11 +140,26 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def _state_payload(request: Request) -> dict[str, Any]:
         found = _session(request)
         base = {"setup_required": auth.user_count() == 0, "require_2fa": settings.require_2fa, "version": __version__}
+        if base["setup_required"]:
+            base["setup_code_required"] = not _is_local(request)
         if not found:
             return base | {"authenticated": False}
         sess, user = found
         return base | {"authenticated": True, "state": auth.session_state(sess, user), "user": auth.public(user),
                        "csrf": sess["csrf_token"], "can_create_cases": user["role"] in CASE_CREATORS}
+
+    failed_by_ip: dict[str, list[float]] = {}
+    setup_code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
+    if auth.user_count() == 0:
+        msg = f"EagleEye-Ersteinrichtung: Einrichtungscode {setup_code} (nur nötig, wenn die Einrichtung nicht direkt auf diesem Rechner erfolgt)"
+        log.warning(msg)
+        print(msg, flush=True)
+
+    app.state.setup_code = setup_code
+
+    def _is_local(request: Request) -> bool:
+        host = request.client.host if request.client else ""
+        return host in {"127.0.0.1", "::1", "localhost", "testclient"}
 
     # ---------------------------------------------------------------- Auth-Endpunkte
     @app.get("/api/auth/state")
@@ -153,6 +170,8 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def setup(request: Request, payload: dict = Body(...)) -> Response:
         if auth.user_count() > 0:
             raise AuthError("Die Einrichtung ist bereits abgeschlossen.", 409)
+        if not _is_local(request) and not secrets.compare_digest(str(payload.get("setup_code") or "").strip().upper(), setup_code):
+            raise AuthError("Einrichtungscode fehlt oder ist falsch. Er steht im Server-Protokoll (z. B. „docker compose logs app“).", 403)
         user = auth.create_user(payload.get("username", ""), payload.get("display_name", ""), "admin", payload.get("password", ""), must_change=False)
         current_user.set(auth.get_user(user["id"]))
         p.log(None, "Ersteinrichtung", f"Administrationskonto {user['username']} angelegt")
@@ -165,9 +184,15 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     @app.post("/api/auth/login")
     def login(request: Request, payload: dict = Body(...)) -> Response:
         ip = request.client.host if request.client else ""
+        now = time.time()
+        recent = [t for t in failed_by_ip.get(ip, []) if now - t < 900]
+        failed_by_ip[ip] = recent
+        if len(recent) >= 20:
+            raise AuthError("Zu viele fehlgeschlagene Anmeldungen von dieser Adresse – bitte 15 Minuten warten.", 429)
         try:
             token, user = auth.login(payload.get("username", ""), payload.get("password", ""), ip, request.headers.get("user-agent", ""))
         except AuthError as exc:
+            failed_by_ip.setdefault(ip, []).append(now)
             current_user.set(None)
             p.log(None, "Anmeldung fehlgeschlagen", f"{(payload.get('username') or '')[:40]} von {ip}: {exc}")
             raise
@@ -443,7 +468,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
 
     @app.post("/api/admin/branding/logo")
     async def admin_branding_logo(file: UploadFile = File(...), _: dict = Depends(admin_ok)) -> dict:
-        return p.set_branding_logo(await file.read())
+        return p.set_branding_logo(await file.read(2_000_001))
 
     @app.delete("/api/admin/branding/logo")
     def admin_branding_logo_delete(_: dict = Depends(admin_ok)) -> dict:
@@ -583,6 +608,15 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def case_fact_update(cid: int, fid: int, payload: dict = Body(...), _: dict = REVIEW) -> dict:
         return p.update_fact(cid, fid, payload)
 
+    @app.get("/api/admin/retention")
+    def admin_retention(_: dict = Depends(admin_ok)) -> dict:
+        return p.retention_overview()
+
+    @app.put("/api/admin/retention")
+    def admin_retention_save(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        p.set_retention_months(int(payload.get("months") or 0))
+        return p.retention_overview()
+
     @app.get("/api/admin/redflag-rules")
     def admin_redflags(_: dict = Depends(admin_ok)) -> dict:
         return p.redflag_config()
@@ -649,6 +683,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
                 "risk_factors": {k: v[0] for k, v in RISK_FACTORS.items() if k not in {"kind", "jugendlich", "senior"}},
                 "person_fields": PERSON_FIELDS, "missing_fields": MISSING_FIELDS, "sources": p.available_sources(),
                 "data_dir": str(settings.data_dir), "database": db.dialect,
+                "mandate_questions": MANDATE_QUESTIONS,
                 "opsec_levels": {k: ops.level_dict(v) for k, v in ops.LEVELS.items()}, "exposure": ops.EXPOSURE,
                 "source_exposure": ops.SOURCE_EXPOSURE, "opsec_defaults": p.opsec_settings()}
 
@@ -718,7 +753,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
 
     @app.post("/api/cases/{cid}/entities/{eid}/photo")
     async def upload_photo(cid: int, eid: int, file: UploadFile = File(...), _: dict = WRITE) -> dict:
-        return p.set_photo(cid, eid, await file.read(), file.filename or "foto.jpg")
+        return p.set_photo(cid, eid, await file.read(8_000_001), file.filename or "foto.jpg")
 
     @app.get("/api/cases/{cid}/entities/{eid}/photo")
     def photo(cid: int, eid: int, _: dict = READ) -> Response:

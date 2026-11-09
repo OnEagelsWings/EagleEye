@@ -136,6 +136,7 @@ def run_watch(p, wid: int) -> dict[str, Any]:
 
 def run_due(p, now: datetime | None = None) -> int:
     now = now or datetime.now(timezone.utc)
+    p.retention_reminders()
     due = p.db.all("SELECT id FROM watches WHERE active = 1 AND next_run <= ? ORDER BY next_run", (_iso(now),))
     for row in due:
         run_watch(p, row["id"])

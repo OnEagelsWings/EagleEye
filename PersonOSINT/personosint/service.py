@@ -43,6 +43,16 @@ class Forbidden(Exception):
 current_user: ContextVar[dict[str, Any] | None] = ContextVar("current_user", default=None)
 
 CASE_STATUSES = ["offen", "in Bearbeitung", "zur Prüfung", "freigegeben", "abgeschlossen", "archiviert"]
+
+#: Auftragsprüfung – Warnsignale für Missbrauch (Stalking, häusliche Gewalt, Umgehung von Schutzmaßnahmen).
+#: ``risk`` = Antwort, die ein Warnsignal ist.
+MANDATE_QUESTIONS = [
+    {"key": "beziehung", "risk": True, "text": "Besteht oder bestand zwischen Auftraggeber/in und Zielperson eine Partnerschaft, Ehe oder enge persönliche Beziehung?"},
+    {"key": "schutz", "risk": True, "text": "Gibt es Hinweise, dass die Zielperson Schutz sucht (Frauenhaus, Kontakt-/Näherungsverbot, Gewaltschutzverfahren, Auskunftssperre, Zeugenschutz)?"},
+    {"key": "aufenthalt", "risk": True, "text": "Soll vor allem der Aufenthaltsort oder die Wohnanschrift einer Privatperson ermittelt werden, ohne dass ein Rechtsanspruch (Titel, Verfahren, Behördenauftrag) belegt ist?"},
+    {"key": "freiwillig", "risk": True, "text": "Nur Vermisstenfälle: Gibt es Hinweise, dass eine volljährige Person freiwillig und bewusst den Kontakt abgebrochen hat?"},
+    {"key": "identitaet", "risk": False, "text": "Sind Identität und berechtigtes Interesse der auftraggebenden Person geprüft (Ausweis, Vollmacht, Unterlagen)?"},
+]
 MEMBER_ROLES = {"bearbeiter": "Bearbeitung", "pruefer": "Prüfung", "leser": "nur lesen"}
 GENESIS = "0" * 64
 
@@ -116,6 +126,12 @@ MISSING_FIELDS = [
     ("gesundheit", "Gesundheit / Medikamente"), ("anlaufpunkte", "Mögliche Anlaufpunkte"),
     ("polizei_dienststelle", "Zuständige Polizei"), ("aktenzeichen", "Aktenzeichen"), ("kontakt_hinweise", "Kontakt für Hinweise"),
 ]
+
+
+def safe_url(url: Any) -> str:
+    """Nur http(s)-Adressen übernehmen – verhindert javascript:/data:-Links aus fremden Quellen (z. B. föderierte Instanzen)."""
+    url = str(url or "").strip()
+    return url[:2000] if re.match(r"(?i)^https?://[^\s<>\"']+$", url) else ""
 
 
 def strip_image_metadata(content: bytes) -> tuple[bytes, list[str]]:
@@ -533,6 +549,7 @@ class Platform:
             raise Invalid("Bitte den Zweck der Recherche nachvollziehbar beschreiben (mind. 10 Zeichen).")
         if len(legal) < 3:
             raise Invalid("Bitte Rechtsgrundlage bzw. Auftrag/Einwilligung angeben.")
+        mandate = self._mandate_check(payload.get("mandate_check"), ctype)
         default_level = int(self._setting("default_opsec_level", "1"))
         lv = ops.level(payload.get("opsec_level") or default_level)
         codename = (payload.get("codename") or "").strip().upper()[:40] or (ops.new_codename() if lv.codename else "")
@@ -549,7 +566,10 @@ class Platform:
             "status": "offen", "notes": payload.get("notes") or "", "created_at": ts, "updated_at": ts,
             "owner_id": self._uid(), "due_date": (payload.get("due_date") or "").strip(),
             "priority": payload.get("priority") if payload.get("priority") in {"niedrig", "normal", "hoch", "dringend"} else ("dringend" if ctype == "vermisst" else "normal"),
-            "restricted": 1 if restricted else 0, "opsec_level": lv.key, "codename": codename, "egress_profile": egress})
+            "restricted": 1 if restricted else 0, "opsec_level": lv.key, "codename": codename, "egress_profile": egress,
+            "mandate_check": json.dumps(mandate, ensure_ascii=False) if mandate else ""})
+        if mandate:
+            self.log(cid, "Auftragsprüfung", f"{len(mandate['warnings'])} Warnsignal(e)" + (f" – übergangen mit Begründung: {mandate['override_reason']}" if mandate["warnings"] else " – unauffällig"))
         self.log(cid, "Fall angelegt", f"{CASE_TYPES[ctype]}: {title} · Zweck: {purpose} · Grundlage: {legal} · OPSEC-Stufe {lv.key}"
                  + (f" · Deckname {codename}" if codename else ""))
         subject = payload.get("subject")
@@ -558,6 +578,70 @@ class Platform:
         if ctype in {"vermisst", "investigativ"}:
             self.generate_tasks(cid)
         return self.get_case(cid)
+
+    def _mandate_check(self, data: Any, ctype: str) -> dict[str, Any] | None:
+        """Wertet die Auftragsprüfung aus. Warnsignale verlangen eine Begründung durch Teamleitung oder Administration."""
+        if not data:
+            return None
+        answers = data.get("answers") or {}
+        warnings = []
+        for q in MANDATE_QUESTIONS:
+            if q["key"] == "freiwillig" and ctype != "vermisst":
+                continue
+            ans = answers.get(q["key"])
+            if ans is None:
+                raise Invalid("Bitte alle Fragen der Auftragsprüfung beantworten.")
+            if bool(ans) == q["risk"]:
+                warnings.append(q["text"])
+        reason = str(data.get("override_reason") or "").strip()
+        user = current_user.get()
+        if warnings:
+            if not user or user["role"] not in {"leitung", "admin"}:
+                raise Forbidden("Die Auftragsprüfung zeigt Warnsignale (" + str(len(warnings)) + "). Solche Aufträge darf nur die Teamleitung "
+                                "nach eigener Prüfung annehmen. Bitte Teamleitung einbinden oder den Auftrag ablehnen.")
+            if len(reason) < 30:
+                raise Invalid("Bei Warnsignalen ist eine ausführliche Begründung nötig (mind. 30 Zeichen), warum der Auftrag dennoch zulässig ist.")
+        return {"answers": {k: bool(v) for k, v in answers.items()}, "warnings": warnings, "override_reason": reason if warnings else "",
+                "checked_by": user["display_name"] if user else "System", "checked_at": now_iso()}
+
+    # ------------------------------------------------------------------ Löschfristen
+    def retention_months(self) -> int:
+        return int(self._setting("retention_months", "12"))
+
+    def set_retention_months(self, months: int) -> int:
+        if not 1 <= int(months) <= 120:
+            raise Invalid("Löschfrist bitte zwischen 1 und 120 Monaten wählen.")
+        self._set_setting("retention_months", str(int(months)))
+        self.log(None, "Standard-Löschfrist geändert", f"{int(months)} Monate nach Abschluss")
+        return int(months)
+
+    def retention_overview(self) -> dict[str, Any]:
+        today = date.today().isoformat()
+        soon = date.fromordinal(date.today().toordinal() + 30).isoformat()
+        rows = self.db.all("SELECT c.id, c.reference, c.title, c.status, c.restricted, c.retention_until, u.display_name AS owner_name FROM cases c "
+                           "LEFT JOIN users u ON u.id = c.owner_id WHERE c.retention_until != '' AND c.retention_until <= ? ORDER BY c.retention_until", (soon,))
+        for r in rows:
+            r["due"] = r["retention_until"] <= today
+            if r["restricted"]:
+                r["title"] = "[vertraulicher Fall]"
+        return {"months": self.retention_months(), "cases": rows,
+                "without_deadline": int(self.db.scalar("SELECT COUNT(*) AS n FROM cases WHERE retention_until = '' AND status IN ('abgeschlossen', 'archiviert')") or 0)}
+
+    def retention_reminders(self) -> int:
+        """Einmalige Erinnerung an Verantwortliche und Teamleitung, wenn die Löschfrist eines Falls erreicht ist."""
+        from .monitor import notify
+
+        today = date.today().isoformat()
+        n = 0
+        leads = {u["id"] for u in self.db.all("SELECT id FROM users WHERE role = 'leitung' AND active = 1")}
+        for c in self.db.all("SELECT * FROM cases WHERE retention_until != '' AND retention_until <= ?", (today,)):
+            if self.db.scalar("SELECT COUNT(*) AS n FROM notifications WHERE case_id = ? AND kind = 'loeschfrist'", (c["id"],)):
+                continue
+            targets = ({c["owner_id"]} if c["owner_id"] else set()) | (set() if c["restricted"] else leads)
+            label = c["codename"] if ops.level(c["opsec_level"]).codename and c["codename"] else c["reference"]
+            n += notify(self, targets, c["id"], f"Löschfrist erreicht: Fall {label} (seit {c['retention_until']}). Bitte löschen oder Frist begründet verlängern.",
+                        f"#/case/{c['id']}/overview", "loeschfrist")
+        return n
 
     def list_cases(self, view: str = "") -> list[dict[str, Any]]:
         rows = self.db.all("""
@@ -611,7 +695,7 @@ class Platform:
         user = current_user.get()
         perms = self.permissions(case, user)
         basic = {"title", "purpose", "legal_basis", "client", "analyst", "notes"}
-        team = {"owner_id", "reviewer_id", "due_date", "priority", "restricted", "opsec_level", "codename", "egress_profile"}
+        team = {"owner_id", "reviewer_id", "due_date", "priority", "restricted", "opsec_level", "codename", "egress_profile", "retention_until"}
         values = {k: v for k, v in payload.items() if k in basic | team | {"status"} and v is not None}
         if "opsec_level" in values:
             new_lv = int(values["opsec_level"])
@@ -652,13 +736,20 @@ class Platform:
             self._check_status_change(case, values["status"], user, perms, reviewer)
         if "due_date" in values and values["due_date"] and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", values["due_date"]):
             raise Invalid("Fälligkeit bitte als Datum angeben.")
+        if "retention_until" in values and values["retention_until"] and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(values["retention_until"])):
+            raise Invalid("Löschfrist bitte als Datum angeben.")
+        if values.get("status") in {"abgeschlossen", "archiviert"} and not (values.get("retention_until") or case.get("retention_until")):
+            months = self.retention_months()
+            d = date.today()
+            y, m = divmod(d.month - 1 + months, 12)
+            values["retention_until"] = date(d.year + y, m + 1, min(d.day, 28)).isoformat()
         values["updated_at"] = now_iso()
         self.db.update("cases", case_id, values, expected_version=payload.get("version"))
         changed = [k for k in values if k != "updated_at"]
         names = {u["id"]: u["display_name"] for u in self.db.all("SELECT id, display_name FROM users")}
         labels = {"owner_id": "Verantwortlich", "reviewer_id": "Prüfperson", "due_date": "Fällig", "priority": "Priorität",
                   "restricted": "Vertraulich", "status": "Status", "opsec_level": "OPSEC-Stufe", "codename": "Deckname",
-                  "egress_profile": "Netzausgang"}
+                  "egress_profile": "Netzausgang", "retention_until": "Löschfrist"}
 
         def fmt(k: str) -> str:
             if k in {"owner_id", "reviewer_id"}:
@@ -954,13 +1045,13 @@ class Platform:
         new = new_facts = 0
         for c in candidates:
             score, reasons = score_candidate(subject, subject["identifiers"], c)
-            fp = hashlib.sha1(f"{c['source_key']}|{c.get('url') or c.get('title')}".encode()).hexdigest()
+            fp = hashlib.sha1(f"{c['source_key']}|{c.get('url') or c.get('title')}".encode(), usedforsecurity=False).hexdigest()
             data = {**c.get("data", {}), "host": c.get("host", ""), "_names": [n for n in c.get("names", []) if n][:8],
                     "_locations": [x for x in c.get("locations", []) if x][:8]}
             try:
                 fid = self.db.insert("findings", {
                     "case_id": case_id, "entity_id": entity_id, "search_id": sid, "source": c["source"],
-                    "category": c.get("category", ""), "title": str(c.get("title", ""))[:300], "url": c.get("url", ""),
+                    "category": c.get("category", ""), "title": str(c.get("title", ""))[:300], "url": safe_url(c.get("url", "")),
                     "snippet": c.get("snippet", ""), "query": c.get("query", ""), "data": data, "score": score,
                     "reasons": reasons, "fingerprint": fp, "status": "neu", "created_at": now_iso()})
                 new += 1
@@ -990,7 +1081,7 @@ class Platform:
                 "subject_label": s_label, "subject_type": "person" if own else (cl.get("subject_type") or "sonstiges"),
                 "predicate": cl["predicate"], "object_label": cl["object"], "object_type": cl.get("object_type") or "wert",
                 "valid_from": cl.get("valid_from") or "", "valid_to": cl.get("valid_to") or "", "data": attrs,
-                "source_key": src.key, "source_label": src.label, "source_url": attrs.get("quelle_url") or cand.get("url", ""),
+                "source_key": src.key, "source_label": src.label, "source_url": safe_url(attrs.get("quelle_url") or cand.get("url", "")),
                 "retrieved_at": ts, "status": "neu", "reliability": src.reliability,
                 "norm_key": norm_key(s_label, cl["predicate"], cl["object"]), "created_at": ts})
             n += 1
@@ -1163,9 +1254,9 @@ class Platform:
             raise Invalid("Bitte einen Titel für die Erkenntnis angeben.")
         fid = self.db.insert("findings", {
             "case_id": case_id, "entity_id": entity_id, "source": payload.get("source") or "Manuelle Erfassung",
-            "category": payload.get("category") or "Hinweis", "title": title, "url": payload.get("url") or "",
+            "category": payload.get("category") or "Hinweis", "title": title, "url": safe_url(payload.get("url") or ""),
             "snippet": payload.get("snippet") or "", "data": {}, "score": int(payload.get("score") or 60),
-            "reasons": ["Manuell durch Analyst erfasst"], "fingerprint": hashlib.sha1(f"manual|{title}|{now_iso()}".encode()).hexdigest(),
+            "reasons": ["Manuell durch Analyst erfasst"], "fingerprint": hashlib.sha1(f"manual|{title}|{now_iso()}".encode(), usedforsecurity=False).hexdigest(),
             "status": "bestätigt" if payload.get("confirmed") else "neu", "created_at": now_iso(),
             "reviewed_at": now_iso() if payload.get("confirmed") else None})
         self.log(case_id, "Erkenntnis manuell erfasst", title)
