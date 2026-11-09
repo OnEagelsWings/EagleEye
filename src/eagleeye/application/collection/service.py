@@ -251,6 +251,7 @@ class ProviderCollection120Service:
         attempts = 0
         total_latency = 0
         fixture_ids: list[str] = []
+        pending_replay_responses: list[ProviderTransportResponse] = []
         try:
             for index, http_request in enumerate(http_requests):
                 # A reviewer may revoke or narrow the search while a multi-request
@@ -286,7 +287,9 @@ class ProviderCollection120Service:
                 items = list(adapter.normalize(response, request))[: request.max_results - len(normalized)]
                 normalized.extend(items)
                 if mode == "live" and record_replay:
-                    fixture_ids.append(self._record_fixture(provider_key, response, run_id))
+                    # Defer replay persistence until the final approval check.
+                    # A revoked search must not leave captured response fixtures.
+                    pending_replay_responses.append(response)
                 if len(normalized) >= request.max_results:
                     break
             # Approval can be withdrawn while the final HTTP response is being
@@ -300,6 +303,8 @@ class ProviderCollection120Service:
                     search_query_id=search_query_id,
                     target_id=target_id,
                 )
+            for approved_response in pending_replay_responses:
+                fixture_ids.append(self._record_fixture(provider_key, approved_response, run_id))
             intake_ids, duplicate_count = self._store_intake(run_id, request, normalized)
             result_count = len(intake_ids)
             denominator = max(1, result_count + duplicate_count)
