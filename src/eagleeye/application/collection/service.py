@@ -271,6 +271,13 @@ class ProviderCollection120Service:
                     provider=definition,
                     http_request=http_request,
                     mode=mode,
+                    before_network_attempt=(
+                        lambda: self._validate_search_approval(
+                            case_id=case_id, provider_key=provider_key, query=query,
+                            search_intent_id=search_intent_id,
+                            search_query_id=search_query_id, target_id=target_id,
+                        )
+                    ) if mode == "live" else None,
                 )
                 attempts += used_attempts
                 total_latency += int(response.elapsed_ms)
@@ -328,6 +335,7 @@ class ProviderCollection120Service:
         provider: ProviderDefinition,
         http_request: ProviderHttpRequest,
         mode: str,
+        before_network_attempt: Callable[[], None] | None = None,
     ) -> tuple[ProviderTransportResponse, int]:
         canonical = self.policy.validate_url(
             http_request.url,
@@ -347,6 +355,8 @@ class ProviderCollection120Service:
             now = self.clock()
             self._consume_rate_limit(provider, now)
             try:
+                if before_network_attempt is not None:
+                    before_network_attempt()
                 response = self.transport.fetch(
                     safe_request,
                     allowed_hosts=provider.allowed_hosts,
