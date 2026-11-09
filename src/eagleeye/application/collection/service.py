@@ -289,6 +289,17 @@ class ProviderCollection120Service:
                     fixture_ids.append(self._record_fixture(provider_key, response, run_id))
                 if len(normalized) >= request.max_results:
                     break
+            # Approval can be withdrawn while the final HTTP response is being
+            # processed. Do not persist its candidates after revocation.
+            if mode == "live":
+                self._validate_search_approval(
+                    case_id=case_id,
+                    provider_key=provider_key,
+                    query=query,
+                    search_intent_id=search_intent_id,
+                    search_query_id=search_query_id,
+                    target_id=target_id,
+                )
             intake_ids, duplicate_count = self._store_intake(run_id, request, normalized)
             result_count = len(intake_ids)
             denominator = max(1, result_count + duplicate_count)
