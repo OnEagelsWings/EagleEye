@@ -481,7 +481,7 @@ def test_internal_release_rejects_redirected_data_and_reports(monkeypatch, tmp_p
             pytest.skip("Directory symlinks unavailable on this platform")
         for build in ("490.0", "500.0"):
             monkeypatch.setattr(paths, "BUILD", build)
-            with pytest.raises(ValueError, match="inside the workspace"):
+            with pytest.raises(ValueError, match="cannot be symbolic links"):
                 paths.RuntimePaths.resolve(
                     install_dir=tmp_path / "new-install", base_dir=workspace
                 )
