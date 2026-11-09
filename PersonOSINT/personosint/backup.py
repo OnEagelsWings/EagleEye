@@ -23,7 +23,7 @@ HEADER_PASS = b"EEBAK1P"
 HEADER_KEY = b"EEBAK1K"
 #: Reihenfolge nach Fremdschlüsseln; Sitzungen werden bewusst nicht gesichert
 TABLE_ORDER = ["users", "cases", "case_members", "entities", "identifiers", "searches", "findings", "links",
-               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports", "facts", "evidence"]
+               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports", "facts", "evidence", "watches", "notifications", "ai_drafts"]
 
 
 #: Einstellungen, die verschlüsselt gespeichert werden (z. B. Proxy-Zugangsdaten)

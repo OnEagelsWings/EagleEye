@@ -68,6 +68,10 @@ abgewiesen (automatisierte Tests). Die Wiederherstellung aus einem Backup ist do
 
 ## 4. Phase 2 – Beweissicherung, Quellen, Dokumente
 
+> **Status (Version 1.3):** Quellen-Baukasten mit Schlüsselverwaltung, neue Wirtschafts-/Register-/Domain-/Sanktionsquellen,
+> lokale Referenzdatenbanken (OpenSanctions, ICIJ, eigene Listen) und Beweissicherung mit SHA-256, Archivverweis und
+> Beweispaket sind umgesetzt. Offen: Dokument-/E-Mail-Import mit OCR (4.4), qualifizierte Zeitstempel nach RFC 3161.
+
 **Ziel:** Ergebnisse, die vor Gericht, bei Versicherern und bei Mandanten Bestand haben, dazu eine deutlich größere Abdeckung.
 
 ### 4.1 Beweissicherung (wichtigstes Profi-Merkmal)
@@ -114,6 +118,11 @@ Gesundheitsprüfung. Ein PDF-Import erzeugt prüfbare Entitätsvorschläge.
 ---
 
 ## 5. Phase 3 – Analysefunktionen
+
+> **Status (Version 1.3):** Kandidatengruppen (3.1, als Prüfhilfe statt automatischer Zusammenführung), Überwachung mit
+> Benachrichtigungen (3.2), Admiralty-Bewertung, Mehrfachbelege, Widersprüche und Red-Flag-Regeln sind umgesetzt; dazu
+> Top-Dossier mit Management Summary, Belegdichte, Vorlagen, Berichtslayout und PDF/A (aus Phase 4) sowie der lokale
+> KI-Assistent mit Fußnotenprüfung (aus Phase 5). Offen: Zeitgraph (3.3), Graph-Import/-Export (3.5), Geo-Analyse (3.6), Bildanalyse (3.7).
 
 | # | Funktion | Nutzen |
 |---|---|---|

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-JSON_FIELDS = {"data", "reasons", "queries", "source_status"}
+JSON_FIELDS = {"data", "reasons", "queries", "source_status", "sources", "facts_used", "checks"}
 
 # --------------------------------------------------------------------------- Schema-Migrationen
 # Platzhalter: {PK} = automatisch hochzählender Primärschlüssel, {REAL} = Gleitkommazahl
@@ -174,7 +174,27 @@ CREATE TABLE evidence (
 CREATE INDEX ix_evidence_case ON evidence(case_id)
 """
 
-MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5)]
+MIGRATION_6 = """
+CREATE TABLE watches (
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    sources TEXT NOT NULL DEFAULT '[]', interval_hours INTEGER NOT NULL DEFAULT 24, active INTEGER NOT NULL DEFAULT 1,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL, last_run TEXT NOT NULL DEFAULT '',
+    next_run TEXT NOT NULL, last_result TEXT NOT NULL DEFAULT '', last_new INTEGER NOT NULL DEFAULT 0, runs INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE notifications (
+    id {PK}, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, case_id INTEGER REFERENCES cases(id) ON DELETE CASCADE,
+    ts TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'info', text TEXT NOT NULL, link TEXT NOT NULL DEFAULT '', seen INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX ix_notifications_user ON notifications(user_id, seen);
+CREATE TABLE ai_drafts (
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, kind TEXT NOT NULL DEFAULT 'zusammenfassung',
+    text TEXT NOT NULL, model TEXT NOT NULL DEFAULT '', facts_used TEXT NOT NULL DEFAULT '[]', checks TEXT NOT NULL DEFAULT '{{}}',
+    status TEXT NOT NULL DEFAULT 'entwurf', created_by TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
+    approved_by TEXT NOT NULL DEFAULT '', approved_at TEXT NOT NULL DEFAULT ''
+)
+"""
+
+MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 

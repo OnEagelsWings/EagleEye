@@ -668,6 +668,7 @@
             <button class="btn btn-primary btn-lg" id="s-run" style="width:100%;justify-content:center;margin-top:.8rem" ${person ? "" : "disabled"}>🔎 Suche starten</button>
           </div>
           <div class="card" id="s-status">${renderSearchStatus(state.lastSearch, searches)}</div>
+          <div class="card" id="s-watch"></div>
         </div>
         <div class="card">
           <div class="card-head"><h2>Treffer</h2>
@@ -734,6 +735,36 @@
     draw();
     $$("[data-fv]", el).forEach((b) => (b.onclick = () => { state.findingView = b.dataset.fv; renderCase(); }));
     if (state.findingView === "groups" && person) renderGroups(ov, person);
+    renderWatches(ov, person);
+  }
+
+  async function renderWatches(ov, person) {
+    const box = $("#s-watch");
+    if (!box) return;
+    const ws = await api("GET", `/api/cases/${ov.case.id}/watches`);
+    const canWrite = ov.permissions.includes("write");
+    box.innerHTML = `<div class="card-head"><h3>🔁 Überwachung</h3></div>
+      <p class="small muted">Gespeicherte Suchen laufen regelmäßig im Hintergrund – nach den OPSEC-Regeln des Falls. Bei neuen Treffern erhält das Fallteam eine Benachrichtigung (🔔).</p>
+      ${ws.map((w) => `<div class="watch ${w.active ? "" : "off"}"><div class="row"><b class="grow">${esc(w.entity_label)}</b><span class="badge ${w.active ? "b-green" : "b-grey"}">${w.active ? esc(w.interval_label) : "pausiert"}</span></div>
+        <div class="small muted">${w.sources.length} Quellen · angelegt von ${esc(w.created_by_name || "–")} · ${w.runs} Läufe${w.last_run ? " · zuletzt " + fmtTs(w.last_run) : ""}${w.active ? " · nächster " + fmtTs(w.next_run) : ""}</div>
+        ${w.last_result ? `<div class="small ${w.last_result.startsWith("Blockiert") ? "bad-text" : ""}">${esc(w.last_result)}</div>` : ""}
+        ${canWrite ? `<div class="row" style="margin-top:.3rem"><button class="btn btn-sm" data-wrun="${w.id}">▶ Jetzt prüfen</button><button class="btn btn-sm" data-wtog="${w.id}:${w.active ? 0 : 1}">${w.active ? "⏸ Pausieren" : "▶ Fortsetzen"}</button><button class="btn btn-sm btn-danger" data-wdel="${w.id}">×</button></div>` : ""}</div>`).join("") || '<div class="small muted">Noch keine Überwachung.</div>'}
+      ${canWrite && person ? `<div class="row" style="margin-top:.6rem"><select id="w-int" style="width:auto">${[[6, "alle 6 Stunden"], [12, "alle 12 Stunden"], [24, "täglich"], [72, "alle 3 Tage"], [168, "wöchentlich"]].map(([k, l]) => opt(k, l, 24)).join("")}</select>
+        <button class="btn btn-sm btn-primary" id="w-new" title="Die oben gewählten Quellen für ${esc(person.label)} regelmäßig abfragen">＋ Auswahl überwachen</button></div>` : ""}`;
+    const wn = $("#w-new", box);
+    if (wn) wn.onclick = async () => {
+      const sources = $$("input[name=src]:checked").map((c) => c.value);
+      if (!sources.length) return toast("Bitte oben Quellen auswählen.", "err");
+      await guard(() => api("POST", `/api/cases/${ov.case.id}/watches`, { entity_id: person.id, sources, interval_hours: Number($("#w-int", box).value) }), "Überwachung angelegt");
+      renderWatches(ov, person);
+    };
+    $$("[data-wrun]", box).forEach((b) => (b.onclick = async () => {
+      b.disabled = true; b.innerHTML = '<span class="spinner dark"></span>';
+      const r = await guard(() => api("POST", `/api/cases/${ov.case.id}/watches/${b.dataset.wrun}/run`));
+      toast(r.message, r.ok ? "ok" : "err"); renderCase(); renderBell();
+    }));
+    $$("[data-wtog]", box).forEach((b) => (b.onclick = async () => { const [id, on] = b.dataset.wtog.split(":"); await guard(() => api("PATCH", `/api/cases/${ov.case.id}/watches/${id}`, { active: on === "1" })); renderWatches(ov, person); }));
+    $$("[data-wdel]", box).forEach((b) => (b.onclick = async () => { if (await confirmDlg("Überwachung löschen?")) { await guard(() => api("DELETE", `/api/cases/${ov.case.id}/watches/${b.dataset.wdel}`)); renderWatches(ov, person); } }));
   }
 
   async function renderGroups(ov, person) {
@@ -1036,6 +1067,44 @@
   }
 
   // ------------------------------------------------------------------ Tab: Dossier
+  async function renderAi(ov) {
+    const box = $("#ai-card");
+    if (!box) return;
+    const [st, drafts] = await Promise.all([api("GET", "/api/ai/status"), api("GET", `/api/cases/${ov.case.id}/ai`)]);
+    const canWrite = ov.permissions.includes("write"), canReview = ov.permissions.includes("review");
+    const cur = drafts.find((d) => d.status === "entwurf") || drafts.find((d) => d.status === "freigegeben");
+    const chk = (d) => d.checks.ok ? '<span class="badge b-green">✓ alle Sätze belegt</span>'
+      : `${d.checks.unknown.length ? `<span class="badge b-red">${d.checks.unknown.length} unbekannte Kennung(en)</span> ` : ""}${d.checks.uncited.length ? `<span class="badge b-amber">${d.checks.uncited.length} Satz/Sätze ohne Beleg</span>` : ""}`;
+    box.innerHTML = `<div class="card-head"><h2>🤖 KI-Zusammenfassung</h2><span class="right small muted">${st.enabled ? `lokales Modell ${esc(st.model)}` : "nicht eingerichtet"}</span></div>
+      <p class="small muted">Ein lokales Sprachmodell formuliert aus den <b>bestätigten Aussagen</b> eine Zusammenfassung mit Fakten-Kennungen. EagleEye prüft jede Kennung; erst nach menschlicher Freigabe erscheint der Text – mit Fußnoten – in der Management Summary.</p>
+      ${!st.enabled ? '<div class="warn small">Die Administration kann unter Verwaltung → KI-Assistent einen lokalen Dienst (z. B. Ollama) einrichten. Falldaten verlassen dabei das eigene Netz nicht.</div>' : ""}
+      ${cur ? `<div class="ai-draft"><div class="row"><span class="badge ${cur.status === "freigegeben" ? "b-green" : "b-blue"}">${esc(cur.status)}</span> ${chk(cur)} <span class="small muted">${fmtTs(cur.created_at)} · ${esc(cur.created_by)}${cur.approved_by ? " · freigegeben von " + esc(cur.approved_by) : ""}</span></div>
+        ${cur.status === "entwurf" && canWrite ? `<textarea id="ai-text" rows="7" style="margin-top:.4rem">${esc(cur.text)}</textarea>` : `<p style="white-space:pre-wrap;margin:.4rem 0">${esc(cur.text)}</p>`}
+        ${cur.checks.uncited.length ? `<div class="small" style="color:#92400e">Ohne Beleg: ${cur.checks.uncited.map((x) => "„" + esc(x.slice(0, 80)) + "“").join(", ")}</div>` : ""}
+        ${cur.status === "entwurf" ? `<div class="row" style="margin-top:.4rem">${canWrite ? '<button class="btn btn-sm" id="ai-save">Text speichern & prüfen</button>' : ""}
+          ${canReview ? `<button class="btn btn-sm btn-success" id="ai-ok">✓ Freigeben</button><button class="btn btn-sm" id="ai-no">✗ Verwerfen</button>` : ""}</div>` : ""}</div>` : ""}
+      ${st.enabled && canWrite ? `<button class="btn btn-primary" id="ai-gen" style="margin-top:.6rem">${cur ? "Neuen Entwurf erzeugen" : "Entwurf erzeugen"}</button>` : ""}`;
+    const g = $("#ai-gen", box);
+    if (g) g.onclick = async () => {
+      g.disabled = true; g.innerHTML = '<span class="spinner"></span> Modell schreibt … (bis zu 2 Minuten)';
+      try { await api("POST", `/api/cases/${ov.case.id}/ai`); toast("Entwurf erzeugt – bitte prüfen", "ok"); } catch (e) { toast(e.message, "err"); }
+      renderAi(ov);
+    };
+    const sv = $("#ai-save", box);
+    if (sv) sv.onclick = async () => { await guard(() => api("PATCH", `/api/cases/${ov.case.id}/ai/${cur.id}`, { text: $("#ai-text", box).value }), "Gespeichert"); renderAi(ov); };
+    const ok = $("#ai-ok", box);
+    if (ok) ok.onclick = async () => {
+      const t = $("#ai-text", box);
+      if (t && t.value !== cur.text) await api("PATCH", `/api/cases/${ov.case.id}/ai/${cur.id}`, { text: t.value });
+      let accept = false;
+      if (cur.checks.uncited.length) { accept = await confirmDlg("Einige Sätze haben keinen Faktenbeleg. Trotzdem freigeben?", "Freigeben"); if (!accept) return; }
+      await guard(() => api("PATCH", `/api/cases/${ov.case.id}/ai/${cur.id}`, { status: "freigegeben", accept_uncited: accept }), "Freigegeben – erscheint in der Management Summary");
+      renderCase();
+    };
+    const no = $("#ai-no", box);
+    if (no) no.onclick = async () => { await guard(() => api("PATCH", `/api/cases/${ov.case.id}/ai/${cur.id}`, { status: "verworfen" }), "Verworfen"); renderAi(ov); };
+  }
+
   async function tabDossier(el, ov) {
     const c = ov.counts, missing = ov.case.case_type === "vermisst";
     const meta = state.reportMeta || (state.reportMeta = await api("GET", "/api/report/templates"));
@@ -1084,8 +1153,10 @@
                 <td><a class="btn btn-sm" href="/api/cases/${ov.case.id}/evidence/${e.id}/download" title="Originaldatei (als Download, wird nicht im Browser ausgeführt)">⬇</a></td></tr>`).join("")}</table></div>`
               : '<div class="small muted" style="margin-top:.5rem">Noch keine Belege. Treffer-Karten haben eine Schaltfläche „📎 Beleg sichern“.</div>'}
           </div>
+          <div class="card" id="ai-card"></div>
         </div>
       </div>`;
+    renderAi(ov);
     $$("[data-tpl]", el).forEach((b) => (b.onclick = () => { state.dossierTpl = b.dataset.tpl; renderCase(); }));
     $("#dx-unrev").onchange = (e) => { state.dossierUnrev = e.target.checked; renderCase(); };
     $$("[data-fmt]", el).forEach((b) => (b.onclick = () => {
@@ -1348,6 +1419,21 @@
     $("#af").onsubmit = async (ev) => { ev.preventDefault(); try { await api("POST", "/api/auth/totp/confirm", formData(ev.target)); toast("Zwei-Faktor-Anmeldung aktiv", "ok"); done(); } catch (e) { fail(e); } };
   }
 
+  async function renderBell() {
+    if (!state.auth || !state.auth.authenticated) return;
+    let n;
+    try { n = await api("GET", "/api/notifications"); } catch (_) { return; }
+    const box = $("#bell");
+    box.innerHTML = `<button class="bell-btn" id="bell-btn" aria-label="Benachrichtigungen" title="Benachrichtigungen">🔔${n.unread ? `<span class="bell-count">${n.unread}</span>` : ""}</button>
+      <div class="user-drop bell-drop hidden" id="bell-drop"><div class="who"><b>Benachrichtigungen</b>${n.unread ? ' · <a href="#" id="bell-all">alle gelesen</a>' : ""}</div>
+      ${n.items.length ? n.items.map((x) => `<a href="${esc(x.link || "#")}" data-nid="${x.id}" class="${x.seen ? "" : "unseen"}"><span class="small muted">${fmtTs(x.ts)}</span><br>${x.kind === "warnung" ? "⚠ " : ""}${esc(x.text)}</a>`).join("") : '<div class="small muted" style="padding:.5rem .7rem">Keine Benachrichtigungen.</div>'}</div>`;
+    const drop = $("#bell-drop");
+    $("#bell-btn").onclick = (e) => { e.stopPropagation(); drop.classList.toggle("hidden"); };
+    document.addEventListener("click", () => drop.classList.add("hidden"));
+    $$("[data-nid]", drop).forEach((a) => (a.onclick = async () => { await api("POST", "/api/notifications/seen", { ids: [Number(a.dataset.nid)] }); setTimeout(renderBell, 300); }));
+    const all = $("#bell-all"); if (all) all.onclick = async (e) => { e.preventDefault(); e.stopPropagation(); await api("POST", "/api/notifications/seen", {}); renderBell(); };
+  }
+
   function renderUserMenu() {
     const u = state.auth.user;
     const initials = u.display_name.split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
@@ -1359,7 +1445,7 @@
     const drop = $("#um-drop");
     $("#um-btn").onclick = (e) => { e.stopPropagation(); drop.classList.toggle("hidden"); };
     document.addEventListener("click", () => drop.classList.add("hidden"));
-    $("#um-out").onclick = async () => { await api("POST", "/api/auth/logout"); state.auth = null; location.hash = "#/"; showAuth(); };
+    $("#um-out").onclick = async () => { await api("POST", "/api/auth/logout"); state.auth = null; $("#bell").innerHTML = ""; location.hash = "#/"; showAuth(); };
     $("#um-lock").onclick = quickLock;
     $("#btn-new-case").classList.toggle("hidden", !state.auth.can_create_cases);
   }
@@ -1396,7 +1482,7 @@
   // ------------------------------------------------------------------ Verwaltung (Administration)
   async function renderAdmin(section) {
     if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
-    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["ai", "🤖 KI-Assistent"], ["restricted", "🔒 Vertrauliche Fälle"]];
     $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
     const el = $("#adm");
     if (section === "users") {
@@ -1453,6 +1539,22 @@
         const r = await guard(() => api("GET", "/api/admin/audit/verify"));
         $("#vres").innerHTML = r.ok ? `<div class="ok-box">✓ Intakt – ${r.entries} Einträge geprüft (${r.redacted} geschwärzt).<br><span class="small">Kopf-Hash: <code>${esc(r.head)}</code></span></div>`
           : `<div class="bad-box"><b>⚠ Protokoll verändert!</b><br>Eintrag #${r.broken_at} (${fmtTs(r.ts)}): ${esc(r.problem)}</div>`;
+      };
+    } else if (section === "ai") {
+      const a = await api("GET", "/api/admin/ai");
+      el.innerHTML = `<div class="card"><h2>Lokaler KI-Assistent</h2>
+        <p class="small muted">Für Dossier-Zusammenfassungen. Erlaubt sind nur Dienste auf diesem Rechner oder im internen Netz (z. B. <b>Ollama</b>) – Falldaten verlassen die Organisation nicht und werden nie über Proxy/Tor gesendet.
+        Docker: <code>docker compose --profile ki up -d</code>, danach <code>docker compose exec ollama ollama pull llama3.1:8b</code> und hier <code>http://ollama:11434</code> eintragen.</p>
+        <form id="aif"><div class="grid g2"><label class="field"><span>Adresse des Dienstes</span><input name="url" value="${esc(a.url)}" placeholder="http://127.0.0.1:11434"></label>
+          <label class="field"><span>Modell</span><input name="model" value="${esc(a.model)}" list="ai-models" placeholder="z. B. llama3.1:8b"><datalist id="ai-models"></datalist></label></div>
+          <label class="check"><input type="checkbox" name="enabled" ${a.enabled ? "checked" : ""}> <span>KI-Assistent aktivieren</span></label>
+          <div class="row" style="margin-top:.5rem"><button class="btn btn-primary">Speichern</button><button type="button" class="btn" id="ai-test">Verbindung testen</button></div></form>
+        <div id="ai-res" style="margin-top:.6rem"></div></div>`;
+      $("#aif").onsubmit = async (e) => { e.preventDefault(); const f = e.target, d = formData(f); d.enabled = f.enabled.checked; await guard(() => api("PUT", "/api/admin/ai", d), "Gespeichert"); renderAdmin("ai"); };
+      $("#ai-test").onclick = async () => {
+        const r = await guard(() => api("POST", "/api/admin/ai/test", { url: $("#aif input[name=url]").value }));
+        $("#ai-res").innerHTML = r.ok ? `<div class="ok-box small">✓ erreichbar – Modelle: ${r.models.map(esc).join(", ") || "keine geladen"}</div>` : `<div class="bad-box small">${esc(r.error)}</div>`;
+        if (r.ok) $("#ai-models").innerHTML = r.models.map((m) => `<option value="${esc(m)}">`).join("");
       };
     } else if (section === "branding") {
       const b = await api("GET", "/api/admin/branding");
@@ -1611,7 +1713,7 @@
   /* Schnellsperre: Bildschirminhalt sofort entfernen und Sitzung beenden (z. B. bei Schulterblick oder Verlassen des Platzes). */
   async function quickLock() {
     stopPresence();
-    $("#main").innerHTML = ""; $("#case-list").innerHTML = ""; $("#modal-root").innerHTML = "";
+    $("#main").innerHTML = ""; $("#case-list").innerHTML = ""; $("#modal-root").innerHTML = ""; $("#bell").innerHTML = "";
     if (state.graph) { state.graph.destroy(); state.graph = null; }
     if (state.map) { state.map.remove(); state.map = null; }
     document.title = "EagleEye";
@@ -1627,6 +1729,8 @@
     state.meta = await api("GET", "/api/meta");
     state.users = await api("GET", "/api/users");
     state.egress = await api("GET", "/api/egress-profiles");
+    renderBell();
+    if (!state.bellTimer) state.bellTimer = setInterval(renderBell, 60000);
     renderUserMenu();
     await loadCases();
     if (!started) {

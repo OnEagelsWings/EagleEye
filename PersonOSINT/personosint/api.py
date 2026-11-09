@@ -456,6 +456,117 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
             raise NotFound("Kein Logo hinterlegt.")
         return Response(logo.read_bytes(), media_type="image/png", headers={"Cache-Control": "no-store"})
 
+    # ---------------------------------------------------------------- Schritt 4: Überwachung, Benachrichtigungen, KI
+    @app.get("/api/cases/{cid}/watches")
+    def watches(cid: int, _: dict = READ) -> list[dict]:
+        from . import monitor
+
+        return monitor.list_watches(p, cid)
+
+    @app.post("/api/cases/{cid}/watches", status_code=201)
+    def watch_create(cid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:
+        from . import monitor
+
+        return monitor.create_watch(p, cid, payload)
+
+    @app.patch("/api/cases/{cid}/watches/{wid}")
+    def watch_update(cid: int, wid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:
+        from . import monitor
+
+        return monitor.update_watch(p, cid, wid, payload)
+
+    @app.delete("/api/cases/{cid}/watches/{wid}", status_code=204)
+    def watch_delete(cid: int, wid: int, _: dict = WRITE) -> Response:
+        from . import monitor
+
+        monitor.delete_watch(p, cid, wid)
+        return Response(status_code=204)
+
+    @app.post("/api/cases/{cid}/watches/{wid}/run")
+    def watch_run(cid: int, wid: int, _: dict = WRITE) -> dict:
+        from . import monitor
+
+        monitor.get_watch(p, cid, wid)
+        res = monitor.run_watch(p, wid)
+        return {**res, "watch": monitor.get_watch(p, cid, wid)}
+
+    @app.get("/api/notifications")
+    def notifications_list(user: dict = Depends(user_ok)) -> dict:
+        from . import monitor
+
+        res = monitor.notifications(p, user["id"])
+        visible = []
+        for n in res["items"]:  # Hinweise zu Fällen ohne Zugriff (z. B. nach Teamwechsel) ausblenden
+            if n["case_id"]:
+                try:
+                    if "read" not in p.permissions(p.get_case(n["case_id"]), user):
+                        continue
+                except NotFound:
+                    continue
+            visible.append(n)
+        res["items"] = visible
+        return res
+
+    @app.post("/api/notifications/seen")
+    def notifications_seen(payload: dict = Body(default={}), user: dict = Depends(user_ok)) -> dict:
+        from . import monitor
+
+        monitor.mark_seen(p, user["id"], [int(i) for i in payload.get("ids") or []] or None)
+        return {"ok": True}
+
+    @app.get("/api/ai/status")
+    def ai_status(_: dict = Depends(user_ok)) -> dict:
+        from . import ai
+
+        cfg = ai.settings(p)
+        return {"enabled": cfg["enabled"], "model": cfg["model"]}
+
+    @app.get("/api/admin/ai")
+    def admin_ai(_: dict = Depends(admin_ok)) -> dict:
+        from . import ai
+
+        return ai.settings(p)
+
+    @app.put("/api/admin/ai")
+    def admin_ai_save(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        from . import ai
+
+        try:
+            return ai.save_settings(p, payload)
+        except ai.AiError as exc:
+            raise Invalid(str(exc)) from exc
+
+    @app.post("/api/admin/ai/test")
+    def admin_ai_test(payload: dict = Body(default={}), _: dict = Depends(admin_ok)) -> dict:
+        from . import ai
+
+        try:
+            return ai.test(p, payload.get("url", ""))
+        except ai.AiError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    @app.get("/api/cases/{cid}/ai")
+    def case_ai(cid: int, _: dict = READ) -> list[dict]:
+        from . import ai
+
+        return ai.drafts(p, cid)
+
+    @app.post("/api/cases/{cid}/ai", status_code=201)
+    def case_ai_generate(cid: int, case: dict = WRITE) -> dict:
+        from . import ai
+
+        p.require_briefing(case)
+        try:
+            return ai.generate(p, cid)
+        except ai.AiError as exc:
+            raise Invalid(str(exc)) from exc
+
+    @app.patch("/api/cases/{cid}/ai/{did}")
+    def case_ai_update(cid: int, did: int, payload: dict = Body(...), _: dict = REVIEW) -> dict:
+        from . import ai
+
+        return ai.update_draft(p, cid, did, payload)
+
     @app.get("/api/cases/{cid}/candidates")
     def case_candidates(cid: int, entity_id: int, include_reviewed: bool = False, _: dict = READ) -> list[dict]:
         return p.candidates(cid, entity_id, include_reviewed)
@@ -779,6 +890,20 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def index() -> FileResponse:
         return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-store"})
+
+    # ---------------------------------------------------------------- Überwachung (Schritt 4)
+    if start_scheduler:
+        def monitor_loop() -> None:
+            from . import monitor
+
+            while True:
+                try:
+                    monitor.run_due(p)
+                except Exception:  # noqa: BLE001 - Überwachung darf nie sterben
+                    log.exception("Überwachung fehlgeschlagen")
+                time.sleep(60)
+
+        threading.Thread(target=monitor_loop, name="eagleeye-monitor", daemon=True).start()
 
     # ---------------------------------------------------------------- Automatische Sicherung
     if start_scheduler and settings.backup_hour.strip().isdigit():

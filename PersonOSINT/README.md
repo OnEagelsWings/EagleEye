@@ -1,4 +1,4 @@
-# EagleEye PersonOSINT 1.2
+# EagleEye PersonOSINT 1.3
 
 **Investigativrecherche · Personensuche · Vermisstenrecherche · Verbindungsanalyse · Word-Dossiers**
 
@@ -8,6 +8,11 @@
 > Proxy/Tor mit *fail closed*, Expositionsklassen für Quellen und Links, Außenkontakt-Protokoll, Metadaten-Bereinigung
 > von Fotos und Exporten, Export-Register mit Export-ID, Briefing-Bestätigung, Decknamen und Schnellsperre.
 > Siehe [OPSEC_KONZEPT.md](OPSEC_KONZEPT.md).
+>
+> **Neu in 1.3 – Datenbanken, Auswertung, Top-Dossier:** über 20 Quellen inkl. Firmenregister und lokaler Massendaten
+> (OpenSanctions, ICIJ Offshore Leaks), strukturierte Aussagen statt Textschnipsel, Kandidatengruppen gegen Namensvettern,
+> Admiralty-Bewertung, Widersprüche, Red Flags, Beweissicherung mit SHA-256, Top-Dossier mit Management Summary und
+> Belegdichte (Word/PDF/A), Überwachung mit Benachrichtigungen und lokale KI-Zusammenfassung mit Fußnotenprüfung.
 
 EagleEye PersonOSINT ist eine lokale OSINT-Plattform, die auf den Grundsätzen von EagleEye Build 380 aufbaut
 (nur öffentliche Quellen, menschliche Prüfung, Zweckbindung, Protokollierung). Sie wurde als schlankes,
@@ -174,6 +179,66 @@ kopieren, dort `docker compose exec app python -m personosint restore /backups/D
 | `EAGLEEYE_SESSION_IDLE_MINUTES` / `EAGLEEYE_SESSION_MAX_HOURS` | Inaktivitäts- und Höchstdauer einer Sitzung |
 | `EAGLEEYE_BACKUP_DIR`, `EAGLEEYE_BACKUP_HOUR`, `EAGLEEYE_BACKUP_KEEP`, `EAGLEEYE_BACKUP_PASSPHRASE` | Sicherungen |
 
+## Datenbanken, Auswertung und Top-Dossier (Version 1.3)
+
+Der Weg von der Abfrage zum belastbaren Dossier hat vier Stufen:
+
+```
+Quellen ──► Treffer ──► Aussagen (Subjekt – Prädikat – Objekt, Zeitraum, Quelle)
+                          │
+                          ├─► Kandidatengruppen (Namensvettern trennen) ─► Prüfung durch Menschen
+                          ├─► Admiralty-Code, Mehrfachbelege, Widersprüche, Red Flags
+                          └─► Beweissicherung (Archiv + SHA-256) ─► Top-Dossier (Belegdichte, Fußnoten) ─► Word / PDF/A
+```
+
+### 1. Quellen & Daten (Verwaltung → 📚 Quellen & Daten)
+
+| Bereich | Quellen | Schlüssel |
+|---|---|---|
+| Wirtschaft & Register | **UK Companies House** (Funktionen, Zeiträume, Geburtsmonat), **OpenCorporates** (140+ Register), **GLEIF** (Sitz, Konzernmütter) | CH: kostenlos; OC: optional |
+| Register & Wissen | **Wikidata-Beziehungen** (Familie, Arbeitgeber, Ämter, Mitgliedschaften), Wikidata, OpenAlex, ORCID, Internet Archive | – |
+| Domains & Technik | **crt.sh** (Subdomains, Zertifikate einer E-Mail), **RDAP** (Registrierung, Registrar, Nameserver) | – |
+| Risiko & Compliance | **OpenSanctions** (online), INTERPOL Yellow Notices | OpenSanctions: Lizenz |
+| Online-Präsenz | Benutzernamen-Check (13 Plattformen), GitHub, GitLab, Bluesky, Mastodon, Gravatar | – |
+| **Lokale Referenzdaten** | **OpenSanctions-Gesamtdaten**, **ICIJ Offshore Leaks**, **eigene Listen (CSV)** – Abfragen verlassen den Server nicht | – |
+
+* Jede Quelle trägt Lizenz, Kosten, Verlässlichkeit (Admiralty A–F) und Exposition; **Testen** prüft sie über den Standard-Netzausgang.
+* API-Schlüssel werden verschlüsselt gespeichert. Abfragen werden je Quelle gedrosselt (Limits, Unauffälligkeit).
+* Lokale Bestände: „Herunterladen & importieren“ oder Datei hochladen; große Dateien per Kommandozeile:
+  `python -m personosint import-refdata opensanctions targets.simple.csv` · `… import-refdata icij full-oldb.LATEST.zip`.
+  Hinweis zur Lizenz: OpenSanctions-Daten sind für kommerzielle Nutzung lizenzpflichtig; ICIJ verlangt Quellenangabe.
+
+### 2. Auswertung (Reiter „Suche & Treffer“ → 👥 Kandidatengruppen, Reiter „📊 Fakten & Bewertung“)
+
+* **Kandidatengruppen:** offene Treffer werden nach Geburtsdatum, Organisationen, Benutzernamen und Orten zu möglichen
+  Personen gebündelt; unterschiedliche Geburtsdaten trennen immer. Die richtige Gruppe wird als Ganzes bestätigt, Namensvettern
+  mit einem Klick verworfen. Bestätigte Beziehungen erscheinen automatisch im Netzwerkgraphen.
+* **Admiralty-Code** je Aussage (z. B. `A1`, `B2`): Verlässlichkeit der Quelle × Glaubwürdigkeit der Information, automatisch aus
+  Quelle, Prüfstatus und **Mehrfachbelegen** – manuell änderbar mit Begründung.
+* **Widersprüche** (z. B. zwei Geburtsjahre) werden erkannt und lassen sich per Klick auflösen.
+* **Red Flags** (Sanktion, PEP, Offshore, viele/kurze Mandate, häufige Wechsel, aufgelöste Firmen, Sammeladresse, eigene Liste,
+  widersprüchliche Identität) – Schweregrad und Aktivierung je Regel in der Verwaltung.
+
+### 3. Beweissicherung und Top-Dossier (Reiter „Dossier & Export“)
+
+* **📎 Beleg sichern** ruft eine Fundstelle über den OPSEC-Netzausgang des Falls ab, speichert sie verschlüsselt, versiegelt sie
+  mit SHA-256 und ergänzt eine Internet-Archive-Kopie. Das **Beweispaket** (ZIP) enthält alle Belege mit Manifest und Prüfanleitung.
+* **Vorlagen:** Volldossier, Kurzprofil (2 Seiten), Due-Diligence-Bericht, Vermisstendossier.
+* **Management Summary** mit Kernaussagen, Auffälligkeiten, Unsicherheiten und **Belegstärke**; je Kapitel die **Belegdichte**
+  (Anteil mehrfach belegter, aus zuverlässiger Quelle bestätigter oder gesicherter Aussagen); jede Aussage mit Admiralty-Code und Fußnote;
+  Quellenverzeichnis mit Abrufzeit, Beleg-Hash und Archivkopie.
+* **Berichtslayout** (Verwaltung → 🎨): Organisation, Logo, Farbe, Fußzeile, Hinweistext. **PDF/A** über LibreOffice
+  (im Docker-Image enthalten, abschaltbar mit `EAGLEEYE_WITH_PDF=0`).
+
+### 4. Überwachung und KI-Zusammenfassung
+
+* **🔁 Überwachung** (Reiter „Suche & Treffer“): die aktuelle Quellenauswahl läuft alle 6 h … wöchentlich im Namen der anlegenden Person –
+  unter den OPSEC-Regeln des Falls (fehlt der Ausgang oder das Briefing, wird blockiert und gemeldet). Neue Treffer melden sich über die 🔔 beim Fallteam.
+* **🤖 KI-Zusammenfassung** (Reiter „Dossier & Export“): ein **lokales** Sprachmodell (z. B. Ollama, Docker-Profil `ki`) formuliert aus den
+  bestätigten Aussagen einen Text mit Fakten-Kennungen. EagleEye prüft jede Kennung und markiert unbelegte Sätze; erst nach Freigabe durch einen
+  Menschen erscheint der Text – mit aufgelösten Fußnoten – in der Management Summary. Nur Dienste im eigenen Netz sind erlaubt; die Anfrage
+  läuft nie über Proxy/Tor.
+
 ## OPSEC (Schutz von Recherche, Recherchierenden und Quellen)
 
 Kurzfassung – vollständig in [OPSEC_KONZEPT.md](OPSEC_KONZEPT.md):
@@ -215,6 +280,15 @@ PersonOSINT/
 │   ├── api.py        HTTP-API, Anmeldung/Rechte, Verwaltung, Exporte
 │   ├── auth.py       Benutzer, Rollen, Argon2, TOTP-2FA, Sitzungen
 │   ├── service.py    Fälle, Rechte, Team, Vier-Augen, Suche, Prüfung, Verbindungen, Vermisstenmodul, Hash-Kette
+│   ├── connectors.py Firmenregister, GLEIF, Wikidata-Beziehungen, crt.sh, RDAP, OpenSanctions
+│   ├── refdata.py    lokale Referenzdatenbanken (OpenSanctions, ICIJ, eigene Listen)
+│   ├── facts.py      Faktenmodell (Prädikate, Normalisierung)
+│   ├── analysis.py   Kandidatengruppen, Admiralty-Bewertung, Widersprüche, Red Flags
+│   ├── evidence.py   Beweissicherung und Beweispaket
+│   ├── report.py     Top-Dossier (Vorlagen, Management Summary, Belegdichte, PDF/A)
+│   ├── monitor.py    Überwachung und Benachrichtigungen
+│   ├── ai.py         lokaler KI-Assistent mit Fußnotenprüfung
+│   ├── opsec.py      OPSEC-Stufen, Netzausgänge, Exposition
 │   ├── db.py         SQLite/PostgreSQL, Migrationen, optimistisches Sperren
 │   ├── crypto.py     Verschlüsselung ruhender Daten
 │   ├── backup.py     verschlüsselte, datenbankunabhängige Sicherung/Wiederherstellung

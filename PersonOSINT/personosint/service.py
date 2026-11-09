@@ -1009,6 +1009,12 @@ class Platform:
             r["category"] = meta.get("category", "Sonstiges")
         return rows
 
+    # ------------------------------------------------------------------ Schritt 4: freigegebene KI-Zusammenfassung
+    def approved_ai_summary(self, case_id: int) -> dict[str, Any] | None:
+        from . import ai
+
+        return ai.approved(self, case_id)
+
     # ------------------------------------------------------------------ Schritt 3: Berichtslayout
     BRANDING_KEYS = ("org_name", "footer", "disclaimer", "color")
 

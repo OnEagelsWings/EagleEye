@@ -59,6 +59,16 @@ services:
     volumes:
       - tordata:/var/lib/tor
 
+  # Optionaler lokaler KI-Dienst für Dossier-Zusammenfassungen:  docker compose --profile ki up -d
+  # Modell laden: docker compose exec ollama ollama pull llama3.1:8b  → in EagleEye: Verwaltung → KI-Assistent → http://ollama:11434
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ki"]
+    restart: unless-stopped
+    networks: [frontend]
+    volumes:
+      - ollamadata:/root/.ollama
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -82,6 +92,7 @@ secrets:
     file: ./secrets/app.key
 
 volumes:
+  ollamadata:
   tordata:
   pgdata:
   appdata:
