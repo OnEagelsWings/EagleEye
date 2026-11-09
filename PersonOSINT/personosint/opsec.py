@@ -23,6 +23,8 @@ from urllib.parse import urlsplit
 
 #: Wie sichtbar ist eine Abfrage für Außenstehende?
 EXPOSURE = {
+    "lokal": {"label": "Lokal", "rank": 0,
+              "help": "Abfrage in einer lokal importierten Referenzdatenbank. Die Anfrage verlässt den Server nicht."},
     "passiv": {"label": "Passiv", "rank": 0,
                "help": "Abfrage bei Registern/Archiven (z. B. Wikidata, Internet Archive). Keine Plattform der Zielperson wird kontaktiert."},
     "plattform": {"label": "Plattform", "rank": 1,
@@ -37,6 +39,9 @@ EXPOSURE = {
 SOURCE_EXPOSURE = {
     "wikidata": "passiv", "openalex": "passiv", "orcid": "passiv", "interpol_yellow": "passiv", "wayback": "passiv",
     "nominatim": "passiv", "gravatar": "passiv",
+    "companies_house": "passiv", "opencorporates": "passiv", "gleif": "passiv", "wikidata_rel": "passiv", "crtsh": "passiv",
+    "rdap": "passiv", "opensanctions": "passiv",
+    "lokal_opensanctions": "lokal", "lokal_icij": "lokal", "lokal_eigene_liste": "lokal",
     "github": "plattform", "gitlab": "plattform", "bluesky": "plattform", "mastodon": "plattform", "username_presence": "plattform",
 }
 

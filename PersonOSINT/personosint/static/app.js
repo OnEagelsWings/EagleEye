@@ -83,7 +83,9 @@
   const typeBadge = (t) => ({ vermisst: "b-red", personensuche: "b-blue", verbindungen: "b-purple" }[t] || "");
   const statusBadge = (s) => ({ neu: "b-blue", "bestätigt": "b-green", verworfen: "b-grey" }[s] || "");
   const scoreColor = (s) => (s >= 75 ? "#059669" : s >= 45 ? "#d97706" : s >= 20 ? "#64748b" : "#cbd5e1");
-  const EXPO_BADGE = { passiv: "b-green", plattform: "b-blue", sichtbar: "b-amber", zielkontakt: "b-red" };
+  const EXPO_BADGE = { lokal: "b-purple", passiv: "b-green", plattform: "b-blue", sichtbar: "b-amber", zielkontakt: "b-red" };
+  const relBadge = (r) => r ? `<span class="badge b-grey" title="Verlässlichkeit der Quelle (Admiralty-Code): ${esc({ A: "vollkommen zuverlässig", B: "in der Regel zuverlässig", C: "ziemlich zuverlässig", D: "in der Regel nicht zuverlässig", E: "unzuverlässig", F: "nicht beurteilbar" }[r] || "")}">${esc(r)}</span>` : "";
+  const period = (a, b) => (a || b) ? `<span class="muted">(${esc(a || "?")}${b ? " – " + esc(b) : a ? " – heute?" : ""})</span>` : "";
   const expoBadge = (key) => `<span class="badge ${EXPO_BADGE[key] || ""}" title="${esc(state.meta.exposure[key].help)}">${esc(state.meta.exposure[key].label)}</span>`;
   const opsecBadge = (lvl) => `<span class="badge opsec-${lvl}" title="${esc(state.meta.opsec_levels[lvl].summary)}">OPSEC ${lvl} · ${esc(state.meta.opsec_levels[lvl].name)}</span>`;
   const help = (title, items, open = false) => `<details class="help"${open ? " open" : ""}><summary>💡 ${esc(title)}</summary><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul></details>`;
@@ -623,7 +625,8 @@
 
   // ------------------------------------------------------------------ Tab: Suche & Treffer
   async function tabSearch(el, ov) {
-    const op = await api("GET", `/api/cases/${ov.case.id}/opsec`);
+    const [op, sources] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/opsec`), api("GET", "/api/sources")]);
+    state.meta.sources = sources;
     const lvl = state.meta.opsec_levels[ov.case.opsec_level];
     const [ents, findings, searches] = await Promise.all([
       api("GET", `/api/cases/${ov.case.id}/entities`), api("GET", `/api/cases/${ov.case.id}/findings`), api("GET", `/api/cases/${ov.case.id}/searches`)]);
@@ -655,11 +658,13 @@
             <div class="opsec-strip">${opsecBadge(lvl.key)} Ausgang: <b>${esc(op.profile.name)}</b>${op.briefing_done ? "" : ` · <a href="#/case/${ov.case.id}/opsec">⚠ Briefing bestätigen</a>`}
               ${op.warnings.map((w) => `<div class="small" style="color:#92400e">⚠ ${esc(w)}</div>`).join("")}</div>
             ${Object.entries(srcGroups).map(([g, list]) => `<div class="src-group"><h4>${esc(g)}</h4>${list.map((s) => {
-              const expo = state.meta.source_exposure[s.key] || "plattform";
+              const expo = s.exposure || "plattform";
               const lvBlocked = state.meta.exposure[expo].rank > lvl.max_exposure;
-              const ok = s.kinds.some((k) => kinds.has(k)) && !lvBlocked;
-              return `<label class="check ${ok ? "" : "src-disabled"}" title="${esc(s.description)}"><input type="checkbox" name="src" value="${s.key}" ${ok ? "checked" : "disabled"}>
-                <span>${esc(s.label)} ${expoBadge(expo)}<br><span class="small muted">${lvBlocked ? `durch OPSEC-Stufe ${lvl.key} gesperrt` : ok ? esc(s.description) : "benötigt: " + esc(s.kind_labels.join(" oder "))}</span></span></label>`; }).join("")}</div>`).join("")}
+              const hasKind = s.kinds.some((k) => kinds.has(k));
+              const ok = hasKind && !lvBlocked && !s.unavailable;
+              const why = lvBlocked ? `durch OPSEC-Stufe ${lvl.key} gesperrt` : s.unavailable ? s.unavailable : !hasKind ? "benötigt: " + s.kind_labels.join(" oder ") : s.description;
+              return `<label class="check ${ok ? "" : "src-disabled"}" title="${esc(s.description + " · Lizenz: " + s.license)}"><input type="checkbox" name="src" value="${s.key}" ${ok ? "checked" : "disabled"}>
+                <span>${esc(s.label)} ${expoBadge(expo)} ${relBadge(s.reliability)}${s.requires_key && !s.key_set && s.key_optional ? ' <span class="badge b-amber" title="ohne Schlüssel stark begrenzt">eingeschränkt</span>' : ""}<br><span class="small muted">${esc(why)}</span></span></label>`; }).join("")}</div>`).join("")}
             <button class="btn btn-primary btn-lg" id="s-run" style="width:100%;justify-content:center;margin-top:.8rem" ${person ? "" : "disabled"}>🔎 Suche starten</button>
           </div>
           <div class="card" id="s-status">${renderSearchStatus(state.lastSearch, searches)}</div>
@@ -729,6 +734,9 @@
           <div class="small muted">${esc(f.source)} · ${esc(f.category)}${f.entity_label ? " · zu " + esc(f.entity_label) : ""}${f.query ? " · Suche: „" + esc(f.query) + "“" : ""} <span class="badge ${statusBadge(f.status)}">${esc(f.status)}</span></div>
           ${f.snippet ? `<div class="snip">${esc(f.snippet)}</div>` : ""}
           <ul class="reasons">${(f.reasons || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+          ${f.facts && f.facts.length ? `<details class="facts-box"><summary>📑 ${f.facts.length} Aussage(n) aus dieser Quelle</summary><table class="tbl small">
+            ${f.facts.slice(0, 40).map((x) => `<tr><td>${esc(x.subject_label)}</td><td class="muted">${esc(x.predicate_label)}</td><td><b>${esc(x.object_label)}</b>${x.data && x.data.rolle ? ` <span class="muted">(${esc(x.data.rolle)})</span>` : ""} ${period(x.valid_from, x.valid_to)}</td></tr>`).join("")}
+            ${f.facts.length > 40 ? `<tr><td colspan="3" class="muted">… ${f.facts.length - 40} weitere</td></tr>` : ""}</table></details>` : ""}
           ${f.review_note ? `<div class="small" style="margin-top:.3rem"><b>Prüfnotiz:</b> ${esc(f.review_note)}</div>` : ""}
           <div class="actions">
             ${f.status === "neu" ? `<input placeholder="Prüfnotiz (optional) – z. B. Foto passt, Ort bestätigt" style="flex:1;min-width:180px;padding:.3rem .5rem;font-size:.85rem">
@@ -742,7 +750,7 @@
   function renderSearchStatus(last, searches) {
     if (last && last.blockedMsg) return `<h3>🛡 Durch OPSEC blockiert</h3><div class="bad-box small">${esc(last.blockedMsg)}</div>`;
     if (last) {
-      return `<h3>Ergebnis der Suche</h3><div class="small">${last.queries} Abfragen über <b>${esc(last.egress)}</b> · <b>${last.new_findings} neue Treffer</b> (${last.total_candidates} gefunden)${last.blocked ? ` · ${last.blocked} durch OPSEC gesperrt` : ""}</div>
+      return `<h3>Ergebnis der Suche</h3><div class="small">${last.queries} Abfragen über <b>${esc(last.egress)}</b> · <b>${last.new_findings} neue Treffer</b> (${last.total_candidates} gefunden) · <b>${last.new_facts || 0} Aussagen</b>${last.blocked ? ` · ${last.blocked} durch OPSEC gesperrt` : ""}</div>
         <ul class="source-status" style="padding-left:1rem">${last.status.map((s) => `<li>${s.ok ? "✅" : "⚠️"} <b>${esc(s.source)}</b> – „${esc(s.query)}“: ${s.ok ? s.count + " Treffer" : esc(s.message)}</li>`).join("")}</ul>
         ${last.status.some((s) => !s.ok) ? `<div class="small muted">Nicht erreichbare Quellen deuten meist auf fehlende Internetverbindung, Firewall oder Rate-Limits hin. Später erneut versuchen.</div>` : ""}`;
     }
@@ -1257,7 +1265,7 @@
   // ------------------------------------------------------------------ Verwaltung (Administration)
   async function renderAdmin(section) {
     if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
-    const tabs = [["users", "👤 Benutzer"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["restricted", "🔒 Vertrauliche Fälle"]];
     $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
     const el = $("#adm");
     if (section === "users") {
@@ -1329,6 +1337,56 @@
         try { const r = await guard(() => api("POST", "/api/admin/backups")); toast(`Sicherung erstellt und geprüft (${r.tables.cases} Fälle)`, "ok"); } catch (_) { /* gemeldet */ }
         renderAdmin("backups");
       };
+    } else if (section === "sources") {
+      const d = await api("GET", "/api/admin/sources");
+      const groups = {};
+      d.sources.filter((x) => !x.local).forEach((x) => (groups[x.group] = groups[x.group] || []).push(x));
+      el.innerHTML = `<div class="card"><div class="card-head"><h2>Online-Quellen</h2><span class="right small muted">Schlüssel werden verschlüsselt gespeichert und nie angezeigt.</span></div>
+        ${Object.entries(groups).map(([g, list]) => `<h4 class="src-head">${esc(g)}</h4><table class="tbl"><tr><th>Quelle</th><th>Exposition</th><th>Verlässlichkeit</th><th>Lizenz / Kosten</th><th>Schlüssel</th><th></th></tr>
+          ${list.map((x) => `<tr><td><b>${esc(x.label)}</b><br><span class="small muted">${esc(x.description)}</span>${x.docs ? `<br><a class="small" href="${esc(x.docs)}" target="_blank" rel="noopener noreferrer">Dokumentation ↗</a>` : ""}</td>
+            <td>${expoBadge(x.exposure)}</td><td>${relBadge(x.reliability)}</td><td class="small">${esc(x.license)}<br><span class="muted">${esc(x.cost)}</span></td>
+            <td>${x.requires_key ? (x.key_set ? '<span class="badge b-green">hinterlegt</span>' : x.key_optional ? '<span class="badge b-amber">optional</span>' : '<span class="badge b-red">fehlt</span>') : '<span class="muted small">nicht nötig</span>'}</td>
+            <td class="nowrap">${x.requires_key ? `<button class="btn btn-sm" data-key="${esc(x.key)}">Schlüssel …</button> ` : ""}<button class="btn btn-sm" data-test="${esc(x.key)}">Testen</button></td></tr>
+            <tr class="hidden" id="st-${esc(x.key)}"><td colspan="6"></td></tr>`).join("")}</table>`).join("")}</div>
+        <div class="card"><div class="card-head"><h2>Lokale Referenzdatenbanken</h2><div class="right"><button class="btn btn-sm" id="rd-refresh">↻ Aktualisieren</button></div></div>
+          <p class="small muted">Massendaten werden einmal importiert und danach <b>offline</b> durchsucht – Abfragen verlassen den Server nicht (Exposition „Lokal“), ohne Limits.
+          Große Dateien besser per Kommandozeile importieren: <code>python -m personosint import-refdata NAME DATEI</code>.</p>
+          <div class="grid g3">${d.datasets.map((x) => `<div class="kpi"><b>${esc(x.label)}</b> ${x.status === "bereit" ? '<span class="badge b-green">bereit</span>' : x.status === "fehler" ? '<span class="badge b-red">Fehler</span>' : x.status === "leer" ? '<span class="badge b-grey">leer</span>' : `<span class="badge b-amber"><span class="spinner dark"></span> ${esc(x.status)}</span>`}
+            <div class="small muted" style="margin:.3rem 0">${esc(x.description)}</div>
+            <div class="small">${x.records ? `<b>${x.records.toLocaleString("de-DE")}</b> Einträge${x.links ? `, ${x.links.toLocaleString("de-DE")} Verknüpfungen` : ""} · ${fmtTs(x.imported_at)}` : "noch nicht importiert"}</div>
+            ${x.message && x.status !== "bereit" ? `<div class="small" style="color:${x.status === "fehler" ? "var(--red)" : "inherit"}">${esc(x.message)}</div>` : ""}
+            <div class="small muted" style="margin-top:.3rem">Lizenz: ${esc(x.license)}<br>Datei: ${esc(x.file_hint)}</div>
+            <div class="row" style="margin-top:.5rem">${x.url ? `<button class="btn btn-sm btn-primary" data-dl="${esc(x.name)}">⬇ Herunterladen & importieren</button>` : ""}
+              <label class="btn btn-sm">⬆ Datei importieren<input type="file" data-up="${esc(x.name)}" hidden></label>
+              ${x.records ? `<button class="btn btn-sm btn-danger" data-rdel="${esc(x.name)}">Löschen</button>` : ""}</div></div>`).join("")}</div></div>`;
+      $("#rd-refresh").onclick = () => renderAdmin("sources");
+      $$("[data-key]", el).forEach((b) => (b.onclick = () => {
+        const src = d.sources.find((x) => x.key === b.dataset.key);
+        const m = modal(`API-Schlüssel: ${src.label}`, `<p class="small">${esc(src.key_help || "")}</p>
+          <label class="field"><span>Schlüssel</span><input id="k-val" type="password" autocomplete="off" placeholder="${src.key_set ? "•••••• (hinterlegt – zum Ersetzen neu eingeben)" : ""}"></label>`,
+          `${src.key_set ? '<button class="btn btn-danger" id="k-del" style="margin-right:auto">Entfernen</button>' : ""}<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="k-save">Speichern</button>`);
+        $("#k-save", m.el).onclick = async () => { await guard(() => api("PUT", `/api/admin/sources/${src.key}/key`, { key: $("#k-val", m.el).value }), "Schlüssel gespeichert"); m.close(); renderAdmin("sources"); };
+        const del = $("#k-del", m.el); if (del) del.onclick = async () => { await guard(() => api("PUT", `/api/admin/sources/${src.key}/key`, { key: "" }), "Schlüssel entfernt"); m.close(); renderAdmin("sources"); };
+      }));
+      $$("[data-test]", el).forEach((b) => (b.onclick = async () => {
+        const row = $(`#st-${CSS.escape(b.dataset.test)}`); row.classList.remove("hidden");
+        row.firstElementChild.innerHTML = '<span class="spinner dark"></span> Testabfrage über den Standard-Netzausgang …';
+        try {
+          const r = await api("POST", `/api/admin/sources/${b.dataset.test}/test`);
+          row.firstElementChild.innerHTML = r.ok ? `<div class="ok-box small">✓ erreichbar – ${r.count} Treffer, ${r.claims} Aussagen (${r.seconds} s)${r.sample && r.sample.length ? "<br>" + r.sample.map(esc).join("<br>") : ""}</div>` : `<div class="bad-box small">✗ ${esc(r.message)}</div>`;
+        } catch (e) { row.firstElementChild.innerHTML = `<div class="bad-box small">${esc(e.message)}</div>`; }
+      }));
+      $$("[data-dl]", el).forEach((b) => (b.onclick = async () => {
+        if (!(await confirmDlg("Gesamtdaten herunterladen und importieren? Je nach Bestand mehrere hundert MB; der Import läuft im Hintergrund über den Standard-Netzausgang.", "Starten"))) return;
+        await guard(() => api("POST", `/api/admin/refdata/${b.dataset.dl}/download`), "Download gestartet"); renderAdmin("sources");
+      }));
+      $$("[data-up]", el).forEach((inp) => (inp.onchange = async () => {
+        const fd = new FormData(); fd.append("file", inp.files[0]);
+        toast("Datei wird hochgeladen …");
+        await guard(() => api("POST", `/api/admin/refdata/${inp.dataset.up}/upload`, fd), "Import gestartet"); renderAdmin("sources");
+      }));
+      $$("[data-rdel]", el).forEach((b) => (b.onclick = async () => { if (await confirmDlg("Datenbestand löschen?")) { await guard(() => api("DELETE", `/api/admin/refdata/${b.dataset.rdel}`), "Gelöscht"); renderAdmin("sources"); } }));
+      if (d.datasets.some((x) => !["bereit", "leer", "fehler"].includes(x.status))) setTimeout(() => { if (location.hash === "#/admin/sources") renderAdmin("sources"); }, 4000);
     } else if (section === "opsec") {
       const o = await api("GET", "/api/admin/opsec");
       el.innerHTML = `<div class="card"><div class="card-head"><h2>Netzausgänge (Egress-Profile)</h2><div class="right"><button class="btn btn-primary" id="eg-new">＋ Ausgang anlegen</button></div></div>

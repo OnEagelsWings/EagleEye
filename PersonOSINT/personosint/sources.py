@@ -11,6 +11,8 @@ import hashlib
 import json
 import re
 import ssl
+import threading
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -70,11 +72,12 @@ class Http:
 class RecordingHttp:
     """Hüllt einen HTTP-Client ein und meldet jede Außenabfrage an das Außenkontakt-Protokoll."""
 
-    def __init__(self, inner: Any, record: Any, source_key: str = "", egress: str = "direkt"):
+    def __init__(self, inner: Any, record: Any, source_key: str = "", egress: str = "direkt", keys: dict[str, str] | None = None):
         self.inner, self.record, self.source_key, self.egress = inner, record, source_key, egress
+        self.keys = keys or {}
 
     def for_source(self, key: str) -> "RecordingHttp":
-        return RecordingHttp(self.inner, self.record, key, self.egress)
+        return RecordingHttp(self.inner, self.record, key, self.egress, self.keys)
 
     def get(self, url: str, headers: dict[str, str] | None = None) -> HttpResponse:
         status = 0
@@ -91,6 +94,17 @@ class RecordingHttp:
                          "query": parts.query[:300], "status": status, "egress": self.egress})
 
 
+#: in Tests abschaltbar
+THROTTLE_ENABLED = True
+_THROTTLE_LOCK = threading.Lock()
+_LAST_CALL: dict[str, float] = {}
+
+
+def api_key(http: Any, source_key: str) -> str:
+    """API-Schlüssel einer Quelle (vom Fall-Client mitgeführt, nie im Klartext gespeichert)."""
+    return (getattr(http, "keys", None) or {}).get(source_key, "")
+
+
 @dataclass
 class Source:
     key: str
@@ -102,10 +116,25 @@ class Source:
     weight: float = 1.0
     group: str = "Personen"
     runner: Callable[["Source", str, str, Http], list[dict[str, Any]]] = field(repr=False, default=None)  # type: ignore[assignment]
+    #: Name des benötigten API-Schlüssels ("" = keiner); key_optional = funktioniert auch ohne (eingeschränkt)
+    requires_key: bool = False
+    key_optional: bool = False
+    key_help: str = ""
+    license: str = "Öffentliche Schnittstelle; Nutzungsbedingungen des Anbieters beachten."
+    cost: str = "kostenlos"
+    #: Verlässlichkeit der Quelle nach Admiralty-Code (A = amtlich/zuverlässig … F = nicht beurteilbar)
+    reliability: str = "C"
+    docs: str = ""
+    rate_per_min: int = 30
+    local: bool = False
+    #: Testabfrage für den Selbsttest in der Verwaltung
+    test_query: tuple[str, str] = ("name", "Angela Merkel")
 
     def run(self, kind: str, value: str, http: Http) -> list[dict[str, Any]]:
         if isinstance(http, RecordingHttp):
             http = http.for_source(self.key)
+        if self.requires_key and not self.key_optional and not api_key(http, self.key):
+            raise SourceError("API-Schlüssel fehlt – Verwaltung → Quellen & Daten")
         out = self.runner(self, kind, value, http)
         for item in out:
             host = (urlsplit(item.get("url", "")).hostname or "")
@@ -125,7 +154,25 @@ class Source:
         host = urlsplit(url).hostname or ""
         if host not in self.hosts:
             raise SourceError(f"Host {host} ist für {self.label} nicht freigegeben")
-        return http.get(url, headers)
+        self._throttle()
+        resp = http.get(url, headers)
+        if resp.status == 429:
+            raise SourceError("Abfragelimit des Anbieters erreicht (HTTP 429) – später erneut versuchen")
+        if resp.status in (401, 403) and self.requires_key:
+            raise SourceError(f"Zugriff verweigert (HTTP {resp.status}) – API-Schlüssel prüfen")
+        return resp
+
+    def _throttle(self) -> None:
+        """Einfache Drosselung je Quelle (Abstand zwischen Anfragen), schont Limits und fällt weniger auf."""
+        if self.rate_per_min <= 0 or not THROTTLE_ENABLED:
+            return
+        gap = 60.0 / self.rate_per_min
+        with _THROTTLE_LOCK:
+            now = time.monotonic()
+            wait = _LAST_CALL.get(self.key, 0.0) + gap - now
+            _LAST_CALL[self.key] = max(now, _LAST_CALL.get(self.key, 0.0) + gap)
+        if wait > 0:
+            time.sleep(min(wait, 5.0))
 
 
 def _clean(text: Any, limit: int = 400) -> str:
@@ -456,3 +503,8 @@ def research_links(subject: dict[str, Any], identifiers: Iterable[dict[str, Any]
         if hint:
             link["hint"] = (link.get("hint", "") + " " + hint).strip()
     return links
+
+# Verlässlichkeit der Basisquellen nach Admiralty-Code (A = amtlich … F = nicht beurteilbar)
+for _src, _rel in {"interpol_yellow": "A", "wayback": "B", "openalex": "B", "orcid": "B", "wikidata": "C", "nominatim": "B",
+                   "gravatar": "C", "github": "C", "gitlab": "C", "bluesky": "C", "mastodon": "C", "username_presence": "D"}.items():
+    SOURCE_MAP[_src].reliability = _rel

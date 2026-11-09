@@ -11,7 +11,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from personosint.api import create_app
+from personosint import sources as _sources
 from personosint.config import Settings
+
+_sources.THROTTLE_ENABLED = False  # Tests ohne künstliche Wartezeiten
 
 H = {"X-Requested-With": "EagleEye"}
 ADMIN_PW = "Leitstelle-Passwort-2026!"

@@ -139,6 +139,21 @@ def cmd_restore(args) -> None:
     print(f"Wiederhergestellt: {res['tables']} · Fotos: {res['photos']}")
 
 
+def cmd_import_refdata(args) -> None:
+    from .refdata import DATASETS, RefDataError
+
+    _, _, _, _, p = _open(args)
+    if args.name not in DATASETS:
+        sys.exit(f"Bestand muss einer von {', '.join(DATASETS)} sein.")
+    print(f"Importiere {args.file} nach „{DATASETS[args.name]['label']}“ … (große Dateien dauern einige Minuten)")
+    try:
+        res = p.refdata.import_file(args.name, Path(args.file))
+    except RefDataError as exc:
+        sys.exit(f"FEHLER: {exc}")
+    p.log(None, "Referenzdaten importiert (Kommandozeile)", f"{args.name}: {res['records']} Einträge")
+    print(f"Fertig: {res['records']} Einträge, {res['links']} Verknüpfungen.")
+
+
 def cmd_verify_audit(args) -> None:
     _, _, _, _, p = _open(args)
     res = p.verify_audit()
@@ -175,10 +190,13 @@ def main(argv: list[str] | None = None) -> None:
     rs.add_argument("--force", action="store_true", help="vorhandene Daten überschreiben")
     rs.add_argument("--source-key", default="", help="Schlüsseldatei der Quellinstallation (bei Sicherung ohne Passphrase)")
     sub.add_parser("verify-audit")
+    ir = sub.add_parser("import-refdata", help="lokale Referenzdaten importieren (opensanctions | icij | eigene_liste)")
+    ir.add_argument("name")
+    ir.add_argument("file")
     args = parser.parse_args(argv)
     {None: cmd_serve, "serve": cmd_serve, "create-user": cmd_create_user, "reset-2fa": cmd_user_admin, "unlock": cmd_user_admin,
      "reset-password": cmd_user_admin, "backup": cmd_backup, "verify-backup": cmd_verify_backup, "restore": cmd_restore,
-     "verify-audit": cmd_verify_audit}[args.command](args)
+     "verify-audit": cmd_verify_audit, "import-refdata": cmd_import_refdata}[args.command](args)
 
 
 if __name__ == "__main__":

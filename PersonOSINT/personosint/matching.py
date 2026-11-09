@@ -123,6 +123,9 @@ def score_candidate(subject: dict[str, Any], identifiers: Iterable[dict[str, Any
     elif match_kind == "username":
         score += 35
         reasons.append("Benutzername existiert auf der Plattform (gleicher Name ≠ gleiche Person)")
+    elif match_kind in {"employer", "domain", "url"}:
+        score += 30
+        reasons.append("Abfrage über bekannte Organisation/Domain aus dem Profil")
 
     cand_names = [n for n in candidate.get("names", []) if n]
     best = 0.0
@@ -167,6 +170,20 @@ def score_candidate(subject: dict[str, Any], identifiers: Iterable[dict[str, Any
         score += 10
         reasons.append(f"Geburtsjahr {birth[:4]} erwähnt")
 
+    if birth:
+        for cl in candidate.get("claims") or []:
+            if cl.get("predicate") == "geburtsdatum" and not cl.get("subject") and cl.get("object", "")[:4].isdigit():
+                other = cl["object"]
+                if other[:4] != birth[:4]:
+                    score -= 30
+                    reasons.append(f"Geburtsjahr weicht ab ({other[:4]} statt {birth[:4]})")
+                elif len(other) >= 7 and other[:7] == birth[:7]:
+                    score += 25
+                    reasons.append(f"Geburtsmonat und -jahr stimmen überein ({other[:7]})")
+                else:
+                    score += 15
+                    reasons.append(f"Geburtsjahr stimmt überein ({other[:4]})")
+                break
     weight = candidate.get("source_weight", 1.0)
     score = max(0.0, min(100.0, score * weight))
     if not reasons:

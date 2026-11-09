@@ -129,8 +129,40 @@ CREATE TABLE exports (
 CREATE INDEX ix_exports_case ON exports(case_id)
 """
 
+MIGRATION_4 = """
+CREATE TABLE facts (
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    finding_id INTEGER REFERENCES findings(id) ON DELETE CASCADE,
+    subject_entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL, subject_label TEXT NOT NULL, subject_type TEXT NOT NULL DEFAULT 'person',
+    predicate TEXT NOT NULL, object_label TEXT NOT NULL, object_type TEXT NOT NULL DEFAULT 'wert',
+    object_entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL,
+    valid_from TEXT NOT NULL DEFAULT '', valid_to TEXT NOT NULL DEFAULT '', data TEXT NOT NULL DEFAULT '{{}}',
+    source_key TEXT NOT NULL DEFAULT '', source_label TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL DEFAULT '', retrieved_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'neu', reliability TEXT NOT NULL DEFAULT '', credibility INTEGER NOT NULL DEFAULT 0,
+    note TEXT NOT NULL DEFAULT '', norm_key TEXT NOT NULL DEFAULT '', reviewed_by TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+);
+CREATE INDEX ix_facts_case ON facts(case_id);
+CREATE INDEX ix_facts_finding ON facts(finding_id);
+CREATE INDEX ix_facts_norm ON facts(case_id, norm_key);
+CREATE TABLE ref_datasets (
+    name TEXT PRIMARY KEY, label TEXT NOT NULL, license TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL DEFAULT '',
+    imported_at TEXT NOT NULL DEFAULT '', records INTEGER NOT NULL DEFAULT 0, links INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'leer', message TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE ref_records (
+    id {PK}, dataset TEXT NOT NULL, ext_id TEXT NOT NULL, kind TEXT NOT NULL DEFAULT '', name TEXT NOT NULL,
+    birth_date TEXT NOT NULL DEFAULT '', countries TEXT NOT NULL DEFAULT '', data TEXT NOT NULL DEFAULT '{{}}'
+);
+CREATE INDEX ix_ref_records_ext ON ref_records(dataset, ext_id);
+CREATE TABLE ref_terms (term TEXT NOT NULL, record_id INTEGER NOT NULL);
+CREATE INDEX ix_ref_terms ON ref_terms(term, record_id);
+CREATE TABLE ref_links (dataset TEXT NOT NULL, src_ext TEXT NOT NULL, dst_ext TEXT NOT NULL, rel TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{{}}');
+CREATE INDEX ix_ref_links_src ON ref_links(dataset, src_ext);
+CREATE INDEX ix_ref_links_dst ON ref_links(dataset, dst_ext)
+"""
+
 #: (Version, SQL, optionale Python-Nacharbeit) – Nacharbeit wird von außen registriert (Hash-Kette versiegeln)
-MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3)]
+MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 
@@ -261,6 +293,15 @@ class Database:
             if expected_version is not None and cur.rowcount == 0:
                 raise ConflictError("Der Datensatz wurde inzwischen von jemand anderem geändert. Bitte neu laden.")
 
+    def executemany(self, sql: str, rows: list[list[Any]]) -> None:
+        """Massen-Einfügen (Referenzdaten) in einer Transaktion."""
+        with self.tx():
+            if self.dialect == "postgres":
+                with self._conn.cursor() as cur:
+                    cur.executemany(self._sql(sql), rows)
+            else:
+                self._conn.executemany(sql, rows)
+
     def execute(self, sql: str, params: tuple | list = ()) -> int:
         with self.tx():
             return self._run(sql, params).rowcount
@@ -318,7 +359,7 @@ class Database:
         if self.dialect != "postgres":
             return
         for table in self.tables():
-            if table in {"schema_version", "settings", "case_members", "opsec_acks"}:
+            if table in {"schema_version", "settings", "case_members", "opsec_acks", "ref_datasets", "ref_terms", "ref_links"}:
                 continue
             with self.tx():
                 self._run(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")

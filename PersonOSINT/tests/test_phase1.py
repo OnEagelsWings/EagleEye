@@ -292,7 +292,8 @@ def test_migration_from_version_1_0(tmp_path):
     conn.close()
     app = build_app(tmp_path)
     db: Database = app.state.platform.db
-    assert db.schema_version() == 3
+    from personosint.db import SCHEMA_VERSION
+    assert db.schema_version() == SCHEMA_VERSION
     admin = setup_admin(app)
     assert admin.get("/api/admin/audit/verify").json()["ok"]
     cases = admin.get("/api/cases").json()

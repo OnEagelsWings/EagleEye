@@ -23,11 +23,11 @@ HEADER_PASS = b"EEBAK1P"
 HEADER_KEY = b"EEBAK1K"
 #: Reihenfolge nach Fremdschlüsseln; Sitzungen werden bewusst nicht gesichert
 TABLE_ORDER = ["users", "cases", "case_members", "entities", "identifiers", "searches", "findings", "links",
-               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports"]
+               "events", "tasks", "audit", "settings", "opsec_acks", "egress_log", "exports", "facts"]
 
 
 #: Einstellungen, die verschlüsselt gespeichert werden (z. B. Proxy-Zugangsdaten)
-ENCRYPTED_SETTINGS = {"egress_profiles"}
+ENCRYPTED_SETTINGS = {"egress_profiles", "api_keys"}
 
 
 class BackupError(Exception):

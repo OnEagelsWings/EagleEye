@@ -20,7 +20,10 @@ from .db import ConflictError, Database, now_iso
 from .matching import confidence_label, fold, normalize, score_candidate
 from . import opsec as ops
 from .opsec import DIRECT, EXPOSURE, LEVELS, SOURCE_EXPOSURE, EgressProfile, OpsecBlocked
-from .sources import SOURCE_MAP, SOURCES, Http, RecordingHttp, SourceError, geocode, research_links
+from .connectors import ONLINE_SOURCES
+from .facts import GRAPH_TYPES, PREDICATES, norm_key, predicate_label
+from .refdata import DATASETS, RefData
+from .sources import SOURCES, Http, RecordingHttp, Source, SourceError, geocode, research_links
 
 
 class NotFound(Exception):
@@ -67,12 +70,15 @@ CASE_TYPES = {
 ENTITY_TYPES = {
     "person": "Person", "organisation": "Organisation", "ort": "Ort", "konto": "Online-Konto",
     "telefon": "Telefon", "email": "E-Mail", "fahrzeug": "Fahrzeug", "ereignis": "Ereignis",
-    "dokument": "Dokument", "sonstiges": "Sonstiges",
+    "dokument": "Dokument", "domain": "Domain", "sonstiges": "Sonstiges",
 }
+RELIABILITY = {"A": "vollkommen zuverlässig", "B": "in der Regel zuverlässig", "C": "ziemlich zuverlässig",
+               "D": "in der Regel nicht zuverlässig", "E": "unzuverlässig", "F": "nicht beurteilbar"}
+RELIABILITY_CONFIDENCE = {"A": 90, "B": 80, "C": 65, "D": 45, "E": 30, "F": 50}
 IDENTIFIER_KINDS = {
     "name": "Name", "alias": "Alias/Spitzname", "email": "E-Mail", "phone": "Telefon",
     "username": "Benutzername", "url": "Webseite/Profil-URL", "location": "Ort/Adresse",
-    "employer": "Arbeitgeber/Schule", "other": "Sonstiges",
+    "employer": "Arbeitgeber/Firma/Schule", "domain": "Domain", "other": "Sonstiges",
 }
 RELATIONS = [
     "verwandt mit", "Partner/in von", "befreundet mit", "Kollege/Kollegin von", "Kontakt mit",
@@ -170,6 +176,7 @@ class Platform:
         (self.data_dir / "photos").mkdir(parents=True, exist_ok=True)
         self._audit_lock = threading.Lock()
         self._presence: dict[int, dict[int, tuple[str, float, str]]] = {}
+        self.refdata = RefData(db, self.data_dir)
         #: erzeugt den HTTP-Client für ein Egress-Profil (in Tests austauschbar)
         self.http_factory = lambda profile, ua: Http(profile=profile, user_agent=ua)
         #: prüft vor jeder Abfrage, ob der Anonymisierungs-Ausgang erreichbar ist (fail closed)
@@ -241,6 +248,65 @@ class Platform:
         self.log(None, "OPSEC-Voreinstellungen geändert", json.dumps(data, ensure_ascii=False))
         return self.opsec_settings()
 
+    # ------------------------------------------------------------------ Quellen-Baukasten
+    def all_sources(self) -> list[Source]:
+        local = []
+        for name, meta in DATASETS.items():
+            local.append(Source(f"lokal_{name}", meta["label"] + " · lokal", meta["description"], meta["kinds"], (), "Risiko", 1.1,
+                                "Lokale Referenzdaten", (lambda src, kind, value, http, n=name: self.refdata.findings(n, kind, value)),
+                                license=meta["license"], reliability=meta["reliability"], local=True, rate_per_min=0,
+                                test_query=("name", "Vladimir Putin")))
+        return list(SOURCES) + list(ONLINE_SOURCES) + local
+
+    def source_map(self) -> dict[str, Source]:
+        return {s.key: s for s in self.all_sources()}
+
+    def api_keys(self) -> dict[str, str]:
+        raw = self._setting("api_keys")
+        return json.loads(self.vault.decrypt_text(raw)) if raw else {}
+
+    def set_api_key(self, source_key: str, key: str | None) -> None:
+        src = self.source_map().get(source_key)
+        if not src or not src.requires_key:
+            raise Invalid("Diese Quelle benötigt keinen Schlüssel.")
+        keys = self.api_keys()
+        if key:
+            keys[source_key] = key.strip()
+        else:
+            keys.pop(source_key, None)
+        self._set_setting("api_keys", self.vault.encrypt_text(json.dumps(keys)))
+        self.log(None, "API-Schlüssel " + ("hinterlegt" if key else "entfernt"), src.label)
+
+    def source_unavailable(self, src: Source, keys: dict[str, str] | None = None) -> str:
+        """Leerer Text = nutzbar; sonst Grund, warum die Quelle derzeit nicht abgefragt werden kann."""
+        keys = self.api_keys() if keys is None else keys
+        if src.local:
+            return "" if self.refdata.available(src.key.removeprefix("lokal_")) else "Datenbestand noch nicht importiert (Verwaltung → Quellen & Daten)"
+        if src.requires_key and not src.key_optional and not keys.get(src.key):
+            return "API-Schlüssel fehlt (Verwaltung → Quellen & Daten)"
+        return ""
+
+    def test_source(self, source_key: str) -> dict[str, Any]:
+        """Selbsttest einer Quelle über den Standard-Ausgang der Organisation (ohne Fallbezug)."""
+        src = self.source_map().get(source_key)
+        if not src:
+            raise NotFound("Quelle nicht gefunden.")
+        why = self.source_unavailable(src)
+        if why:
+            return {"ok": False, "message": why}
+        kind, value = src.test_query
+        started = time.time()
+        try:
+            http = self.case_http({"id": None, "opsec_level": 1, "egress_profile": ""})
+            res = src.run(kind, value, http)
+        except (SourceError, OpsecBlocked) as exc:
+            return {"ok": False, "message": str(exc), "seconds": round(time.time() - started, 1)}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"Fehler: {exc}", "seconds": round(time.time() - started, 1)}
+        self.log(None, "Quelle getestet", f"{src.label}: {len(res)} Treffer für Testabfrage")
+        return {"ok": True, "count": len(res), "claims": sum(len(r.get("claims") or []) for r in res), "seconds": round(time.time() - started, 1),
+                "sample": [r.get("title", "") for r in res[:3]]}
+
     # ------------------------------------------------------------------ OPSEC: Netzausgang je Fall (fail closed)
     def case_profile(self, case: dict[str, Any]) -> EgressProfile:
         pid = case.get("egress_profile") or self._setting("default_egress", "direkt")
@@ -264,10 +330,12 @@ class Platform:
         cid = case["id"]
 
         def record(entry: dict[str, Any]) -> None:
+            if cid is None:  # Selbsttest ohne Fallbezug
+                return
             self.db.insert("egress_log", {"case_id": cid, "ts": now_iso(), "username": uname, "source": entry["source"], "host": entry["host"],
                                           "path": entry["path"], "query": entry["query"], "status": entry["status"], "egress": entry["egress"],
                                           "exposure": SOURCE_EXPOSURE.get(entry["source"], "plattform")})
-        return RecordingHttp(inner, record, egress=prof.name)
+        return RecordingHttp(inner, record, egress=prof.name, keys=self.api_keys())
 
     def _geocode(self, case: dict[str, Any], text: str) -> tuple[float, float] | None:
         """Ortsauflösung nur, wenn die OPSEC-Stufe es erlaubt – nie mit Direkt-Fallback."""
@@ -813,15 +881,21 @@ class Platform:
 
     # ------------------------------------------------------------------ Suche
     def available_sources(self) -> list[dict[str, Any]]:
+        keys = self.api_keys()
         return [{"key": s.key, "label": s.label, "description": s.description, "kinds": list(s.kinds),
-                 "kind_labels": [IDENTIFIER_KINDS[k] for k in s.kinds], "group": s.group} for s in SOURCES]
+                 "kind_labels": [IDENTIFIER_KINDS.get(k, k) for k in s.kinds], "group": s.group, "local": s.local,
+                 "exposure": "lokal" if s.local else SOURCE_EXPOSURE.get(s.key, "plattform"),
+                 "requires_key": s.requires_key, "key_optional": s.key_optional, "key_set": bool(keys.get(s.key)),
+                 "unavailable": self.source_unavailable(s, keys), "license": s.license, "cost": s.cost,
+                 "reliability": s.reliability, "docs": s.docs, "key_help": s.key_help} for s in self.all_sources()]
 
     def plan_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None) -> list[tuple[str, str, str]]:
         idents = self.db.all("SELECT * FROM identifiers WHERE entity_id = ? AND case_id = ?", (entity_id, case_id))
-        keys = source_keys or [s.key for s in SOURCES]
+        smap = self.source_map()
+        keys = source_keys or list(smap)
         plan: list[tuple[str, str, str]] = []
         for key in keys:
-            src = SOURCE_MAP.get(key)
+            src = smap.get(key)
             if not src:
                 continue
             seen = set()
@@ -839,9 +913,16 @@ class Platform:
         subject = self.get_entity(case_id, entity_id)
         lv = ops.level(case["opsec_level"])
         self.require_briefing(case)
+        smap = self.source_map()
+        keys_now = self.api_keys()
         full_plan = self.plan_search(case_id, entity_id, source_keys)
-        plan = [x for x in full_plan if EXPOSURE[SOURCE_EXPOSURE.get(x[0], "plattform")]["rank"] <= lv.max_exposure]
+        unavailable = [x for x in full_plan if self.source_unavailable(smap[x[0]], keys_now)]
+        full_plan = [x for x in full_plan if x not in unavailable]
+        expo = lambda k: "lokal" if smap[k].local else SOURCE_EXPOSURE.get(k, "plattform")  # noqa: E731
+        plan = [x for x in full_plan if EXPOSURE[expo(x[0])]["rank"] <= lv.max_exposure]
         blocked = [x for x in full_plan if x not in plan]
+        if not plan and unavailable:
+            raise Invalid("Die gewählten Quellen sind nicht nutzbar: " + "; ".join(sorted({f"{smap[k].label}: {self.source_unavailable(smap[k], keys_now)}" for k, _, _ in unavailable})))
         if not full_plan:
             raise Invalid("Keine passenden Identifikatoren für die gewählten Quellen. Bitte z. B. Name, Benutzername oder E-Mail ergänzen.")
         if not plan:
@@ -849,29 +930,32 @@ class Platform:
         http = self.case_http(case)  # wirft OpsecBlocked, wenn der Ausgang fehlt oder nicht erreichbar ist
         sid = self.db.insert("searches", {"case_id": case_id, "entity_id": entity_id, "started_at": now_iso(),
                                           "queries": [{"source": k, "kind": kd, "value": v} for k, kd, v in plan]})
-        status: list[dict[str, Any]] = [{"source": SOURCE_MAP[k].label, "query": v, "ok": False, "count": 0,
-                                         "message": f"Durch OPSEC-Stufe {lv.key} gesperrt (Exposition „{EXPOSURE[SOURCE_EXPOSURE.get(k, 'plattform')]['label']}“)"}
+        status: list[dict[str, Any]] = [{"source": smap[k].label, "query": v, "ok": False, "count": 0,
+                                         "message": f"Durch OPSEC-Stufe {lv.key} gesperrt (Exposition „{EXPOSURE[expo(k)]['label']}“)"}
                                         for k, _, v in blocked]
+        status += [{"source": smap[k].label, "query": v, "ok": False, "count": 0, "message": self.source_unavailable(smap[k], keys_now)}
+                   for k, _, v in unavailable]
         candidates: list[dict[str, Any]] = []
         with ThreadPoolExecutor(max_workers=8) as pool:
-            futures = {pool.submit(SOURCE_MAP[k].run, kd, v, http): (k, kd, v) for k, kd, v in plan}
+            futures = {pool.submit(smap[k].run, kd, v, http): (k, kd, v) for k, kd, v in plan}
             for fut in as_completed(futures):
                 k, kd, v = futures[fut]
                 try:
                     res = fut.result()
                     candidates.extend(res)
-                    status.append({"source": SOURCE_MAP[k].label, "query": v, "ok": True, "count": len(res), "message": ""})
+                    status.append({"source": smap[k].label, "query": v, "ok": True, "count": len(res), "message": ""})
                 except SourceError as exc:
-                    status.append({"source": SOURCE_MAP[k].label, "query": v, "ok": False, "count": 0, "message": str(exc)})
+                    status.append({"source": smap[k].label, "query": v, "ok": False, "count": 0, "message": str(exc)})
                 except Exception as exc:  # noqa: BLE001 - eine defekte Quelle darf die Suche nicht abbrechen
-                    status.append({"source": SOURCE_MAP[k].label, "query": v, "ok": False, "count": 0, "message": f"Fehler: {exc}"})
-        new = 0
+                    status.append({"source": smap[k].label, "query": v, "ok": False, "count": 0, "message": f"Fehler: {exc}"})
+        new = new_facts = 0
         for c in candidates:
             score, reasons = score_candidate(subject, subject["identifiers"], c)
             fp = hashlib.sha1(f"{c['source_key']}|{c.get('url') or c.get('title')}".encode()).hexdigest()
-            data = {**c.get("data", {}), "host": c.get("host", "")}
+            data = {**c.get("data", {}), "host": c.get("host", ""), "_names": [n for n in c.get("names", []) if n][:8],
+                    "_locations": [x for x in c.get("locations", []) if x][:8]}
             try:
-                self.db.insert("findings", {
+                fid = self.db.insert("findings", {
                     "case_id": case_id, "entity_id": entity_id, "search_id": sid, "source": c["source"],
                     "category": c.get("category", ""), "title": str(c.get("title", ""))[:300], "url": c.get("url", ""),
                     "snippet": c.get("snippet", ""), "query": c.get("query", ""), "data": data, "score": score,
@@ -879,14 +963,48 @@ class Platform:
                 new += 1
             except Exception:  # noqa: BLE001 - Duplikat (bereits bekannter Treffer)
                 continue
+            new_facts += self._store_claims(case_id, fid, subject, smap[c["source_key"]], c)
         self.db.update("searches", sid, {"finished_at": now_iso(), "source_status": status, "result_count": new})
         ok = sum(1 for s in status if s["ok"])
         self.log(case_id, "Suche ausgeführt", f"{subject['label']}: {len(plan)} Abfragen über „{http.egress}“, {ok} erfolgreich, {new} neue Treffer"
                  + (f", {len(blocked)} durch OPSEC gesperrt" if blocked else ""))
         self.touch(case_id)
-        return {"search_id": sid, "case": case["reference"], "queries": len(plan), "new_findings": new, "egress": http.egress,
+        return {"search_id": sid, "case": case["reference"], "queries": len(plan), "new_findings": new, "new_facts": new_facts, "egress": http.egress,
                 "blocked": len(blocked),
                 "total_candidates": len(candidates), "status": sorted(status, key=lambda s: (s["ok"], s["source"]))}
+
+    def _store_claims(self, case_id: int, finding_id: int, subject: dict[str, Any], src: Source, cand: dict[str, Any]) -> int:
+        n = 0
+        ts = now_iso()
+        for cl in cand.get("claims") or []:
+            if not cl.get("object"):
+                continue
+            own = not cl.get("subject")
+            s_label = subject["label"] if own else cl["subject"]
+            attrs = cl.get("attrs") or {}
+            self.db.insert("facts", {
+                "case_id": case_id, "finding_id": finding_id, "subject_entity_id": subject["id"] if own else None,
+                "subject_label": s_label, "subject_type": "person" if own else (cl.get("subject_type") or "sonstiges"),
+                "predicate": cl["predicate"], "object_label": cl["object"], "object_type": cl.get("object_type") or "wert",
+                "valid_from": cl.get("valid_from") or "", "valid_to": cl.get("valid_to") or "", "data": attrs,
+                "source_key": src.key, "source_label": src.label, "source_url": attrs.get("quelle_url") or cand.get("url", ""),
+                "retrieved_at": ts, "status": "neu", "reliability": src.reliability,
+                "norm_key": norm_key(s_label, cl["predicate"], cl["object"]), "created_at": ts})
+            n += 1
+        return n
+
+    def list_facts(self, case_id: int, status: str | None = None) -> list[dict[str, Any]]:
+        sql = "SELECT * FROM facts WHERE case_id = ?"
+        params: list[Any] = [case_id]
+        if status:
+            sql += " AND status = ?"
+            params.append(status)
+        rows = self.db.all(sql + " ORDER BY subject_label, predicate, valid_from, id", params)
+        for r in rows:
+            meta = PREDICATES.get(r["predicate"], {})
+            r["predicate_label"] = predicate_label(r["predicate"])
+            r["category"] = meta.get("category", "Sonstiges")
+        return rows
 
     def list_searches(self, case_id: int) -> list[dict[str, Any]]:
         return self.db.all("SELECT s.*, e.label AS entity_label FROM searches s LEFT JOIN entities e ON e.id = s.entity_id "
@@ -902,8 +1020,14 @@ class Platform:
             sql += " AND f.entity_id = ?"
             params.append(entity_id)
         rows = self.db.all(sql + " ORDER BY CASE f.status WHEN 'neu' THEN 0 WHEN 'bestätigt' THEN 1 ELSE 2 END, f.score DESC, f.id DESC", params)
+        facts: dict[int, list] = {}
+        for fa in self.db.all("SELECT id, finding_id, subject_label, predicate, object_label, valid_from, valid_to, data, status FROM facts "
+                              "WHERE case_id = ? AND finding_id IS NOT NULL ORDER BY id", (case_id,)):
+            fa["predicate_label"] = predicate_label(fa["predicate"])
+            facts.setdefault(fa["finding_id"], []).append(fa)
         for r in rows:
             r["confidence"] = confidence_label(r["score"])
+            r["facts"] = facts.get(r["id"], [])
         return rows
 
     def add_manual_finding(self, case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
@@ -933,9 +1057,17 @@ class Platform:
         user = current_user.get()
         self.db.update("findings", finding_id, {"status": status, "review_note": (payload.get("note") or "").strip(),
                                                 "reviewed_at": now_iso(), "reviewed_by": user["display_name"] if user else "System"})
+        self.db.execute("UPDATE facts SET status = ?, reviewed_by = ? WHERE finding_id = ?",
+                        (status, user["display_name"] if user else "System", finding_id))
         created: list[str] = []
+        has_facts = bool(self.db.scalar("SELECT COUNT(*) AS n FROM facts WHERE finding_id = ?", (finding_id,)))
         if status == "bestätigt" and payload.get("add_to_graph", True) and f["entity_id"]:
-            created = self._promote_finding(case_id, f)
+            if has_facts:
+                created = self._promote_facts(case_id, finding_id)
+                if f["category"] == "Konto":
+                    created += self._promote_finding(case_id, f)
+            else:
+                created = self._promote_finding(case_id, f)
         self.log(case_id, f"Treffer {status}", f"{f['title']} ({f['source']})" + (f" · Notiz: {payload.get('note')}" if payload.get("note") else ""))
         self.touch(case_id)
         out = self.db.one("SELECT * FROM findings WHERE id = ?", (finding_id,))
@@ -953,6 +1085,37 @@ class Platform:
             return
         self.db.insert("links", {"case_id": case_id, "source_id": s, "target_id": t, "relation": relation,
                                  "confidence": confidence, "evidence": evidence, "created_at": now_iso()})
+
+    def _promote_facts(self, case_id: int, finding_id: int | None = None, fact_ids: list[int] | None = None) -> list[str]:
+        """Bestätigte Aussagen als Knoten und Kanten in den Graphen übernehmen (Beziehungen, nicht Einzelwerte)."""
+        if fact_ids:
+            rows = self.db.all(f"SELECT * FROM facts WHERE case_id = ? AND id IN ({', '.join('?' for _ in fact_ids)})", [case_id, *fact_ids])
+        else:
+            rows = self.db.all("SELECT * FROM facts WHERE case_id = ? AND finding_id = ?", (case_id, finding_id))
+        created: list[str] = []
+        for fa in rows:
+            meta = PREDICATES.get(fa["predicate"], {})
+            subj = fa["subject_entity_id"]
+            if not subj:
+                stype = GRAPH_TYPES.get(fa["subject_type"], "sonstiges")
+                subj, new = self._find_or_create(case_id, stype, fa["subject_label"])
+                if new:
+                    created.append(fa["subject_label"])
+            obj = fa["object_entity_id"]
+            if fa["object_type"] in GRAPH_TYPES and not obj:
+                obj, new = self._find_or_create(case_id, GRAPH_TYPES[fa["object_type"]], fa["object_label"])
+                if new:
+                    created.append(fa["object_label"])
+            self.db.update("facts", fa["id"], {"subject_entity_id": subj, "object_entity_id": obj})
+            if obj and obj != subj:
+                role = (fa["data"] or {}).get("rolle")
+                relation = meta.get("relation") or predicate_label(fa["predicate"])
+                if role and fa["predicate"] in {"funktion_bei", "offshore_funktion"}:
+                    relation = f"{relation} ({role})"[:60]
+                period = " · ".join(x for x in [f"seit {fa['valid_from']}" if fa["valid_from"] else "", f"bis {fa['valid_to']}" if fa["valid_to"] else ""] if x)
+                self._link_once(case_id, subj, obj, relation, RELIABILITY_CONFIDENCE.get(fa["reliability"] or "F", 50),
+                                f"{fa['source_label']}: {fa['source_url'] or ''}" + (f" ({period})" if period else ""))
+        return sorted(set(created))
 
     def _promote_finding(self, case_id: int, f: dict[str, Any]) -> list[str]:
         """Übernimmt einen bestätigten Treffer als Knoten/Kante in den Verbindungsgraphen."""

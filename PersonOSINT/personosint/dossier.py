@@ -22,7 +22,7 @@ from .service import IDENTIFIER_KINDS, MISSING_FIELDS, PERSON_FIELDS, Platform
 TYPE_COLORS = {
     "person": (37, 99, 235), "organisation": (124, 58, 237), "ort": (5, 150, 105), "konto": (234, 88, 12),
     "telefon": (219, 39, 119), "email": (202, 138, 4), "fahrzeug": (71, 85, 105), "ereignis": (220, 38, 38),
-    "dokument": (100, 116, 139), "sonstiges": (148, 163, 184),
+    "dokument": (100, 116, 139), "domain": (8, 145, 178), "sonstiges": (148, 163, 184),
 }
 NAVY = RGBColor(0x0F, 0x2A, 0x4A)
 GREY = RGBColor(0x55, 0x60, 0x6E)

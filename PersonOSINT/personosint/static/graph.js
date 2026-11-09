@@ -3,7 +3,7 @@
   "use strict";
   const COLORS = {
     person: "#2563eb", organisation: "#7c3aed", ort: "#059669", konto: "#ea580c", telefon: "#db2777",
-    email: "#ca8a04", fahrzeug: "#475569", ereignis: "#dc2626", dokument: "#64748b", sonstiges: "#94a3b8",
+    email: "#ca8a04", fahrzeug: "#475569", ereignis: "#dc2626", dokument: "#64748b", domain: "#0891b2", sonstiges: "#94a3b8",
   };
 
   class NetworkGraph {

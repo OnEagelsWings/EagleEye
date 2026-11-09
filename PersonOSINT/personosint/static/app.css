@@ -282,3 +282,9 @@ body.readonly .w { display: none !important; }
 ul.rules li { margin: .2rem 0; }
 .veil { filter: blur(6px); cursor: pointer; transition: filter .15s; user-select: none; }
 .veil.open { filter: none; user-select: auto; }
+
+/* ---- Schritt 1: Quellen & Aussagen ---- */
+.facts-box { margin-top: .4rem; font-size: .85rem; }
+.facts-box summary { cursor: pointer; color: var(--blue); }
+.facts-box table { margin-top: .3rem; }
+h4.src-head { margin: 1rem 0 .3rem; font-size: .8rem; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }

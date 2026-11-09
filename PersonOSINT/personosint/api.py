@@ -317,6 +317,60 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         p.emergency_access(cid, payload.get("reason", ""))
         return {"ok": True}
 
+    # ---------------------------------------------------------------- Quellen & Referenzdaten (Schritt 1)
+    @app.get("/api/admin/sources")
+    def admin_sources(_: dict = Depends(admin_ok)) -> dict:
+        return {"sources": p.available_sources(), "datasets": p.refdata.status()}
+
+    @app.put("/api/admin/sources/{key}/key")
+    def admin_set_key(key: str, payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        p.set_api_key(key, (payload.get("key") or "").strip() or None)
+        return {"ok": True}
+
+    @app.post("/api/admin/sources/{key}/test")
+    def admin_test_source(key: str, _: dict = Depends(admin_ok)) -> dict:
+        return p.test_source(key)
+
+    @app.post("/api/admin/refdata/{name}/download")
+    def admin_refdata_download(name: str, _: dict = Depends(admin_ok)) -> dict:
+        from .refdata import RefDataError
+
+        prof = p.case_profile({"egress_profile": ""})
+        try:
+            p.refdata.download_async(name, lambda: ops.build_opener(prof))
+        except RefDataError as exc:
+            raise Invalid(str(exc)) from exc
+        p.log(None, "Referenzdaten-Download gestartet", f"{name} über „{prof.name}“")
+        return {"ok": True}
+
+    @app.post("/api/admin/refdata/{name}/upload")
+    async def admin_refdata_upload(name: str, file: UploadFile = File(...), _: dict = Depends(admin_ok)) -> dict:
+        from .refdata import DATASETS
+
+        if name not in DATASETS:
+            raise NotFound("Unbekannter Datenbestand.")
+        target = p.refdata.dir / f"upload-{name}-{int(time.time())}{Path(file.filename or 'x.csv').suffix.lower()}"
+        with open(target, "wb") as out:
+            while chunk := await file.read(1 << 20):
+                out.write(chunk)
+        p.refdata.import_async(name, target)
+        p.log(None, "Referenzdaten-Import gestartet", f"{name}: {file.filename}")
+        return {"ok": True}
+
+    @app.delete("/api/admin/refdata/{name}", status_code=204)
+    def admin_refdata_delete(name: str, _: dict = Depends(admin_ok)) -> Response:
+        p.refdata.delete(name)
+        p.log(None, "Referenzdaten gelöscht", name)
+        return Response(status_code=204)
+
+    @app.get("/api/sources")
+    def sources_list(_: dict = Depends(user_ok)) -> list[dict]:
+        return p.available_sources()
+
+    @app.get("/api/cases/{cid}/facts")
+    def case_facts(cid: int, status: str | None = None, _: dict = READ) -> list[dict]:
+        return p.list_facts(cid, status)
+
     # ---------------------------------------------------------------- OPSEC
     @app.get("/api/egress-profiles")
     def egress_list(_: dict = Depends(user_ok)) -> list[dict]:
