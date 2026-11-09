@@ -253,6 +253,18 @@ class ProviderCollection120Service:
         fixture_ids: list[str] = []
         try:
             for index, http_request in enumerate(http_requests):
+                # A reviewer may revoke or narrow the search while a multi-request
+                # provider run is in progress. Recheck before each network request;
+                # replay remains an offline, non-network operation.
+                if mode == "live":
+                    self._validate_search_approval(
+                        case_id=case_id,
+                        provider_key=provider_key,
+                        query=query,
+                        search_intent_id=search_intent_id,
+                        search_query_id=search_query_id,
+                        target_id=target_id,
+                    )
                 response, used_attempts = self._execute_request(
                     run_id=run_id,
                     request_index=index,
