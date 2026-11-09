@@ -66,7 +66,9 @@ def predicate_label(key: str) -> str:
 def norm_value(predicate: str, value: str) -> str:
     """Normalisierung für den Abgleich gleicher Aussagen aus verschiedenen Quellen."""
     value = (value or "").strip()
-    if predicate in {"geburtsdatum", "domain_registriert_am"}:
+    if predicate == "geburtsdatum":
+        return value[:7]  # Jahr-Monat: Register liefern oft nur den Monat
+    if predicate == "domain_registriert_am":
         return value[:10]
     if predicate in {"email", "subdomain", "zertifikat_fuer", "nameserver"}:
         return value.casefold().rstrip(".")

@@ -20,6 +20,7 @@ from .db import ConflictError, Database, now_iso
 from .matching import confidence_label, fold, normalize, score_candidate
 from . import opsec as ops
 from .opsec import DIRECT, EXPOSURE, LEVELS, SOURCE_EXPOSURE, EgressProfile, OpsecBlocked
+from . import analysis
 from .connectors import ONLINE_SOURCES
 from .facts import GRAPH_TYPES, PREDICATES, norm_key, predicate_label
 from .refdata import DATASETS, RefData
@@ -1005,6 +1006,74 @@ class Platform:
             r["predicate_label"] = predicate_label(r["predicate"])
             r["category"] = meta.get("category", "Sonstiges")
         return rows
+
+    # ------------------------------------------------------------------ Schritt 2: Kandidaten, Bewertung, Red Flags
+    def candidates(self, case_id: int, entity_id: int, include_reviewed: bool = False) -> list[dict[str, Any]]:
+        subject = self.get_entity(case_id, entity_id)
+        findings = self.list_findings(case_id, None if include_reviewed else "neu", entity_id)
+        return analysis.candidate_groups(findings, subject)
+
+    def review_many(self, case_id: int, finding_ids: list[int], status: str, note: str = "") -> dict[str, Any]:
+        if status not in {"bestätigt", "verworfen", "neu"}:
+            raise Invalid("Ungültiger Status.")
+        created: list[str] = []
+        for fid in finding_ids:
+            created += self.review_finding(case_id, int(fid), {"status": status, "note": note or "Gruppenprüfung"}).get("created", [])
+        self.log(case_id, f"Kandidatengruppe {status}", f"{len(finding_ids)} Treffer" + (f" · {note}" if note else ""))
+        return {"count": len(finding_ids), "created": sorted(set(created))}
+
+    def redflag_config(self) -> dict[str, dict[str, Any]]:
+        return analysis.rule_config(self._setting("redflag_rules"))
+
+    def save_redflag_config(self, data: dict[str, Any]) -> dict[str, Any]:
+        cfg = {}
+        for key, val in data.items():
+            if key not in analysis.RULES:
+                raise Invalid(f"Unbekannte Regel: {key}")
+            if val.get("severity") not in {"hoch", "mittel", "niedrig"}:
+                raise Invalid("Schweregrad muss hoch, mittel oder niedrig sein.")
+            cfg[key] = {"enabled": bool(val.get("enabled", True)), "severity": val["severity"]}
+        self._set_setting("redflag_rules", json.dumps(cfg))
+        self.log(None, "Red-Flag-Regeln geändert", ", ".join(f"{k}={'an' if v['enabled'] else 'aus'}/{v['severity']}" for k, v in cfg.items()))
+        return self.redflag_config()
+
+    def assessment(self, case_id: int) -> dict[str, Any]:
+        facts = self.list_facts(case_id)
+        profiles = {e["id"]: e for e in self.db.all("SELECT id, data FROM entities WHERE case_id = ? AND type = 'person'", (case_id,))}
+        res = analysis.assess(facts, profiles)
+        res["redflags"] = analysis.red_flags(res, self.redflag_config())
+        res["stats"]["redflags"] = len(res["redflags"])
+        res["legend"] = {"reliability": analysis.RELIABILITY, "credibility": analysis.CREDIBILITY}
+        return res
+
+    def update_fact(self, case_id: int, fact_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        fa = self.db.one("SELECT * FROM facts WHERE id = ? AND case_id = ?", (fact_id, case_id))
+        if not fa:
+            raise NotFound("Aussage nicht gefunden.")
+        values: dict[str, Any] = {}
+        user = current_user.get()
+        if "status" in payload:
+            if payload["status"] not in {"neu", "bestätigt", "verworfen"}:
+                raise Invalid("Ungültiger Status.")
+            values.update({"status": payload["status"], "reviewed_by": user["display_name"] if user else "System"})
+        if "reliability" in payload:
+            if payload["reliability"] not in analysis.RELIABILITY:
+                raise Invalid("Verlässlichkeit muss A–F sein.")
+            values["reliability"] = payload["reliability"]
+        if "credibility" in payload:
+            if int(payload["credibility"]) not in range(0, 7):
+                raise Invalid("Glaubwürdigkeit muss 1–6 sein (0 = automatisch).")
+            values["credibility"] = int(payload["credibility"])
+        if "note" in payload:
+            values["note"] = str(payload["note"])[:1000]
+        if not values:
+            raise Invalid("Keine Änderung.")
+        self.db.update("facts", fact_id, values)
+        created = self._promote_facts(case_id, fact_ids=[fact_id]) if values.get("status") == "bestätigt" else []
+        self.log(case_id, "Aussage bewertet", f"{fa['subject_label']} – {predicate_label(fa['predicate'])} – {fa['object_label']}: "
+                 + ", ".join(f"{k}={v}" for k, v in values.items() if k != "reviewed_by"))
+        self.touch(case_id)
+        return {**self.db.one("SELECT * FROM facts WHERE id = ?", (fact_id,)), "created": created}  # type: ignore[dict-item]
 
     def list_searches(self, case_id: int) -> list[dict[str, Any]]:
         return self.db.all("SELECT s.*, e.label AS entity_label FROM searches s LEFT JOIN entities e ON e.id = s.entity_id "

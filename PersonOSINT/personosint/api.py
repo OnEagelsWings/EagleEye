@@ -367,6 +367,30 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def sources_list(_: dict = Depends(user_ok)) -> list[dict]:
         return p.available_sources()
 
+    @app.get("/api/cases/{cid}/candidates")
+    def case_candidates(cid: int, entity_id: int, include_reviewed: bool = False, _: dict = READ) -> list[dict]:
+        return p.candidates(cid, entity_id, include_reviewed)
+
+    @app.post("/api/cases/{cid}/candidates/review")
+    def case_candidates_review(cid: int, payload: dict = Body(...), _: dict = REVIEW) -> dict:
+        return p.review_many(cid, payload.get("finding_ids") or [], payload.get("status", ""), payload.get("note", ""))
+
+    @app.get("/api/cases/{cid}/assessment")
+    def case_assessment(cid: int, _: dict = READ) -> dict:
+        return p.assessment(cid)
+
+    @app.patch("/api/cases/{cid}/facts/{fid}")
+    def case_fact_update(cid: int, fid: int, payload: dict = Body(...), _: dict = REVIEW) -> dict:
+        return p.update_fact(cid, fid, payload)
+
+    @app.get("/api/admin/redflag-rules")
+    def admin_redflags(_: dict = Depends(admin_ok)) -> dict:
+        return p.redflag_config()
+
+    @app.put("/api/admin/redflag-rules")
+    def admin_redflags_save(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        return p.save_redflag_config(payload)
+
     @app.get("/api/cases/{cid}/facts")
     def case_facts(cid: int, status: str | None = None, _: dict = READ) -> list[dict]:
         return p.list_facts(cid, status)

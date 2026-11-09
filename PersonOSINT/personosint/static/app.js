@@ -275,7 +275,7 @@
 
   // ------------------------------------------------------------------ Fallansicht
   const TABS = [
-    ["overview", "Übersicht"], ["persons", "Personen & Profile"], ["search", "Suche & Treffer"], ["graph", "Verbindungen"],
+    ["overview", "Übersicht"], ["persons", "Personen & Profile"], ["search", "Suche & Treffer"], ["graph", "Verbindungen"], ["facts", "📊 Fakten & Bewertung"],
     ["timeline", "Zeitleiste & Karte"], ["tasks", "Aufgaben"], ["dossier", "Dossier & Export"], ["opsec", "🛡 OPSEC"], ["audit", "Protokoll"],
   ];
 
@@ -308,7 +308,7 @@
     $$(".veil").forEach((v) => (v.onclick = () => v.classList.toggle("open")));
     $("#case-edit").onclick = () => editCase(c);
     document.title = "EagleEye";  // Browsertitel verrät nie Fall- oder Personennamen
-    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, opsec: tabOpsec, audit: tabAudit }[state.tab] || tabOverview;
+    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, facts: tabFacts, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, opsec: tabOpsec, audit: tabAudit }[state.tab] || tabOverview;
     await r($("#tab"), ov);
     markWrite();
   }
@@ -671,15 +671,17 @@
         </div>
         <div class="card">
           <div class="card-head"><h2>Treffer</h2>
-            <div class="right">
+            <div class="seg"><button class="${state.findingView !== "groups" ? "on" : ""}" data-fv="list">Liste</button><button class="${state.findingView === "groups" ? "on" : ""}" data-fv="groups" title="Treffer nach Personen bündeln (Namensvettern trennen)">👥 Kandidatengruppen</button></div>
+            <div class="right ${state.findingView === "groups" ? "hidden" : ""}">
               ${[["neu", "Zu prüfen"], ["bestätigt", "Bestätigt"], ["verworfen", "Verworfen"], ["", "Alle"]].map(([k, l]) => `<button class="btn btn-sm ${state.findingFilter === k ? "btn-primary" : ""}" data-ff="${k}">${l}${k ? ` (${counts[k]})` : ""}</button>`).join("")}
               <button class="btn btn-sm" id="f-manual">＋ Eigene Erkenntnis</button>
             </div></div>
-          <div class="row" style="margin-bottom:.7rem">
+          <div id="g-list" class="${state.findingView === "groups" ? "" : "hidden"}"></div>
+          <div class="row ${state.findingView === "groups" ? "hidden" : ""}" style="margin-bottom:.7rem">
             <input id="f-q" class="grow" type="search" placeholder="Treffer filtern …">
             ${state.findingFilter === "neu" && counts.neu ? `<button class="btn btn-sm" id="f-bulk" title="Alle offenen Treffer mit Score unter 20 verwerfen">Schwache (< 20) verwerfen</button>` : ""}
           </div>
-          <div id="f-list"></div>
+          <div id="f-list" class="${state.findingView === "groups" ? "hidden" : ""}"></div>
         </div>
       </div>`;
     const sp = $("#s-person");
@@ -723,6 +725,34 @@
     };
     $("#f-q").oninput = draw;
     draw();
+    $$("[data-fv]", el).forEach((b) => (b.onclick = () => { state.findingView = b.dataset.fv; renderCase(); }));
+    if (state.findingView === "groups" && person) renderGroups(ov, person);
+  }
+
+  async function renderGroups(ov, person) {
+    const box = $("#g-list");
+    box.innerHTML = '<span class="spinner dark"></span> Bündele Treffer …';
+    const groups = await api("GET", `/api/cases/${ov.case.id}/candidates?entity_id=${person.id}`);
+    if (!groups.length) { box.innerHTML = '<div class="empty"><div class="big">✅</div>Keine offenen Treffer zu prüfen.</div>'; return; }
+    box.innerHTML = `<p class="small muted">Offene Treffer werden nach Merkmalen (Geburtsdatum, Organisationen, Benutzernamen, Orte) zu möglichen Personen gebündelt.
+      Unterschiedliche Geburtsdaten trennen Gruppen immer. Bestätigen Sie die richtige Gruppe als Ganzes – Namensvettern verwerfen Sie mit einem Klick.</p>` +
+      groups.map((g, i) => `<div class="group-card ${g.kind}" data-g="${i}">
+        <div class="ft"><div class="score"><div class="num" style="color:${scoreColor(g.score)}">${g.score}</div><div class="bar"><div style="width:${g.score}%;background:${scoreColor(g.score)}"></div></div><div class="small muted">Passung</div></div>
+        <div style="flex:1;min-width:0"><div class="title">${esc(g.label)} <span class="badge b-grey">${g.count} Treffer</span> ${g.sources.map((x) => `<span class="badge b-blue">${esc(x)}</span>`).join(" ")}</div>
+          <div class="chips">${g.names.length ? `<span>👤 ${g.names.map(esc).join(" · ")}</span>` : ""}${g.births.length ? `<span>🎂 ${g.births.map(esc).join(", ")}</span>` : ""}
+            ${g.orgs.length ? `<span>🏢 ${g.orgs.map(esc).join(", ")}</span>` : ""}${g.locations.length ? `<span>📍 ${g.locations.map(esc).join(", ")}</span>` : ""}${g.usernames.length ? `<span>@ ${g.usernames.map(esc).join(", ")}</span>` : ""}</div>
+          <ul class="reasons">${g.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+          <details><summary class="small">Treffer anzeigen</summary><ul class="small">${g.members.map((m) => `<li>${m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener noreferrer">${esc(m.title)}</a>` : esc(m.title)} <span class="muted">(${esc(m.source)}, ${m.score})</span></li>`).join("")}</ul></details>
+          <div class="actions w-review"><input placeholder="Prüfnotiz zur Gruppe (optional)" style="flex:1;min-width:180px;padding:.3rem .5rem;font-size:.85rem">
+            <button class="btn btn-sm btn-success" data-gr="bestätigt">✓ Gruppe bestätigen</button><button class="btn btn-sm" data-gr="verworfen">✗ Gruppe verwerfen</button></div></div></div></div>`).join("");
+    if (!state.ov.permissions.includes("review")) $$(".w-review", box).forEach((x) => x.classList.add("hidden"));
+    $$("[data-gr]", box).forEach((b) => (b.onclick = async () => {
+      const card = b.closest(".group-card"), g = groups[Number(card.dataset.g)];
+      if (b.dataset.gr === "bestätigt" && g.kind === "lose" && !(await confirmDlg("Diese Treffer haben keine Unterscheidungsmerkmale. Wirklich alle bestätigen?", "Bestätigen"))) return;
+      const r = await guard(() => api("POST", `/api/cases/${ov.case.id}/candidates/review`, { finding_ids: g.finding_ids, status: b.dataset.gr, note: $("input", card).value }));
+      toast(`${r.count} Treffer ${b.dataset.gr}` + (r.created.length ? ` – im Graphen: ${r.created.slice(0, 5).join(", ")}${r.created.length > 5 ? " …" : ""}` : ""), "ok");
+      renderCase();
+    }));
   }
 
   function findingCard(f) {
@@ -1047,6 +1077,75 @@
     };
   }
 
+  // ------------------------------------------------------------------ Tab: Fakten & Bewertung
+  const SEV = { hoch: "b-red", mittel: "b-amber", niedrig: "b-grey" };
+  const codeBadge = (f) => `<span class="badge adm adm-${f.credibility_final}" title="${esc(f.code_text)}">${esc(f.code)}</span>`;
+  async function tabFacts(el, ov) {
+    const a = await api("GET", `/api/cases/${ov.case.id}/assessment`);
+    const canReview = ov.permissions.includes("review");
+    const st = a.stats;
+    const flt = state.factFilter || "aktiv";
+    const shown = a.facts.filter((f) => flt === "alle" || (flt === "aktiv" ? f.status !== "verworfen" : f.status === flt));
+    const cats = {};
+    shown.forEach((f) => (cats[f.category] = cats[f.category] || []).push(f));
+    const order = ["Risiko", "Identität", "Familie & Umfeld", "Beruf & Wirtschaft", "Online & Technik", "Sonstiges"];
+    el.innerHTML = `
+      ${help("Wie werden Aussagen bewertet?", [
+        "Jede Aussage trägt einen <b>Admiralty-Code</b>: Buchstabe = Verlässlichkeit der Quelle (A amtlich … F nicht beurteilbar), Zahl = Glaubwürdigkeit der Information (1 bestätigt … 6 nicht beurteilbar).",
+        "<b>1</b> = von mindestens zwei Quellen gestützt und bestätigt · <b>2</b> = wahrscheinlich (zwei Quellen oder bestätigte zuverlässige Quelle) · <b>3</b> = möglich · <b>4</b> = zweifelhaft (Widerspruch) · <b>5</b> = verworfen · <b>6</b> = noch nicht beurteilbar.",
+        "<b>Widersprüche</b> entstehen, wenn eine Person zwei unvereinbare Werte hat (z. B. Geburtsjahre). Häufig steckt ein Namensvetter dahinter – Kandidatengruppen in „Suche & Treffer“ helfen beim Trennen.",
+        "<b>Red Flags</b> sind regelbasierte Auffälligkeiten. Sie sind Hinweise für die Recherche, keine Bewertung der Person. Regeln verwaltet die Administration."], !a.facts.length)}
+      <div class="grid g4" style="margin-bottom:1rem">
+        <div class="kpi"><div class="v">${st.facts}</div><div class="k">Aussagen</div></div>
+        <div class="kpi"><div class="v" style="color:var(--green)">${st.confirmed}</div><div class="k">bestätigt</div></div>
+        <div class="kpi"><div class="v">${st.corroborated}</div><div class="k">mehrfach belegt</div></div>
+        <div class="kpi"><div class="v" style="color:${st.contradictions ? "var(--red)" : "inherit"}">${st.contradictions}</div><div class="k">Widersprüche</div></div>
+      </div>
+      <div class="grid g2">
+        <div class="card"><div class="card-head"><h2>🚩 Red Flags (${a.redflags.length})</h2></div>
+          ${a.redflags.length ? a.redflags.map((r) => `<div class="flag"><span class="badge ${SEV[r.severity]}">${esc(r.severity)}</span> <b>${esc(r.label)}</b>${r.confirmed ? "" : ' <span class="badge b-grey" title="beruht (auch) auf ungeprüften Aussagen">ungeprüft</span>'}
+            <div class="small">${esc(r.text)}</div>${r.sources.length ? `<div class="small muted">Quellen: ${r.sources.map(esc).join(", ")}</div>` : ""}</div>`).join("") : '<div class="small muted">Keine Auffälligkeiten nach den aktiven Regeln.</div>'}</div>
+        <div class="card"><div class="card-head"><h2>⚖ Widersprüche (${a.contradictions.length})</h2></div>
+          ${a.contradictions.length ? a.contradictions.map((c, ci) => `<div class="flag"><b>${esc(c.subject)}</b> – ${esc(c.predicate_label)}${c.profile_value ? ` <span class="small muted">(Profil: ${esc(c.profile_value)})</span>` : ""}
+            ${c.values.map((v, vi) => `<div class="row small" style="margin-top:.3rem"><span class="grow"><b>${esc(v.value)}</b> ${v.matches_profile ? '<span class="badge b-green">passt zum Profil</span>' : ""}${v.confirmed ? ' <span class="badge b-blue">bestätigt</span>' : ""}<br><span class="muted">${v.sources.map(esc).join(", ")}</span></span>
+              ${canReview ? `<button class="btn btn-sm" data-cx="${ci}:${vi}">Diesen Wert verwerfen</button>` : ""}</div>`).join("")}</div>`).join("") : '<div class="small muted">Keine widersprüchlichen Angaben.</div>'}</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Aussagen</h2><div class="right">${[["aktiv", "Aktiv"], ["neu", "Ungeprüft"], ["bestätigt", "Bestätigt"], ["verworfen", "Verworfen"], ["alle", "Alle"]].map(([k, l]) => `<button class="btn btn-sm ${flt === k ? "btn-primary" : ""}" data-ffl="${k}">${l}</button>`).join("")}</div></div>
+        ${shown.length ? order.filter((c) => cats[c]).map((c) => `<h4 class="src-head">${esc(c)} (${cats[c].length})</h4><table class="tbl facts-tbl">
+          <tr><th>Wer</th><th>Aussage</th><th>Wert</th><th>Zeitraum</th><th>Quellen</th><th>Bewertung</th><th></th></tr>
+          ${cats[c].map((f) => `<tr class="fs-${esc(f.status)} ${f.contradiction ? "contra" : ""}"><td>${esc(f.subject_label)}</td><td class="muted">${esc(f.predicate_label)}</td>
+            <td><b>${esc(f.object_label)}</b>${f.data && f.data.rolle ? ` <span class="muted">(${esc(f.data.rolle)})</span>` : ""}${f.note ? `<div class="small muted">📝 ${esc(f.note)}</div>` : ""}</td>
+            <td class="small nowrap">${esc(f.valid_from || "")}${f.valid_to ? " – " + esc(f.valid_to) : ""}</td>
+            <td class="small">${f.source_url ? `<a href="${esc(f.source_url)}" target="_blank" rel="noopener noreferrer">${esc(f.source_label)}</a>` : esc(f.source_label)}${f.corroboration >= 2 ? ` <span class="badge b-green" title="${esc(f.sources.join(", "))}">${f.corroboration} Quellen</span>` : ""}</td>
+            <td>${codeBadge(f)} <span class="small muted">${esc(f.status)}</span></td>
+            <td class="nowrap">${canReview ? `${f.status !== "bestätigt" ? `<button class="btn btn-sm btn-success" data-fs="${f.id}:bestätigt" title="bestätigen">✓</button>` : ""}${f.status !== "verworfen" ? `<button class="btn btn-sm" data-fs="${f.id}:verworfen" title="verwerfen">✗</button>` : ""}<button class="btn btn-sm" data-fe="${f.id}" title="Bewertung ändern">✎</button>` : ""}</td></tr>`).join("")}</table>`).join("")
+          : '<div class="empty small">Noch keine Aussagen. Sie entstehen aus Quellen der Suche (z. B. Register, Wikidata, Referenzdaten).</div>'}
+      </div>`;
+    $$("[data-ffl]", el).forEach((b) => (b.onclick = () => { state.factFilter = b.dataset.ffl; renderCase(); }));
+    $$("[data-fs]", el).forEach((b) => (b.onclick = async () => {
+      const [id, status] = b.dataset.fs.split(":");
+      await guard(() => api("PATCH", `/api/cases/${ov.case.id}/facts/${id}`, { status }), status === "bestätigt" ? "Aussage bestätigt" : "Aussage verworfen"); renderCase();
+    }));
+    $$("[data-cx]", el).forEach((b) => (b.onclick = async () => {
+      const [ci, vi] = b.dataset.cx.split(":").map(Number);
+      for (const id of a.contradictions[ci].values[vi].fact_ids) await api("PATCH", `/api/cases/${ov.case.id}/facts/${id}`, { status: "verworfen", note: "Widerspruch aufgelöst" });
+      toast("Wert verworfen", "ok"); renderCase();
+    }));
+    $$("[data-fe]", el).forEach((b) => (b.onclick = () => {
+      const f = a.facts.find((x) => String(x.id) === b.dataset.fe);
+      const m = modal("Bewertung ändern", `<p class="small"><b>${esc(f.subject_label)}</b> – ${esc(f.predicate_label)} – <b>${esc(f.object_label)}</b><br><span class="muted">${esc(f.source_label)}</span></p>
+        <div class="grid g2"><label class="field"><span>Verlässlichkeit der Quelle</span><select id="fe-r">${Object.entries(a.legend.reliability).map(([k, v]) => opt(k, `${k} – ${v}`, f.reliability || "F")).join("")}</select></label>
+        <label class="field"><span>Glaubwürdigkeit der Information</span><select id="fe-c">${opt(0, `automatisch (derzeit ${f.credibility_auto})`, f.credibility)}${Object.entries(a.legend.credibility).map(([k, v]) => opt(k, `${k} – ${v}`, f.credibility)).join("")}</select></label></div>
+        <label class="field"><span>Begründung / Notiz</span><textarea id="fe-n">${esc(f.note || "")}</textarea></label>`,
+        `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="fe-ok">Speichern</button>`);
+      $("#fe-ok", m.el).onclick = async () => {
+        await guard(() => api("PATCH", `/api/cases/${ov.case.id}/facts/${f.id}`, { reliability: $("#fe-r", m.el).value, credibility: Number($("#fe-c", m.el).value), note: $("#fe-n", m.el).value }), "Bewertung gespeichert");
+        m.close(); renderCase();
+      };
+    }));
+  }
+
   // ------------------------------------------------------------------ Tab: OPSEC
   async function tabOpsec(el, ov) {
     const [op, egress] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/opsec`), api("GET", "/api/egress-profiles")]);
@@ -1359,6 +1458,17 @@
             <div class="row" style="margin-top:.5rem">${x.url ? `<button class="btn btn-sm btn-primary" data-dl="${esc(x.name)}">⬇ Herunterladen & importieren</button>` : ""}
               <label class="btn btn-sm">⬆ Datei importieren<input type="file" data-up="${esc(x.name)}" hidden></label>
               ${x.records ? `<button class="btn btn-sm btn-danger" data-rdel="${esc(x.name)}">Löschen</button>` : ""}</div></div>`).join("")}</div></div>`;
+      const rules = await api("GET", "/api/admin/redflag-rules");
+      el.insertAdjacentHTML("beforeend", `<div class="card"><div class="card-head"><h2>🚩 Red-Flag-Regeln</h2><div class="right"><button class="btn btn-sm btn-primary" id="rf-save">Speichern</button></div></div>
+        <p class="small muted">Regeln markieren Auffälligkeiten in den Aussagen eines Falls (Reiter „Fakten & Bewertung“) und im Dossier. Sie sind Recherchehinweise, keine Bewertung der Person.</p>
+        <table class="tbl"><tr><th>Regel</th><th>aktiv</th><th>Schweregrad</th></tr>${Object.entries(rules).map(([k, r]) => `<tr><td>${esc(r.label)}</td>
+          <td><input type="checkbox" data-rf-on="${k}" ${r.enabled ? "checked" : ""} style="width:auto"></td>
+          <td><select data-rf-sev="${k}" style="width:auto">${["hoch", "mittel", "niedrig"].map((x) => opt(x, x, r.severity)).join("")}</select></td></tr>`).join("")}</table></div>`);
+      $("#rf-save").onclick = async () => {
+        const payload = {};
+        Object.keys(rules).forEach((k) => (payload[k] = { enabled: $(`[data-rf-on="${k}"]`).checked, severity: $(`[data-rf-sev="${k}"]`).value }));
+        await guard(() => api("PUT", "/api/admin/redflag-rules", payload), "Regeln gespeichert");
+      };
       $("#rd-refresh").onclick = () => renderAdmin("sources");
       $$("[data-key]", el).forEach((b) => (b.onclick = () => {
         const src = d.sources.find((x) => x.key === b.dataset.key);
