@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EagleEye PersonOSINT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f2a4a'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23facc15'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn only-mobile" id="btn-menu" aria-label="Fallliste öffnen">☰</button>
+    <a class="brand" href="#/" title="Startseite">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#0f2a4a" stroke="#facc15" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#facc15"/><circle cx="16" cy="16" r="2.5" fill="#0f2a4a"/></svg>
+      <span><b>EagleEye</b> PersonOSINT</span>
+    </a>
+    <div class="topbar-actions">
+      <button class="btn btn-primary" id="btn-new-case">＋ Neuer Fall</button>
+      <button class="btn btn-ghost-light" id="btn-help">? Hilfe</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <input type="search" id="case-filter" placeholder="Fälle durchsuchen …" aria-label="Fälle durchsuchen">
+      </div>
+      <nav id="case-list" class="case-list"></nav>
+      <div class="sidebar-foot" id="sidebar-foot"></div>
+    </aside>
+    <main id="main" class="main" tabindex="-1"></main>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="/static/vendor/leaflet/leaflet.js"></script>
+  <script src="/static/graph.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

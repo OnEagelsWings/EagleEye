@@ -1,0 +1,910 @@
+/* EagleEye PersonOSINT – Weboberfläche */
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------ Hilfsfunktionen
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const COLORS = window.NetworkGraph.colors();
+  const state = { meta: null, cases: [], caseId: null, tab: "overview", graph: null, map: null, findingFilter: "neu", selEntity: null, searchEntity: null, lastSearch: null };
+
+  async function api(method, url, body) {
+    const opts = { method, headers: { "X-Requested-With": "EagleEye" } };
+    if (body instanceof FormData) opts.body = body;
+    else if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    const r = await fetch(url, opts);
+    if (r.status === 204) return null;
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const msg = typeof data.detail === "string" ? data.detail : Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join("; ") : `Fehler ${r.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  function toast(msg, type = "") {
+    const el = document.createElement("div");
+    el.className = "toast " + type;
+    el.textContent = msg;
+    $("#toasts").appendChild(el);
+    setTimeout(() => el.remove(), type === "err" ? 7000 : 3800);
+  }
+
+  async function guard(fn, okMsg) {
+    try { const r = await fn(); if (okMsg) toast(okMsg, "ok"); return r; }
+    catch (e) { toast(e.message || String(e), "err"); throw e; }
+  }
+
+  function fmtTs(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  function fmtLocal(s) { return (s || "").replace("T", " "); }
+
+  function modal(title, body, foot, opts = {}) {
+    const root = $("#modal-root");
+    const bg = document.createElement("div");
+    bg.className = "modal-bg";
+    bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}" style="${opts.width ? "width:min(" + opts.width + ",100%)" : ""}">
+      <div class="modal-head"><h2>${esc(title)}</h2><button class="icon-btn" data-close aria-label="Schließen">✕</button></div>
+      <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ""}</div>`;
+    root.appendChild(bg);
+    const close = () => { bg.remove(); document.removeEventListener("keydown", onKey); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", onKey);
+    bg.addEventListener("mousedown", (e) => { if (e.target === bg) close(); });
+    $$("[data-close]", bg).forEach((b) => b.addEventListener("click", close));
+    const first = $("input, select, textarea", bg);
+    if (first) setTimeout(() => first.focus(), 30);
+    return { el: bg, close };
+  }
+
+  function confirmDlg(text, okLabel = "Löschen") {
+    return new Promise((resolve) => {
+      const m = modal("Bitte bestätigen", `<p>${esc(text)}</p>`, `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="dlg-ok">${esc(okLabel)}</button>`);
+      $("#dlg-ok", m.el).onclick = () => { m.close(); resolve(true); };
+      $$("[data-close]", m.el).forEach((b) => b.addEventListener("click", () => resolve(false)));
+    });
+  }
+
+  function formData(form) {
+    const out = {};
+    new FormData(form).forEach((v, k) => { out[k] = typeof v === "string" ? v.trim() : v; });
+    return out;
+  }
+
+  const opt = (value, label, sel) => `<option value="${esc(value)}"${String(value) === String(sel) ? " selected" : ""}>${esc(label)}</option>`;
+  const typeBadge = (t) => ({ vermisst: "b-red", personensuche: "b-blue", verbindungen: "b-purple" }[t] || "");
+  const statusBadge = (s) => ({ neu: "b-blue", "bestätigt": "b-green", verworfen: "b-grey" }[s] || "");
+  const scoreColor = (s) => (s >= 75 ? "#059669" : s >= 45 ? "#d97706" : s >= 20 ? "#64748b" : "#cbd5e1");
+  const help = (title, items, open = false) => `<details class="help"${open ? " open" : ""}><summary>💡 ${esc(title)}</summary><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul></details>`;
+
+  // ------------------------------------------------------------------ Seitenleiste
+  async function loadCases() {
+    state.cases = await api("GET", "/api/cases");
+    renderCaseList();
+  }
+
+  function renderCaseList() {
+    const q = ($("#case-filter").value || "").toLowerCase();
+    const list = state.cases.filter((c) => !q || `${c.title} ${c.reference} ${c.subject_label || ""}`.toLowerCase().includes(q));
+    $("#case-list").innerHTML = list.length ? list.map((c) => `
+      <a class="case-item ${c.id === state.caseId ? "active" : ""}" href="#/case/${c.id}/overview">
+        <span class="t">${esc(c.subject_label || c.title)}</span>
+        <span class="m"><span class="badge ${typeBadge(c.case_type)}">${esc(c.case_type_label)}</span>${esc(c.reference)}
+        ${c.open_findings ? `<span class="badge b-amber" title="Ungeprüfte Treffer">${c.open_findings} offen</span>` : ""}
+        ${c.status === "abgeschlossen" ? '<span class="badge b-green">abgeschlossen</span>' : ""}</span>
+      </a>`).join("") : `<div class="empty small">${state.cases.length ? "Kein Fall passt zum Filter." : "Noch keine Fälle.<br><br>Legen Sie oben rechts einen <b>neuen Fall</b> an oder laden Sie den Beispielfall."}</div>`;
+    $("#sidebar-foot").innerHTML = `${state.cases.length} Fälle · v${esc(state.meta ? state.meta.version : "")}<br><span title="${esc(state.meta ? state.meta.data_dir : "")}">Daten lokal gespeichert</span>`;
+  }
+
+  // ------------------------------------------------------------------ Routing
+  function route() {
+    const m = location.hash.match(/^#\/case\/(\d+)(?:\/(\w+))?/);
+    if (state.graph) { state.graph.destroy(); state.graph = null; }
+    if (state.map) { state.map.remove(); state.map = null; }
+    $("#sidebar").classList.remove("open");
+    if (m) {
+      const id = Number(m[1]);
+      if (id !== state.caseId) { state.selEntity = null; state.searchEntity = null; state.lastSearch = null; state.findingFilter = "neu"; }
+      state.caseId = id; state.tab = m[2] || "overview";
+      renderCase().catch((e) => { toast(e.message, "err"); location.hash = "#/"; });
+    } else {
+      state.caseId = null;
+      renderWelcome();
+    }
+    renderCaseList();
+  }
+
+  // ------------------------------------------------------------------ Startseite
+  function renderWelcome() {
+    $("#main").innerHTML = `
+      <section class="hero">
+        <h1>Personen finden. Verbindungen verstehen. Klar dokumentieren.</h1>
+        <p>EagleEye PersonOSINT bündelt öffentliche Quellen für die <b>Personensuche</b>, die <b>Recherche nach vermissten Menschen</b> und die <b>Analyse von Verbindungen</b>. Jeder Treffer wird nachvollziehbar bewertet, von Ihnen geprüft und als Word-Dossier exportiert.</p>
+        <div class="row"><button class="btn btn-primary btn-lg" id="w-new">＋ Neuen Fall anlegen</button>
+        <button class="btn btn-ghost-light btn-lg" id="w-demo">Beispielfall ansehen</button></div>
+      </section>
+      <h2>So funktioniert es</h2>
+      <div class="steps-intro">
+        ${[["Fall anlegen", "Fallart wählen, Zweck und Rechtsgrundlage dokumentieren."],
+           ["Person erfassen", "Namen, Aliasse, Benutzernamen, E-Mail, Telefon, Orte und Foto hinterlegen."],
+           ["Quellen durchsuchen", "Ein Klick fragt öffentliche Quellen ab – Treffer werden automatisch bewertet."],
+           ["Treffer prüfen", "Bestätigen oder verwerfen. Bestätigtes wandert automatisch in den Graphen."],
+           ["Verbindungen analysieren", "Netzwerkgraph, Pfadsuche zwischen Personen, Vorschläge und Schlüsselakteure."],
+           ["Dossier exportieren", "Klares Word-Dossier mit Netzwerkgrafik, Zeitleiste und Quellenverzeichnis."]]
+          .map((s, i) => `<div class="step-card"><div class="n">${i + 1}</div><b>${s[0]}</b><div class="muted small">${s[1]}</div></div>`).join("")}
+      </div>
+      <div class="card" style="margin-top:1.25rem">
+        <h3>Grundsätze</h3>
+        <ul class="small">
+          <li>Nur <b>öffentlich zugängliche</b> Quellen, keine Umgehung von Logins oder Zugangsschranken.</li>
+          <li>Automatische Treffer sind <b>Kandidaten</b> – erst Ihre Prüfung macht sie zu Erkenntnissen. Gleicher Name ≠ gleiche Person.</li>
+          <li>Jeder Fall verlangt <b>Zweck und Rechtsgrundlage</b>; alle Schritte werden protokolliert (DSGVO: Zweckbindung, Datenminimierung).</li>
+          <li>Bei Vermisstenfällen gilt: <b>Polizei zuerst</b> – die Plattform unterstützt Angehörige und Fachstellen, ersetzt aber keine Ermittlungen.</li>
+        </ul>
+      </div>`;
+    $("#w-new").onclick = openNewCase;
+    $("#w-demo").onclick = loadDemo;
+  }
+
+  async function loadDemo() {
+    const existing = state.cases.find((c) => c.title.startsWith("Beispiel:"));
+    if (existing) { location.hash = `#/case/${existing.id}/overview`; return; }
+    const c = await guard(() => api("POST", "/api/demo"), "Beispielfall geladen");
+    await loadCases();
+    location.hash = `#/case/${c.id}/overview`;
+  }
+
+  // ------------------------------------------------------------------ Neuer Fall (Assistent)
+  function openNewCase() {
+    const types = [
+      ["personensuche", "🔎", "Personensuche", "Eine Person identifizieren, Online-Präsenz und Lebensumfeld aufklären."],
+      ["vermisst", "🆘", "Vermisstenfall", "Vermisste Person: letzte Sichtung, Zeitleiste & Karte, Gefährdung, Suchplakat."],
+      ["verbindungen", "🕸️", "Verbindungsanalyse", "Beziehungen zwischen mehreren Personen und Organisationen aufdecken."],
+    ];
+    const bases = ["Einwilligung der betroffenen Person", "Auftrag von Angehörigen (Vermisstensuche)", "Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO)",
+      "Behördlicher Auftrag / Ermittlungsverfahren", "Journalistische Recherche (Medienprivileg)", "Anschriftenermittlung im Forderungsmanagement", "Sonstige (bitte beschreiben)"];
+    const m = modal("Neuen Fall anlegen", `
+      <div class="wizard-steps"><span class="on">1 · Fallart</span><span>2 · Auftrag</span><span>3 · Zielperson</span></div>
+      <form id="nc">
+        <section data-step="1">
+          <p class="muted">Welche Art von Recherche möchten Sie durchführen?</p>
+          <div class="type-cards">${types.map((t, i) => `<button type="button" class="type-card ${i === 0 ? "selected" : ""}" data-type="${t[0]}"><div class="ic">${t[1]}</div><b>${t[2]}</b><div class="small muted">${t[3]}</div></button>`).join("")}</div>
+          <input type="hidden" name="case_type" value="personensuche">
+        </section>
+        <section data-step="2" class="hidden">
+          <label class="field"><span>Falltitel *</span><input name="title" required placeholder="z. B. Aufenthaltsermittlung Max Mustermann"></label>
+          <label class="field"><span>Zweck der Recherche *</span><textarea name="purpose" required placeholder="Warum wird recherchiert? Welches Ergebnis wird benötigt?"></textarea><small>Pflichtangabe – wird im Dossier und Protokoll dokumentiert.</small></label>
+          <label class="field"><span>Rechtsgrundlage / Auftrag *</span><select name="legal_basis_sel">${bases.map((b) => opt(b, b)).join("")}</select></label>
+          <label class="field hidden" id="lb-other"><span>Rechtsgrundlage beschreiben</span><input name="legal_basis_other"></label>
+          <div class="grid g2"><label class="field"><span>Auftraggeber</span><input name="client"></label><label class="field"><span>Bearbeiter/in</span><input name="analyst"></label></div>
+        </section>
+        <section data-step="3" class="hidden">
+          <p class="muted small">Optional – Sie können die Person auch später erfassen. Mehr Angaben = bessere Treffer.</p>
+          <label class="field"><span>Vollständiger Name der Zielperson</span><input name="s_name" placeholder="Vorname Nachname"></label>
+          <div class="grid g2">
+            <label class="field"><span>Geburtsdatum</span><input type="date" name="s_birth"></label>
+            <label class="field"><span>Wohnort / letzter bekannter Ort</span><input name="s_loc" placeholder="z. B. Hamburg"></label>
+            <label class="field"><span>Benutzername (Social Media)</span><input name="s_user" placeholder="ohne @"></label>
+            <label class="field"><span>E-Mail-Adresse</span><input type="email" name="s_email"></label>
+            <label class="field"><span>Telefonnummer</span><input name="s_phone"></label>
+            <label class="field"><span>Arbeitgeber / Schule</span><input name="s_emp"></label>
+          </div>
+        </section>
+      </form>`,
+      `<button class="btn" id="nc-back" style="margin-right:auto" disabled>← Zurück</button><button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="nc-next">Weiter →</button>`);
+    let step = 1;
+    const form = $("#nc", m.el);
+    $$(".type-card", m.el).forEach((b) => b.onclick = () => {
+      $$(".type-card", m.el).forEach((x) => x.classList.remove("selected")); b.classList.add("selected");
+      form.case_type.value = b.dataset.type;
+      if (b.dataset.type === "vermisst") form.legal_basis_sel.value = "Auftrag von Angehörigen (Vermisstensuche)";
+    });
+    form.legal_basis_sel.onchange = () => $("#lb-other", m.el).classList.toggle("hidden", !form.legal_basis_sel.value.startsWith("Sonstige"));
+    const show = () => {
+      $$("[data-step]", m.el).forEach((s) => s.classList.toggle("hidden", Number(s.dataset.step) !== step));
+      $$(".wizard-steps span", m.el).forEach((s, i) => s.classList.toggle("on", i < step));
+      $("#nc-back", m.el).disabled = step === 1;
+      $("#nc-next", m.el).textContent = step === 3 ? "✓ Fall anlegen" : "Weiter →";
+    };
+    $("#nc-back", m.el).onclick = () => { step--; show(); };
+    $("#nc-next", m.el).onclick = async () => {
+      const d = formData(form);
+      if (step === 2) {
+        if (!d.title) return toast("Bitte einen Falltitel angeben.", "err");
+        if ((d.purpose || "").length < 10) return toast("Bitte den Zweck nachvollziehbar beschreiben (mind. 10 Zeichen).", "err");
+      }
+      if (step < 3) { step++; show(); return; }
+      const legal = d.legal_basis_sel.startsWith("Sonstige") ? d.legal_basis_other : d.legal_basis_sel;
+      const idents = [["location", d.s_loc], ["username", d.s_user], ["email", d.s_email], ["phone", d.s_phone], ["employer", d.s_emp]]
+        .filter((x) => x[1]).map(([kind, value]) => ({ kind, value }));
+      const payload = { case_type: d.case_type, title: d.title, purpose: d.purpose, legal_basis: legal, client: d.client, analyst: d.analyst,
+        subject: d.s_name ? { label: d.s_name, data: { geburtsdatum: d.s_birth, wohnort: d.s_loc, vermisst_status: d.case_type === "vermisst" ? "vermisst" : "" }, identifiers: idents } : null };
+      const c = await guard(() => api("POST", "/api/cases", payload), "Fall angelegt");
+      m.close();
+      await loadCases();
+      location.hash = `#/case/${c.id}/${d.s_name ? "overview" : "persons"}`;
+    };
+  }
+
+  // ------------------------------------------------------------------ Fallansicht
+  const TABS = [
+    ["overview", "Übersicht"], ["persons", "Personen & Profile"], ["search", "Suche & Treffer"], ["graph", "Verbindungen"],
+    ["timeline", "Zeitleiste & Karte"], ["tasks", "Aufgaben"], ["dossier", "Dossier & Export"], ["audit", "Protokoll"],
+  ];
+
+  async function renderCase() {
+    const ov = await api("GET", `/api/cases/${state.caseId}/overview`);
+    state.ov = ov;
+    const c = ov.case;
+    $("#main").innerHTML = `
+      <div class="case-header">
+        <div><div class="ref">${esc(c.reference)} · <span class="badge ${typeBadge(c.case_type)}">${esc(c.case_type_label)}</span></div>
+          <h1>${esc(c.title)}</h1></div>
+        <div class="actions">
+          <select id="case-status" aria-label="Fallstatus" style="width:auto">${["offen", "in Bearbeitung", "abgeschlossen", "archiviert"].map((s) => opt(s, "Status: " + s, c.status)).join("")}</select>
+          <button class="btn" id="case-edit">✎ Fall bearbeiten</button>
+          <a class="btn btn-primary" href="#/case/${c.id}/dossier">⬇ Dossier</a>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist">${TABS.filter((t) => t[0] !== "timeline" || true).map(([k, l]) => `<a role="tab" class="tab ${state.tab === k ? "active" : ""}" href="#/case/${c.id}/${k}">${l}${k === "search" && ov.counts.open_findings ? `<span class="count">${ov.counts.open_findings}</span>` : ""}</a>`).join("")}</nav>
+      <section id="tab"></section>`;
+    $("#case-status").onchange = async (e) => { await guard(() => api("PATCH", `/api/cases/${c.id}`, { status: e.target.value }), "Status gespeichert"); loadCases(); };
+    $("#case-edit").onclick = () => editCase(c);
+    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, audit: tabAudit }[state.tab] || tabOverview;
+    await r($("#tab"), ov);
+  }
+
+  function editCase(c) {
+    const m = modal("Fall bearbeiten", `<form id="ec">
+      <label class="field"><span>Titel</span><input name="title" value="${esc(c.title)}"></label>
+      <label class="field"><span>Zweck</span><textarea name="purpose">${esc(c.purpose)}</textarea></label>
+      <label class="field"><span>Rechtsgrundlage / Auftrag</span><input name="legal_basis" value="${esc(c.legal_basis)}"></label>
+      <div class="grid g2"><label class="field"><span>Auftraggeber</span><input name="client" value="${esc(c.client)}"></label>
+      <label class="field"><span>Bearbeiter/in</span><input name="analyst" value="${esc(c.analyst)}"></label></div>
+      <label class="field"><span>Notizen</span><textarea name="notes">${esc(c.notes)}</textarea></label></form>`,
+      `<button class="btn btn-danger" id="ec-del" style="margin-right:auto">Fall löschen</button><button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="ec-save">Speichern</button>`);
+    $("#ec-save", m.el).onclick = async () => { await guard(() => api("PATCH", `/api/cases/${c.id}`, formData($("#ec", m.el))), "Gespeichert"); m.close(); loadCases(); renderCase(); };
+    $("#ec-del", m.el).onclick = async () => {
+      if (!(await confirmDlg(`Fall „${c.title}“ mit allen Personen, Treffern, Fotos und Protokollen endgültig löschen?`))) return;
+      await guard(() => api("DELETE", `/api/cases/${c.id}`), "Fall gelöscht");
+      m.close(); await loadCases(); location.hash = "#/";
+    };
+  }
+
+  // ------------------------------------------------------------------ Tab: Übersicht
+  async function tabOverview(el, ov) {
+    const s = ov.subject, c = ov.counts, missing = ov.case.case_type === "vermisst";
+    const d = s ? s.data || {} : {};
+    const photo = s && s.photo ? `style="background-image:url('/api/cases/${ov.case.id}/entities/${s.id}/photo?${encodeURIComponent(s.photo)}')"` : "";
+    el.innerHTML = `
+      ${ov.next_step ? `<div class="next-step"><div><div class="small muted">Nächster Schritt</div><b>${esc(ov.next_step.label)}</b></div>
+        <a class="btn btn-success" style="margin-left:auto" href="#/case/${ov.case.id}/${ov.next_step.tab}">Jetzt erledigen →</a></div>` :
+        `<div class="next-step"><b>✓ Alle Schritte erledigt.</b> Sie können das Dossier jederzeit erneut exportieren.</div>`}
+      <div class="grid g4" style="margin:1rem 0">
+        <div class="kpi"><div class="v">${c.persons}</div><div class="k">Personen</div></div>
+        <div class="kpi"><div class="v" style="color:${c.open_findings ? "var(--amber)" : "inherit"}">${c.open_findings}</div><div class="k">ungeprüfte Treffer</div></div>
+        <div class="kpi"><div class="v" style="color:var(--green)">${c.confirmed}</div><div class="k">bestätigte Erkenntnisse</div></div>
+        <div class="kpi"><div class="v">${c.links}</div><div class="k">Verbindungen</div></div>
+      </div>
+      <div class="grid g2">
+        <div>
+          <div class="card">
+            <div class="card-head"><h2>${missing ? "Vermisste Person" : "Zielperson"}</h2><div class="right">${s ? `<a class="btn btn-sm" href="#/case/${ov.case.id}/persons" data-ent="${s.id}">Profil bearbeiten</a>` : ""}</div></div>
+            ${s ? `<div class="profile-card"><div class="avatar" ${photo}>${photo ? "" : "👤"}</div><div>
+              <h2 style="margin:0">${esc(s.label)}</h2>
+              <div class="muted small">${[s.risk && s.risk.age != null ? s.risk.age + " Jahre" : "", d.wohnort, d.beruf].filter(Boolean).map(esc).join(" · ")}</div>
+              <div style="margin-top:.4rem">${s.identifiers.filter((i) => i.kind !== "name").slice(0, 8).map((i) => `<span class="ident-chip"><b>${esc(state.meta.identifier_kinds[i.kind])}</b>${esc(i.value)}</span>`).join("")}</div>
+              ${missing ? `<div class="small"><b>Vermisst seit:</b> ${esc(d.vermisst_seit || "–")} · <b>Zuletzt gesehen:</b> ${esc([d.zuletzt_gesehen_zeit, d.zuletzt_gesehen_ort].filter(Boolean).join(", ") || "–")}</div>` : ""}
+            </div></div>
+            ${missing && s.risk ? `<div class="risk risk-${esc(s.risk.level)}"><b>Gefährdung: ${esc(s.risk.level.toUpperCase())}</b> – ${esc(s.risk.advice)}${s.risk.factors.length ? `<div class="small">${s.risk.factors.map((f) => esc(f.label)).join(" · ")}</div>` : ""}</div>` : ""}`
+            : `<div class="empty"><div class="big">👤</div>Noch keine Zielperson erfasst.<br><br><a class="btn btn-primary" href="#/case/${ov.case.id}/persons">Person erfassen</a></div>`}
+          </div>
+          <div class="card"><h3>Auftrag</h3>
+            <div class="small"><b>Zweck:</b> ${esc(ov.case.purpose)}</div>
+            <div class="small"><b>Rechtsgrundlage:</b> ${esc(ov.case.legal_basis)}</div>
+            ${ov.case.client ? `<div class="small"><b>Auftraggeber:</b> ${esc(ov.case.client)}</div>` : ""}
+            ${ov.case.notes ? `<div class="small muted" style="margin-top:.4rem">${esc(ov.case.notes)}</div>` : ""}
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-head"><h2>Fortschritt</h2><span class="right muted">${ov.progress} %</span></div>
+            <div class="progress"><div style="width:${ov.progress}%"></div></div>
+            <ul class="checklist">${ov.steps.map((st) => `<li class="${st.done ? "done" : ""}" data-tab="${st.tab}"><span class="dot">${st.done ? "✓" : ""}</span><span class="l">${esc(st.label)}</span></li>`).join("")}</ul>
+          </div>
+          <div class="card"><h3>Letzte Aktivitäten</h3>
+            <ul class="activity" style="padding-left:1rem">${ov.recent.map((a) => `<li><span class="muted">${fmtTs(a.ts)}</span> · <b>${esc(a.action)}</b> <span class="muted">${esc(a.detail.slice(0, 90))}</span></li>`).join("") || "<li class='muted'>–</li>"}</ul>
+            <a class="small" href="#/case/${ov.case.id}/audit">Ganzes Protokoll →</a>
+          </div>
+        </div>
+      </div>`;
+    $$(".checklist li", el).forEach((li) => li.onclick = () => { location.hash = `#/case/${ov.case.id}/${li.dataset.tab}`; });
+    $$("[data-ent]", el).forEach((a) => a.addEventListener("click", () => { state.selEntity = Number(a.dataset.ent); }));
+  }
+
+  // ------------------------------------------------------------------ Tab: Personen
+  async function tabPersons(el, ov) {
+    const ents = await api("GET", `/api/cases/${ov.case.id}/entities`);
+    if (state.selEntity && !ents.find((e) => e.id === state.selEntity)) state.selEntity = null;
+    if (!state.selEntity && ents.length) state.selEntity = ents[0].id;
+    const groups = {};
+    ents.forEach((e) => (groups[e.type_label] = groups[e.type_label] || []).push(e));
+    el.innerHTML = `
+      ${help("So erfassen Sie Personen und weitere Einträge", [
+        "Links wählen Sie einen Eintrag – rechts bearbeiten Sie Profil, <b>Identifikatoren</b> und Foto.",
+        "Identifikatoren (Benutzernamen, E-Mail, Telefon, Orte, Aliasse) sind die Grundlage der automatischen Suche – je mehr, desto besser.",
+        "Unter <b>Recherchelinks</b> finden Sie vorbereitete Suchen für Suchmaschinen, soziale Netzwerke, Register und Vermisstenportale.",
+        "Organisationen, Orte, Konten, Fahrzeuge usw. legen Sie ebenfalls hier an, um sie im Graphen zu verbinden."])}
+      <div class="split">
+        <div class="card">
+          <div class="card-head"><h3>Einträge (${ents.length})</h3><div class="right"><button class="btn btn-sm btn-primary" id="ent-new">＋ Neu</button></div></div>
+          <div class="entity-list">${Object.entries(groups).map(([g, list]) => `<div class="small muted" style="margin:.5rem 0 .2rem;font-weight:600">${esc(g)}</div>` +
+            list.map((e) => `<div class="entity-item ${e.id === state.selEntity ? "active" : ""}" data-id="${e.id}"><span class="type-dot" style="background:${COLORS[e.type]}"></span>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.is_subject ? "★ " : ""}${esc(e.label)}</span>
+              ${e.finding_count ? `<span class="badge b-grey" title="Treffer">${e.finding_count}</span>` : ""}</div>`).join("")).join("") || '<div class="empty small">Noch keine Einträge.</div>'}</div>
+        </div>
+        <div id="ent-detail"></div>
+      </div>`;
+    $$(".entity-item", el).forEach((it) => it.onclick = () => { state.selEntity = Number(it.dataset.id); $$(".entity-item", el).forEach((x) => x.classList.toggle("active", x === it)); renderEntityDetail(ov); });
+    $("#ent-new").onclick = () => newEntity(ov);
+    renderEntityDetail(ov);
+  }
+
+  function newEntity(ov, presetType = "person", after) {
+    const m = modal("Neuen Eintrag anlegen", `<form id="ne">
+      <label class="field"><span>Typ</span><select name="type">${Object.entries(state.meta.entity_types).map(([k, v]) => opt(k, v, presetType)).join("")}</select></label>
+      <label class="field"><span>Name / Bezeichnung *</span><input name="label" required></label>
+      <label class="check"><input type="checkbox" name="is_subject"> <span>Ist Zielperson dieses Falls</span></label>
+      <label class="field"><span>Notiz</span><textarea name="notizen" placeholder="z. B. Rolle im Fall, Herkunft der Information"></textarea></label></form>`,
+      `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="ne-save">Anlegen</button>`);
+    const f = $("#ne", m.el);
+    const sync = () => { f.is_subject.closest("label").classList.toggle("hidden", f.type.value !== "person"); };
+    f.type.onchange = sync; sync();
+    $("#ne-save", m.el).onclick = async () => {
+      const d = formData(f);
+      const e = await guard(() => api("POST", `/api/cases/${ov.case.id}/entities`, { type: d.type, label: d.label, is_subject: !!f.is_subject.checked && d.type === "person", data: { notizen: d.notizen } }), "Eintrag angelegt");
+      m.close();
+      if (after) return after(e);
+      state.selEntity = e.id; renderCase();
+    };
+  }
+
+  async function renderEntityDetail(ov) {
+    const box = $("#ent-detail");
+    if (!state.selEntity) { box.innerHTML = `<div class="card empty"><div class="big">👤</div>Legen Sie links mit „＋ Neu“ die erste Person an.</div>`; return; }
+    const e = await api("GET", `/api/cases/${ov.case.id}/entities/${state.selEntity}`);
+    const isPerson = e.type === "person";
+    const missing = ov.case.case_type === "vermisst" && isPerson && e.is_subject;
+    const d = e.data || {};
+    const field = ([k, l]) => {
+      const long = ["merkmale", "notizen", "umstaende", "gesundheit", "kleidung", "mitgefuehrt", "anlaufpunkte"].includes(k);
+      const type = k === "geburtsdatum" || k === "vermisst_seit" ? "date" : "text";
+      if (k === "vermisst_status") return `<label class="field"><span>${l}</span><select name="${k}">${["", "vermisst", "aufgefunden (wohlbehalten)", "aufgefunden (verletzt)", "verstorben aufgefunden", "Kontakt hergestellt", "Fall eingestellt"].map((s) => opt(s, s || "–", d[k])).join("")}</select></label>`;
+      return `<label class="field" ${long ? 'style="grid-column:1/-1"' : ""}><span>${l}</span>${long ? `<textarea name="${k}">${esc(d[k] || "")}</textarea>` : `<input type="${type}" name="${k}" value="${esc(d[k] || "")}">`}</label>`;
+    };
+    const photoUrl = e.photo ? `/api/cases/${ov.case.id}/entities/${e.id}/photo?${encodeURIComponent(e.photo)}` : "";
+    box.innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <span class="type-dot" style="background:${COLORS[e.type]}"></span><h2>${esc(e.label)}</h2><span class="badge">${esc(e.type_label)}</span>${e.is_subject ? '<span class="badge b-amber">★ Zielperson</span>' : ""}
+          <div class="right">
+            ${isPerson ? `<button class="btn btn-sm btn-primary" id="ed-search">🔎 Quellen durchsuchen</button>` : ""}
+            <button class="btn btn-sm" id="ed-graph">🕸️ Im Graphen</button>
+            <button class="btn btn-sm btn-danger" id="ed-del">Löschen</button>
+          </div>
+        </div>
+        ${isPerson ? `<div class="profile-card" style="margin-bottom:.8rem">
+          <div class="avatar" ${photoUrl ? `style="background-image:url('${photoUrl}')"` : ""}>${photoUrl ? "" : "👤"}</div>
+          <div class="small muted">Foto für Profil, Dossier und Suchplakat (JPG/PNG/WEBP, max. 8 MB). Für die Bilder-Rückwärtssuche nutzen Sie die Links unten.<br>
+          <label class="btn btn-sm" style="margin-top:.4rem">📷 Foto hochladen<input type="file" id="ed-photo" accept="image/jpeg,image/png,image/webp" hidden></label></div></div>` : ""}
+        <h3>Identifikatoren</h3>
+        <div id="idents">${e.identifiers.map((i) => `<span class="ident-chip" title="Quelle: ${esc(i.source)}${i.verified ? " · geprüft" : ""}"><b>${esc(state.meta.identifier_kinds[i.kind] || i.kind)}</b>${esc(i.value)}${i.verified ? " ✓" : ""}<button data-del-ident="${i.id}" aria-label="Entfernen">×</button></span>`).join("") || '<span class="muted small">Noch keine.</span>'}</div>
+        <form class="row" id="add-ident" style="margin-top:.4rem">
+          <select name="kind" style="width:auto">${Object.entries(state.meta.identifier_kinds).map(([k, v]) => opt(k, v, "username")).join("")}</select>
+          <input name="value" class="grow" placeholder="Wert eingeben, z. B. max_muster, max@example.org, +49 170 …" required>
+          <button class="btn btn-primary">Hinzufügen</button>
+        </form>
+      </div>
+      <div class="card">
+        <form id="ed-form">
+          <div class="card-head"><h3>${isPerson ? "Profil" : "Angaben"}</h3><div class="right"><button class="btn btn-sm btn-primary">💾 Speichern</button></div></div>
+          <label class="field"><span>Name / Bezeichnung</span><input name="__label" value="${esc(e.label)}"></label>
+          ${isPerson ? `<label class="check"><input type="checkbox" name="__subject" ${e.is_subject ? "checked" : ""}> <span>Zielperson dieses Falls</span></label>
+            <div class="grid g2">${state.meta.person_fields.map(field).join("")}</div>`
+            : `<label class="field"><span>Webadresse</span><input name="url" value="${esc(d.url || "")}"></label>
+               ${e.type === "ort" ? `<div class="grid g2"><label class="field"><span>Breitengrad</span><input name="lat" value="${esc(d.lat ?? "")}"></label><label class="field"><span>Längengrad</span><input name="lon" value="${esc(d.lon ?? "")}"></label></div>` : ""}
+               <label class="field"><span>Notizen</span><textarea name="notizen">${esc(d.notizen || "")}</textarea></label>`}
+          ${missing ? `<h3 style="margin-top:.5rem">🆘 Vermisstenangaben</h3><div class="grid g2">${state.meta.missing_fields.map(field).join("")}</div>
+            <h3>Gefährdungsfaktoren</h3><p class="small muted">Alter wird automatisch aus dem Geburtsdatum berücksichtigt.</p>
+            <div class="risk-grid">${Object.entries(state.meta.risk_factors).map(([k, l]) => `<label class="check"><input type="checkbox" name="risk_${k}" ${(d.risiko || []).includes(k) ? "checked" : ""}> <span>${esc(l)}</span></label>`).join("")}</div>
+            ${e.risk ? `<div class="risk risk-${esc(e.risk.level)}"><b>Einschätzung: ${esc(e.risk.level.toUpperCase())}</b> (${e.risk.points} Punkte) – ${esc(e.risk.advice)}</div>` : ""}` : ""}
+        </form>
+      </div>
+      ${isPerson ? `<div class="card"><div class="card-head"><h3>🔗 Recherchelinks</h3><span class="muted small">Vorbereitete manuelle Suchen – öffnen in neuem Tab, werden nicht automatisch abgerufen.</span></div><div id="rlinks" class="link-groups"><span class="spinner dark"></span></div></div>` : ""}`;
+
+    $("#add-ident").onsubmit = async (ev) => {
+      ev.preventDefault();
+      await guard(() => api("POST", `/api/cases/${ov.case.id}/entities/${e.id}/identifiers`, formData(ev.target)), "Identifikator gespeichert");
+      renderEntityDetail(ov);
+    };
+    $$("[data-del-ident]", box).forEach((b) => b.onclick = async () => { await guard(() => api("DELETE", `/api/cases/${ov.case.id}/identifiers/${b.dataset.delIdent}`)); renderEntityDetail(ov); });
+    $("#ed-form").onsubmit = async (ev) => {
+      ev.preventDefault();
+      const f = ev.target, raw = formData(f), data = {};
+      Object.entries(raw).forEach(([k, v]) => { if (!k.startsWith("__") && !k.startsWith("risk_")) data[k] = v; });
+      if (missing) data.risiko = Object.keys(state.meta.risk_factors).filter((k) => f["risk_" + k] && f["risk_" + k].checked);
+      if (data.lat !== undefined) { data.lat = data.lat ? Number(String(data.lat).replace(",", ".")) : ""; data.lon = data.lon ? Number(String(data.lon).replace(",", ".")) : ""; }
+      const payload = { label: raw.__label, data };
+      if (isPerson) payload.is_subject = !!(f.__subject && f.__subject.checked);
+      await guard(() => api("PATCH", `/api/cases/${ov.case.id}/entities/${e.id}`, payload), "Gespeichert");
+      renderCase();
+    };
+    $("#ed-del").onclick = async () => {
+      if (!(await confirmDlg(`„${e.label}“ mit allen Identifikatoren, Treffern und Verbindungen löschen?`))) return;
+      await guard(() => api("DELETE", `/api/cases/${ov.case.id}/entities/${e.id}`), "Gelöscht");
+      state.selEntity = null; renderCase();
+    };
+    $("#ed-graph").onclick = () => { state.graphFocus = e.id; location.hash = `#/case/${ov.case.id}/graph`; };
+    if (isPerson) {
+      $("#ed-search").onclick = () => { state.searchEntity = e.id; location.hash = `#/case/${ov.case.id}/search`; };
+      $("#ed-photo").onchange = async (ev) => {
+        const fd = new FormData(); fd.append("file", ev.target.files[0]);
+        await guard(() => api("POST", `/api/cases/${ov.case.id}/entities/${e.id}/photo`, fd), "Foto gespeichert");
+        renderEntityDetail(ov);
+      };
+      const links = await api("GET", `/api/cases/${ov.case.id}/entities/${e.id}/research-links`);
+      const g = {};
+      links.forEach((l) => (g[l.group] = g[l.group] || []).push(l));
+      const rl = $("#rlinks");
+      if (rl) rl.innerHTML = Object.entries(g).map(([name, ls]) => `<div class="link-group"><h4>${esc(name)}</h4>${ls.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.hint || l.url)}">↗ ${esc(l.label)}</a>`).join("")}</div>`).join("");
+    }
+  }
+
+  // ------------------------------------------------------------------ Tab: Suche & Treffer
+  async function tabSearch(el, ov) {
+    const [ents, findings, searches] = await Promise.all([
+      api("GET", `/api/cases/${ov.case.id}/entities`), api("GET", `/api/cases/${ov.case.id}/findings`), api("GET", `/api/cases/${ov.case.id}/searches`)]);
+    const persons = ents.filter((e) => e.type === "person");
+    if (!state.searchEntity || !persons.find((p) => p.id === state.searchEntity)) state.searchEntity = (ov.subject || persons[0] || {}).id;
+    const person = persons.find((p) => p.id === state.searchEntity);
+    const kinds = new Set((person ? person.identifiers : []).map((i) => (i.kind === "alias" ? "name" : i.kind)));
+    const srcGroups = {};
+    state.meta.sources.forEach((s) => (srcGroups[s.group] = srcGroups[s.group] || []).push(s));
+    const counts = { neu: 0, "bestätigt": 0, verworfen: 0 };
+    findings.forEach((f) => counts[f.status]++);
+    el.innerHTML = `
+      ${help("So funktioniert die Suche", [
+        "Person wählen, Quellen anhaken und <b>Suche starten</b>. Abgefragt werden nur Quellen, für die passende Identifikatoren vorliegen.",
+        "Jeder Treffer erhält einen <b>Score (0–100)</b> mit Begründung – z. B. Namensgleichheit, Ort, Arbeitgeber, exakte E-Mail.",
+        "Prüfen Sie jeden Treffer: <b>✓ Bestätigen</b> übernimmt ihn als Erkenntnis und erzeugt automatisch Knoten/Verbindungen im Graphen; <b>✗ Verwerfen</b> blendet ihn aus.",
+        "Eigene Funde (z. B. aus den Recherchelinks oder Gesprächen) erfassen Sie über <b>„＋ Eigene Erkenntnis“</b>."], !findings.length)}
+      <div class="split">
+        <div>
+          <div class="card">
+            <h3>1. Person wählen</h3>
+            ${persons.length ? `<select id="s-person">${persons.map((p) => opt(p.id, (p.is_subject ? "★ " : "") + p.label, state.searchEntity)).join("")}</select>
+            <div class="small muted" style="margin-top:.4rem">${person ? person.identifiers.map((i) => esc(i.value)).join(" · ") : ""}</div>
+            <a class="small" href="#/case/${ov.case.id}/persons">Identifikatoren ergänzen →</a>`
+            : `<div class="empty small">Bitte zuerst eine Person anlegen.<br><a class="btn btn-sm btn-primary" href="#/case/${ov.case.id}/persons">Person erfassen</a></div>`}
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>2. Quellen</h3><div class="right"><button class="btn btn-sm" id="s-all">alle</button><button class="btn btn-sm" id="s-none">keine</button></div></div>
+            ${Object.entries(srcGroups).map(([g, list]) => `<div class="src-group"><h4>${esc(g)}</h4>${list.map((s) => {
+              const ok = s.kinds.some((k) => kinds.has(k));
+              return `<label class="check ${ok ? "" : "src-disabled"}" title="${esc(s.description)}"><input type="checkbox" name="src" value="${s.key}" ${ok ? "checked" : "disabled"}>
+                <span>${esc(s.label)}<br><span class="small muted">${ok ? esc(s.description) : "benötigt: " + esc(s.kind_labels.join(" oder "))}</span></span></label>`; }).join("")}</div>`).join("")}
+            <button class="btn btn-primary btn-lg" id="s-run" style="width:100%;justify-content:center;margin-top:.8rem" ${person ? "" : "disabled"}>🔎 Suche starten</button>
+          </div>
+          <div class="card" id="s-status">${renderSearchStatus(state.lastSearch, searches)}</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Treffer</h2>
+            <div class="right">
+              ${[["neu", "Zu prüfen"], ["bestätigt", "Bestätigt"], ["verworfen", "Verworfen"], ["", "Alle"]].map(([k, l]) => `<button class="btn btn-sm ${state.findingFilter === k ? "btn-primary" : ""}" data-ff="${k}">${l}${k ? ` (${counts[k]})` : ""}</button>`).join("")}
+              <button class="btn btn-sm" id="f-manual">＋ Eigene Erkenntnis</button>
+            </div></div>
+          <div class="row" style="margin-bottom:.7rem">
+            <input id="f-q" class="grow" type="search" placeholder="Treffer filtern …">
+            ${state.findingFilter === "neu" && counts.neu ? `<button class="btn btn-sm" id="f-bulk" title="Alle offenen Treffer mit Score unter 20 verwerfen">Schwache (< 20) verwerfen</button>` : ""}
+          </div>
+          <div id="f-list"></div>
+        </div>
+      </div>`;
+    const sp = $("#s-person");
+    if (sp) sp.onchange = () => { state.searchEntity = Number(sp.value); renderCase(); };
+    $("#s-all").onclick = () => $$("input[name=src]:not(:disabled)", el).forEach((c) => (c.checked = true));
+    $("#s-none").onclick = () => $$("input[name=src]", el).forEach((c) => (c.checked = false));
+    $("#s-run").onclick = async (ev) => {
+      const sources = $$("input[name=src]:checked", el).map((c) => c.value);
+      if (!sources.length) return toast("Bitte mindestens eine Quelle wählen.", "err");
+      const b = ev.currentTarget;
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Suche läuft … (bis zu 30 s)';
+      try {
+        state.lastSearch = await api("POST", `/api/cases/${ov.case.id}/search`, { entity_id: state.searchEntity, sources });
+        toast(`${state.lastSearch.new_findings} neue Treffer`, "ok");
+        state.findingFilter = "neu";
+      } catch (e) { toast(e.message, "err"); }
+      renderCase();
+    };
+    $$("[data-ff]", el).forEach((b) => b.onclick = () => { state.findingFilter = b.dataset.ff; renderCase(); });
+    $("#f-manual").onclick = () => manualFinding(ov, persons);
+    const bulk = $("#f-bulk");
+    if (bulk) bulk.onclick = async () => {
+      const weak = findings.filter((f) => f.status === "neu" && f.score < 20);
+      if (!weak.length) return toast("Keine schwachen Treffer vorhanden.");
+      if (!(await confirmDlg(`${weak.length} Treffer mit Score unter 20 verwerfen?`, "Verwerfen"))) return;
+      for (const f of weak) await api("PATCH", `/api/cases/${ov.case.id}/findings/${f.id}`, { status: "verworfen", note: "Sammelprüfung: Score < 20" });
+      toast(`${weak.length} Treffer verworfen`, "ok"); renderCase();
+    };
+    const draw = () => {
+      const q = ($("#f-q").value || "").toLowerCase();
+      const list = findings.filter((f) => (!state.findingFilter || f.status === state.findingFilter) && (!q || `${f.title} ${f.snippet} ${f.source}`.toLowerCase().includes(q)));
+      $("#f-list").innerHTML = list.length ? list.map(findingCard).join("") :
+        `<div class="empty"><div class="big">${state.findingFilter === "neu" && findings.length ? "✅" : "🔎"}</div>${state.findingFilter === "neu" && findings.length ? "Alle Treffer sind geprüft." : "Keine Treffer in dieser Ansicht."}</div>`;
+      $$("[data-review]", $("#f-list")).forEach((b) => b.onclick = async () => {
+        const card = b.closest(".finding");
+        const note = $("input", card) ? $("input", card).value : "";
+        const r = await guard(() => api("PATCH", `/api/cases/${ov.case.id}/findings/${card.dataset.id}`, { status: b.dataset.review, note }));
+        toast(b.dataset.review === "bestätigt" ? "Bestätigt" + (r.created && r.created.length ? " – im Graphen: " + r.created.join(", ") : "") : b.dataset.review === "verworfen" ? "Verworfen" : "Zurückgesetzt", "ok");
+        renderCase();
+      });
+    };
+    $("#f-q").oninput = draw;
+    draw();
+  }
+
+  function findingCard(f) {
+    return `<div class="finding s-${esc(f.status)}" data-id="${f.id}">
+      <div class="ft">
+        <div class="score" title="Übereinstimmung: ${esc(f.confidence)}"><div class="num" style="color:${scoreColor(f.score)}">${f.score}</div><div class="bar"><div style="width:${f.score}%;background:${scoreColor(f.score)}"></div></div><div class="small muted">${esc(f.confidence)}</div></div>
+        <div style="flex:1;min-width:0">
+          <div class="title">${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${esc(f.title)} ↗</a>` : esc(f.title)}</div>
+          <div class="small muted">${esc(f.source)} · ${esc(f.category)}${f.entity_label ? " · zu " + esc(f.entity_label) : ""}${f.query ? " · Suche: „" + esc(f.query) + "“" : ""} <span class="badge ${statusBadge(f.status)}">${esc(f.status)}</span></div>
+          ${f.snippet ? `<div class="snip">${esc(f.snippet)}</div>` : ""}
+          <ul class="reasons">${(f.reasons || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+          ${f.review_note ? `<div class="small" style="margin-top:.3rem"><b>Prüfnotiz:</b> ${esc(f.review_note)}</div>` : ""}
+          <div class="actions">
+            ${f.status === "neu" ? `<input placeholder="Prüfnotiz (optional) – z. B. Foto passt, Ort bestätigt" style="flex:1;min-width:180px;padding:.3rem .5rem;font-size:.85rem">
+              <button class="btn btn-sm btn-success" data-review="bestätigt">✓ Bestätigen</button><button class="btn btn-sm" data-review="verworfen">✗ Verwerfen</button>`
+              : `<button class="btn btn-sm" data-review="neu">↺ Erneut prüfen</button>`}
+          </div>
+        </div>
+      </div></div>`;
+  }
+
+  function renderSearchStatus(last, searches) {
+    if (last) {
+      return `<h3>Ergebnis der Suche</h3><div class="small">${last.queries} Abfragen · <b>${last.new_findings} neue Treffer</b> (${last.total_candidates} gefunden)</div>
+        <ul class="source-status" style="padding-left:1rem">${last.status.map((s) => `<li>${s.ok ? "✅" : "⚠️"} <b>${esc(s.source)}</b> – „${esc(s.query)}“: ${s.ok ? s.count + " Treffer" : esc(s.message)}</li>`).join("")}</ul>
+        ${last.status.some((s) => !s.ok) ? `<div class="small muted">Nicht erreichbare Quellen deuten meist auf fehlende Internetverbindung, Firewall oder Rate-Limits hin. Später erneut versuchen.</div>` : ""}`;
+    }
+    if (searches.length) {
+      return `<h3>Bisherige Suchen</h3><ul class="source-status" style="padding-left:1rem">${searches.slice(0, 6).map((s) => `<li>${fmtTs(s.started_at)} · ${esc(s.entity_label || "")}: ${s.result_count} neue Treffer${(s.source_status || []).some((x) => !x.ok) ? " ⚠️" : ""}</li>`).join("")}</ul>`;
+    }
+    return `<h3>Noch keine Suche</h3><div class="small muted">Starten Sie oben die erste Suche.</div>`;
+  }
+
+  function manualFinding(ov, persons) {
+    const m = modal("Eigene Erkenntnis erfassen", `<form id="mf">
+      <label class="field"><span>Zu Person</span><select name="entity_id">${persons.map((p) => opt(p.id, p.label, state.searchEntity)).join("")}</select></label>
+      <label class="field"><span>Erkenntnis *</span><input name="title" required placeholder="z. B. Arbeitet seit 2024 bei Firma X"></label>
+      <label class="field"><span>Details</span><textarea name="snippet"></textarea></label>
+      <div class="grid g2"><label class="field"><span>Quelle</span><input name="source" placeholder="z. B. Gespräch mit Mutter, Zeitungsartikel"></label>
+      <label class="field"><span>Link (optional)</span><input name="url" placeholder="https://…"></label>
+      <label class="field"><span>Kategorie</span><select name="category">${["Hinweis", "Konto", "Beruf/Bildung", "Ort", "Kontaktperson", "Medienbericht", "Register", "Sonstiges"].map((c) => opt(c, c)).join("")}</select></label>
+      <label class="field"><span>Verlässlichkeit (0–100)</span><input type="number" name="score" min="0" max="100" value="70"></label></div>
+      <label class="check"><input type="checkbox" name="confirmed" checked> <span>Bereits geprüft (als bestätigt übernehmen)</span></label></form>`,
+      `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="mf-save">Speichern</button>`);
+    $("#mf-save", m.el).onclick = async () => {
+      const f = $("#mf", m.el), d = formData(f);
+      d.confirmed = f.confirmed.checked;
+      await guard(() => api("POST", `/api/cases/${ov.case.id}/findings`, d), "Erkenntnis gespeichert");
+      m.close(); renderCase();
+    };
+  }
+
+  // ------------------------------------------------------------------ Tab: Verbindungen
+  async function tabGraph(el, ov) {
+    const [gr, sugg, ents] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/graph`), api("GET", `/api/cases/${ov.case.id}/suggestions`), api("GET", `/api/cases/${ov.case.id}/entities`)]);
+    const types = [...new Set(gr.nodes.map((n) => n.type))];
+    const entOpts = (sel) => ents.map((e) => opt(e.id, `${e.label} (${e.type_label})`, sel)).join("");
+    el.innerHTML = `
+      ${help("So nutzen Sie den Verbindungsgraphen", [
+        "<b>Ziehen</b> verschiebt Knoten (fixiert sie), <b>Doppelklick</b> löst sie wieder; Hintergrund ziehen = verschieben, Mausrad = zoomen.",
+        "Knotengröße = Anzahl Verbindungen. ★ = Zielperson. <b>Gestrichelte</b> Linien = unsichere Verbindung (< 50 %).",
+        "<b>Pfadsuche</b>: Zwei Einträge wählen – alle Wege zwischen ihnen werden gelb hervorgehoben (z. B. „Wie hängen A und B zusammen?“).",
+        "<b>Vorschläge</b> findet ungeprüfte Zusammenhänge: gemeinsame Identifikatoren, gemeinsame Kontakte, gleiche Orte, Erwähnungen."], !gr.edges.length)}
+      <div class="graph-wrap">
+        <div class="graph-stage" id="stage">
+          <canvas id="cv" aria-label="Netzwerkgraph"></canvas>
+          <div class="graph-toolbar">
+            <input type="search" id="g-find" placeholder="Knoten suchen …">
+            <span class="box">Sicherheit ≥ <input type="range" id="g-conf" min="0" max="100" step="10" value="0"> <b id="g-conf-v">0 %</b></span>
+            <button class="btn btn-sm" id="g-fit">⤢ Einpassen</button>
+            <button class="btn btn-sm" id="g-relayout">↻ Neu anordnen</button>
+            <a class="btn btn-sm" href="/api/cases/${ov.case.id}/graph.png">⬇ PNG</a>
+          </div>
+          <div class="graph-legend">${types.map((t) => `<label><input type="checkbox" data-type="${t}" checked><span class="type-dot" style="background:${COLORS[t]}"></span>${esc(state.meta.entity_types[t])}</label>`).join("")}</div>
+          <div class="graph-tip" id="g-tip"></div>
+          ${gr.nodes.length ? "" : `<div class="empty" style="position:absolute;inset:30% 0 auto">Noch keine Einträge. Legen Sie Personen an oder bestätigen Sie Treffer.</div>`}
+        </div>
+        <div class="side-panel">
+          <div class="card" id="g-sel"><h3>Auswahl</h3><div class="small muted">Klicken Sie auf einen Knoten, um Details und Verbindungen zu sehen.</div></div>
+          <div class="card"><h3>🧭 Pfadsuche</h3>
+            <select id="p-a">${opt("", "Start wählen …")}${entOpts(ov.subject ? ov.subject.id : "")}</select>
+            <select id="p-b" style="margin-top:.4rem">${opt("", "Ziel wählen …")}${entOpts("")}</select>
+            <div class="row" style="margin-top:.4rem"><button class="btn btn-sm btn-primary" id="p-go">Verbindung finden</button><button class="btn btn-sm" id="p-clear">Zurücksetzen</button></div>
+            <div id="p-res" style="margin-top:.5rem"></div></div>
+          <div class="card"><div class="card-head"><h3>＋ Verbindung anlegen</h3></div>
+            <form id="l-form">
+              <select name="source_id" required>${opt("", "Von …")}${entOpts(state.graphFocus || "")}</select>
+              <select name="relation" style="margin-top:.4rem">${state.meta.relations.map((r) => opt(r, r)).join("")}</select>
+              <select name="target_id" required style="margin-top:.4rem">${opt("", "Zu …")}${entOpts("")}</select>
+              <label class="field" style="margin:.5rem 0 .3rem"><span>Sicherheit: <b id="l-cv">70 %</b></span><input type="range" name="confidence" min="0" max="100" step="5" value="70"></label>
+              <input name="evidence" placeholder="Beleg / Quelle (empfohlen)">
+              <div class="row" style="margin-top:.5rem"><button class="btn btn-sm btn-primary">Verbinden</button><button type="button" class="btn btn-sm" id="l-newent">＋ Neuer Eintrag</button></div>
+            </form></div>
+          <div class="card"><h3>💡 Vorschläge (${sugg.length})</h3>
+            ${sugg.length ? sugg.slice(0, 12).map((s, i) => `<div class="sugg"><b>${esc(s.source_label)}</b> ↔ <b>${esc(s.target_label)}</b><div class="small muted">${esc(s.reason)}</div>
+              <div class="row" style="margin-top:.25rem"><button class="btn btn-sm" data-sugg="${i}">Als „${esc(s.relation)}“ übernehmen</button><button class="btn btn-sm" data-sugg-show="${i}">Zeigen</button></div></div>`).join("") : '<div class="small muted">Derzeit keine Vorschläge.</div>'}</div>
+          <div class="card"><h3>⭐ Schlüsselakteure</h3>
+            ${gr.key_nodes.length ? `<table class="tbl"><tr><th>Eintrag</th><th title="Anzahl Verbindungen">Verb.</th><th title="Vermittlerrolle (Betweenness)">Vermittler</th></tr>${gr.key_nodes.map((n) => `<tr><td><a href="#" data-focus="${n.id}">${esc(n.label)}</a></td><td>${n.degree}</td><td>${n.betweenness.toFixed(2)}</td></tr>`).join("")}</table>
+            <div class="small muted" style="margin-top:.3rem">„Vermittler“ = wie oft ein Eintrag auf kürzesten Wegen zwischen anderen liegt.</div>` : '<div class="small muted">Noch keine Verbindungen.</div>'}</div>
+        </div>
+      </div>`;
+    const graph = new window.NetworkGraph($("#cv"), { tooltip: $("#g-tip"), onSelect: (n) => showSelection(n) });
+    state.graph = graph;
+    graph.setData(gr.nodes, gr.edges);
+    const applyFilter = () => {
+      const hidden = $$(".graph-legend input", el).filter((c) => !c.checked).map((c) => c.dataset.type);
+      const v = Number($("#g-conf").value);
+      $("#g-conf-v").textContent = v + " %";
+      graph.setFilter(hidden, v);
+    };
+    $$(".graph-legend input", el).forEach((c) => (c.onchange = applyFilter));
+    $("#g-conf").oninput = applyFilter;
+    $("#g-fit").onclick = () => graph.fit();
+    $("#g-relayout").onclick = () => graph.relayout();
+    $("#g-find").onkeydown = (e) => { if (e.key === "Enter") { if (!graph.focusLabel(e.target.value)) toast("Kein passender Knoten."); } };
+    $$("[data-focus]", el).forEach((a) => a.onclick = (ev) => { ev.preventDefault(); const n = graph.byId.get(Number(a.dataset.focus)); graph.select(n.id, true); showSelection(n); });
+    const lf = $("#l-form");
+    lf.confidence.oninput = () => ($("#l-cv").textContent = lf.confidence.value + " %");
+    lf.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const d = formData(lf);
+      if (d.source_id === d.target_id) return toast("Bitte zwei verschiedene Einträge wählen.", "err");
+      await guard(() => api("POST", `/api/cases/${ov.case.id}/links`, { ...d, source_id: Number(d.source_id), target_id: Number(d.target_id), confidence: Number(d.confidence) }), "Verbindung angelegt");
+      state.graphFocus = Number(d.source_id); renderCase();
+    };
+    $("#l-newent").onclick = () => newEntity(ov, "person", (e) => { state.graphFocus = e.id; renderCase(); });
+    $$("[data-sugg]", el).forEach((b) => b.onclick = async () => {
+      const s = sugg[Number(b.dataset.sugg)];
+      await guard(() => api("POST", `/api/cases/${ov.case.id}/links`, { source_id: s.source_id, target_id: s.target_id, relation: s.relation, confidence: s.confidence, evidence: "Vorschlag: " + s.reason }), "Verbindung übernommen");
+      renderCase();
+    });
+    $$("[data-sugg-show]", el).forEach((b) => b.onclick = () => { const s = sugg[Number(b.dataset.suggShow)]; graph.highlightPath([s.source_id, s.target_id]); });
+    $("#p-go").onclick = async () => {
+      const a = $("#p-a").value, b = $("#p-b").value;
+      if (!a || !b || a === b) return toast("Bitte Start und Ziel (verschieden) wählen.", "err");
+      const r = await guard(() => api("GET", `/api/cases/${ov.case.id}/paths?a=${a}&b=${b}`));
+      const box = $("#p-res");
+      if (!r.paths.length) { box.innerHTML = `<div class="small">Keine Verbindung (bis 5 Schritte) gefunden.</div>`; graph.highlightPath(null); return; }
+      box.innerHTML = `<div class="small" style="margin-bottom:.3rem">Kürzester Weg: <b>${r.shortest_length} Schritt(e)</b> · ${r.paths.length} Wege${r.common_neighbours.length ? ` · gemeinsame Kontakte: ${r.common_neighbours.map((c) => esc(c.label)).join(", ")}` : ""}</div>` +
+        r.paths.map((p, i) => `<div class="path ${i === 0 ? "active" : ""}" data-path="${i}"><b>${p.length} Schritt(e)</b> · Gesamtsicherheit ${p.combined_confidence} %<div class="small">${p.steps.map((s) => `${esc(s.from)} <i>— ${esc(s.relation)} (${s.confidence} %) →</i> `).join("")}${esc(p.labels[p.labels.length - 1])}</div></div>`).join("");
+      graph.highlightPath(r.paths[0].nodes);
+      $$("[data-path]", box).forEach((d) => d.onclick = () => { $$(".path", box).forEach((x) => x.classList.remove("active")); d.classList.add("active"); graph.highlightPath(r.paths[Number(d.dataset.path)].nodes); });
+    };
+    $("#p-clear").onclick = () => { graph.highlightPath(null); $("#p-res").innerHTML = ""; };
+
+    function showSelection(n) {
+      const box = $("#g-sel");
+      if (!n) { box.innerHTML = `<h3>Auswahl</h3><div class="small muted">Klicken Sie auf einen Knoten.</div>`; return; }
+      const rel = gr.edges.filter((e) => e.source === n.id || e.target === n.id);
+      box.innerHTML = `<div class="card-head"><span class="type-dot" style="background:${COLORS[n.type]}"></span><h3>${esc(n.label)}</h3></div>
+        <div class="small muted">${esc(n.type_label)} · ${n.degree} Verbindungen · Vermittler ${n.betweenness.toFixed(2)}</div>
+        <table class="tbl" style="margin-top:.4rem">${rel.map((e) => { const other = graph.byId.get(e.source === n.id ? e.target : e.source);
+          return `<tr><td>${e.source === n.id ? "→" : "←"} ${esc(e.relation)}<br><b>${esc(other.label)}</b><div class="small muted">${e.confidence} %${e.evidence ? " · " + esc(e.evidence) : ""}</div></td><td><button class="btn btn-sm btn-danger" data-del-link="${e.id}" title="Verbindung löschen">×</button></td></tr>`; }).join("") || "<tr><td class='muted small'>Keine Verbindungen.</td></tr>"}</table>
+        <div class="row" style="margin-top:.5rem"><button class="btn btn-sm" id="sel-from">Als Start</button><button class="btn btn-sm" id="sel-to">Als Ziel</button><button class="btn btn-sm" id="sel-link">Verbinden …</button><button class="btn btn-sm" id="sel-open">Profil</button></div>`;
+      $$("[data-del-link]", box).forEach((b) => b.onclick = async () => {
+        if (!(await confirmDlg("Diese Verbindung löschen?"))) return;
+        await guard(() => api("DELETE", `/api/cases/${ov.case.id}/links/${b.dataset.delLink}`), "Verbindung gelöscht");
+        state.graphFocus = n.id; renderCase();
+      });
+      $("#sel-from").onclick = () => ($("#p-a").value = n.id);
+      $("#sel-to").onclick = () => ($("#p-b").value = n.id);
+      $("#sel-link").onclick = () => { lf.source_id.value = n.id; lf.target_id.focus(); };
+      $("#sel-open").onclick = () => { state.selEntity = n.id; location.hash = `#/case/${ov.case.id}/persons`; };
+    }
+    if (state.graphFocus && graph.byId.get(state.graphFocus)) {
+      const n = graph.byId.get(state.graphFocus);
+      setTimeout(() => { graph.select(n.id, false); showSelection(n); }, 50);
+    }
+    state.graphFocus = null;
+  }
+
+  // ------------------------------------------------------------------ Tab: Zeitleiste & Karte
+  async function tabTimeline(el, ov) {
+    const [events, ents] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/events`), api("GET", `/api/cases/${ov.case.id}/entities`)]);
+    const persons = ents.filter((e) => e.type === "person");
+    const lastIdx = (() => { let idx = -1; events.forEach((e, i) => { if (e.kind === "Letzte Sichtung") idx = i; }); return idx; })();
+    el.innerHTML = `
+      ${help("Zeitleiste & Karte", [
+        "Erfassen Sie Sichtungen, letzte Kontakte, Online-Aktivitäten und Bewegungen mit Ort und Zeit.",
+        "Orte werden automatisch in Koordinaten umgewandelt (OpenStreetMap, Internet nötig) – alternativ Koordinaten direkt eintragen.",
+        "Die Karte zeigt alle Ereignisse chronologisch nummeriert und verbindet sie zu einer Bewegungslinie. Rot = letzte Sichtung.",
+        "Bewerten Sie die <b>Verlässlichkeit</b> jedes Hinweises – ungeprüfte Hinweise bleiben als solche gekennzeichnet."], !events.length)}
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-head"><h2>Zeitleiste (${events.length})</h2><div class="right"><button class="btn btn-sm btn-primary" id="ev-new">＋ Ereignis</button></div></div>
+          ${events.length ? `<ul class="timeline">${events.map((e, i) => `<li class="${i === lastIdx ? "k-last" : e.kind.startsWith("Sichtung") ? "k-hint" : ""}">
+            <div class="when"><span class="num">${i + 1}</span>${esc(fmtLocal(e.occurred_at))} · ${esc(e.kind)}</div>
+            <div>${esc(e.description)}</div>
+            <div class="small muted">${e.location ? "📍 " + esc(e.location) : ""}${e.entity_label ? " · 👤 " + esc(e.entity_label) : ""}${e.source ? " · Quelle: " + esc(e.source) : ""}
+              <span class="badge ${e.reliability === "bestätigt" ? "b-green" : e.reliability === "ungeprüft" ? "b-amber" : "b-blue"}">${esc(e.reliability)}</span>
+              ${e.lat == null && e.location ? '<span class="badge b-grey" title="Ort konnte nicht auf der Karte verortet werden">nicht verortet</span>' : ""}
+              <button class="btn btn-sm btn-danger" data-del-ev="${e.id}" style="padding:0 .4rem">×</button></div></li>`).join("")}</ul>`
+            : `<div class="empty"><div class="big">🕒</div>Noch keine Ereignisse.${ov.case.case_type === "vermisst" ? "<br>Beginnen Sie mit der <b>letzten Sichtung</b>." : ""}</div>`}
+        </div>
+        <div class="card"><div class="card-head"><h2>Karte</h2><span class="right small muted">Kartendaten © OpenStreetMap-Mitwirkende</span></div><div id="map"></div></div>
+      </div>`;
+    $("#ev-new").onclick = () => newEvent(ov, persons);
+    $$("[data-del-ev]", el).forEach((b) => b.onclick = async () => { if (await confirmDlg("Ereignis löschen?")) { await guard(() => api("DELETE", `/api/cases/${ov.case.id}/events/${b.dataset.delEv}`)); renderCase(); } });
+    const map = L.map("map", { zoomControl: true }).setView([51.16, 10.45], 6);
+    state.map = map;
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    const pts = [];
+    events.forEach((e, i) => {
+      if (e.lat == null || e.lon == null) return;
+      const icon = L.divIcon({ className: "", html: `<div class="map-num ${i === lastIdx ? "last" : ""}">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+      L.marker([e.lat, e.lon], { icon }).addTo(map).bindPopup(`<b>${i + 1}. ${esc(e.kind)}</b><br>${esc(fmtLocal(e.occurred_at))}<br>${esc(e.location)}<br>${esc(e.description)}<br><i>${esc(e.reliability)}</i>`);
+      pts.push([e.lat, e.lon]);
+    });
+    ents.filter((e) => e.type === "ort" && e.data && e.data.lat != null).forEach((e) => {
+      L.circleMarker([e.data.lat, e.data.lon], { radius: 7, color: "#059669", fillOpacity: 0.5 }).addTo(map).bindPopup(`<b>${esc(e.label)}</b><br>Ort im Fall`);
+      pts.push([e.data.lat, e.data.lon]);
+    });
+    const route = events.filter((e) => e.lat != null && e.entity_id === (ov.subject || {}).id).map((e) => [e.lat, e.lon]);
+    if (route.length > 1) L.polyline(route, { color: "#2563eb", weight: 3, dashArray: "6 6", opacity: 0.8 }).addTo(map);
+    if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
+    setTimeout(() => map.invalidateSize(), 100);
+  }
+
+  function newEvent(ov, persons) {
+    const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const m = modal("Ereignis erfassen", `<form id="evf">
+      <div class="grid g2">
+        <label class="field"><span>Zeitpunkt *</span><input type="datetime-local" name="occurred_at" value="${now}" required></label>
+        <label class="field"><span>Art</span><select name="kind">${state.meta.event_kinds.map((k) => opt(k, k)).join("")}</select></label>
+      </div>
+      <label class="field"><span>Person</span><select name="entity_id">${opt("", "– keine –")}${persons.map((p) => opt(p.id, p.label, (ov.subject || {}).id)).join("")}</select></label>
+      <label class="field"><span>Ort</span><input name="location" placeholder="z. B. Hauptbahnhof Hamburg"><small>Wird automatisch auf der Karte verortet (Internet nötig). Alternativ Koordinaten angeben.</small></label>
+      <div class="grid g2"><label class="field"><span>Breitengrad (optional)</span><input name="lat" placeholder="53.55"></label><label class="field"><span>Längengrad (optional)</span><input name="lon" placeholder="10.00"></label></div>
+      <label class="field"><span>Beschreibung</span><textarea name="description" placeholder="Was ist passiert? Kleidung, Begleitung, Richtung …"></textarea></label>
+      <div class="grid g2"><label class="field"><span>Quelle</span><input name="source" placeholder="z. B. Zeugin, Kamera, Social Media"></label>
+      <label class="field"><span>Verlässlichkeit</span><select name="reliability">${["ungeprüft", "wahrscheinlich", "bestätigt", "zweifelhaft"].map((r) => opt(r, r)).join("")}</select></label></div></form>`,
+      `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="evf-save">Speichern</button>`);
+    $("#evf-save", m.el).onclick = async (ev) => {
+      const d = formData($("#evf", m.el));
+      ["lat", "lon"].forEach((k) => { d[k] = d[k] ? Number(d[k].replace(",", ".")) : null; });
+      d.entity_id = d.entity_id ? Number(d.entity_id) : null;
+      ev.target.disabled = true; ev.target.innerHTML = '<span class="spinner"></span> Speichern …';
+      try { await guard(() => api("POST", `/api/cases/${ov.case.id}/events`, d), "Ereignis gespeichert"); m.close(); renderCase(); }
+      catch (e) { ev.target.disabled = false; ev.target.textContent = "Speichern"; }
+    };
+  }
+
+  // ------------------------------------------------------------------ Tab: Aufgaben
+  async function tabTasks(el, ov) {
+    const tasks = await api("GET", `/api/cases/${ov.case.id}/tasks`);
+    const open = tasks.filter((t) => !t.done).length;
+    el.innerHTML = `
+      ${help("Aufgaben", ["Der <b>Leitfaden</b> erzeugt eine bewährte Checkliste passend zur Fallart (z. B. Krankenhäuser abfragen, Kontaktpersonen befragen).", "Eigene Aufgaben ergänzen und abhaken – offene Aufgaben erscheinen im Dossier unter „Offene Punkte“."])}
+      <div class="card">
+        <div class="card-head"><h2>Aufgaben (${open} offen)</h2><div class="right"><button class="btn btn-sm" id="t-gen">📋 Leitfaden-Aufgaben ergänzen</button></div></div>
+        <form class="row" id="t-form" style="margin-bottom:.6rem"><input name="title" class="grow" placeholder="Neue Aufgabe …" required>
+          <select name="priority" style="width:auto">${opt("normal", "normal")}${opt("hoch", "hohe Priorität")}</select><button class="btn btn-primary">Hinzufügen</button></form>
+        ${tasks.map((t) => `<div class="task ${t.done ? "done" : ""}"><input type="checkbox" data-task="${t.id}" ${t.done ? "checked" : ""} aria-label="erledigt">
+          <span class="tt">${esc(t.title)}</span>${t.priority === "hoch" ? '<span class="badge b-red">hoch</span>' : ""}<span class="badge b-grey">${esc(t.origin)}</span>
+          <button class="btn btn-sm btn-danger" data-del-task="${t.id}" style="padding:0 .45rem">×</button></div>`).join("") || '<div class="empty">Keine Aufgaben. Nutzen Sie den Leitfaden.</div>'}
+      </div>`;
+    $("#t-gen").onclick = async () => { await guard(() => api("POST", `/api/cases/${ov.case.id}/tasks/generate`), "Leitfaden ergänzt"); renderCase(); };
+    $("#t-form").onsubmit = async (e) => { e.preventDefault(); await guard(() => api("POST", `/api/cases/${ov.case.id}/tasks`, formData(e.target))); renderCase(); };
+    $$("[data-task]", el).forEach((c) => c.onchange = async () => { await guard(() => api("PATCH", `/api/cases/${ov.case.id}/tasks/${c.dataset.task}`, { done: c.checked })); renderCase(); });
+    $$("[data-del-task]", el).forEach((b) => b.onclick = async () => { await guard(() => api("DELETE", `/api/cases/${ov.case.id}/tasks/${b.dataset.delTask}`)); renderCase(); });
+  }
+
+  // ------------------------------------------------------------------ Tab: Dossier
+  async function tabDossier(el, ov) {
+    const c = ov.counts, missing = ov.case.case_type === "vermisst";
+    el.innerHTML = `
+      <div class="grid g2">
+        <div class="card">
+          <h2>📄 Word-Dossier</h2>
+          <p class="muted">Ein strukturiertes, druckfertiges Dokument (.docx) für Auftraggeber, Behörden oder die Akte.</p>
+          <ol class="small">
+            <li>Deckblatt mit Foto, Aktenzeichen und Vertraulichkeitsvermerk</li>
+            <li>Zusammenfassung mit Kernaussagen${missing ? " und Gefährdungseinschätzung" : ""}</li>
+            <li>Auftrag, Zweck und Rechtsgrundlage</li>
+            <li>Personenprofil und Identifikatoren</li>
+            ${missing ? "<li>Vermisstenangaben (letzte Sichtung, Beschreibung, Gefährdung)</li>" : ""}
+            <li>Zeitleiste</li>
+            <li>Netzwerkgrafik, Schlüsselakteure und alle Verbindungen</li>
+            <li>Bestätigte Erkenntnisse mit Quellenbelegen [1], [2] …</li>
+            <li>Offene Punkte, Vorschläge und Quellenverzeichnis</li>
+            <li>Methodik, Hinweise und Bearbeitungsprotokoll</li>
+          </ol>
+          <form id="dx">
+            <label class="check"><input type="checkbox" name="include_graph" checked> <span>Netzwerkgrafik einbetten</span></label>
+            <label class="check"><input type="checkbox" name="include_audit" checked> <span>Bearbeitungsprotokoll anhängen</span></label>
+            <label class="check"><input type="checkbox" name="include_unreviewed"> <span>Ungeprüfte Treffer gesondert aufführen (deutlich als „nicht verifiziert“ markiert)</span></label>
+          </form>
+          ${c.open_findings ? `<div class="warn">⚠️ ${c.open_findings} Treffer sind noch ungeprüft und erscheinen standardmäßig nicht im Dossier. <a href="#/case/${ov.case.id}/search">Jetzt prüfen →</a></div>` : ""}
+          <button class="btn btn-primary btn-lg" id="dx-go">⬇ Word-Dossier herunterladen</button>
+        </div>
+        <div>
+          ${missing ? `<div class="card"><h2>🆘 Suchplakat</h2><p class="muted">Einseitiges Plakat (Word, DIN A4) mit Foto, Beschreibung, letzter Sichtung und Polizeikontakt – zum Anpassen und Drucken.</p>
+            <a class="btn btn-primary" href="/api/cases/${ov.case.id}/export/poster.docx">⬇ Suchplakat (Word)</a>
+            <div class="small muted" style="margin-top:.5rem">Bitte nur in Abstimmung mit Angehörigen und Polizei veröffentlichen.</div></div>` : ""}
+          <div class="card"><h2>Weitere Exporte</h2>
+            <div class="row"><a class="btn" href="/api/cases/${ov.case.id}/graph.png">🕸️ Netzwerkgrafik (PNG)</a><a class="btn" href="/api/cases/${ov.case.id}/export/case.json">🗂️ Vollständige Falldaten (JSON)</a></div></div>
+          <div class="card"><h3>Inhalt im Überblick</h3>
+            <table class="tbl"><tr><td>Bestätigte Erkenntnisse</td><td><b>${c.confirmed}</b></td></tr><tr><td>Ungeprüfte Treffer</td><td>${c.open_findings}</td></tr>
+            <tr><td>Personen / Einträge</td><td>${c.persons} / ${c.entities}</td></tr><tr><td>Verbindungen</td><td>${c.links}</td></tr>
+            <tr><td>Ereignisse in Zeitleiste</td><td>${c.events}</td></tr><tr><td>Offene Aufgaben</td><td>${c.open_tasks}</td></tr><tr><td>Bisherige Exporte</td><td>${c.exports}</td></tr></table></div>
+        </div>
+      </div>`;
+    $("#dx-go").onclick = () => {
+      const f = $("#dx");
+      const q = new URLSearchParams({ include_graph: f.include_graph.checked, include_audit: f.include_audit.checked, include_unreviewed: f.include_unreviewed.checked });
+      window.location.href = `/api/cases/${ov.case.id}/export/dossier.docx?${q}`;
+      toast("Dossier wird erstellt …", "ok");
+      setTimeout(() => { if (state.tab === "dossier") renderCase(); }, 2500);
+    };
+  }
+
+  // ------------------------------------------------------------------ Tab: Protokoll
+  async function tabAudit(el, ov) {
+    const rows = await api("GET", `/api/cases/${ov.case.id}/audit`);
+    el.innerHTML = `<div class="card"><div class="card-head"><h2>Bearbeitungsprotokoll</h2><span class="right small muted">Unveränderliche Aufzeichnung aller Arbeitsschritte (Nachvollziehbarkeit / DSGVO-Rechenschaft)</span></div>
+      <table class="tbl"><tr><th>Zeit</th><th>Aktion</th><th>Details</th></tr>${rows.map((a) => `<tr><td class="nowrap">${fmtTs(a.ts)}</td><td class="nowrap"><b>${esc(a.action)}</b></td><td>${esc(a.detail)}</td></tr>`).join("")}</table></div>`;
+  }
+
+  // ------------------------------------------------------------------ Hilfe
+  function openHelp() {
+    modal("Hilfe & Kurzanleitung", `
+      <h3>Arbeitsablauf</h3>
+      <ol><li><b>Neuer Fall</b> – Fallart, Zweck und Rechtsgrundlage festlegen.</li>
+        <li><b>Personen & Profile</b> – Zielperson und Identifikatoren erfassen, Foto hochladen, Recherchelinks nutzen.</li>
+        <li><b>Suche & Treffer</b> – Quellen automatisch abfragen, Treffer prüfen (bestätigen/verwerfen).</li>
+        <li><b>Verbindungen</b> – Netzwerk ansehen, Pfade zwischen Personen finden, Vorschläge übernehmen.</li>
+        <li><b>Zeitleiste & Karte</b> – Sichtungen und Bewegungen erfassen (v. a. bei Vermisstenfällen).</li>
+        <li><b>Dossier & Export</b> – Word-Dossier, Suchplakat, Grafik und Daten exportieren.</li></ol>
+      <h3>Bewertung (Score)</h3>
+      <p class="small">0–100 Punkte aus nachvollziehbaren Merkmalen: exakte E-Mail/Telefon (+55), Benutzername vorhanden (+35), Namensgleichheit (bis +40), Ort/Arbeitgeber/Geburtsjahr erwähnt (+10–15). Ab 75 = hoch, ab 45 = mittel. <b>Ein hoher Score ist kein Beweis.</b></p>
+      <h3>Datenschutz & Ethik</h3>
+      <ul class="small"><li>Recherchieren Sie nur mit legitimem Zweck und Rechtsgrundlage. Keine Recherche zur Belästigung, Verfolgung oder Diskriminierung.</li>
+        <li>Alle Daten bleiben lokal auf diesem Rechner (${esc(state.meta.data_dir)}). Löschen Sie Fälle nach Abschluss.</li>
+        <li>Bei Vermisstenfällen: Polizei informieren (Notruf 110). Keine eigenmächtigen Maßnahmen, die die Person oder Ermittlungen gefährden.</li></ul>
+      <h3>Tastatur & Graph</h3>
+      <p class="small">Esc schließt Dialoge. Im Graphen: Ziehen = verschieben, Mausrad = Zoom, Doppelklick = Knoten lösen.</p>
+      <p class="small muted">Version ${esc(state.meta.version)} · API-Dokumentation: <a href="/api/docs" target="_blank">/api/docs</a></p>`, `<button class="btn btn-primary" data-close>Verstanden</button>`);
+  }
+
+  // ------------------------------------------------------------------ Start
+  async function init() {
+    state.meta = await api("GET", "/api/meta");
+    $("#btn-new-case").onclick = openNewCase;
+    $("#btn-help").onclick = openHelp;
+    $("#btn-menu").onclick = () => $("#sidebar").classList.toggle("open");
+    $("#case-filter").oninput = renderCaseList;
+    await loadCases();
+    window.addEventListener("hashchange", route);
+    route();
+  }
+  init().catch((e) => { document.body.innerHTML = `<div style="padding:2rem;font-family:sans-serif"><h2>EagleEye konnte nicht starten</h2><p>${esc(e.message)}</p></div>`; });
+})();
