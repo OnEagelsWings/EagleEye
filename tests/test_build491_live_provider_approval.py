@@ -119,3 +119,63 @@ def test_live_approval_rejects_target_scope_mismatch(approved_target, execution_
             query="public archive records", search_intent_id="intent-1",
             search_query_id="query-1", target_id=execution_target,
         )
+
+
+def test_live_run_rechecks_approval_before_candidate_intake():
+    """Revocation after the last response must not create unreviewed candidates."""
+    from eagleeye.infrastructure.providers import (
+        NormalizedProviderItem, ProviderHttpRequest, ProviderTransportResponse,
+    )
+
+    service = _service()
+    service.clock = lambda: 1731000000.0
+    service.db = SimpleNamespace(execute=Mock())
+    service.audit = SimpleNamespace(log=Mock())
+    service._event = Mock()
+    service._execute_request = Mock(return_value=(
+        ProviderTransportResponse(
+            status_code=200, final_url="https://example.org/record",
+            body=b"{}", headers={}, elapsed_ms=5,
+        ), 1,
+    ))
+    service._record_fixture = Mock(return_value="fixture-1")
+    service._store_intake = Mock(return_value=(["candidate-1"], 0))
+    service._record_run_failure = Mock()
+    service._record_run_success = Mock()
+    service._adapters = {
+        "public_test": SimpleNamespace(
+            definition=SimpleNamespace(
+                enabled=True, supports_live=True, supports_replay=True,
+            ),
+            validate_request=Mock(),
+            build_requests=Mock(return_value=(
+                ProviderHttpRequest("https://example.org/record"),
+            )),
+            normalize=Mock(return_value=[]),
+        )
+    }
+    calls = 0
+
+    def revoke_on_final_check(**_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise ProviderAuthorizationError("approval revoked")
+
+    service._validate_search_approval = revoke_on_final_check
+    with pytest.raises(ProviderAuthorizationError, match="approval revoked"):
+        service.execute(
+            case_id="case-1", provider_key="public_test",
+            query="public archive records",
+            purpose="Check publicly available archive records",
+            approved_by="reviewer-1",
+            confirmation=service.APPROVAL_PHRASE, mode="live",
+            search_intent_id="intent-1", search_query_id="query-1",
+            record_replay=False,
+        )
+    assert calls == 3
+    service._store_intake.assert_not_called()
+    assert any(
+        "status='failed'" in call.args[0]
+        for call in service.db.execute.call_args_list
+    )
