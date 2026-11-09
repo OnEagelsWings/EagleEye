@@ -30,5 +30,7 @@ jobs:
         run: pytest -q tests/test_build458_document_intelligence.py -k 'health_and_authenticated_upload'
       - name: Investigator UI regression suite
         run: pytest -q tests/test_build448_integrated.py tests/test_build449_integrated.py tests/test_build450_integrated.py -k 'not test_status_and_launcher_contract and not test_status_launcher_and_checkpoint_contract and not test_build450_status_launcher_manifest_and_checkpoint_contract'
+      - name: Current integrated server and isolated launcher contracts
+        run: pytest -q tests/test_build490_server_selection.py tests/test_build490_package_contract.py tests/test_build490_fresh_workspace.py
       - name: Compile current web surface
         run: python -m compileall -q src/eagleeye/interfaces/web eagleeye_pro/phase20
