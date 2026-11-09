@@ -135,6 +135,10 @@ class RuntimePaths:
             # redirect writes to an older installation or outside the workspace.
             workspace = runtime_root.resolve()
             for directory in values.values():
+                # Even an in-workspace alias can merge distinct module stores,
+                # compromising evidence provenance and backup isolation.
+                if directory.is_symlink():
+                    raise ValueError("Internal release module directories cannot be symbolic links")
                 target = directory.resolve()
                 if not target.is_relative_to(workspace):
                     raise ValueError("Internal release module directories must stay inside the workspace")
