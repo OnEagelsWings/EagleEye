@@ -172,9 +172,10 @@ def test_live_run_rechecks_approval_before_candidate_intake():
             approved_by="reviewer-1",
             confirmation=service.APPROVAL_PHRASE, mode="live",
             search_intent_id="intent-1", search_query_id="query-1",
-            record_replay=False,
+            record_replay=True,
         )
     assert calls == 3
+    service._record_fixture.assert_not_called()
     service._store_intake.assert_not_called()
     assert any(
         "status='failed'" in call.args[0]
