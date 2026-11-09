@@ -198,6 +198,12 @@ class ProviderCollection120Service:
             raise ProviderAuthorizationError("provider does not support live execution")
         if mode == "replay" and not definition.supports_replay:
             raise ProviderAuthorizationError("provider does not support replay execution")
+        # Live network access must be bound to an approved case search, not only
+        # to the operator confirmation phrase. Replay remains available offline.
+        if mode == "live" and (not search_intent_id or not search_query_id):
+            raise ProviderAuthorizationError(
+                "live provider runs require an approved case search intent and query"
+            )
         if search_intent_id or search_query_id:
             self._validate_search_approval(
                 case_id=case_id,
