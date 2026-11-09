@@ -211,6 +211,7 @@ class ProviderCollection120Service:
                 query=query,
                 search_intent_id=search_intent_id,
                 search_query_id=search_query_id,
+                target_id=target_id,
             )
         request = ProviderRunRequest(
             case_id=case_id,
@@ -415,18 +416,21 @@ class ProviderCollection120Service:
         query: str,
         search_intent_id: str,
         search_query_id: str,
+        target_id: str = "",
     ) -> None:
         if not search_intent_id or not search_query_id:
             raise ProviderAuthorizationError("intent and query approval references must be supplied together")
         row = self.db.one(
             """SELECT q.query_text,q.provider,q.state query_state,q.intent_id,
-                      i.case_id,i.state intent_state
+                      i.case_id,i.target_id,i.state intent_state
                FROM search_queries_114 q JOIN search_intents_114 i ON i.intent_id=q.intent_id
                WHERE q.query_id=?""",
             (search_query_id,),
         )
         if not row or row["intent_id"] != search_intent_id or row["case_id"] != case_id:
             raise ProviderAuthorizationError("search approval references do not belong to this case")
+        if (row.get("target_id") or "") != (target_id or ""):
+            raise ProviderAuthorizationError("approved search target differs from execution target")
         if row["intent_state"] != "approved" or row["query_state"] != "approved":
             raise ProviderAuthorizationError("search intent and query require approval")
         if str(row["provider"]) != provider_key:
