@@ -36,6 +36,12 @@ erfahrenen Entwickler und vor jeder Phase zu verfeinern.
 
 ## 3. Phase 1 – Fundament für den Teambetrieb
 
+> **Status: umgesetzt in Version 1.1** (alle Punkte 1.1–1.8). Zusätzlich: Fallart *Investigativrecherche* mit
+> Leitfaden, vertrauliche Fälle (Quellenschutz) mit protokolliertem Notfallzugriff, Leserolle statt Backoffice
+> (Abrechnung folgt in Phase 4). Nachweis: 34 automatisierte Tests auf SQLite **und** PostgreSQL, Browser-Abnahme
+> (Ersteinrichtung → 2FA → Fall → Prüfung → Freigabe) und Docker-Stack (PostgreSQL + App + Caddy/HTTPS) inkl.
+> Sicherung im Container und Wiederherstellung nach SQLite.
+
 **Ziel:** Mehrere Personen arbeiten sicher am selben Datenbestand.
 
 | # | Maßnahme | Details | Priorität |

@@ -240,18 +240,25 @@ def build_dossier(p: Platform, case_id: int, options: dict[str, Any] | None = No
     r = p0.add_run("VERTRAULICH – NUR FÜR DEN DIENSTGEBRAUCH")
     r.bold, r.font.size, r.font.color.rgb = True, Pt(10), RGBColor(0xB9, 0x1C, 0x1C)
     p1 = doc.add_paragraph()
-    r = p1.add_run(("Vermisstendossier" if missing else "Personendossier"))
+    r = p1.add_run("Vermisstendossier" if missing else "Recherchedossier" if case["case_type"] == "investigativ" else "Personendossier")
     r.font.size, r.font.color.rgb = Pt(14), GREY
     p2 = doc.add_paragraph()
     r = p2.add_run(name)
     r.bold, r.font.size, r.font.color.rgb = True, Pt(30), NAVY
+    if case["status"] not in {"freigegeben", "abgeschlossen", "archiviert"}:
+        pd = doc.add_paragraph()
+        rd = pd.add_run("ENTWURF – noch nicht im Vier-Augen-Verfahren freigegeben")
+        rd.bold, rd.font.size, rd.font.color.rgb = True, Pt(11), RGBColor(0xB4, 0x53, 0x09)
     if subj and subj["photo"]:
-        photo = p.photo_path(case_id, subj["id"])
+        photo = p.photo_bytes(case_id, subj["id"])
         if photo:
-            doc.add_picture(str(photo), width=Cm(5.5))
+            doc.add_picture(io.BytesIO(photo[0]), width=Cm(5.5))
     doc.add_paragraph()
+    team = p.case_team(case)
     _kv(doc, [("Aktenzeichen (intern)", case["reference"]), ("Fall", case["title"]), ("Fallart", case["case_type_label"]),
-              ("Status", case["status"]), ("Auftraggeber", case["client"]), ("Bearbeitung", case["analyst"]),
+              ("Status", case["status"]), ("Auftraggeber", case["client"]),
+              ("Bearbeitung", (team["owner"] or {}).get("display_name") or case["analyst"]),
+              ("Prüfung (Vier-Augen)", (team["reviewer"] or {}).get("display_name")),
               ("Erstellt am", datetime.now().strftime("%d.%m.%Y %H:%M")),
               ("Inhalt", "Nur geprüfte Erkenntnisse" if not opts["include_unreviewed"] else "Geprüfte und ungeprüfte Erkenntnisse (gekennzeichnet)")])
     doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
@@ -460,9 +467,9 @@ def build_poster(p: Platform, case_id: int) -> bytes:
         a = doc.add_paragraph()
         a.alignment = WD_ALIGN_PARAGRAPH.CENTER
         a.add_run(f"{age} Jahre").font.size = Pt(16)
-    photo = p.photo_path(case_id, subj["id"])
+    photo = p.photo_bytes(case_id, subj["id"])
     if photo:
-        doc.add_picture(str(photo), height=Cm(9))
+        doc.add_picture(io.BytesIO(photo[0]), height=Cm(9))
         doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     else:
         ph = doc.add_paragraph("[ Foto einfügen ]")

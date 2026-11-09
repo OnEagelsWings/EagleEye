@@ -2,14 +2,20 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextvars import ContextVar
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from . import graph as g
-from .db import Database, now_iso
+from .auth import SUPERVISORS
+from .crypto import Vault
+from .db import ConflictError, Database, now_iso
 from .matching import confidence_label, fold, normalize, score_candidate
 from .sources import SOURCE_MAP, SOURCES, Http, SourceError, geocode, research_links
 
@@ -22,7 +28,35 @@ class Invalid(Exception):
     pass
 
 
+class Forbidden(Exception):
+    pass
+
+
+#: angemeldete Person der aktuellen Anfrage (von der API gesetzt; None = System/CLI)
+current_user: ContextVar[dict[str, Any] | None] = ContextVar("current_user", default=None)
+
+CASE_STATUSES = ["offen", "in Bearbeitung", "zur Prüfung", "freigegeben", "abgeschlossen", "archiviert"]
+MEMBER_ROLES = {"bearbeiter": "Bearbeitung", "pruefer": "Prüfung", "leser": "nur lesen"}
+GENESIS = "0" * 64
+
+
+def _audit_hash(prev: str, ts: str, case_id: Any, user_id: Any, username: str, action: str, detail_hash: str) -> str:
+    payload = json.dumps([prev, ts, case_id, user_id, username, action, detail_hash], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def seal_audit_chain(db: Database) -> None:
+    """Migration 2: vorhandene Protokolleinträge (Version 1.0) nachträglich in die Hash-Kette aufnehmen."""
+    prev = GENESIS
+    for row in db.all("SELECT * FROM audit ORDER BY id"):
+        dh = hashlib.sha256(row["detail"].encode()).hexdigest()
+        h = _audit_hash(prev, row["ts"], row["case_id"], row["user_id"], row["username"], row["action"], dh)
+        db.update("audit", row["id"], {"detail_hash": dh, "prev_hash": prev, "hash": h})
+        prev = h
+
+
 CASE_TYPES = {
+    "investigativ": "Investigativrecherche",
     "personensuche": "Personensuche",
     "vermisst": "Vermisstenfall",
     "verbindungen": "Verbindungsanalyse",
@@ -84,16 +118,109 @@ def _age(birth: str) -> int | None:
 
 
 class Platform:
-    def __init__(self, db: Database, data_dir: Path, http: Http | None = None, auto_geocode: bool = True):
+    def __init__(self, db: Database, data_dir: Path, http: Http | None = None, auto_geocode: bool = True, vault: Vault | None = None):
         self.db = db
         self.data_dir = Path(data_dir)
         self.http = http or Http()
         self.auto_geocode = auto_geocode
+        self.vault = vault or Vault(self.data_dir / "secret.key")
         (self.data_dir / "photos").mkdir(parents=True, exist_ok=True)
+        self._audit_lock = threading.Lock()
+        self._presence: dict[int, dict[int, tuple[str, float, str]]] = {}
 
-    # ------------------------------------------------------------------ Protokoll
+    # ------------------------------------------------------------------ Protokoll (Hash-Kette)
     def log(self, case_id: int | None, action: str, detail: str = "") -> None:
-        self.db.insert("audit", {"case_id": case_id, "ts": now_iso(), "action": action, "detail": detail[:2000]})
+        user = current_user.get()
+        uid, uname = (user["id"], user["username"]) if user else (None, "system")
+        detail = detail[:2000]
+        dh = hashlib.sha256(detail.encode()).hexdigest()
+        with self._audit_lock, self.db.tx():
+            self.db.advisory_lock(4711)
+            row = self.db.run_in_tx("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
+            prev = (row["hash"] if row else "") or GENESIS
+            ts = now_iso()
+            h = _audit_hash(prev, ts, case_id, uid, uname, action, dh)
+            self.db.run_in_tx("INSERT INTO audit (case_id, ts, user_id, username, action, detail, detail_hash, prev_hash, hash) "
+                              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (case_id, ts, uid, uname, action, detail, dh, prev, h))
+
+    def verify_audit(self) -> dict[str, Any]:
+        """Prüft die gesamte Kette: Verknüpfung, Hashes und (sofern nicht geschwärzt) die Detailtexte."""
+        prev = GENESIS
+        count = redacted = 0
+        for row in self.db.all("SELECT * FROM audit ORDER BY id"):
+            count += 1
+            problem = ""
+            if row["prev_hash"] != prev:
+                problem = "Verkettung unterbrochen (Eintrag gelöscht oder eingefügt)"
+            elif _audit_hash(prev, row["ts"], row["case_id"], row["user_id"], row["username"], row["action"], row["detail_hash"]) != row["hash"]:
+                problem = "Eintrag wurde nachträglich verändert"
+            elif row["redacted"]:
+                redacted += 1
+            elif hashlib.sha256(row["detail"].encode()).hexdigest() != row["detail_hash"]:
+                problem = "Detailtext wurde nachträglich verändert"
+            if problem:
+                return {"ok": False, "entries": count, "broken_at": row["id"], "ts": row["ts"], "problem": problem, "redacted": redacted}
+            prev = row["hash"]
+        return {"ok": True, "entries": count, "redacted": redacted, "head": prev}
+
+    # ------------------------------------------------------------------ Rechte
+    @staticmethod
+    def _uid() -> int | None:
+        user = current_user.get()
+        return user["id"] if user else None
+
+    def member_role(self, case: dict[str, Any], user: dict[str, Any]) -> str | None:
+        if case.get("owner_id") == user["id"]:
+            return "bearbeiter"
+        if case.get("reviewer_id") == user["id"]:
+            return "pruefer"
+        row = self.db.one("SELECT role FROM case_members WHERE case_id = ? AND user_id = ?", (case["id"], user["id"]))
+        return row["role"] if row else None
+
+    def permissions(self, case: dict[str, Any], user: dict[str, Any] | None) -> set[str]:
+        """read · write (recherchieren) · review (Treffer/Freigabe prüfen) · manage (Team, Stammdaten) · delete"""
+        if user is None:  # System/CLI
+            return {"read", "write", "review", "manage", "delete"}
+        role = self.member_role(case, user)
+        perms: set[str] = set()
+        supervisor = user["role"] in SUPERVISORS and not case.get("restricted")
+        if supervisor:
+            perms |= {"read", "review", "manage"}
+            if user["role"] == "leitung":
+                perms |= {"write", "delete"}
+        if role:
+            perms.add("read")
+            if user["role"] != "leser" and role in {"bearbeiter", "pruefer"}:
+                perms |= {"write", "review"}
+            if role == "bearbeiter" and user["role"] != "leser" and case.get("owner_id") == user["id"]:
+                perms |= {"manage", "delete"}
+            if user["role"] == "leser" or role == "leser":
+                perms -= {"write", "review", "manage", "delete"}
+                perms.add("read")
+        return perms
+
+    def require(self, case_id: int, perm: str) -> dict[str, Any]:
+        case = self.get_case(case_id)
+        if perm not in self.permissions(case, current_user.get()):
+            if "read" not in self.permissions(case, current_user.get()):
+                raise NotFound("Fall nicht gefunden.")  # Existenz vertraulicher Fälle nicht preisgeben
+            raise Forbidden({"write": "Sie haben für diesen Fall nur Leserechte.",
+                             "review": "Prüfen/Freigeben ist für diesen Fall nicht erlaubt.",
+                             "manage": "Nur Fallverantwortliche oder die Teamleitung dürfen das ändern.",
+                             "delete": "Nur Fallverantwortliche oder die Teamleitung dürfen den Fall löschen."}.get(perm, "Keine Berechtigung."))
+        return case
+
+    # ------------------------------------------------------------------ Anwesenheit („bearbeitet gerade“)
+    def heartbeat(self, case_id: int, tab: str = "") -> list[dict[str, Any]]:
+        user = current_user.get()
+        now = time.time()
+        bucket = self._presence.setdefault(case_id, {})
+        if user:
+            bucket[user["id"]] = (user["display_name"], now, tab)
+        for uid in [u for u, (_, ts, _) in bucket.items() if now - ts > 90]:
+            bucket.pop(uid, None)
+        return [{"user_id": uid, "name": name, "tab": t, "seconds_ago": int(now - ts)}
+                for uid, (name, ts, t) in bucket.items() if not user or uid != user["id"]]
 
     # ------------------------------------------------------------------ Fälle
     def create_case(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -115,26 +242,47 @@ class Platform:
         cid = self.db.insert("cases", {
             "reference": f"EE-{year}-{count + 1:04d}", "title": title, "case_type": ctype, "purpose": purpose,
             "legal_basis": legal, "client": (payload.get("client") or "").strip(), "analyst": (payload.get("analyst") or "").strip(),
-            "status": "offen", "notes": payload.get("notes") or "", "created_at": ts, "updated_at": ts})
+            "status": "offen", "notes": payload.get("notes") or "", "created_at": ts, "updated_at": ts,
+            "owner_id": self._uid(), "due_date": (payload.get("due_date") or "").strip(),
+            "priority": payload.get("priority") if payload.get("priority") in {"niedrig", "normal", "hoch", "dringend"} else ("dringend" if ctype == "vermisst" else "normal"),
+            "restricted": 1 if payload.get("restricted") else 0})
         self.log(cid, "Fall angelegt", f"{CASE_TYPES[ctype]}: {title} · Zweck: {purpose} · Grundlage: {legal}")
         subject = payload.get("subject")
         if subject and (subject.get("label") or "").strip():
             self.create_entity(cid, {**subject, "type": "person", "is_subject": True})
-        if ctype == "vermisst":
+        if ctype in {"vermisst", "investigativ"}:
             self.generate_tasks(cid)
         return self.get_case(cid)
 
-    def list_cases(self) -> list[dict[str, Any]]:
+    def list_cases(self, view: str = "") -> list[dict[str, Any]]:
         rows = self.db.all("""
             SELECT c.*,
               (SELECT COUNT(*) FROM entities e WHERE e.case_id = c.id) AS entity_count,
               (SELECT COUNT(*) FROM findings f WHERE f.case_id = c.id AND f.status = 'neu') AS open_findings,
               (SELECT COUNT(*) FROM findings f WHERE f.case_id = c.id AND f.status = 'bestätigt') AS confirmed_findings,
-              (SELECT label FROM entities e WHERE e.case_id = c.id AND e.is_subject = 1 ORDER BY e.id LIMIT 1) AS subject_label
+              (SELECT label FROM entities e WHERE e.case_id = c.id AND e.is_subject = 1 ORDER BY e.id LIMIT 1) AS subject_label,
+              (SELECT display_name FROM users u WHERE u.id = c.owner_id) AS owner_name,
+              (SELECT display_name FROM users u WHERE u.id = c.reviewer_id) AS reviewer_name
             FROM cases c ORDER BY c.updated_at DESC, c.id DESC""")
+        user = current_user.get()
+        today = date.today().isoformat()
+        out = []
         for r in rows:
+            perms = self.permissions(r, user)
+            if "read" not in perms:
+                continue
             r["case_type_label"] = CASE_TYPES.get(r["case_type"], r["case_type"])
-        return rows
+            r["my_role"] = self.member_role(r, user) if user else None
+            r["overdue"] = bool(r["due_date"]) and r["due_date"] < today and r["status"] not in {"freigegeben", "abgeschlossen", "archiviert"}
+            mine = bool(user) and r["my_role"] in {"bearbeiter", "pruefer"}
+            if view == "mine" and not mine:
+                continue
+            if view == "review" and not (r["status"] == "zur Prüfung" and "review" in perms and (not user or r["owner_id"] != user["id"])):
+                continue
+            if view == "overdue" and not r["overdue"]:
+                continue
+            out.append(r)
+        return out
 
     def get_case(self, case_id: int) -> dict[str, Any]:
         case = self.db.one("SELECT * FROM cases WHERE id = ?", (case_id,))
@@ -143,22 +291,124 @@ class Platform:
         case["case_type_label"] = CASE_TYPES.get(case["case_type"], case["case_type"])
         return case
 
+    def case_team(self, case: dict[str, Any]) -> dict[str, Any]:
+        names = {u["id"]: u for u in self.db.all("SELECT id, username, display_name, role FROM users")}
+        members = self.db.all("SELECT m.user_id, m.role, u.display_name, u.username FROM case_members m JOIN users u ON u.id = m.user_id "
+                              "WHERE m.case_id = ? ORDER BY u.display_name", (case["id"],))
+        return {"owner": names.get(case.get("owner_id")), "reviewer": names.get(case.get("reviewer_id")), "members": members}
+
     def update_case(self, case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
-        self.get_case(case_id)
-        allowed = {k: v for k, v in payload.items() if k in {"title", "purpose", "legal_basis", "client", "analyst", "status", "notes"} and v is not None}
-        if "status" in allowed and allowed["status"] not in {"offen", "in Bearbeitung", "abgeschlossen", "archiviert"}:
-            raise Invalid("Ungültiger Status.")
-        allowed["updated_at"] = now_iso()
-        self.db.update("cases", case_id, allowed)
-        self.log(case_id, "Fall geändert", ", ".join(k for k in allowed if k != "updated_at"))
+        case = self.get_case(case_id)
+        user = current_user.get()
+        perms = self.permissions(case, user)
+        basic = {"title", "purpose", "legal_basis", "client", "analyst", "notes"}
+        team = {"owner_id", "reviewer_id", "due_date", "priority", "restricted"}
+        values = {k: v for k, v in payload.items() if k in basic | team | {"status"} and v is not None}
+        if set(values) & (basic | team) and "manage" not in perms:
+            raise Forbidden("Nur Fallverantwortliche oder die Teamleitung dürfen Stammdaten und Team ändern.")
+        for key in ("owner_id", "reviewer_id"):
+            if key in values:
+                values[key] = int(values[key]) if values[key] not in ("", 0, "0") else None
+                if values[key] and not self.db.one("SELECT id FROM users WHERE id = ? AND active = 1", (values[key],)):
+                    raise Invalid("Ausgewählte Person existiert nicht oder ist deaktiviert.")
+        owner = values.get("owner_id", case["owner_id"])
+        reviewer = values.get("reviewer_id", case["reviewer_id"])
+        if owner and reviewer and owner == reviewer:
+            raise Invalid("Vier-Augen-Prinzip: Bearbeitung und Prüfung müssen verschiedene Personen sein.")
+        if "priority" in values and values["priority"] not in {"niedrig", "normal", "hoch", "dringend"}:
+            raise Invalid("Ungültige Priorität.")
+        if "restricted" in values:
+            values["restricted"] = 1 if values["restricted"] else 0
+            if values["restricted"] and not owner:
+                raise Invalid("Ein vertraulicher Fall braucht eine verantwortliche Person.")
+        if "status" in values:
+            self._check_status_change(case, values["status"], user, perms, reviewer)
+        if "due_date" in values and values["due_date"] and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", values["due_date"]):
+            raise Invalid("Fälligkeit bitte als Datum angeben.")
+        values["updated_at"] = now_iso()
+        self.db.update("cases", case_id, values, expected_version=payload.get("version"))
+        changed = [k for k in values if k != "updated_at"]
+        names = {u["id"]: u["display_name"] for u in self.db.all("SELECT id, display_name FROM users")}
+        labels = {"owner_id": "Verantwortlich", "reviewer_id": "Prüfperson", "due_date": "Fällig", "priority": "Priorität",
+                  "restricted": "Vertraulich", "status": "Status"}
+
+        def fmt(k: str) -> str:
+            if k in {"owner_id", "reviewer_id"}:
+                return f"{labels[k]} → {names.get(values[k], 'niemand')}"
+            if k == "restricted":
+                return f"Vertraulich → {'ja' if values[k] else 'nein'}"
+            return f"{labels[k]} → {values[k]}" if k in labels else k
+
+        detail = ", ".join(fmt(k) for k in changed)
+        self.log(case_id, "Status geändert" if changed == ["status"] else "Fall geändert", detail)
         return self.get_case(case_id)
 
-    def delete_case(self, case_id: int) -> None:
+    def _check_status_change(self, case: dict[str, Any], status: str, user: dict[str, Any] | None, perms: set[str], reviewer: Any) -> None:
+        if status not in CASE_STATUSES:
+            raise Invalid("Ungültiger Status.")
+        if status == case["status"]:
+            return
+        if user is None:
+            return
+        if status == "freigegeben":
+            if "review" not in perms:
+                raise Forbidden("Freigeben dürfen nur die zugewiesene Prüfperson oder die Teamleitung.")
+            if case["owner_id"] == user["id"]:
+                raise Forbidden("Vier-Augen-Prinzip: Den eigenen Fall kann man nicht selbst freigeben.")
+            if case["status"] != "zur Prüfung":
+                raise Invalid("Freigeben ist nur aus dem Status „zur Prüfung“ möglich.")
+        elif status == "zur Prüfung":
+            if "write" not in perms:
+                raise Forbidden("Keine Berechtigung.")
+            if not reviewer:
+                raise Invalid("Bitte zuerst eine Prüfperson zuweisen (Fall bearbeiten → Team).")
+        elif "write" not in perms and "manage" not in perms:
+            raise Forbidden("Keine Berechtigung, den Status zu ändern.")
+
+    def set_members(self, case_id: int, members: list[dict[str, Any]]) -> dict[str, Any]:
+        case = self.get_case(case_id)
+        clean: dict[int, str] = {}
+        for m in members:
+            uid = int(m.get("user_id") or 0)
+            role = m.get("role") or "bearbeiter"
+            if role not in MEMBER_ROLES:
+                raise Invalid("Unbekannte Rolle im Fall.")
+            if not self.db.one("SELECT id FROM users WHERE id = ?", (uid,)):
+                raise Invalid("Unbekannte Person.")
+            if uid not in (case["owner_id"], case["reviewer_id"]):
+                clean[uid] = role
+        with self.db.tx():
+            self.db.run_in_tx("DELETE FROM case_members WHERE case_id = ?", (case_id,))
+            for uid, role in clean.items():
+                self.db.run_in_tx("INSERT INTO case_members (case_id, user_id, role, added_at) VALUES (?, ?, ?, ?)", (case_id, uid, role, now_iso()))
+        names = {u["id"]: u["display_name"] for u in self.db.all("SELECT id, display_name FROM users")}
+        self.log(case_id, "Team geändert", ", ".join(f"{names.get(u, u)} ({MEMBER_ROLES[r]})" for u, r in clean.items()) or "keine weiteren Mitglieder")
+        return self.case_team(self.get_case(case_id))
+
+    def emergency_access(self, case_id: int, reason: str) -> None:
+        """Administrativer Notfallzugriff auf einen vertraulichen Fall – nur mit Begründung, dauerhaft protokolliert."""
+        user = current_user.get()
+        if not user or user["role"] != "admin":
+            raise Forbidden("Nur die Administration darf Notfallzugriff erteilen.")
+        if len((reason or "").strip()) < 15:
+            raise Invalid("Bitte den Notfallzugriff ausführlich begründen (mind. 15 Zeichen).")
         self.get_case(case_id)
+        self.db.execute("DELETE FROM case_members WHERE case_id = ? AND user_id = ?", (case_id, user["id"]))
+        self.db.insert("case_members", {"case_id": case_id, "user_id": user["id"], "role": "leser", "added_at": now_iso()}, returning=False)
+        self.log(case_id, "NOTFALLZUGRIFF", f"{user['display_name']}: {reason.strip()}")
+
+    def restricted_cases(self) -> list[dict[str, Any]]:
+        return self.db.all("SELECT c.id, c.reference, c.created_at, c.status, u.display_name AS owner_name FROM cases c "
+                           "LEFT JOIN users u ON u.id = c.owner_id WHERE c.restricted = 1 ORDER BY c.id DESC")
+
+    def delete_case(self, case_id: int) -> None:
+        case = self.get_case(case_id)
         for e in self.db.all("SELECT photo FROM entities WHERE case_id = ? AND photo != ''", (case_id,)):
             (self.data_dir / "photos" / e["photo"]).unlink(missing_ok=True)
         self.db.execute("DELETE FROM cases WHERE id = ?", (case_id,))
-        self.log(None, "Fall gelöscht", f"Fall #{case_id} inkl. aller Daten gelöscht")
+        # Personenbezogene Protokolltexte schwärzen; Hashes bleiben, damit die Kette prüfbar bleibt
+        self.db.execute("UPDATE audit SET detail = '[gelöscht]', redacted = 1 WHERE case_id = ?", (case_id,))
+        self.log(case_id, "Fall gelöscht", f"Fall {case['reference']} inkl. aller Daten gelöscht; Protokolltexte geschwärzt")
 
     def touch(self, case_id: int) -> None:
         self.db.execute("UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), case_id))
@@ -223,7 +473,7 @@ class Platform:
             values["data"] = {k: v for k, v in data.items() if v not in (None, "", [])}
         if "is_subject" in payload:
             values["is_subject"] = 1 if payload["is_subject"] else 0
-        self.db.update("entities", entity_id, values)
+        self.db.update("entities", entity_id, values, expected_version=payload.get("version"))
         self.log(case_id, "Eintrag geändert", f"{e['label']}: " + ", ".join(values))
         self.touch(case_id)
         return self.get_entity(case_id, entity_id)
@@ -250,13 +500,22 @@ class Platform:
             img.verify()
         except Exception as exc:  # noqa: BLE001
             raise Invalid("Datei ist kein gültiges Bild.") from exc
-        name = f"{entity_id}_{hashlib.sha256(content).hexdigest()[:16]}{'.jpg' if ext == '.jpeg' else ext}"
+        name = f"{entity_id}_{hashlib.sha256(content).hexdigest()[:16]}{'.jpg' if ext == '.jpeg' else ext}.enc"
         if e["photo"]:
             (self.data_dir / "photos" / e["photo"]).unlink(missing_ok=True)
-        (self.data_dir / "photos" / name).write_bytes(content)
+        (self.data_dir / "photos" / name).write_bytes(self.vault.encrypt(content))
         self.db.update("entities", entity_id, {"photo": name})
         self.log(case_id, "Foto hinterlegt", e["label"])
         return self.get_entity(case_id, entity_id)
+
+    def photo_bytes(self, case_id: int, entity_id: int) -> tuple[bytes, str] | None:
+        """Entschlüsseltes Foto und Medientyp (Altbestände ohne Verschlüsselung werden ebenfalls gelesen)."""
+        path = self.photo_path(case_id, entity_id)
+        if not path:
+            return None
+        name = path.name.removesuffix(".enc")
+        media = {"png": "image/png", "webp": "image/webp"}.get(name.rsplit(".", 1)[-1], "image/jpeg")
+        return self.vault.decrypt(path.read_bytes()), media
 
     def photo_path(self, case_id: int, entity_id: int) -> Path | None:
         e = self._entity(case_id, entity_id)
@@ -405,8 +664,9 @@ class Platform:
         status = payload.get("status")
         if status not in {"neu", "bestätigt", "verworfen"}:
             raise Invalid("Status muss neu, bestätigt oder verworfen sein.")
+        user = current_user.get()
         self.db.update("findings", finding_id, {"status": status, "review_note": (payload.get("note") or "").strip(),
-                                                "reviewed_at": now_iso()})
+                                                "reviewed_at": now_iso(), "reviewed_by": user["display_name"] if user else "System"})
         created: list[str] = []
         if status == "bestätigt" and payload.get("add_to_graph", True) and f["entity_id"]:
             created = self._promote_finding(case_id, f)
@@ -663,6 +923,21 @@ class Platform:
                 ("Notunterkünfte, Beratungsstellen und Hilfseinrichtungen informieren", "normal"),
                 ("Zeitleiste fortlaufend pflegen und Hinweise bewerten", "normal"),
             ]
+        elif case["case_type"] == "investigativ":
+            template = [
+                ("Recherchehypothese und Leitfragen schriftlich festhalten", "hoch"),
+                ("Quellenschutz klären: Fall als vertraulich markieren, Kontaktwege zu Hinweisgebenden absichern", "hoch"),
+                ("Akteure, Organisationen und Identifikatoren vollständig erfassen", "hoch"),
+                ("Automatische Quellensuche ausführen und Treffer einzeln prüfen", "hoch"),
+                ("Register prüfen: Handelsregister, Beteiligungen (North Data), Grundbuch-/Gerichtsauskünfte soweit zulässig", "normal"),
+                ("Belege sichern (Archivkopie/Screenshot mit Datum) bevor Inhalte verschwinden", "hoch"),
+                ("Verbindungen im Graphen modellieren, Pfade zwischen Schlüsselakteuren prüfen", "normal"),
+                ("Gegenrecherche: entlastende Informationen und alternative Erklärungen suchen", "hoch"),
+                ("Jede Kernaussage mit mindestens zwei unabhängigen Quellen belegen", "hoch"),
+                ("Betroffene vor Veröffentlichung mit konkreten Vorwürfen konfrontieren, Frist und Antwort dokumentieren", "hoch"),
+                ("Vier-Augen-Prüfung (Prüfperson zuweisen, Status „zur Prüfung“)", "normal"),
+                ("Recherchedossier exportieren; personenbezogene Daten nach Abschluss löschen bzw. minimieren", "normal"),
+            ]
         else:
             template = [
                 ("Zweck und Rechtsgrundlage der Recherche dokumentieren und prüfen", "hoch"),
@@ -722,18 +997,18 @@ class Platform:
     def overview(self, case_id: int) -> dict[str, Any]:
         case = self.get_case(case_id)
         subj = self.subject(case_id)
-        counts = self.db.one("""SELECT
-            (SELECT COUNT(*) FROM entities WHERE case_id = :c) AS entities,
-            (SELECT COUNT(*) FROM entities WHERE case_id = :c AND type = 'person') AS persons,
-            (SELECT COUNT(*) FROM identifiers WHERE case_id = :c) AS identifiers,
-            (SELECT COUNT(*) FROM searches WHERE case_id = :c) AS searches,
-            (SELECT COUNT(*) FROM findings WHERE case_id = :c AND status = 'neu') AS open_findings,
-            (SELECT COUNT(*) FROM findings WHERE case_id = :c AND status = 'bestätigt') AS confirmed,
-            (SELECT COUNT(*) FROM findings WHERE case_id = :c AND status = 'verworfen') AS rejected,
-            (SELECT COUNT(*) FROM links WHERE case_id = :c) AS links,
-            (SELECT COUNT(*) FROM events WHERE case_id = :c) AS events,
-            (SELECT COUNT(*) FROM tasks WHERE case_id = :c AND done = 0) AS open_tasks,
-            (SELECT COUNT(*) FROM audit WHERE case_id = :c AND action = 'Dossier exportiert') AS exports""", {"c": case_id})
+        q = [("entities", "SELECT COUNT(*) FROM entities WHERE case_id = ?"),
+             ("persons", "SELECT COUNT(*) FROM entities WHERE case_id = ? AND type = 'person'"),
+             ("identifiers", "SELECT COUNT(*) FROM identifiers WHERE case_id = ?"),
+             ("searches", "SELECT COUNT(*) FROM searches WHERE case_id = ?"),
+             ("open_findings", "SELECT COUNT(*) FROM findings WHERE case_id = ? AND status = 'neu'"),
+             ("confirmed", "SELECT COUNT(*) FROM findings WHERE case_id = ? AND status = 'bestätigt'"),
+             ("rejected", "SELECT COUNT(*) FROM findings WHERE case_id = ? AND status = 'verworfen'"),
+             ("links", "SELECT COUNT(*) FROM links WHERE case_id = ?"),
+             ("events", "SELECT COUNT(*) FROM events WHERE case_id = ?"),
+             ("open_tasks", "SELECT COUNT(*) FROM tasks WHERE case_id = ? AND done = 0"),
+             ("exports", "SELECT COUNT(*) FROM audit WHERE case_id = ? AND action = 'Dossier exportiert'")]
+        counts = self.db.one("SELECT " + ", ".join(f"({sql}) AS {name}" for name, sql in q), [case_id] * len(q)) or {}
         steps = [
             {"key": "fall", "label": "Fall mit Zweck & Rechtsgrundlage angelegt", "done": True, "tab": "overview"},
             {"key": "person", "label": "Zielperson erfasst", "done": bool(subj), "tab": "persons"},
@@ -748,7 +1023,10 @@ class Platform:
         if case["case_type"] == "vermisst":
             steps.insert(3, {"key": "timeline", "label": "Letzte Sichtung in der Zeitleiste erfasst", "done": counts["events"] > 0, "tab": "timeline"})
         nxt = next((s for s in steps if not s["done"]), None)
-        return {"case": case, "subject": subj, "counts": counts, "steps": steps, "next_step": nxt,
+        user = current_user.get()
+        perms = sorted(self.permissions(case, user))
+        return {"case": case, "subject": subj, "counts": counts, "steps": steps, "next_step": nxt, "permissions": perms,
+                "team": self.case_team(case), "my_role": self.member_role(case, user) if user else None,
                 "progress": round(100 * sum(s["done"] for s in steps) / len(steps)),
                 "recent": self.db.all("SELECT * FROM audit WHERE case_id = ? ORDER BY id DESC LIMIT 8", (case_id,))}
 

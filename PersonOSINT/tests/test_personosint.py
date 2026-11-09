@@ -8,11 +8,10 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
-from personosint.api import create_app
+from conftest import H, build_app, setup_admin
 from personosint.matching import name_similarity, normalize, score_candidate
 from personosint.sources import HttpResponse, SourceError, research_links
 
-H = {"X-Requested-With": "EagleEye"}
 
 
 class FakeHttp:
@@ -47,10 +46,10 @@ ROUTES = {
 
 
 @pytest.fixture()
-def client(tmp_path):
+def client(tmp_path, backend):
     http = FakeHttp(ROUTES)
-    app = create_app(tmp_path, http=http, auto_geocode=False)
-    c = TestClient(app)
+    app = build_app(tmp_path, backend, http=http)
+    c = setup_admin(app)
     c.http = http  # type: ignore[attr-defined]
     return c
 
@@ -102,7 +101,8 @@ def test_case_requires_purpose_and_legal_basis(client):
 
 
 def test_write_requests_need_client_header_and_local_host(client):
-    assert client.post("/api/cases", json={}).status_code == 403
+    assert client.post("/api/cases", json={}, headers={"X-Requested-With": "anders"}).status_code == 403
+    assert client.post("/api/cases", json={}, headers={"X-CSRF-Token": "falsch"}).status_code == 403
     assert client.get("/api/cases", headers={"host": "evil.example"}).status_code == 400
 
 

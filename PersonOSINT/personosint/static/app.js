@@ -7,10 +7,11 @@
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const COLORS = window.NetworkGraph.colors();
-  const state = { meta: null, cases: [], caseId: null, tab: "overview", graph: null, map: null, findingFilter: "neu", selEntity: null, searchEntity: null, lastSearch: null };
+  const state = { meta: null, cases: [], caseId: null, tab: "overview", graph: null, map: null, findingFilter: "neu", selEntity: null, searchEntity: null, lastSearch: null, auth: null, view: "", users: [], presenceTimer: null };
 
   async function api(method, url, body) {
     const opts = { method, headers: { "X-Requested-With": "EagleEye" } };
+    if (state.auth && state.auth.csrf) opts.headers["X-CSRF-Token"] = state.auth.csrf;
     if (body instanceof FormData) opts.body = body;
     else if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
     const r = await fetch(url, opts);
@@ -18,7 +19,9 @@
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
       const msg = typeof data.detail === "string" ? data.detail : Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join("; ") : `Fehler ${r.status}`;
-      throw new Error(msg);
+      if (r.status === 401 && !url.startsWith("/api/auth/")) { showAuth(); }
+      const err = new Error(msg); err.status = r.status;
+      throw err;
     }
     return data;
   }
@@ -84,7 +87,7 @@
 
   // ------------------------------------------------------------------ Seitenleiste
   async function loadCases() {
-    state.cases = await api("GET", "/api/cases");
+    state.cases = await api("GET", "/api/cases" + (state.view ? "?view=" + state.view : ""));
     renderCaseList();
   }
 
@@ -95,10 +98,14 @@
       <a class="case-item ${c.id === state.caseId ? "active" : ""}" href="#/case/${c.id}/overview">
         <span class="t">${esc(c.subject_label || c.title)}</span>
         <span class="m"><span class="badge ${typeBadge(c.case_type)}">${esc(c.case_type_label)}</span>${esc(c.reference)}
+        ${c.restricted ? '<span class="badge b-grey" title="Vertraulicher Fall – nur für das Fallteam sichtbar">🔒</span>' : ""}
         ${c.open_findings ? `<span class="badge b-amber" title="Ungeprüfte Treffer">${c.open_findings} offen</span>` : ""}
-        ${c.status === "abgeschlossen" ? '<span class="badge b-green">abgeschlossen</span>' : ""}</span>
+        ${c.status === "zur Prüfung" ? '<span class="badge b-purple">zur Prüfung</span>' : c.status === "freigegeben" ? '<span class="badge b-green">freigegeben</span>' : c.status === "abgeschlossen" ? '<span class="badge b-green">abgeschlossen</span>' : ""}
+        ${c.overdue ? `<span class="badge b-red" title="Fällig am ${esc(c.due_date)}">überfällig</span>` : ""}
+        ${c.priority === "dringend" ? '<span class="badge b-red">dringend</span>' : ""}</span>
+        ${c.owner_name ? `<span class="m">👤 ${esc(c.owner_name)}${c.reviewer_name ? " · Prüfung: " + esc(c.reviewer_name) : ""}</span>` : ""}
       </a>`).join("") : `<div class="empty small">${state.cases.length ? "Kein Fall passt zum Filter." : "Noch keine Fälle.<br><br>Legen Sie oben rechts einen <b>neuen Fall</b> an oder laden Sie den Beispielfall."}</div>`;
-    $("#sidebar-foot").innerHTML = `${state.cases.length} Fälle · v${esc(state.meta ? state.meta.version : "")}<br><span title="${esc(state.meta ? state.meta.data_dir : "")}">Daten lokal gespeichert</span>`;
+    $("#sidebar-foot").innerHTML = `${state.cases.length} Fälle · v${esc(state.meta ? state.meta.version : "")}<br><span>${state.meta && state.meta.database === "postgres" ? "Teamserver (PostgreSQL)" : "Einzelplatz (lokal)"}</span>`;
   }
 
   // ------------------------------------------------------------------ Routing
@@ -107,6 +114,10 @@
     if (state.graph) { state.graph.destroy(); state.graph = null; }
     if (state.map) { state.map.remove(); state.map = null; }
     $("#sidebar").classList.remove("open");
+    stopPresence();
+    document.body.classList.remove("readonly");
+    if (location.hash.startsWith("#/admin")) { state.caseId = null; renderAdmin(location.hash.split("/")[2] || "users"); renderCaseList(); return; }
+    if (location.hash.startsWith("#/account")) { state.caseId = null; renderAccount(); renderCaseList(); return; }
     if (m) {
       const id = Number(m[1]);
       if (id !== state.caseId) { state.selEntity = null; state.searchEntity = null; state.lastSearch = null; state.findingFilter = "neu"; }
@@ -160,8 +171,10 @@
   }
 
   // ------------------------------------------------------------------ Neuer Fall (Assistent)
-  function openNewCase() {
+  async function openNewCase() {
+    try { state.users = await api("GET", "/api/users"); } catch (_) { /* vorhandene Liste nutzen */ }
     const types = [
+      ["investigativ", "📰", "Investigativrecherche", "Akteure, Netzwerke und Belege für eine Recherche – mit Quellenschutz und Gegenrecherche."],
       ["personensuche", "🔎", "Personensuche", "Eine Person identifizieren, Online-Präsenz und Lebensumfeld aufklären."],
       ["vermisst", "🆘", "Vermisstenfall", "Vermisste Person: letzte Sichtung, Zeitleiste & Karte, Gefährdung, Suchplakat."],
       ["verbindungen", "🕸️", "Verbindungsanalyse", "Beziehungen zwischen mehreren Personen und Organisationen aufdecken."],
@@ -174,14 +187,18 @@
         <section data-step="1">
           <p class="muted">Welche Art von Recherche möchten Sie durchführen?</p>
           <div class="type-cards">${types.map((t, i) => `<button type="button" class="type-card ${i === 0 ? "selected" : ""}" data-type="${t[0]}"><div class="ic">${t[1]}</div><b>${t[2]}</b><div class="small muted">${t[3]}</div></button>`).join("")}</div>
-          <input type="hidden" name="case_type" value="personensuche">
+          <input type="hidden" name="case_type" value="investigativ">
         </section>
         <section data-step="2" class="hidden">
           <label class="field"><span>Falltitel *</span><input name="title" required placeholder="z. B. Aufenthaltsermittlung Max Mustermann"></label>
           <label class="field"><span>Zweck der Recherche *</span><textarea name="purpose" required placeholder="Warum wird recherchiert? Welches Ergebnis wird benötigt?"></textarea><small>Pflichtangabe – wird im Dossier und Protokoll dokumentiert.</small></label>
           <label class="field"><span>Rechtsgrundlage / Auftrag *</span><select name="legal_basis_sel">${bases.map((b) => opt(b, b)).join("")}</select></label>
           <label class="field hidden" id="lb-other"><span>Rechtsgrundlage beschreiben</span><input name="legal_basis_other"></label>
-          <div class="grid g2"><label class="field"><span>Auftraggeber</span><input name="client"></label><label class="field"><span>Bearbeiter/in</span><input name="analyst"></label></div>
+          <div class="grid g2"><label class="field"><span>Auftraggeber / Redaktion</span><input name="client"></label>
+            <label class="field"><span>Prüfperson (Vier-Augen)</span><select name="reviewer_id">${opt("", "– später festlegen –")}${state.users.filter((u) => u.id !== state.auth.user.id && u.role !== "leser").map((u) => opt(u.id, `${u.display_name} (${u.role_label})`)).join("")}</select></label>
+            <label class="field"><span>Fällig am</span><input type="date" name="due_date"></label>
+            <label class="field"><span>Priorität</span><select name="priority">${["normal", "hoch", "dringend", "niedrig"].map((x) => opt(x, x)).join("")}</select></label></div>
+          <label class="check"><input type="checkbox" name="restricted" checked> <span><b>🔒 Vertraulicher Fall (Quellenschutz)</b><br><span class="small muted">Nur das Fallteam sieht den Fall – auch Teamleitung und Administration nicht. Empfohlen für investigative Recherchen.</span></span></label>
         </section>
         <section data-step="3" class="hidden">
           <p class="muted small">Optional – Sie können die Person auch später erfassen. Mehr Angaben = bessere Treffer.</p>
@@ -203,7 +220,10 @@
       $$(".type-card", m.el).forEach((x) => x.classList.remove("selected")); b.classList.add("selected");
       form.case_type.value = b.dataset.type;
       if (b.dataset.type === "vermisst") form.legal_basis_sel.value = "Auftrag von Angehörigen (Vermisstensuche)";
+      if (b.dataset.type === "investigativ") form.legal_basis_sel.value = "Journalistische Recherche (Medienprivileg)";
+      form.restricted.checked = b.dataset.type === "investigativ";
     });
+    form.legal_basis_sel.value = "Journalistische Recherche (Medienprivileg)";
     form.legal_basis_sel.onchange = () => $("#lb-other", m.el).classList.toggle("hidden", !form.legal_basis_sel.value.startsWith("Sonstige"));
     const show = () => {
       $$("[data-step]", m.el).forEach((s) => s.classList.toggle("hidden", Number(s.dataset.step) !== step));
@@ -222,9 +242,11 @@
       const legal = d.legal_basis_sel.startsWith("Sonstige") ? d.legal_basis_other : d.legal_basis_sel;
       const idents = [["location", d.s_loc], ["username", d.s_user], ["email", d.s_email], ["phone", d.s_phone], ["employer", d.s_emp]]
         .filter((x) => x[1]).map(([kind, value]) => ({ kind, value }));
-      const payload = { case_type: d.case_type, title: d.title, purpose: d.purpose, legal_basis: legal, client: d.client, analyst: d.analyst,
+      const payload = { case_type: d.case_type, title: d.title, purpose: d.purpose, legal_basis: legal, client: d.client,
+        due_date: d.due_date, priority: d.priority, restricted: form.restricted.checked,
         subject: d.s_name ? { label: d.s_name, data: { geburtsdatum: d.s_birth, wohnort: d.s_loc, vermisst_status: d.case_type === "vermisst" ? "vermisst" : "" }, identifiers: idents } : null };
       const c = await guard(() => api("POST", "/api/cases", payload), "Fall angelegt");
+      if (d.reviewer_id) await guard(() => api("PATCH", `/api/cases/${c.id}`, { reviewer_id: Number(d.reviewer_id) }));
       m.close();
       await loadCases();
       location.hash = `#/case/${c.id}/${d.s_name ? "overview" : "persons"}`;
@@ -246,34 +268,115 @@
         <div><div class="ref">${esc(c.reference)} · <span class="badge ${typeBadge(c.case_type)}">${esc(c.case_type_label)}</span></div>
           <h1>${esc(c.title)}</h1></div>
         <div class="actions">
-          <select id="case-status" aria-label="Fallstatus" style="width:auto">${["offen", "in Bearbeitung", "abgeschlossen", "archiviert"].map((s) => opt(s, "Status: " + s, c.status)).join("")}</select>
-          <button class="btn" id="case-edit">✎ Fall bearbeiten</button>
+          ${c.restricted ? '<span class="badge b-grey" title="Nur das Fallteam sieht diesen Fall">🔒 vertraulich</span>' : ""}
+          <select id="case-status" aria-label="Fallstatus" style="width:auto" ${ov.permissions.includes("write") || ov.permissions.includes("review") ? "" : "disabled"}>${state.meta.case_statuses.map((s) => opt(s, "Status: " + s, c.status)).join("")}</select>
+          <button class="btn ${ov.permissions.includes("manage") ? "" : "hidden"}" id="case-edit">✎ Fall & Team</button>
           <a class="btn btn-primary" href="#/case/${c.id}/dossier">⬇ Dossier</a>
         </div>
       </div>
       <nav class="tabs" role="tablist">${TABS.filter((t) => t[0] !== "timeline" || true).map(([k, l]) => `<a role="tab" class="tab ${state.tab === k ? "active" : ""}" href="#/case/${c.id}/${k}">${l}${k === "search" && ov.counts.open_findings ? `<span class="count">${ov.counts.open_findings}</span>` : ""}</a>`).join("")}</nav>
+      <div id="presence"></div>
+      ${ov.permissions.includes("write") ? "" : `<div class="readonly-note">👁 Sie haben für diesen Fall ${ov.permissions.includes("review") ? "Prüf- und Leserechte" : "nur Leserechte"}.</div>`}
       <section id="tab"></section>`;
-    $("#case-status").onchange = async (e) => { await guard(() => api("PATCH", `/api/cases/${c.id}`, { status: e.target.value }), "Status gespeichert"); loadCases(); };
+    document.body.classList.toggle("readonly", !ov.permissions.includes("write"));
+    $("#case-status").onchange = async (e) => {
+      try { await guard(() => api("PATCH", `/api/cases/${c.id}`, { status: e.target.value }), "Status gespeichert"); } catch (_) { /* Meldung bereits angezeigt */ }
+      loadCases(); renderCase();
+    };
+    startPresence(c.id);
     $("#case-edit").onclick = () => editCase(c);
     const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, audit: tabAudit }[state.tab] || tabOverview;
     await r($("#tab"), ov);
+    markWrite();
   }
 
-  function editCase(c) {
-    const m = modal("Fall bearbeiten", `<form id="ec">
+  /* Schreibende Bedienelemente markieren, damit sie bei Leserechten ausgeblendet werden (Server prüft zusätzlich). */
+  function markWrite() {
+    ["#ent-new", "#ed-del", "#add-ident", "#ed-form button", "#ed-photo", "label:has(#ed-photo)", "[data-del-ident]", "#s-run", "#f-manual", "#f-bulk",
+     "#l-form", "#l-newent", "[data-sugg]", "[data-del-link]", "#ev-new", "[data-del-ev]", "#t-gen", "#t-form", "[data-del-task]", "#sel-link"]
+      .forEach((sel) => { try { $$(sel, $("#main")).forEach((x) => x.classList.add("w")); } catch (_) { /* Selektor nicht unterstützt */ } });
+    if (state.ov && !state.ov.permissions.includes("review")) $$("[data-review], .finding .actions input", $("#main")).forEach((x) => x.classList.add("w"));
+    if (state.ov && !state.ov.permissions.includes("write")) $$("[data-task], #ed-form input, #ed-form textarea, #ed-form select", $("#main")).forEach((x) => (x.disabled = true));
+  }
+
+  function stopPresence() { if (state.presenceTimer) { clearInterval(state.presenceTimer); state.presenceTimer = null; } }
+  function startPresence(cid) {
+    stopPresence();
+    const beat = async () => {
+      if (document.hidden || state.caseId !== cid) return;
+      try {
+        const r = await api("POST", `/api/cases/${cid}/presence`, { tab: state.tab });
+        const box = $("#presence");
+        if (box) box.innerHTML = r.others.length ? `<div class="presence">👥 Gerade ebenfalls im Fall: ${r.others.map((o) => `<b>${esc(o.name)}</b> (${esc((TABS.find((t) => t[0] === o.tab) || [0, o.tab])[1])})`).join(", ")} – Änderungen können sich überschneiden.</div>` : "";
+        if (state.ov && r.version !== state.ov.case.version && box) box.innerHTML += `<div class="presence">↻ Der Fall wurde inzwischen geändert. <a href="#" id="pr-reload">Neu laden</a></div>`;
+        const rl = $("#pr-reload"); if (rl) rl.onclick = (e) => { e.preventDefault(); renderCase(); };
+      } catch (_) { /* still */ }
+    };
+    beat();
+    state.presenceTimer = setInterval(beat, 30000);
+  }
+
+  async function editCase(c) {
+    try { state.users = await api("GET", "/api/users"); } catch (_) { /* vorhandene Liste nutzen */ }
+    const ov = state.ov, team = ov.team, users = state.users;
+    const canDelete = ov.permissions.includes("delete");
+    const userOpts = (sel, filter = () => true) => opt("", "– niemand –") + users.filter(filter).map((u) => opt(u.id, `${u.display_name} (${u.role_label})`, sel)).join("");
+    const memberRow = (m) => `<div class="team-row" data-uid="${m.user_id}"><span class="grow">${esc(m.display_name)}</span>
+      <select data-mrole style="width:auto">${Object.entries(state.meta.member_roles).map(([k, l]) => opt(k, l, m.role)).join("")}</select>
+      <button type="button" class="btn btn-sm btn-danger" data-mdel>×</button></div>`;
+    const m = modal("Fall & Team bearbeiten", `<form id="ec">
+      <h3>Stammdaten</h3>
       <label class="field"><span>Titel</span><input name="title" value="${esc(c.title)}"></label>
       <label class="field"><span>Zweck</span><textarea name="purpose">${esc(c.purpose)}</textarea></label>
       <label class="field"><span>Rechtsgrundlage / Auftrag</span><input name="legal_basis" value="${esc(c.legal_basis)}"></label>
-      <div class="grid g2"><label class="field"><span>Auftraggeber</span><input name="client" value="${esc(c.client)}"></label>
-      <label class="field"><span>Bearbeiter/in</span><input name="analyst" value="${esc(c.analyst)}"></label></div>
-      <label class="field"><span>Notizen</span><textarea name="notes">${esc(c.notes)}</textarea></label></form>`,
-      `<button class="btn btn-danger" id="ec-del" style="margin-right:auto">Fall löschen</button><button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="ec-save">Speichern</button>`);
-    $("#ec-save", m.el).onclick = async () => { await guard(() => api("PATCH", `/api/cases/${c.id}`, formData($("#ec", m.el))), "Gespeichert"); m.close(); loadCases(); renderCase(); };
-    $("#ec-del", m.el).onclick = async () => {
-      if (!(await confirmDlg(`Fall „${c.title}“ mit allen Personen, Treffern, Fotos und Protokollen endgültig löschen?`))) return;
+      <label class="field"><span>Auftraggeber / Redaktion</span><input name="client" value="${esc(c.client)}"></label>
+      <label class="field"><span>Notizen</span><textarea name="notes">${esc(c.notes)}</textarea></label>
+      <h3>Team & Prüfung</h3>
+      <div class="grid g2">
+        <label class="field"><span>Verantwortlich (Bearbeitung)</span><select name="owner_id">${userOpts(c.owner_id, (u) => u.role !== "leser" && u.role !== "pruefer")}</select></label>
+        <label class="field"><span>Prüfperson (Vier-Augen)</span><select name="reviewer_id">${userOpts(c.reviewer_id, (u) => u.role !== "leser")}</select></label>
+        <label class="field"><span>Fällig am</span><input type="date" name="due_date" value="${esc(c.due_date)}"></label>
+        <label class="field"><span>Priorität</span><select name="priority">${["niedrig", "normal", "hoch", "dringend"].map((x) => opt(x, x, c.priority)).join("")}</select></label>
+      </div>
+      <label class="check"><input type="checkbox" name="restricted" ${c.restricted ? "checked" : ""}> <span><b>🔒 Vertraulich (Quellenschutz)</b> – nur das Fallteam hat Zugriff, auch nicht Teamleitung/Administration.</span></label>
+      <h4 style="margin:.8rem 0 .3rem">Weitere Teammitglieder</h4>
+      <div id="members">${team.members.map(memberRow).join("") || '<div class="small muted" id="no-members">Keine.</div>'}</div>
+      <div class="row" style="margin-top:.4rem"><select id="m-add" class="grow">${opt("", "Person hinzufügen …")}${users.filter((u) => u.id !== c.owner_id && u.id !== c.reviewer_id && !team.members.some((x) => x.user_id === u.id)).map((u) => opt(u.id, `${u.display_name} (${u.role_label})`)).join("")}</select></div>
+      </form>`,
+      `${canDelete ? '<button class="btn btn-danger" id="ec-del" style="margin-right:auto">Fall löschen</button>' : ""}<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="ec-save">Speichern</button>`, { width: "720px" });
+    const wire = () => $$("[data-mdel]", m.el).forEach((b) => (b.onclick = () => b.closest(".team-row").remove()));
+    wire();
+    $("#m-add", m.el).onchange = (e) => {
+      const u = users.find((x) => String(x.id) === e.target.value);
+      if (!u) return;
+      const nm = $("#no-members", m.el); if (nm) nm.remove();
+      $("#members", m.el).insertAdjacentHTML("beforeend", memberRow({ user_id: u.id, display_name: u.display_name, role: u.role === "leser" ? "leser" : "bearbeiter" }));
+      e.target.querySelector(`option[value="${u.id}"]`).remove(); e.target.value = ""; wire();
+    };
+    $("#ec-save", m.el).onclick = async () => {
+      const f = $("#ec", m.el), d = formData(f);
+      const payload = { title: d.title, purpose: d.purpose, legal_basis: d.legal_basis, client: d.client, notes: d.notes, due_date: d.due_date, priority: d.priority,
+        owner_id: d.owner_id ? Number(d.owner_id) : 0, reviewer_id: d.reviewer_id ? Number(d.reviewer_id) : 0, restricted: f.restricted.checked, version: c.version };
+      if (payload.restricted && !c.restricted && !(await confirmDlg("Fall als vertraulich markieren? Teamleitung und Administration verlieren dann den Zugriff (Notfallzugriff nur mit protokollierter Begründung).", "Vertraulich machen"))) return;
+      try {
+        await guard(() => api("PATCH", `/api/cases/${c.id}`, payload));
+        const members = $$(".team-row", m.el).map((r) => ({ user_id: Number(r.dataset.uid), role: $("[data-mrole]", r).value }));
+        await guard(() => api("PUT", `/api/cases/${c.id}/members`, { members }), "Gespeichert");
+      } catch (e) { if (e.status === 409) { m.close(); renderCase(); } return; }
+      m.close(); loadCases();
+      try { await renderCase(); } catch (_) { location.hash = "#/"; }
+    };
+    const del = $("#ec-del", m.el);
+    if (del) del.onclick = async () => {
+      if (!(await confirmDlg(`Fall „${c.title}“ mit allen Personen, Treffern und Fotos endgültig löschen? Protokolltexte werden geschwärzt.`))) return;
       await guard(() => api("DELETE", `/api/cases/${c.id}`), "Fall gelöscht");
       m.close(); await loadCases(); location.hash = "#/";
     };
+  }
+
+  async function setStatus(cid, status, msg) {
+    try { await guard(() => api("PATCH", `/api/cases/${cid}`, { status }), msg); } catch (_) { return; }
+    loadCases(); renderCase();
   }
 
   // ------------------------------------------------------------------ Tab: Übersicht
@@ -304,6 +407,7 @@
             ${missing && s.risk ? `<div class="risk risk-${esc(s.risk.level)}"><b>Gefährdung: ${esc(s.risk.level.toUpperCase())}</b> – ${esc(s.risk.advice)}${s.risk.factors.length ? `<div class="small">${s.risk.factors.map((f) => esc(f.label)).join(" · ")}</div>` : ""}</div>` : ""}`
             : `<div class="empty"><div class="big">👤</div>Noch keine Zielperson erfasst.<br><br><a class="btn btn-primary" href="#/case/${ov.case.id}/persons">Person erfassen</a></div>`}
           </div>
+          ${teamCard(ov)}
           <div class="card"><h3>Auftrag</h3>
             <div class="small"><b>Zweck:</b> ${esc(ov.case.purpose)}</div>
             <div class="small"><b>Rechtsgrundlage:</b> ${esc(ov.case.legal_basis)}</div>
@@ -324,7 +428,33 @@
         </div>
       </div>`;
     $$(".checklist li", el).forEach((li) => li.onclick = () => { location.hash = `#/case/${ov.case.id}/${li.dataset.tab}`; });
+    $$("[data-status]", el).forEach((b) => (b.onclick = () => setStatus(ov.case.id, b.dataset.status, b.dataset.msg)));
+    const te = $("#team-edit", el); if (te) te.onclick = () => editCase(ov.case);
     $$("[data-ent]", el).forEach((a) => a.addEventListener("click", () => { state.selEntity = Number(a.dataset.ent); }));
+  }
+
+  function teamCard(ov) {
+    const c = ov.case, t = ov.team, me = state.auth.user, perms = ov.permissions;
+    const isOwner = c.owner_id === me.id;
+    const btns = [];
+    if (["offen", "in Bearbeitung"].includes(c.status) && perms.includes("write")) btns.push(`<button class="btn btn-sm btn-primary" data-status="zur Prüfung" data-msg="Zur Prüfung übergeben">➜ Zur Prüfung übergeben</button>`);
+    if (c.status === "offen" && perms.includes("write")) btns.push(`<button class="btn btn-sm" data-status="in Bearbeitung" data-msg="Status: in Bearbeitung">In Bearbeitung</button>`);
+    if (c.status === "zur Prüfung" && perms.includes("review") && !isOwner) {
+      btns.push(`<button class="btn btn-sm btn-success" data-status="freigegeben" data-msg="Freigegeben">✓ Freigeben</button>`);
+      btns.push(`<button class="btn btn-sm" data-status="in Bearbeitung" data-msg="Zurück an die Bearbeitung">↩ Zurück an Bearbeitung</button>`);
+    }
+    if (c.status === "freigegeben" && perms.includes("write")) btns.push(`<button class="btn btn-sm" data-status="abgeschlossen" data-msg="Abgeschlossen">Abschließen</button>`);
+    const hint = c.status === "zur Prüfung" && isOwner ? "Wartet auf Freigabe durch " + esc(t.reviewer ? t.reviewer.display_name : "die Prüfperson") + "." :
+      c.status === "freigegeben" ? "Im Vier-Augen-Verfahren freigegeben – das Dossier trägt keinen Entwurfsvermerk mehr." : "";
+    return `<div class="card"><div class="card-head"><h3>👥 Team & Prüfung</h3><div class="right">${perms.includes("manage") ? '<button class="btn btn-sm" id="team-edit">Bearbeiten</button>' : ""}</div></div>
+      <table class="tbl"><tr><td>Status</td><td><b>${esc(c.status)}</b></td></tr>
+      <tr><td>Verantwortlich</td><td>${t.owner ? esc(t.owner.display_name) : '<span class="muted">nicht zugewiesen</span>'}</td></tr>
+      <tr><td>Prüfung (Vier-Augen)</td><td>${t.reviewer ? esc(t.reviewer.display_name) : '<span class="muted">nicht zugewiesen</span>'}</td></tr>
+      ${t.members.length ? `<tr><td>Weitere</td><td>${t.members.map((m) => `${esc(m.display_name)} <span class="muted small">(${esc(state.meta.member_roles[m.role])})</span>`).join(", ")}</td></tr>` : ""}
+      <tr><td>Fällig</td><td>${c.due_date ? esc(new Date(c.due_date).toLocaleDateString("de-DE")) : "–"} · Priorität ${esc(c.priority)}</td></tr>
+      <tr><td>Vertraulich</td><td>${c.restricted ? "🔒 ja – nur Fallteam" : "nein"}</td></tr></table>
+      ${hint ? `<div class="small muted" style="margin-top:.4rem">${hint}</div>` : ""}
+      ${btns.length ? `<div class="workflow">${btns.join("")}</div>` : ""}</div>`;
   }
 
   // ------------------------------------------------------------------ Tab: Personen
@@ -439,9 +569,10 @@
       Object.entries(raw).forEach(([k, v]) => { if (!k.startsWith("__") && !k.startsWith("risk_")) data[k] = v; });
       if (missing) data.risiko = Object.keys(state.meta.risk_factors).filter((k) => f["risk_" + k] && f["risk_" + k].checked);
       if (data.lat !== undefined) { data.lat = data.lat ? Number(String(data.lat).replace(",", ".")) : ""; data.lon = data.lon ? Number(String(data.lon).replace(",", ".")) : ""; }
-      const payload = { label: raw.__label, data };
+      const payload = { label: raw.__label, data, version: e.version };
       if (isPerson) payload.is_subject = !!(f.__subject && f.__subject.checked);
-      await guard(() => api("PATCH", `/api/cases/${ov.case.id}/entities/${e.id}`, payload), "Gespeichert");
+      try { await guard(() => api("PATCH", `/api/cases/${ov.case.id}/entities/${e.id}`, payload), "Gespeichert"); }
+      catch (err) { if (err.status !== 409) return; }
       renderCase();
     };
     $("#ed-del").onclick = async () => {
@@ -895,16 +1026,240 @@
       <p class="small muted">Version ${esc(state.meta.version)} · API-Dokumentation: <a href="/api/docs" target="_blank">/api/docs</a></p>`, `<button class="btn btn-primary" data-close>Verstanden</button>`);
   }
 
+  // ------------------------------------------------------------------ Anmeldung
+  const LOGO = `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#0f2a4a" stroke="#facc15" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#facc15"/><circle cx="16" cy="16" r="2.5" fill="#0f2a4a"/></svg>`;
+  const PW_RULES = "Mind. 12 Zeichen und drei von: Kleinbuchstaben, Großbuchstaben, Ziffern, Sonderzeichen. Tipp: ein Satz aus mehreren Wörtern.";
+
+  async function showAuth() {
+    stopPresence();
+    const st = await api("GET", "/api/auth/state");
+    state.auth = st;
+    if (st.authenticated && st.state === "ok") { $("#auth-root").classList.add("hidden"); $("#auth-root").innerHTML = ""; return startApp(); }
+    const root = $("#auth-root");
+    root.classList.remove("hidden");
+    const card = (inner) => { root.innerHTML = `<div class="auth-card"><div class="brand-big">${LOGO}<span><b>EagleEye</b> PersonOSINT</span></div>${inner}</div>`; const f = $("input", root); if (f) f.focus(); };
+    const fail = (e) => { const box = $("#auth-err", root); if (box) { box.textContent = e.message; box.classList.remove("hidden"); } };
+    const errBox = '<div id="auth-err" class="bad-box hidden" style="margin-bottom:.7rem"></div>';
+
+    if (st.setup_required) {
+      card(`<h2>Ersteinrichtung</h2><p class="muted small">Legen Sie das erste Konto an. Es erhält die Rolle <b>Administration</b> und kann weitere Teammitglieder einladen.</p>${errBox}
+        <form id="af"><label class="field"><span>Benutzername</span><input name="username" autocomplete="username" required placeholder="z. B. m.sprenger"></label>
+        <label class="field"><span>Anzeigename</span><input name="display_name" required placeholder="Vor- und Nachname"></label>
+        <label class="field"><span>Passwort</span><input type="password" name="password" autocomplete="new-password" required></label><div class="pw-rules">${PW_RULES}</div>
+        <label class="field"><span>Passwort wiederholen</span><input type="password" name="password2" autocomplete="new-password" required></label>
+        <button class="btn btn-primary">Konto anlegen</button></form>`);
+      $("#af", root).onsubmit = async (ev) => {
+        ev.preventDefault(); const d = formData(ev.target);
+        if (d.password !== d.password2) return fail(new Error("Die Passwörter stimmen nicht überein."));
+        try { await api("POST", "/api/auth/setup", d); showAuth(); } catch (e) { fail(e); }
+      };
+      return;
+    }
+    if (!st.authenticated) {
+      card(`<h2>Anmelden</h2><p class="muted small">Zugang nur für berechtigte Teammitglieder. Alle Anmeldungen werden protokolliert.</p>${errBox}
+        <form id="af"><label class="field"><span>Benutzername</span><input name="username" autocomplete="username" required></label>
+        <label class="field"><span>Passwort</span><input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="btn btn-primary">Anmelden</button></form>
+        <p class="small muted" style="margin-top:1rem">Passwort vergessen? Die Administration kann es zurücksetzen.</p>`);
+      $("#af", root).onsubmit = async (ev) => { ev.preventDefault(); try { await api("POST", "/api/auth/login", formData(ev.target)); showAuth(); } catch (e) { fail(e); } };
+      return;
+    }
+    const logoutLink = '<p class="small" style="margin-top:1rem;text-align:center"><a href="#" id="af-out">Abmelden</a></p>';
+    if (st.state === "mfa") {
+      card(`<h2>Zwei-Faktor-Code</h2><p class="muted small">Hallo ${esc(st.user.display_name)}, bitte den 6-stelligen Code aus Ihrer Authenticator-App eingeben.</p>${errBox}
+        <form id="af"><input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required placeholder="000000">
+        <button class="btn btn-primary" style="margin-top:.8rem">Bestätigen</button></form>${logoutLink}`);
+      $("#af", root).onsubmit = async (ev) => { ev.preventDefault(); try { await api("POST", "/api/auth/mfa", formData(ev.target)); showAuth(); } catch (e) { fail(e); if (e.status === 423) showAuth(); } };
+    } else if (st.state === "password") {
+      card(`<h2>Neues Passwort festlegen</h2><p class="muted small">Ihr Konto wurde mit einem Startpasswort angelegt bzw. zurückgesetzt. Bitte jetzt ein eigenes Passwort wählen.</p>${errBox}
+        <form id="af"><label class="field"><span>Bisheriges Passwort</span><input type="password" name="old_password" autocomplete="current-password" required></label>
+        <label class="field"><span>Neues Passwort</span><input type="password" name="new_password" autocomplete="new-password" required></label><div class="pw-rules">${PW_RULES}</div>
+        <label class="field"><span>Neues Passwort wiederholen</span><input type="password" name="new_password2" autocomplete="new-password" required></label>
+        <button class="btn btn-primary">Speichern</button></form>${logoutLink}`);
+      $("#af", root).onsubmit = async (ev) => {
+        ev.preventDefault(); const d = formData(ev.target);
+        if (d.new_password !== d.new_password2) return fail(new Error("Die Passwörter stimmen nicht überein."));
+        try { await api("POST", "/api/auth/password", d); toast("Passwort geändert", "ok"); showAuth(); } catch (e) { fail(e); }
+      };
+    } else if (st.state === "mfa_setup") {
+      await totpSetup(card, fail, errBox, logoutLink, () => showAuth());
+    }
+    const out = $("#af-out", root); if (out) out.onclick = async (e) => { e.preventDefault(); await api("POST", "/api/auth/logout"); state.auth = null; showAuth(); };
+  }
+
+  async function totpSetup(card, fail, errBox, extra, done) {
+    let s;
+    try { s = await api("POST", "/api/auth/totp/begin"); } catch (e) { return toast(e.message, "err"); }
+    card(`<h2>Zwei-Faktor-Anmeldung einrichten</h2>
+      <ol class="small" style="padding-left:1.1rem"><li>Authenticator-App öffnen (z. B. Aegis, 2FAS, Google/Microsoft Authenticator).</li>
+      <li>QR-Code scannen oder den Schlüssel manuell eingeben.</li><li>Den angezeigten 6-stelligen Code unten bestätigen.</li></ol>
+      <div class="qr">${s.qr_svg || ""}</div><code class="secret">${esc(s.secret)}</code>${errBox}
+      <form id="af"><input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required placeholder="000000">
+      <button class="btn btn-primary" style="margin-top:.8rem">Aktivieren</button></form>${extra}`);
+    $("#af").onsubmit = async (ev) => { ev.preventDefault(); try { await api("POST", "/api/auth/totp/confirm", formData(ev.target)); toast("Zwei-Faktor-Anmeldung aktiv", "ok"); done(); } catch (e) { fail(e); } };
+  }
+
+  function renderUserMenu() {
+    const u = state.auth.user;
+    const initials = u.display_name.split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
+    $("#user-menu").innerHTML = `<button class="user-btn" id="um-btn" aria-haspopup="true"><span class="av">${esc(initials)}</span><span class="nm">${esc(u.display_name)}</span></button>
+      <div class="user-drop hidden" id="um-drop"><div class="who"><b>${esc(u.display_name)}</b><br><span class="muted">${esc(u.role_label)} · @${esc(u.username)}</span></div>
+      <a href="#/account">🔑 Mein Konto & Sicherheit</a>${u.role === "admin" ? '<a href="#/admin/users">⚙️ Verwaltung</a>' : ""}
+      <button id="um-out">⎋ Abmelden</button></div>`;
+    const drop = $("#um-drop");
+    $("#um-btn").onclick = (e) => { e.stopPropagation(); drop.classList.toggle("hidden"); };
+    document.addEventListener("click", () => drop.classList.add("hidden"));
+    $("#um-out").onclick = async () => { await api("POST", "/api/auth/logout"); state.auth = null; location.hash = "#/"; showAuth(); };
+    $("#btn-new-case").classList.toggle("hidden", !state.auth.can_create_cases);
+  }
+
+  // ------------------------------------------------------------------ Mein Konto
+  function renderAccount() {
+    const u = state.auth.user;
+    $("#main").innerHTML = `<h1>Mein Konto & Sicherheit</h1>
+      <div class="grid g2">
+        <div class="card"><h2>Passwort ändern</h2><form id="pw">
+          <label class="field"><span>Bisheriges Passwort</span><input type="password" name="old_password" autocomplete="current-password" required></label>
+          <label class="field"><span>Neues Passwort</span><input type="password" name="new_password" autocomplete="new-password" required><small>${PW_RULES}</small></label>
+          <label class="field"><span>Wiederholen</span><input type="password" name="new_password2" autocomplete="new-password" required></label>
+          <button class="btn btn-primary">Passwort ändern</button></form></div>
+        <div class="card"><h2>Zwei-Faktor-Anmeldung</h2>
+          <p>${u.totp_enabled ? '<span class="badge b-green">aktiv</span> Ihr Konto ist mit einem zweiten Faktor geschützt.' : '<span class="badge b-red">nicht eingerichtet</span>'}</p>
+          <p class="small muted">Neues Smartphone? Richten Sie den Zugang hier neu ein – der alte Code wird dabei ungültig und andere Sitzungen werden beendet.</p>
+          <button class="btn" id="re2fa">${u.totp_enabled ? "Neu einrichten" : "Jetzt einrichten"}</button>
+          <h3 style="margin-top:1rem">Rolle</h3><p><b>${esc(u.role_label)}</b> – <span class="small muted">${esc(state.meta.role_help[u.role])}</span></p></div>
+      </div>`;
+    $("#pw").onsubmit = async (ev) => {
+      ev.preventDefault(); const d = formData(ev.target);
+      if (d.new_password !== d.new_password2) return toast("Die Passwörter stimmen nicht überein.", "err");
+      await guard(() => api("POST", "/api/auth/password", d), "Passwort geändert"); ev.target.reset();
+    };
+    $("#re2fa").onclick = () => {
+      const m = modal("Zwei-Faktor-Anmeldung einrichten", '<div id="m2fa"></div>');
+      const card = (inner) => { $("#m2fa", m.el).innerHTML = inner; };
+      const fail = (e) => { const b = $("#auth-err", m.el); if (b) { b.textContent = e.message; b.classList.remove("hidden"); } };
+      totpSetup(card, fail, '<div id="auth-err" class="bad-box hidden" style="margin-bottom:.7rem"></div>', "", async () => { m.close(); state.auth = await api("GET", "/api/auth/state"); renderAccount(); });
+    };
+  }
+
+  // ------------------------------------------------------------------ Verwaltung (Administration)
+  async function renderAdmin(section) {
+    if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
+    const tabs = [["users", "👤 Benutzer"], ["security", "🛡️ Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
+    const el = $("#adm");
+    if (section === "users") {
+      const users = await api("GET", "/api/admin/users");
+      el.innerHTML = `<div class="card"><div class="card-head"><h2>Benutzer (${users.length})</h2><div class="right"><button class="btn btn-primary" id="u-new">＋ Person einladen</button></div></div>
+        <table class="tbl"><tr><th>Name</th><th>Rolle</th><th>2FA</th><th>Status</th><th>Letzte Anmeldung</th><th></th></tr>
+        ${users.map((u) => `<tr><td><b>${esc(u.display_name)}</b><br><span class="small muted">@${esc(u.username)}</span></td><td>${esc(u.role_label)}</td>
+          <td>${u.totp_enabled ? '<span class="badge b-green">aktiv</span>' : '<span class="badge b-amber">fehlt</span>'}</td>
+          <td>${u.active ? (u.locked_until && new Date(u.locked_until) > new Date() ? '<span class="badge b-red">gesperrt</span>' : '<span class="badge b-green">aktiv</span>') : '<span class="badge b-grey">deaktiviert</span>'}${u.must_change_password ? ' <span class="badge b-blue">Startpasswort</span>' : ""}</td>
+          <td class="small">${u.last_login ? fmtTs(u.last_login) : "–"}</td><td><button class="btn btn-sm" data-u="${u.id}">Bearbeiten</button></td></tr>`).join("")}</table>
+        <h3 style="margin-top:1rem">Rollen</h3><ul class="small">${Object.entries(state.meta.roles).map(([k, l]) => `<li><b>${esc(l)}</b>: ${esc(state.meta.role_help[k])}</li>`).join("")}</ul></div>`;
+      $("#u-new").onclick = () => {
+        const m = modal("Person einladen", `<form id="un">
+          <div class="grid g2"><label class="field"><span>Benutzername</span><input name="username" required placeholder="z. B. a.mueller"></label>
+          <label class="field"><span>Anzeigename</span><input name="display_name" required></label></div>
+          <label class="field"><span>Rolle</span><select name="role">${Object.entries(state.meta.roles).map(([k, l]) => opt(k, l, "analyst")).join("")}</select></label>
+          <label class="field"><span>Startpasswort</span><input name="password" required value="${esc(genPassword())}"><small>Wird bei der ersten Anmeldung geändert. Bitte auf sicherem Weg übermitteln (nicht per unverschlüsselter E-Mail).</small></label></form>`,
+          `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="un-save">Anlegen</button>`);
+        $("#un-save", m.el).onclick = async () => { await guard(() => api("POST", "/api/admin/users", formData($("#un", m.el))), "Person angelegt"); m.close(); renderAdmin("users"); };
+      };
+      $$("[data-u]", el).forEach((b) => (b.onclick = () => {
+        const u = users.find((x) => String(x.id) === b.dataset.u);
+        const m = modal(`${u.display_name} bearbeiten`, `<form id="ue">
+          <label class="field"><span>Anzeigename</span><input name="display_name" value="${esc(u.display_name)}"></label>
+          <label class="field"><span>Rolle</span><select name="role">${Object.entries(state.meta.roles).map(([k, l]) => opt(k, l, u.role)).join("")}</select></label>
+          <label class="check"><input type="checkbox" name="active" ${u.active ? "checked" : ""}> <span>Konto aktiv</span></label>
+          <label class="check"><input type="checkbox" name="unlock"> <span>Sperre nach Fehlversuchen aufheben</span></label>
+          <label class="check"><input type="checkbox" name="reset_2fa"> <span>Zwei-Faktor zurücksetzen (z. B. Smartphone verloren)</span></label>
+          <label class="field"><span>Neues Startpasswort (optional)</span><input name="new_password" placeholder="leer lassen = unverändert"></label>
+          <p class="small muted">Rollenwechsel, Deaktivierung, 2FA- oder Passwort-Reset beenden alle Sitzungen der Person sofort.</p></form>`,
+          `<button class="btn" data-close>Abbrechen</button><button class="btn btn-primary" id="ue-save">Speichern</button>`);
+        $("#ue-save", m.el).onclick = async () => {
+          const f = $("#ue", m.el), d = formData(f);
+          const payload = { display_name: d.display_name, role: d.role, active: f.active.checked };
+          if (f.unlock.checked) payload.unlock = true;
+          if (f.reset_2fa.checked) payload.reset_2fa = true;
+          if (d.new_password) payload.new_password = d.new_password;
+          await guard(() => api("PATCH", `/api/admin/users/${u.id}`, payload), "Gespeichert"); m.close(); renderAdmin("users");
+        };
+      }));
+    } else if (section === "security") {
+      const [sys, audit] = await Promise.all([api("GET", "/api/admin/system"), api("GET", "/api/admin/audit?limit=200")]);
+      el.innerHTML = `<div class="grid g2"><div class="card"><h2>System</h2><table class="tbl">
+          <tr><td>Version</td><td>${esc(sys.version)} (Schema ${sys.schema_version})</td></tr><tr><td>Datenbank</td><td>${esc(sys.database)} · <span class="small">${esc(sys.database_target)}</span></td></tr>
+          <tr><td>Datenordner</td><td class="small">${esc(sys.data_dir)}</td></tr><tr><td>Schlüsseldatei</td><td class="small">${esc(sys.key_file)}</td></tr>
+          <tr><td>2FA Pflicht</td><td>${sys.require_2fa ? "ja" : "nein"}</td></tr><tr><td>Secure-Cookies</td><td>${sys.cookie_secure ? "ja" : "nein"}</td></tr>
+          <tr><td>Aktive Sitzungen</td><td>${sys.active_sessions}</td></tr><tr><td>Benutzer / Fälle</td><td>${sys.users} / ${sys.cases}</td></tr></table>
+          ${sys.warnings.length ? `<div class="warn" style="margin-top:.8rem"><b>Hinweise</b><ul class="small">${sys.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>` : '<div class="ok-box" style="margin-top:.8rem">Keine Konfigurationshinweise.</div>'}</div>
+        <div class="card"><h2>Manipulationsschutz des Protokolls</h2><p class="small muted">Jeder Protokolleintrag enthält den Hash seines Vorgängers. Wird ein Eintrag verändert, gelöscht oder eingefügt, schlägt die Prüfung fehl. Inhalte gelöschter Fälle werden geschwärzt, ohne die Kette zu brechen.</p>
+          <button class="btn btn-primary" id="verify">Protokoll jetzt prüfen</button><div id="vres" style="margin-top:.7rem"></div></div></div>
+        <div class="card"><h2>Gesamtprotokoll (letzte 200 Einträge)</h2><table class="tbl"><tr><th>Zeit</th><th>Person</th><th>Fall</th><th>Aktion</th><th>Details</th></tr>
+          ${audit.map((a) => `<tr><td class="nowrap small">${fmtTs(a.ts)}</td><td>${esc(a.username)}</td><td class="small">${esc(a.reference || "")}</td><td><b>${esc(a.action)}</b></td><td class="small">${esc(a.detail)}</td></tr>`).join("")}</table></div>`;
+      $("#verify").onclick = async () => {
+        const r = await guard(() => api("GET", "/api/admin/audit/verify"));
+        $("#vres").innerHTML = r.ok ? `<div class="ok-box">✓ Intakt – ${r.entries} Einträge geprüft (${r.redacted} geschwärzt).<br><span class="small">Kopf-Hash: <code>${esc(r.head)}</code></span></div>`
+          : `<div class="bad-box"><b>⚠ Protokoll verändert!</b><br>Eintrag #${r.broken_at} (${fmtTs(r.ts)}): ${esc(r.problem)}</div>`;
+      };
+    } else if (section === "backups") {
+      const [list, sys] = await Promise.all([api("GET", "/api/admin/backups"), api("GET", "/api/admin/system")]);
+      el.innerHTML = `<div class="card"><div class="card-head"><h2>Sicherungen</h2><div class="right"><button class="btn btn-primary" id="bk-now">💾 Jetzt sichern</button></div></div>
+        <p class="small muted">Verschlüsselte Komplettsicherung (alle Fälle, Benutzer, Protokoll, Fotos) nach <code>${esc(sys.backup_dir)}</code>.
+        ${sys.backup_hour ? `Automatisch täglich um ${esc(sys.backup_hour)} Uhr, die letzten ${sys.backup_keep} werden behalten.` : "Keine automatische Sicherung eingerichtet (EAGLEEYE_BACKUP_HOUR)."}
+        ${sys.backup_passphrase ? "Geschützt mit Passphrase." : "Geschützt mit dem Anwendungsschlüssel – Schlüsseldatei getrennt aufbewahren!"}
+        Wiederherstellen per Kommandozeile: <code>python -m personosint restore DATEI</code>.</p>
+        <table class="tbl"><tr><th>Datei</th><th>Größe</th><th>Erstellt</th><th></th></tr>
+        ${list.map((b) => `<tr><td><code>${esc(b.name)}</code></td><td>${Math.round(b.size / 1024)} KB</td><td>${fmtTs(b.created_at)}</td><td><a class="btn btn-sm" href="/api/admin/backups/${encodeURIComponent(b.name)}">⬇ Herunterladen</a></td></tr>`).join("") || '<tr><td colspan="4" class="muted">Noch keine Sicherung.</td></tr>'}</table></div>`;
+      $("#bk-now").onclick = async (ev) => {
+        ev.target.disabled = true; ev.target.innerHTML = '<span class="spinner"></span> Sichere …';
+        try { const r = await guard(() => api("POST", "/api/admin/backups")); toast(`Sicherung erstellt und geprüft (${r.tables.cases} Fälle)`, "ok"); } catch (_) { /* gemeldet */ }
+        renderAdmin("backups");
+      };
+    } else if (section === "restricted") {
+      const list = await api("GET", "/api/admin/restricted-cases");
+      el.innerHTML = `<div class="card"><h2>Vertrauliche Fälle</h2><p class="small muted">Inhalte und Titel sind für die Administration nicht sichtbar. Fällt die verantwortliche Person aus, kann ein <b>Notfallzugriff</b> (nur lesend) mit Begründung erteilt werden – er wird dauerhaft im Fallprotokoll vermerkt und ist für das Fallteam sichtbar.</p>
+        <table class="tbl"><tr><th>Aktenzeichen</th><th>Verantwortlich</th><th>Status</th><th>Angelegt</th><th></th></tr>
+        ${list.map((c) => `<tr><td>${esc(c.reference)}</td><td>${esc(c.owner_name || "–")}</td><td>${esc(c.status)}</td><td>${fmtTs(c.created_at)}</td><td><button class="btn btn-sm btn-danger" data-em="${c.id}">Notfallzugriff …</button></td></tr>`).join("") || '<tr><td colspan="5" class="muted">Keine vertraulichen Fälle.</td></tr>'}</table></div>`;
+      $$("[data-em]", el).forEach((b) => (b.onclick = () => {
+        const m = modal("Notfallzugriff begründen", `<p class="small">Der Zugriff wird mit Ihrem Namen und der Begründung unveränderlich protokolliert und ist für das Fallteam sichtbar.</p>
+          <label class="field"><span>Begründung (mind. 15 Zeichen)</span><textarea id="em-r"></textarea></label>`, `<button class="btn" data-close>Abbrechen</button><button class="btn btn-danger" id="em-ok">Zugriff erteilen</button>`);
+        $("#em-ok", m.el).onclick = async () => { await guard(() => api("POST", `/api/admin/cases/${b.dataset.em}/emergency-access`, { reason: $("#em-r", m.el).value }), "Notfallzugriff erteilt"); m.close(); await loadCases(); location.hash = `#/case/${b.dataset.em}/overview`; };
+      }));
+    }
+  }
+
+  function genPassword() {
+    const words = ["Adler", "Kompass", "Leuchtturm", "Fernglas", "Spur", "Archiv", "Quelle", "Hafen", "Signal", "Karte", "Notiz", "Brücke"];
+    const a = new Uint32Array(4); crypto.getRandomValues(a);
+    return `${words[a[0] % words.length]}-${words[a[1] % words.length]}-${(a[2] % 900) + 100}-${"!#$%&?"[a[3] % 6]}x`;
+  }
+
   // ------------------------------------------------------------------ Start
-  async function init() {
+  let started = false;
+  async function startApp() {
     state.meta = await api("GET", "/api/meta");
+    state.users = await api("GET", "/api/users");
+    renderUserMenu();
+    await loadCases();
+    if (!started) {
+      started = true;
+      window.addEventListener("hashchange", route);
+    }
+    route();
+  }
+
+  async function init() {
     $("#btn-new-case").onclick = openNewCase;
     $("#btn-help").onclick = openHelp;
     $("#btn-menu").onclick = () => $("#sidebar").classList.toggle("open");
     $("#case-filter").oninput = renderCaseList;
-    await loadCases();
-    window.addEventListener("hashchange", route);
-    route();
+    $$("#case-views button").forEach((b) => (b.onclick = async () => {
+      $$("#case-views button").forEach((x) => x.classList.toggle("on", x === b));
+      state.view = b.dataset.view; await loadCases();
+    }));
+    await showAuth();
   }
   init().catch((e) => { document.body.innerHTML = `<div style="padding:2rem;font-family:sans-serif"><h2>EagleEye konnte nicht starten</h2><p>${esc(e.message)}</p></div>`; });
 })();

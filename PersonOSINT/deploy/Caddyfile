@@ -1,0 +1,15 @@
+# HTTPS-Reverse-Proxy für EagleEye PersonOSINT
+# EAGLEEYE_TLS=internal  -> eigenes Zertifikat (Büronetz, Zertifikat einmalig auf den Arbeitsplätzen vertrauen)
+# EAGLEEYE_TLS=<E-Mail>  -> automatisch Let's-Encrypt-Zertifikat (öffentlich erreichbarer Domainname nötig)
+{$EAGLEEYE_DOMAIN} {
+	tls {$EAGLEEYE_TLS}
+	encode gzip
+	request_body {
+		max_size 20MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy app:8380
+}

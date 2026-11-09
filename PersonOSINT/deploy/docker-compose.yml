@@ -1,0 +1,80 @@
+# EagleEye PersonOSINT – Teamserver: App + PostgreSQL + Caddy (HTTPS)
+# Start:  cd deploy && cp .env.example .env && (Werte anpassen) && ./init-secrets.sh && docker compose up -d --build
+name: eagleeye
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: eagleeye
+      POSTGRES_USER: eagleeye
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eagleeye -d eagleeye"]
+      interval: 10s
+      retries: 10
+
+  app:
+    build: ..
+    image: eagleeye-app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    secrets: [db_password, app_key]
+    environment:
+      EAGLEEYE_DB_PASSWORD_FILE: /run/secrets/db_password
+      EAGLEEYE_DATABASE_URL: postgresql://eagleeye@db:5432/eagleeye
+      EAGLEEYE_KEY_FILE: /run/secrets/app_key
+      EAGLEEYE_ALLOWED_HOSTS: ${EAGLEEYE_DOMAIN}
+      EAGLEEYE_COOKIE_SECURE: "1"
+      EAGLEEYE_REQUIRE_2FA: "1"
+      EAGLEEYE_TRUSTED_PROXIES: "*"
+      EAGLEEYE_BACKUP_DIR: /backups
+      EAGLEEYE_BACKUP_HOUR: ${EAGLEEYE_BACKUP_HOUR:-2}
+      EAGLEEYE_BACKUP_KEEP: ${EAGLEEYE_BACKUP_KEEP:-14}
+      EAGLEEYE_BACKUP_PASSPHRASE: ${EAGLEEYE_BACKUP_PASSPHRASE:-}
+      EAGLEEYE_SESSION_IDLE_MINUTES: ${EAGLEEYE_SESSION_IDLE_MINUTES:-120}
+    volumes:
+      - appdata:/data
+      - ${EAGLEEYE_BACKUP_PATH:-./backups}:/backups
+    networks: [backend, frontend]
+    # bewusst kein "ports:" – erreichbar nur über Caddy (HTTPS)
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      EAGLEEYE_DOMAIN: ${EAGLEEYE_DOMAIN}
+      EAGLEEYE_TLS: ${EAGLEEYE_TLS:-internal}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks: [frontend]
+
+secrets:
+  db_password:
+    file: ./secrets/db_password
+  app_key:
+    file: ./secrets/app.key
+
+volumes:
+  pgdata:
+  appdata:
+  caddydata:
+  caddyconfig:
+
+networks:
+  backend:
+    internal: true
+  frontend:

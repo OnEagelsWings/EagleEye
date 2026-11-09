@@ -18,11 +18,15 @@
     <div class="topbar-actions">
       <button class="btn btn-primary" id="btn-new-case">＋ Neuer Fall</button>
       <button class="btn btn-ghost-light" id="btn-help">? Hilfe</button>
+      <div class="user-menu" id="user-menu"></div>
     </div>
   </header>
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-head">
+        <div class="view-tabs" id="case-views" role="tablist">
+          <button data-view="" class="on">Alle</button><button data-view="mine">Meine</button><button data-view="review">Zur Prüfung</button><button data-view="overdue">Überfällig</button>
+        </div>
         <input type="search" id="case-filter" placeholder="Fälle durchsuchen …" aria-label="Fälle durchsuchen">
       </div>
       <nav id="case-list" class="case-list"></nav>
@@ -30,6 +34,7 @@
     </aside>
     <main id="main" class="main" tabindex="-1"></main>
   </div>
+  <div id="auth-root" class="hidden"></div>
   <div id="modal-root"></div>
   <div id="toasts" aria-live="polite"></div>
   <script src="/static/vendor/leaflet/leaflet.js"></script>

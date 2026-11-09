@@ -1,211 +1,320 @@
-"""SQLite-Persistenz für EagleEye PersonOSINT.
+"""Persistenz für EagleEye PersonOSINT: SQLite (Einzelplatz) oder PostgreSQL (Teambetrieb).
 
-Bewusst ohne ORM: ein lokales Ein-Datei-Archiv pro Installation, das sich
-einfach sichern und weitergeben lässt.
+Die Fachlogik schreibt portables SQL mit ``?``-Platzhaltern; diese Schicht übersetzt
+es für PostgreSQL und führt versionierte Schema-Migrationen aus.
 """
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
-SCHEMA = """
-PRAGMA foreign_keys = ON;
+JSON_FIELDS = {"data", "reasons", "queries", "source_status"}
 
+# --------------------------------------------------------------------------- Schema-Migrationen
+# Platzhalter: {PK} = automatisch hochzählender Primärschlüssel, {REAL} = Gleitkommazahl
+
+MIGRATION_1 = """
 CREATE TABLE IF NOT EXISTS cases (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    reference TEXT NOT NULL,
-    title TEXT NOT NULL,
-    case_type TEXT NOT NULL,
-    purpose TEXT NOT NULL,
-    legal_basis TEXT NOT NULL,
-    client TEXT NOT NULL DEFAULT '',
-    analyst TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'offen',
-    notes TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    id {PK}, reference TEXT NOT NULL, title TEXT NOT NULL, case_type TEXT NOT NULL,
+    purpose TEXT NOT NULL, legal_basis TEXT NOT NULL, client TEXT NOT NULL DEFAULT '',
+    analyst TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'offen', notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS entities (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    type TEXT NOT NULL,
-    label TEXT NOT NULL,
-    is_subject INTEGER NOT NULL DEFAULT 0,
-    data TEXT NOT NULL DEFAULT '{}',
-    photo TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, type TEXT NOT NULL,
+    label TEXT NOT NULL, is_subject INTEGER NOT NULL DEFAULT 0, data TEXT NOT NULL DEFAULT '{{}}',
+    photo TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS identifiers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL,
-    value TEXT NOT NULL,
-    normalized TEXT NOT NULL,
-    source TEXT NOT NULL DEFAULT 'Analyst',
-    verified INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE, kind TEXT NOT NULL, value TEXT NOT NULL,
+    normalized TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'Analyst', verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
     source_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
-    target_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
-    relation TEXT NOT NULL,
-    confidence INTEGER NOT NULL DEFAULT 50,
-    evidence TEXT NOT NULL DEFAULT '',
-    note TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
+    target_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE, relation TEXT NOT NULL,
+    confidence INTEGER NOT NULL DEFAULT 50, evidence TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS searches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL,
-    started_at TEXT NOT NULL,
-    finished_at TEXT,
-    queries TEXT NOT NULL DEFAULT '[]',
-    source_status TEXT NOT NULL DEFAULT '[]',
-    result_count INTEGER NOT NULL DEFAULT 0
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL, started_at TEXT NOT NULL, finished_at TEXT,
+    queries TEXT NOT NULL DEFAULT '[]', source_status TEXT NOT NULL DEFAULT '[]', result_count INTEGER NOT NULL DEFAULT 0
 );
-
 CREATE TABLE IF NOT EXISTS findings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    entity_id INTEGER REFERENCES entities(id) ON DELETE CASCADE,
-    search_id INTEGER REFERENCES searches(id) ON DELETE SET NULL,
-    source TEXT NOT NULL,
-    category TEXT NOT NULL,
-    title TEXT NOT NULL,
-    url TEXT NOT NULL DEFAULT '',
-    snippet TEXT NOT NULL DEFAULT '',
-    query TEXT NOT NULL DEFAULT '',
-    data TEXT NOT NULL DEFAULT '{}',
-    score INTEGER NOT NULL DEFAULT 0,
-    reasons TEXT NOT NULL DEFAULT '[]',
-    fingerprint TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'neu',
-    review_note TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL,
-    reviewed_at TEXT
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    entity_id INTEGER REFERENCES entities(id) ON DELETE CASCADE, search_id INTEGER REFERENCES searches(id) ON DELETE SET NULL,
+    source TEXT NOT NULL, category TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL DEFAULT '', snippet TEXT NOT NULL DEFAULT '',
+    query TEXT NOT NULL DEFAULT '', data TEXT NOT NULL DEFAULT '{{}}', score INTEGER NOT NULL DEFAULT 0, reasons TEXT NOT NULL DEFAULT '[]',
+    fingerprint TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'neu', review_note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, reviewed_at TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_findings_fp ON findings(case_id, entity_id, fingerprint);
-
 CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL,
-    occurred_at TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    location TEXT NOT NULL DEFAULT '',
-    lat REAL,
-    lon REAL,
-    description TEXT NOT NULL DEFAULT '',
-    source TEXT NOT NULL DEFAULT '',
-    reliability TEXT NOT NULL DEFAULT 'ungeprüft',
-    created_at TEXT NOT NULL
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL, occurred_at TEXT NOT NULL, kind TEXT NOT NULL,
+    location TEXT NOT NULL DEFAULT '', lat {REAL}, lon {REAL}, description TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '',
+    reliability TEXT NOT NULL DEFAULT 'ungeprüft', created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    detail TEXT NOT NULL DEFAULT '',
-    priority TEXT NOT NULL DEFAULT 'normal',
-    done INTEGER NOT NULL DEFAULT 0,
-    origin TEXT NOT NULL DEFAULT 'Analyst',
-    created_at TEXT NOT NULL
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, title TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '', priority TEXT NOT NULL DEFAULT 'normal', done INTEGER NOT NULL DEFAULT 0,
+    origin TEXT NOT NULL DEFAULT 'Analyst', created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS audit (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id INTEGER REFERENCES cases(id) ON DELETE CASCADE,
-    ts TEXT NOT NULL,
-    action TEXT NOT NULL,
-    detail TEXT NOT NULL DEFAULT ''
+    id {PK}, case_id INTEGER REFERENCES cases(id) ON DELETE CASCADE, ts TEXT NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT ''
 );
 """
 
-JSON_FIELDS = {"data", "reasons", "queries", "source_status"}
+MIGRATION_2 = """
+CREATE TABLE users (
+    id {PK}, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, role TEXT NOT NULL,
+    password_hash TEXT NOT NULL, totp_secret TEXT NOT NULL DEFAULT '', totp_enabled INTEGER NOT NULL DEFAULT 0,
+    must_change_password INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
+    failed_logins INTEGER NOT NULL DEFAULT 0, locked_until TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, last_login TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE sessions (
+    id {PK}, token_hash TEXT NOT NULL UNIQUE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    csrf_token TEXT NOT NULL, mfa_passed INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_seen TEXT NOT NULL,
+    expires_at TEXT NOT NULL, ip TEXT NOT NULL DEFAULT '', user_agent TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE case_members (
+    case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'bearbeiter', added_at TEXT NOT NULL, PRIMARY KEY (case_id, user_id)
+);
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+ALTER TABLE cases ADD COLUMN owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE cases ADD COLUMN reviewer_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE cases ADD COLUMN due_date TEXT NOT NULL DEFAULT '';
+ALTER TABLE cases ADD COLUMN priority TEXT NOT NULL DEFAULT 'normal';
+ALTER TABLE cases ADD COLUMN restricted INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE cases ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE entities ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE findings ADD COLUMN reviewed_by TEXT NOT NULL DEFAULT '';
+CREATE TABLE audit_v2 (
+    id {PK}, case_id INTEGER, ts TEXT NOT NULL, user_id INTEGER, username TEXT NOT NULL DEFAULT '',
+    action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', detail_hash TEXT NOT NULL DEFAULT '',
+    redacted INTEGER NOT NULL DEFAULT 0, prev_hash TEXT NOT NULL DEFAULT '', hash TEXT NOT NULL DEFAULT ''
+);
+INSERT INTO audit_v2 (id, case_id, ts, action, detail) SELECT id, case_id, ts, action, detail FROM audit ORDER BY id;
+DROP TABLE audit;
+ALTER TABLE audit_v2 RENAME TO audit;
+CREATE INDEX ix_audit_case ON audit(case_id);
+CREATE INDEX ix_cases_owner ON cases(owner_id);
+"""
+
+#: (Version, SQL, optionale Python-Nacharbeit) – Nacharbeit wird von außen registriert (Hash-Kette versiegeln)
+MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2)]
+SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def _decode(row: dict[str, Any] | None) -> dict[str, Any] | None:
     if row is None:
         return None
     out = dict(row)
     for key in JSON_FIELDS & out.keys():
-        try:
-            out[key] = json.loads(out[key] or "null")
-        except (TypeError, json.JSONDecodeError):
-            pass
+        if isinstance(out[key], str):
+            try:
+                out[key] = json.loads(out[key] or "null")
+            except json.JSONDecodeError:
+                pass
     return out
 
 
-class Database:
-    """Kleine Fassade über sqlite3, thread-sicher für den lokalen Betrieb."""
+def _encode(values: dict[str, Any]) -> dict[str, Any]:
+    return {k: (json.dumps(v, ensure_ascii=False) if k in JSON_FIELDS and not isinstance(v, str) else v) for k, v in values.items()}
 
-    def __init__(self, path: Path | str):
-        self.path = str(path)
-        if self.path != ":memory:":
-            Path(self.path).parent.mkdir(parents=True, exist_ok=True)
+
+class ConflictError(Exception):
+    """Datensatz wurde zwischenzeitlich geändert (optimistisches Sperren)."""
+
+
+class Database:
+    """Thread-sichere Fassade über sqlite3 bzw. psycopg (eine Verbindung, serialisiert)."""
+
+    def __init__(self, url_or_path: Path | str, post_migrations: dict[int, Callable[["Database"], None]] | None = None):
+        target = str(url_or_path)
+        self.dialect = "postgres" if target.startswith(("postgres://", "postgresql://")) else "sqlite"
+        self.target = target
         self._lock = threading.RLock()
-        self._conn = sqlite3.connect(self.path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.executescript(SCHEMA)
-        self._conn.commit()
+        self._connect()
+        self.migrate(post_migrations or {})
+
+    # ------------------------------------------------------------------ Verbindung
+    def _connect(self) -> None:
+        if self.dialect == "postgres":
+            import psycopg
+            from psycopg.rows import dict_row
+
+            self._conn = psycopg.connect(self.target, row_factory=dict_row, autocommit=False)
+        else:
+            if self.target != ":memory:":
+                Path(self.target).parent.mkdir(parents=True, exist_ok=True)
+            self._conn = sqlite3.connect(self.target, check_same_thread=False)
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            self._conn.execute("PRAGMA journal_mode = WAL")
+
+    def _sql(self, sql: str) -> str:
+        if self.dialect == "postgres":
+            return sql.replace("%", "%%").replace("?", "%s")
+        return sql
+
+    def _rows(self, cur) -> list[dict[str, Any]]:
+        rows = cur.fetchall()
+        return [dict(r) for r in rows]
+
+    def _run(self, sql: str, params: tuple | list = ()):
+        try:
+            return self._conn.execute(self._sql(sql), list(params))
+        except Exception as exc:  # Verbindung zu PostgreSQL verloren -> einmal neu verbinden
+            if self.dialect == "postgres" and self._conn.closed:
+                self._connect()
+                return self._conn.execute(self._sql(sql), list(params))
+            raise exc
 
     @contextmanager
-    def tx(self) -> Iterator[sqlite3.Connection]:
+    def tx(self) -> Iterator["Database"]:
         with self._lock:
             try:
-                yield self._conn
+                yield self
                 self._conn.commit()
             except Exception:
                 self._conn.rollback()
                 raise
 
+    # ------------------------------------------------------------------ Abfragen
     def all(self, sql: str, params: tuple | list = ()) -> list[dict[str, Any]]:
         with self._lock:
-            return [_row(r) for r in self._conn.execute(sql, params).fetchall()]  # type: ignore[misc]
+            try:
+                rows = self._rows(self._run(sql, params))
+            finally:
+                if self.dialect == "postgres":
+                    self._conn.commit()  # Lese-Transaktion beenden
+            return [_decode(r) for r in rows]  # type: ignore[misc]
 
     def one(self, sql: str, params: tuple | list = ()) -> dict[str, Any] | None:
-        with self._lock:
-            return _row(self._conn.execute(sql, params).fetchone())
+        rows = self.all(sql, params)
+        return rows[0] if rows else None
 
-    def insert(self, table: str, values: dict[str, Any]) -> int:
-        values = {k: (json.dumps(v, ensure_ascii=False) if k in JSON_FIELDS and not isinstance(v, str) else v)
-                  for k, v in values.items()}
+    def scalar(self, sql: str, params: tuple | list = ()) -> Any:
+        row = self.one(sql, params)
+        return next(iter(row.values())) if row else None
+
+    def insert(self, table: str, values: dict[str, Any], returning: bool = True) -> int:
+        values = _encode(values)
         cols = ", ".join(values)
         marks = ", ".join("?" for _ in values)
-        with self.tx() as conn:
-            cur = conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks})", list(values.values()))
-            return int(cur.lastrowid)
+        sql = f"INSERT INTO {table} ({cols}) VALUES ({marks})"
+        with self.tx():
+            if self.dialect == "postgres":
+                cur = self._run(sql + (" RETURNING id" if returning else ""), list(values.values()))
+                return int(cur.fetchone()["id"]) if returning else 0
+            cur = self._run(sql, list(values.values()))
+            return int(cur.lastrowid or 0)
 
-    def update(self, table: str, row_id: int, values: dict[str, Any]) -> None:
+    def update(self, table: str, row_id: int, values: dict[str, Any], expected_version: int | None = None) -> None:
+        """Aktualisiert eine Zeile. Mit ``expected_version`` wird optimistisch gesperrt."""
         if not values:
             return
-        values = {k: (json.dumps(v, ensure_ascii=False) if k in JSON_FIELDS and not isinstance(v, str) else v)
-                  for k, v in values.items()}
+        values = _encode(values)
         sets = ", ".join(f"{k} = ?" for k in values)
-        with self.tx() as conn:
-            conn.execute(f"UPDATE {table} SET {sets} WHERE id = ?", [*values.values(), row_id])
+        params = [*values.values(), row_id]
+        sql = f"UPDATE {table} SET {sets}"
+        if expected_version is not None:
+            sql += ", version = version + 1 WHERE id = ? AND version = ?"
+            params.append(expected_version)
+        else:
+            sql += " WHERE id = ?"
+        with self.tx():
+            cur = self._run(sql, params)
+            if expected_version is not None and cur.rowcount == 0:
+                raise ConflictError("Der Datensatz wurde inzwischen von jemand anderem geändert. Bitte neu laden.")
 
     def execute(self, sql: str, params: tuple | list = ()) -> int:
-        with self.tx() as conn:
-            return conn.execute(sql, params).rowcount
+        with self.tx():
+            return self._run(sql, params).rowcount
+
+    def executescript(self, sql: str) -> None:
+        with self.tx():
+            if self.dialect == "sqlite":
+                # executescript würde committen; Anweisungen einzeln ausführen
+                for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
+                    self._conn.execute(stmt)
+            else:
+                for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
+                    self._conn.execute(stmt)
+
+    # ------------------------------------------------------------------ Migrationen
+    def _render(self, sql: str) -> str:
+        if self.dialect == "postgres":
+            return sql.format(PK="BIGSERIAL PRIMARY KEY", REAL="DOUBLE PRECISION")
+        return sql.format(PK="INTEGER PRIMARY KEY AUTOINCREMENT", REAL="REAL")
+
+    def schema_version(self) -> int:
+        with self.tx():
+            self._run("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL, applied_at TEXT NOT NULL)")
+        return int(self.scalar("SELECT COALESCE(MAX(version), 0) AS v FROM schema_version") or 0)
+
+    def migrate(self, post: dict[int, Callable[["Database"], None]]) -> None:
+        current = self.schema_version()
+        for version, sql in MIGRATIONS:
+            if version <= current:
+                continue
+            if self.dialect == "sqlite":
+                self._conn.execute("PRAGMA foreign_keys = OFF")
+            try:
+                self.executescript(self._render(sql))
+                if self.dialect == "postgres":
+                    for table in ("audit",):
+                        with self.tx():
+                            self._run(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")
+            finally:
+                if self.dialect == "sqlite":
+                    self._conn.execute("PRAGMA foreign_keys = ON")
+            if version in post:
+                post[version](self)
+            self.insert("schema_version", {"version": version, "applied_at": now_iso()}, returning=False)
+
+    def tables(self) -> list[str]:
+        if self.dialect == "postgres":
+            rows = self.all("SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public'")
+        else:
+            rows = self.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+        return sorted(r["name"] for r in rows)
+
+    def reset_sequences(self) -> None:
+        """Nach dem Einspielen von Daten mit festen IDs (Wiederherstellung) die Zähler nachziehen."""
+        if self.dialect != "postgres":
+            return
+        for table in self.tables():
+            if table in {"schema_version", "settings", "case_members"}:
+                continue
+            with self.tx():
+                self._run(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")
+
+    def advisory_lock(self, key: int) -> None:
+        """Serialisiert Schreibvorgänge über mehrere Prozesse (nur PostgreSQL, innerhalb einer Transaktion)."""
+        if self.dialect == "postgres":
+            self._run("SELECT pg_advisory_xact_lock(?)", [key])
+
+    def run_in_tx(self, sql: str, params: tuple | list = ()):
+        """Nur innerhalb von ``with db.tx():`` verwenden."""
+        return self._run(sql, params)
 
     def close(self) -> None:
         with self._lock:
             self._conn.close()
+
+
+def redact_url(url: str) -> str:
+    return re.sub(r"//([^:/@]+):([^@]+)@", r"//\1:***@", url)

@@ -1,4 +1,4 @@
-## EagleEye PersonOSINT 1.0 – neue, eigenständige Plattform
+## EagleEye PersonOSINT 1.1 – neue, eigenständige Plattform (Teambetrieb)
 
 Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
 Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem
