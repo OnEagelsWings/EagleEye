@@ -352,11 +352,13 @@ class ProviderCollection120Service:
         self._check_circuit(provider)
         last_error: Exception | None = None
         for attempt_number in range(1, provider.max_attempts + 1):
+            # Revocation is an authorization failure, not a provider transport
+            # failure: do not consume a rate slot or retry a revoked request.
+            if before_network_attempt is not None:
+                before_network_attempt()
             now = self.clock()
             self._consume_rate_limit(provider, now)
             try:
-                if before_network_attempt is not None:
-                    before_network_attempt()
                 response = self.transport.fetch(
                     safe_request,
                     allowed_hosts=provider.allowed_hosts,
