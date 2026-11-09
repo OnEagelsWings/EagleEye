@@ -106,6 +106,9 @@ class RuntimePaths:
             workspace = runtime_root.resolve()
             installation = Path(install_dir).resolve()
             for directory in (data_dir, reports_dir):
+                # In-workspace links can also alias independent stores.
+                if directory.is_symlink():
+                    raise ValueError("Internal release data directories cannot be symbolic links")
                 target = directory.resolve()
                 if not target.is_relative_to(workspace) or target.is_relative_to(installation):
                     raise ValueError("Internal release data directories must stay inside the workspace")
