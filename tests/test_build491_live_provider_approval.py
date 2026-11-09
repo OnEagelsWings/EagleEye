@@ -63,6 +63,7 @@ def test_live_approval_rejects_wrong_case_scope_or_unapproved_query(overrides):
         "query_state": "approved",
         "provider": "public_test",
         "query_text": "public archive records",
+        "target_id": None,
     }
     row.update(overrides)
     service.db = SimpleNamespace(one=Mock(return_value=row))
@@ -87,6 +88,7 @@ def test_live_approval_accepts_only_matching_approved_query():
         "query_state": "approved",
         "provider": "public_test",
         "query_text": "public archive records",
+        "target_id": None,
     }))
     ProviderCollection120Service._validate_search_approval(
         service,
@@ -96,3 +98,24 @@ def test_live_approval_accepts_only_matching_approved_query():
         search_intent_id="intent-1",
         search_query_id="query-1",
     )
+
+
+@pytest.mark.parametrize("approved_target,execution_target", [
+    ("target-A", "target-B"),
+    ("target-A", ""),
+    (None, "target-A"),
+])
+def test_live_approval_rejects_target_scope_mismatch(approved_target, execution_target):
+    service = _service()
+    service.db = SimpleNamespace(one=Mock(return_value={
+        "case_id": "case-1", "intent_id": "intent-1",
+        "intent_state": "approved", "query_state": "approved",
+        "provider": "public_test", "query_text": "public archive records",
+        "target_id": approved_target,
+    }))
+    with pytest.raises(ProviderAuthorizationError, match="search target differs"):
+        ProviderCollection120Service._validate_search_approval(
+            service, case_id="case-1", provider_key="public_test",
+            query="public archive records", search_intent_id="intent-1",
+            search_query_id="query-1", target_id=execution_target,
+        )
