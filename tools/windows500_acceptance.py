@@ -39,7 +39,7 @@ def _check(root,install,python):
         # The desktop launcher may spawn the web server as a child process.
         # Killing only the launcher leaves that child holding eagleeye.db open
         # on Windows, preventing workspace cleanup and masking restart issues.
-        if proc.poll() is None:
+        if os.name == "nt":
             tree = subprocess.run(
                 ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
                 capture_output=True, text=True, timeout=15, check=False,
@@ -51,6 +51,23 @@ def _check(root,install,python):
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.communicate(timeout=5)
+        # Windows may release SQLite file handles after the launcher exits.
+        # Do not proceed to restart or remove the temporary workspace until
+        # the database is actually free of handles (including child servers).
+        db = root / "data" / "eagleeye.db"
+        if db.exists():
+            deadline = time.monotonic() + 20
+            while True:
+                try:
+                    with db.open("rb+") as handle:
+                        import msvcrt
+                        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    break
+                except OSError as exc:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("Windows server retained SQLite database handle after stop") from exc
+                    time.sleep(0.2)
 
 def main():
     if os.name!="nt":raise SystemExit("Windows acceptance runs on Windows runner only")
