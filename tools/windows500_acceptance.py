@@ -1,5 +1,6 @@
 """Build 500 Windows: real installed-runtime start, loopback health, restart and data continuity."""
 from __future__ import annotations
+import ctypes
 import hashlib
 import json
 import os
@@ -11,6 +12,28 @@ import tempfile
 import time
 import urllib.request
 
+def _windows_job_for_process(proc):
+    """Own the launcher and its descendants, including a detached web server."""
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    kernel.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    kernel.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel.TerminateJobObject.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    job = kernel.CreateJobObjectW(None, None)
+    if not job:
+        raise ctypes.WinError(ctypes.get_last_error())
+    if not kernel.AssignProcessToJobObject(job, wintypes.HANDLE(int(proc._handle))):
+        error = ctypes.get_last_error()
+        kernel.CloseHandle(job)
+        raise ctypes.WinError(error)
+    return kernel, job
+
+
 def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
@@ -19,7 +42,10 @@ def _check(root,install,python):
              "--install-root",str(install),"--no-browser"]
     proc=subprocess.Popen(command,cwd=install,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
                           text=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
+    job = None
     try:
+        if os.name == "nt":
+            job = _windows_job_for_process(proc)
         runtime=root/"data"/"runtime_126_0"/"workspace.json"
         for i in range(150):
             if proc.poll() is not None:raise RuntimeError("Server exited before healthy: "+str(proc.returncode))
@@ -48,12 +74,17 @@ def _check(root,install,python):
                 proc.communicate(timeout=12)
             except (OSError, subprocess.TimeoutExpired):
                 pass
-        if proc.poll() is None:
-            if os.name == "nt":
-                subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                               capture_output=True, text=True, timeout=15, check=False)
-            if proc.poll() is None:
-                proc.kill()
+        # The launcher can exit before its server child. Always terminate the
+        # entire Windows job, even when proc.poll() already reports exit.
+        if job is not None:
+            kernel, handle = job
+            try:
+                if not kernel.TerminateJobObject(handle, 1):
+                    raise ctypes.WinError(ctypes.get_last_error())
+            finally:
+                kernel.CloseHandle(handle)
+        elif proc.poll() is None:
+            proc.kill()
         try:
             proc.communicate(timeout=15)
         except subprocess.TimeoutExpired:
