@@ -115,7 +115,9 @@ def _check(root,install,python):
                             "http://127.0.0.1:"+str(port)+"/health",timeout=0.4) as response:
                         data=json.loads(response.read(16000))
                     if data.get("ok") and data.get("build")=="500.0":
-                        if os.name == "nt" and job is None:
+                        if os.name == "nt":
+                            # A Windows job can miss a detached/breakaway server.
+                            # Record the verified listener even when assignment succeeded.
                             descendant_pids = _windows_descendant_pids(proc.pid)
                             server_pid = _windows_port_owner_pid(port, install)
                             if server_pid is None:
@@ -146,7 +148,9 @@ def _check(root,install,python):
                     raise ctypes.WinError(ctypes.get_last_error())
             finally:
                 kernel.CloseHandle(handle)
-        elif os.name == "nt":
+        if os.name == "nt":
+            # A detached server can escape the job; stop only PIDs identified
+            # from this launcher or its verified installed-runtime listener.
             # The launcher may already have exited, so /T on its PID alone
             # cannot find an orphaned server. Stop the captured children too.
             for pid in reversed(list(dict.fromkeys(descendant_pids + ([server_pid] if server_pid else [])))):
