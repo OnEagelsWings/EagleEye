@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 where py >nul 2>nul
 if %errorlevel%==0 (
-    set "PYTHON=py -3"
+    set "PYTHON=py -3.12"
 ) else (
     set "PYTHON=python"
 )
