@@ -134,6 +134,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("Ermittlungsplan und Freigaben", "Build 496 – Arbeitsplan",
+                        "Fallbezogene Recherchepläne mit Vorschlägen, Rollenprüfung und Audit, "
+                        "ohne unkontrollierte Netzwerkausführung.",
+                        "/workbench/plan496", "Ermittlungsplan öffnen")
+                   if getattr(app.state, "investigation_plan496", False) else "")
                 + (card("PersonOSINT Intelligence", "Gemeinsamer Arbeitsbereich",
                         "Personen, Unternehmen und Benutzernamen aus öffentlichen Quellen recherchieren; "
                         "mit Fallakte, WARC, Entitäten, Graph und Bericht fortsetzen.",

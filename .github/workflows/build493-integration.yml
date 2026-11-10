@@ -1,4 +1,4 @@
-name: EagleEye Unified PersonOSINT Integration 493-495
+name: EagleEye Unified OSINT Integration 493-496
 on:
   pull_request:
     paths:
@@ -10,6 +10,12 @@ on:
       - 'tests/test_build493_personosint.py'
       - 'tests/test_build494_personosint.py'
       - 'tests/test_build495_person_workbench.py'
+      - 'tests/test_build496_plan.py'
+      - 'src/eagleeye/application/plan496.py'
+      - 'src/eagleeye/interfaces/web/plan496.py'
+      - 'src/eagleeye/interfaces/web/app496.py'
+      - 'CLAUDE_INTEGRATION_HANDOFF.md'
+      - 'BUILD_496_NOTES.md'
       - 'src/eagleeye/interfaces/web/personosint495.py'
       - 'src/eagleeye/interfaces/web/app495.py'
       - 'src/eagleeye/application/personosint494.py'
@@ -50,6 +56,7 @@ jobs:
           tests/test_build493_personosint.py
           tests/test_build494_personosint.py
           tests/test_build495_person_workbench.py
+          tests/test_build496_plan.py
           tests/test_build490_package_contract.py
           tests/test_build490_server_selection.py
           tests/test_build490_real_server_start.py

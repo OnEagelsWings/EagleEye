@@ -46,6 +46,7 @@ SOURCES = {
     ],
 }
 WORKFLOW = [
+    ("Ermittlungsplan & Freigaben", "/workbench/plan496"),
     ("PersonOSINT-Quellen importieren", "/workbench/personosint493"),
     ("PersonOSINT-Entitäten prüfen", "/workbench/personosint494"),
     ("Ungeprüfte Recherchefunde", "/workbench/leads483"),
