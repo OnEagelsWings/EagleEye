@@ -255,7 +255,9 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
             normalized = name.replace("\\", "/")
             parts = normalized.split("/")
             assert not normalized.startswith("/") and not re.match(r"^[A-Za-z]:", normalized)
-            assert all(part not in {"", ".", ".."} for part in parts if part or name.endswith("/"))
+            assert all(part not in {".", ".."} for part in parts)
+            assert all(part for part in parts[:-1]), "Empty ZIP path component"
+            assert parts[-1] or name.endswith("/"), "Empty ZIP filename"
         members = {Path(name).name for name in archive.namelist()}
         assert all(Path(exported_paths[kind]).name in members
                    for kind in ("json", "docx", "pdf", "manifest"))
