@@ -6,6 +6,7 @@ External search sites learn the supplied query only after the user clicks.
 from __future__ import annotations
 
 from html import escape
+import unicodedata
 from urllib.parse import urlencode, quote
 
 from fastapi import HTTPException, Request
@@ -59,7 +60,7 @@ WORKFLOW = [
 def external_links(term: str, kind: str) -> list[dict]:
     if kind not in SOURCES:
         raise ValueError("Unbekannte Recherchekategorie")
-    if not isinstance(term, str) or len(term) > 120 or any(ord(c) < 32 or ord(c) == 127 for c in term):
+    if not isinstance(term, str) or len(term) > 120 or any(unicodedata.category(c) in {"Cc", "Cf", "Cs", "Zl", "Zp"} for c in term):
         raise ValueError("Ungültiger Suchbegriff")
     term = " ".join(term.split())
     if not term:
