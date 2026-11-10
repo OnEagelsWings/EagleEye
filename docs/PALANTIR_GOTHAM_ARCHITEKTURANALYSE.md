@@ -168,6 +168,9 @@ Abgleich mit dem aktuellen Code (Stand Build 492).
 | **Eine Transaktionsgrenze** | Entitäten liegen in einer eigenen SQLite-Datei (`entity_registry_462.sqlite3`), Prüfentscheidungen und Dokumente in der Hauptdatenbank. Eine Transaktion kann nicht beide umfassen. | Entitätenregister in die Hauptdatenbank überführen. Dann sind Entität, Eigenschaft, Fundstelle und Prüfung gemeinsam konsistent. |
 | **Schnittstelle aus einer Spezifikation** | Seiten werden als verkettete Zeichenketten mit Hand-Escaping gebaut. | Vorlagen mit automatischem Escaping; für Daten typisierte Endpunkte (FastAPI/Pydantic ist vorhanden). Senkt das XSS-Risiko und den Pflegeaufwand. |
 
+Die vier wichtigsten Punkte (Eigenschaften, Typenregister, Markierungen, eine Datenbank) sind als Stufe 3 in
+[PLAN_NACH_492.md](PLAN_NACH_492.md) eingeplant, die übrigen in den Stufen 4 und 5.
+
 ### Bewusst nicht übernehmen
 
 * **Zielbearbeitung** und alles, was auf operative Maßnahmen gegen Personen zielt.
