@@ -83,6 +83,16 @@ class RuntimePaths:
             workspace = runtime_root.resolve()
             if not chosen.is_relative_to(workspace) or chosen == workspace:
                 raise ValueError("Internal release database must stay inside its workspace")
+            # Reject aliases between the workspace and explicit database.
+            # Even in-workspace aliases can silently merge separate case stores.
+            raw_candidate = Path(db_path).absolute()
+            raw_workspace = runtime_root.absolute()
+            if raw_candidate.is_relative_to(raw_workspace):
+                cursor = raw_workspace
+                for component in raw_candidate.relative_to(raw_workspace).parts:
+                    cursor = cursor / component
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release database path cannot traverse symbolic links")
             installation = Path(install_dir).resolve()
             if chosen.is_relative_to(installation):
                 raise ValueError("Internal release database must be separate from installation")
