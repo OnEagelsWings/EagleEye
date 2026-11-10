@@ -149,6 +149,29 @@ def attach_research483(app,build):
             '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p></section>'
             for x in rows
         )
+        # Provider adapters write only unreviewed intake candidates. Surface them
+        # in the same case workbench without silently promoting them to Evidence.
+        # The provider schema is optional for installations without that adapter.
+        provider_candidates = []
+        has_provider_intake = ctx.db.one(
+            "SELECT 1 AS present FROM sqlite_master WHERE type='table' AND name='provider_intake_120'"
+        )
+        if has_provider_intake:
+            provider_candidates = ctx.db.all(
+                "SELECT title,url,provider_key,review_status,created_at "
+                "FROM provider_intake_120 WHERE case_id=? AND candidate_only=1 "
+                "ORDER BY created_at DESC LIMIT 50", (case_id,)
+            )
+        candidate_cards = "".join(
+            '<section class="card"><h3>'+escape(str(item["title"]))+'</h3>'
+            '<p><strong>Provider-Hinweis – keine geprüfte Evidence</strong> · '+
+            escape(str(item["provider_key"]))+' · '+escape(str(item["review_status"]))+'</p>'
+            '<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
+            escape(validate_public_lead_url(item["url"]),quote=True)+
+            '">Öffentliche Fundadresse manuell prüfen</a></p>'
+            '<p>Erfasst: '+escape(str(item["created_at"]))+'</p></section>'
+            for item in provider_candidates
+        )
         body=('<p>Fall: <strong>'+escape(str(case.get("title") or ""))+'</strong> · '+
               str(len(rows))+' Suchhinweise.</p>'
               '<p class="warn">Die URL ist ein Recherchehinweis. Eine belastbare Quelle entsteht '
@@ -156,6 +179,10 @@ def attach_research483(app,build):
               'Externe Seiten dürfen den Zugriff protokollieren.</p>'+form+
               '<h2>2. Ungeprüfte Recherchefunde</h2>'+(entries or
               '<p>Noch keine Treffer aufgenommen.</p>')+
+              '<h2>3. Automatische Provider-Hinweise (max. 50)</h2>'+
+              '<p>Nur fallgebundene Kandidaten aus freigegebenen Provider-Läufen. '
+              'Keine automatische Quellen- oder Identitätsbestätigung.</p>'+
+              (candidate_cards or '<p>Keine Provider-Hinweise vorhanden.</p>')+
               '<p><a href="/workbench/dorks482?'+escape(urlencode({"case_id":case_id}),quote=True)+
               '">Dork-Suchstrategie öffnen</a> · <a href="/documents458?'+
               escape(urlencode({"case_id":case_id}),quote=True)+
