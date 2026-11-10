@@ -21,6 +21,10 @@ def test_source_catalog_is_explicit_manual_network_only():
         external_links("bad\nheader", "person")
     with pytest.raises(ValueError):
         external_links("x" * 121, "person")
+    # Invisible Unicode controls must not disguise names or alter displayed links.
+    for unsafe in ("Alice\u202eBob", "Alice\u200bBob", "Alice\u2066Bob", "Alice\ud800Bob"):
+        with pytest.raises(ValueError):
+            external_links(unsafe, "person")
 
 
 @ws
