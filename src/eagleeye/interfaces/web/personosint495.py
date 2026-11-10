@@ -80,7 +80,12 @@ def attach_personosint495(app, build: str) -> None:
     def person_workbench(request: Request, case_id: str = "", kind: str = "person", term: str = ""):
         _user, _case = case_access(app, request, case_id)
         # Existing canonical public-provider registry: read-only catalogue, no network call.
-        provider_catalog = app.state.context.provider_collection_120.list_providers()
+        # Manual discovery must remain usable if an optional provider registry fails.
+        # Do not expose provider exception details in the rendered case workspace.
+        try:
+            provider_catalog = app.state.context.provider_collection_120.list_providers()
+        except Exception:
+            provider_catalog = []
         try:
             links = external_links(term, kind)
         except ValueError as exc:
