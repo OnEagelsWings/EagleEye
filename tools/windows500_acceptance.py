@@ -97,8 +97,8 @@ def _windows_installed_runtime_pids(install):
         "Get-CimInstance Win32_Process | Where-Object {"
         " $exe=([string]$_.ExecutablePath).ToLower();"
         " $cmd=([string]$_.CommandLine).TrimStart().ToLower();"
-        " ($exe.StartsWith($root + '\\\\')) -or"
-        " ($cmd.StartsWith('\\\"' + $py + '\\\" ') -or"
+        " ($exe.StartsWith($root + '\\')) -or"
+        " ($cmd.StartsWith(([char]34) + $py + ([char]34) + ' ') -or"
         "  $cmd.StartsWith($py + ' '))"
         "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
     )
