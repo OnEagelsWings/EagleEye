@@ -22,7 +22,9 @@ def current_candidates(ctx, base_dir, case_id):
     entities = [{"case_id": case_id, "entity_id": str(n["id"]),
                  "name": n["label"], "entity_type": n["kind"]}
                 for n in graph["entities"]]
-    return suggest_case_pairs(case_id, entities)
+    # Later builds may install a stronger matcher with the same review-only contract.
+    matcher = getattr(ctx, "entity_candidate_matcher", None) or suggest_case_pairs
+    return matcher(case_id, entities)
 
 
 def attach_entities488(app, build, base_dir):

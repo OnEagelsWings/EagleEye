@@ -116,6 +116,7 @@ def attach_workbench(app, workspace_build):
         # Number steps in their actual displayed order: previous versions
         # duplicated step six once advanced tools and sources were appended.
         step_index = 0
+        intel = bool(getattr(app.state, "intel492", False))
         def step(n,title,desc,path):
             nonlocal step_index
             step_index += 1
@@ -163,7 +164,9 @@ def attach_workbench(app, workspace_build):
                        "/workbench/leads483")] if stage>=483 else []) + [
                   step(3,"Öffentliche Datenquellen",
                        "DNS-, RDAP- oder DOI-Quellen im definierten Fall abrufen.",
-                       "/collect469")]),
+                       "/collect469")] + ([step(3,"Webseite als Beleg sichern",
+                       "Öffentliche oder archivierte Seite als WARC-Original mit prüfbarem Haupttext sichern.",
+                       "/workbench/intel/web")] if intel else [])),
                 ("3 · Quellen und Evidence",
                  [step(4,"Originaldokumente sichern",
                        "TXT/PDF importieren, Herkunft und Textanker prüfen.",
@@ -175,6 +178,12 @@ def attach_workbench(app, workspace_build):
                         "Vorhandene lokale Ähnlichkeitskandidaten anhand der Originalbilder bewerten.",
                         "/workbench/media484")] if stage>=484 else []) + [
 
+                  ] + ([step(5,"Struktur & Texterkennung",
+                        "Tabellen, Überschriften und Scans (OCR) als zusätzliche Fundstellen erschließen.",
+                        "/workbench/intel/documents"),
+                        step(5,"Quellenunabhängigkeit",
+                        "Übernommene und gespiegelte Texte erkennen: wie viele unabhängige Ursprünge?",
+                        "/workbench/intel/lineage")] if intel else []) + [
                   step(6,"Quelleninventar",
                        "Originaldokumente und Vollständigkeit überprüfen.",
                        "/workbench/sources"),
@@ -187,6 +196,9 @@ def attach_workbench(app, workspace_build):
                        "/graph464")] + ([step(9,"Entity-Kandidaten prüfen",
                        "Ähnliche reale Fallentitäten manuell prüfen und auditieren – keine automatische Zusammenführung.",
                        "/workbench/entities488")] if stage>=488 else []) + [
+                  ] + ([step(9,"Netzwerkanalyse",
+                       "Gruppen, Brückenpersonen und am besten belegte Verbindungswege auswerten.",
+                       "/workbench/intel/network")] if intel else []) + [
                   step(9,"KI-Ermittler",
                        "Quellengebundene Vorschläge – nicht bestätigte Tatsachen.",
                        "/assistant471")]),

@@ -25,6 +25,13 @@ dependencies = [
   "pypdf>=5,<7",
   "pdfplumber>=0.11,<1",
   "pytesseract>=0.3.13,<1",
+  # Build 492 evidence capture and analysis (all permissive licences, Windows wheels)
+  "trafilatura>=2.0,<3",
+  "warcio>=1.7,<2",
+  "datasketch>=1.6,<3",
+  "rapidfuzz>=3.9,<4",
+  "anyascii>=0.3.2,<1",
+  "networkx>=3.3,<4",
 ]
 
 [project.scripts]

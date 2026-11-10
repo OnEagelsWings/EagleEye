@@ -15,3 +15,10 @@ PyMuPDF==1.26.7
 pypdf==5.9.0
 pdfplumber==0.11.9
 pytesseract==0.3.13
+# Build 492 evidence capture and analysis
+trafilatura==2.3.1
+warcio==1.8.2
+datasketch==2.0.0
+rapidfuzz==3.14.6
+anyascii==0.3.3
+networkx==3.7
