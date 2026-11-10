@@ -215,11 +215,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return render("Webseite als Beleg sichern", case_id, body, status)
 
     @app.get("/workbench/intel/web", response_class=HTMLResponse)
-    def web_view(request: Request, case_id: str = "", done: str = ""):
+    def web_view(request: Request, case_id: str = "", done: str = "", url: str = ""):
         user, _ = case_access(app, request, case_id)
         message = {"live": "Seite gesichert. Bitte Haupttext und Fundstellen im Dokument prüfen.",
                    "archive": "Archivierte Fassung gesichert. Bitte Haupttext und Fundstellen prüfen."}.get(done, "")
-        return web_page(request, user, case_id, message=message)
+        return web_page(request, user, case_id, url=url[:2000], message=message)
 
     @app.post("/workbench/intel/web/wayback", response_class=HTMLResponse)
     async def wayback_list(request: Request):

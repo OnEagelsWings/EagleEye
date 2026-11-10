@@ -94,6 +94,10 @@ def test_browser_imports_to_existing_case_without_promoting_claims(workspace):
     assert response.status_code == 303, response.text
     rows = listed(ctx, case_id)
     assert len(rows) == 1
+    guided = client.get("/workbench/leads483", params={"case_id": case_id})
+    assert "Als WARC-Webbeleg sichern (Freigabe erforderlich)" in guided.text
+    form = client.get("/workbench/intel/web", params={"case_id": case_id, "url": "https://company.example/public"})
+    assert form.status_code == 200 and 'value="https://company.example/public"' in form.text
     assert rows[0]["review_state"] == "unverified_lead"
     assert rows[0]["url"] == "https://company.example/public"
     assert "PersonOSINT-Fallexport" in rows[0]["analyst_note"]
