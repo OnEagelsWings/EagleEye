@@ -127,3 +127,11 @@ def test_plan_review_integrity_and_rejected_state(workspace):
 def test_unicode_control_held_out():
     with pytest.raises(p.PlanError,match="Unicode"):
         p._safe_text("Gültiger Name mit Unicode Bidi \u202e Zeichen",field="objective",minimum=1,maximum=100)
+
+
+def test_raw_whitespace_controls_cannot_be_silently_normalized_into_audit_text():
+    for raw in ("Approved\\nwithout review", "Provider\\tgrant", "Scope\\rchanged"):
+        value = raw.encode("ascii").decode("unicode_escape")
+        with pytest.raises(p.PlanError, match="Unicode controls"):
+            p._safe_text(value, field="objective", minimum=1, maximum=100)
+    assert p._safe_text("Öffentliche   Register", field="objective", minimum=1, maximum=100) == "Öffentliche Register"
