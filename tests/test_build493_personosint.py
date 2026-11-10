@@ -134,7 +134,7 @@ def test_launchers_keep_case_data_outside_upgradeable_install_folder():
         assert ".eagleeye-config-490" not in text
     for name in ("EAGLEEYE_START_DIAGNOSE.bat", "EAGLEEYE_DATENORDNER_WAEHLEN.bat",
                  "EAGLEEYE_SICHERUNG.bat", "EAGLEEYE_WIEDERHERSTELLEN.bat"):
-        assert ".eagleeye-runtime-490\\Scripts\\python.exe" in (ROOT / name).read_text(encoding="utf-8")
+        assert ".eagleeye-runtime-500\\Scripts\\python.exe" in (ROOT / name).read_text(encoding="utf-8")
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert ".eagleeye-runtime-*/" in ignore
     assert ".eagleeye-config-*/" in ignore
