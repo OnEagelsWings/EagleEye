@@ -134,6 +134,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("Geprüfte Entitäten in den Graph", "Build 499 – Belegbezug",
+                        "Manuell geprüfte PersonOSINT-Kandidaten mit einem Falldokument "
+                        "als unbestätigte Graphknoten erfassen; kein Identitätsbeweis.",
+                        "/workbench/transfer499", "Beleggebundene Übernahme öffnen")
+                   if getattr(app.state, "transfer499", False) else "")
                 + (card("Lokale KI-Planvorschläge", "Build 498 – human review",
                         "Ein vorhandenes lokales Ollama-Modell schlägt streng typisierte Arbeitsschritte vor; "
                         "alle Vorschläge müssen vor Übernahme manuell geprüft werden.",
