@@ -57,3 +57,20 @@ def test_main_hub_renders_full_combined_personosint(workspace):
     assert flow.status_code == 200
     assert "PersonOSINT-Quellen übernehmen" in flow.text
     assert "PersonOSINT-Entitäten prüfen" in flow.text
+
+
+@ws
+def test_manual_research_survives_optional_provider_catalog_failure(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    registry = app.state.context.provider_collection_120
+
+    def unavailable():
+        raise RuntimeError("sensitive registry backend failure")
+
+    monkeypatch.setattr(registry, "list_providers", unavailable)
+    response = client.get("/workbench/personosint495",
+                          params={"case_id": case_id, "kind": "person", "term": "Müller"})
+    assert response.status_code == 200
+    assert "M%C3%BCller" in response.text
+    assert "sensitive registry backend failure" not in response.text
+    assert "Bestehende kontrollierte EagleEye-Provider (0)" in response.text
