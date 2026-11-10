@@ -36,10 +36,21 @@ def _check(root,install,python):
             time.sleep(0.3)
         raise RuntimeError("Installed runtime did not become healthy")
     finally:
-        proc.terminate()
-        try:proc.communicate(timeout=12)
+        # The desktop launcher may spawn the web server as a child process.
+        # Killing only the launcher leaves that child holding eagleeye.db open
+        # on Windows, preventing workspace cleanup and masking restart issues.
+        if proc.poll() is None:
+            tree = subprocess.run(
+                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                capture_output=True, text=True, timeout=15, check=False,
+            )
+            if tree.returncode != 0 and proc.poll() is None:
+                proc.kill()
+        try:
+            proc.communicate(timeout=15)
         except subprocess.TimeoutExpired:
-            proc.kill();proc.communicate(timeout=5)
+            proc.kill()
+            proc.communicate(timeout=5)
 
 def main():
     if os.name!="nt":raise SystemExit("Windows acceptance runs on Windows runner only")
