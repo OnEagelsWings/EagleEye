@@ -126,6 +126,7 @@ def _insert(ctx, table: str, row: dict) -> None:
 
 
 def create_plan(ctx, user: dict, case_id: str, objective: str, scope: str) -> dict:
+    ctx.team_governance_359.authorize(user, case_id=case_id, capability="research.run", object_type="operational_case", object_id=case_id)
     objective = _safe_text(objective, field="objective", minimum=15, maximum=350)
     scope = _safe_text(scope, field="scope", minimum=20, maximum=1200)
     with ctx.audit.actor_scope(user["username"]), ctx.db.transaction(immediate=True):
@@ -146,6 +147,7 @@ def create_plan(ctx, user: dict, case_id: str, objective: str, scope: str) -> di
 
 def add_step(ctx, user: dict, case_id: str, plan_id: str, kind: str,
              instruction: str, provider_key: str = "") -> dict:
+    ctx.team_governance_359.authorize(user, case_id=case_id, capability="research.run", object_type="operational_case", object_id=case_id)
     instruction = _safe_text(instruction, field="instruction", minimum=15, maximum=800)
     if kind not in KINDS:
         raise PlanError("Unsupported tool proposal kind")
@@ -181,6 +183,7 @@ def add_step(ctx, user: dict, case_id: str, plan_id: str, kind: str,
 
 def review_plan(ctx, user: dict, case_id: str, plan_id: str, decision: str,
                 reason: str, expected_hash: str) -> dict:
+    ctx.team_governance_359.authorize(user, case_id=case_id, capability="source.review", object_type="operational_case", object_id=case_id)
     if decision not in DECISIONS:
         raise PlanError("Unsupported plan review decision")
     reason = _safe_text(reason, field="review_note", minimum=20, maximum=1200)
@@ -208,6 +211,7 @@ def review_plan(ctx, user: dict, case_id: str, plan_id: str, decision: str,
 
 def annotate_step(ctx, user: dict, case_id: str, plan_id: str, step_id: str,
                   decision: str, note: str, expected_hash: str) -> dict:
+    ctx.team_governance_359.authorize(user, case_id=case_id, capability="research.run", object_type="operational_case", object_id=case_id)
     if decision not in STEP_DECISIONS:
         raise PlanError("Unsupported step status")
     note = _safe_text(note, field="outcome", minimum=20, maximum=1400)
