@@ -1,0 +1,94 @@
+name: EagleEye 500 Internal Windows Offline Release Candidate
+on:
+  pull_request:
+    paths:
+      - 'src/eagleeye/application/execution497.py'
+      - 'src/eagleeye/application/ai498.py'
+      - 'src/eagleeye/application/transfer499.py'
+      - 'src/eagleeye/application/entity_registry461.py'
+      - 'src/eagleeye/interfaces/web/**'
+      - 'tests/test_build497_execution.py'
+      - 'tests/test_build498_ai.py'
+      - 'tests/test_build499_transfer.py'
+      - 'tests/test_build500_release.py'
+      - 'tests/test_build490_package_contract.py'
+      - 'tests/test_build490_server_selection.py'
+      - 'INSTALL_EAGLEEYE_500.py'
+      - 'START_EAGLEEYE_PRO.*'
+      - 'INSTALL_EAGLEEYE_PRO.*'
+      - 'EAGLEEYE_*.bat'
+      - 'eagleeye_pro/version.py'
+      - 'pyproject.toml'
+      - 'tools/build500_wheel_manifest.py'
+      - 'tools/pack500.py'
+      - 'tools/windows500_acceptance.py'
+      - '.github/workflows/build500-internal-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  current-integration-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -e '.[test]'
+      - name: Verify only current Build 497-500 integration
+        run: >
+          python -m pytest -q
+          tests/test_build497_execution.py
+          tests/test_build498_ai.py
+          tests/test_build499_transfer.py
+          tests/test_build500_release.py
+          tests/test_build490_package_contract.py
+          tests/test_build490_server_selection.py
+          tests/test_build490_real_server_start.py
+
+  windows-offline-release:
+    runs-on: windows-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install current development tests
+        run: python -m pip install -e '.[test]'
+      - name: Test Build 500 integration before packaging
+        run: >
+          python -m pytest -q
+          tests/test_build497_execution.py
+          tests/test_build498_ai.py
+          tests/test_build499_transfer.py
+          tests/test_build500_release.py
+          tests/test_build490_package_contract.py
+          tests/test_build490_server_selection.py
+          tests/test_build490_real_server_start.py
+      - name: Download ALL required Windows wheels
+        run: python -m pip wheel --wheel-dir wheelhouse .
+      - name: Seal wheel hashes
+        run: python tools/build500_wheel_manifest.py wheelhouse
+      - name: Install Windows candidate strictly offline from wheels
+        run: python INSTALL_EAGLEEYE_500.py --offline
+      - name: Check isolated, non-editable Build 500 installation
+        run: python INSTALL_EAGLEEYE_500.py --check
+      - name: Real Windows launch, health, stop, restart and workspace continuity
+        run: python tools/windows500_acceptance.py
+      - name: Assemble ZIP with complete offline dependencies and SHA-256 manifest
+        run: >
+          python tools/pack500.py .
+          EagleEye-500-Internal-Windows-RC.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EagleEye-500-Internal-Windows-Offline-Candidate
+          path: |
+            EagleEye-500-Internal-Windows-RC.zip
+            EagleEye-500-Internal-Windows-RC.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
