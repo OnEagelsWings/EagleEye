@@ -304,7 +304,20 @@ class ProviderCollection120Service:
                     target_id=target_id,
                 )
             for approved_response in pending_replay_responses:
+                # Revocation may happen while earlier fixtures are written.
+                # Recheck before each further persistence operation.
+                self._validate_search_approval(
+                    case_id=case_id, provider_key=provider_key, query=query,
+                    search_intent_id=search_intent_id,
+                    search_query_id=search_query_id, target_id=target_id,
+                )
                 fixture_ids.append(self._record_fixture(provider_key, approved_response, run_id))
+            if mode == "live":
+                self._validate_search_approval(
+                    case_id=case_id, provider_key=provider_key, query=query,
+                    search_intent_id=search_intent_id,
+                    search_query_id=search_query_id, target_id=target_id,
+                )
             intake_ids, duplicate_count = self._store_intake(run_id, request, normalized)
             result_count = len(intake_ids)
             denominator = max(1, result_count + duplicate_count)
