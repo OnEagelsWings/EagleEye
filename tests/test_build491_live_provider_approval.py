@@ -181,3 +181,48 @@ def test_live_run_rechecks_approval_before_candidate_intake():
         "status='failed'" in call.args[0]
         for call in service.db.execute.call_args_list
     )
+
+
+def test_live_revocation_after_fixture_blocks_candidate_intake():
+    """A late revocation must not promote normalized data into intake."""
+    from eagleeye.infrastructure.providers import ProviderHttpRequest, ProviderTransportResponse
+
+    service = _service()
+    service.clock = lambda: 1731000000.0
+    service.db = SimpleNamespace(execute=Mock())
+    service.audit = SimpleNamespace(log=Mock())
+    service._event = Mock()
+    response = ProviderTransportResponse(
+        requested_url="https://example.org/record", status_code=200,
+        final_url="https://example.org/record", body=b"{}", headers={}, elapsed_ms=5,
+    )
+    service._execute_request = Mock(return_value=(response, 1))
+    service._record_fixture = Mock(return_value="fixture-1")
+    service._store_intake = Mock(return_value=(["candidate-1"], 0))
+    service._record_run_failure = Mock()
+    service._adapters = {"public_test": SimpleNamespace(
+        definition=SimpleNamespace(enabled=True, supports_live=True, supports_replay=True),
+        validate_request=Mock(),
+        build_requests=Mock(return_value=(ProviderHttpRequest("https://example.org/record"),)),
+        normalize=Mock(return_value=[]),
+    )}
+    calls = 0
+
+    def revoke_before_intake(**_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 5:
+            raise ProviderAuthorizationError("approval revoked before intake")
+
+    service._validate_search_approval = revoke_before_intake
+    with pytest.raises(ProviderAuthorizationError, match="approval revoked before intake"):
+        service.execute(
+            case_id="case-1", provider_key="public_test", query="public archive records",
+            purpose="Check publicly available archive records", approved_by="reviewer-1",
+            confirmation=service.APPROVAL_PHRASE, mode="live",
+            search_intent_id="intent-1", search_query_id="query-1", record_replay=True,
+        )
+    assert calls == 5
+    service._record_fixture.assert_called_once()
+    service._store_intake.assert_not_called()
+    service._record_run_failure.assert_not_called()
