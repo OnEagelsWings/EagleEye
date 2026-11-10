@@ -144,6 +144,8 @@ def attach_plan496(app, build: str) -> None:
             if current["state"] != "draft":
                 body += ('<p>Geprüft durch ' + escape(current["reviewed_by"]) +
                          ': ' + escape(current["review_note"]) + '</p>')
+            if current["state"] == "draft" and getattr(app.state, "ai498", False):
+                body += '<p><a href="/workbench/ai498?' + escape(urlencode({"case_id":case_id,"plan_id":plan_id}),quote=True) + '">Lokale KI-Schrittvorschläge prüfen</a></p>'
             if current["state"] == "approved" and getattr(app.state, "execution497", False):
                 body += '<p><a href="/workbench/run497?' + escape(urlencode({"case_id":case_id,"plan_id":plan_id}),quote=True) + '">Genehmigte Provider-Schritte bearbeiten</a></p>'
             body += "<h2>Arbeitsschritte (" + str(len(steps)) + ")</h2>"

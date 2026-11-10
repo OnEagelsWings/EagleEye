@@ -134,6 +134,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("Lokale KI-Planvorschläge", "Build 498 – human review",
+                        "Ein vorhandenes lokales Ollama-Modell schlägt streng typisierte Arbeitsschritte vor; "
+                        "alle Vorschläge müssen vor Übernahme manuell geprüft werden.",
+                        "/workbench/ai498", "KI-Planvorschläge öffnen")
+                   if getattr(app.state, "ai498", False) else "")
                 + (card("Kontrollierte Provider-Läufe", "Build 497 – Offline/Live",
                         "Freigegebene Suchpläne mit dem vorhandenen, gesicherten Provider-Motor verbinden; "
                         "Live nur mit eigener Suchfreigabe.", "/workbench/run497", "Provider-Schritte öffnen")

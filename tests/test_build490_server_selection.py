@@ -15,13 +15,13 @@ def test_normal_server_selects_integrated_workspace(monkeypatch, tmp_path):
         calls.append((base_dir, workspace_build))
         return sentinel
 
-    monkeypatch.setattr(server, "create_workspace_app497", integrated)
+    monkeypatch.setattr(server, "create_workspace_app498", integrated)
     assert server.create_workspace_app(base_dir=tmp_path) is sentinel
     assert calls == [(tmp_path, server.BUILD)]
 
 
-def test_normal_server_uses_integrated_497_factory():
-    assert server.create_workspace_app497.__module__.endswith(".app497")
-    from eagleeye.interfaces.web import app497
+def test_normal_server_uses_integrated_498_factory():
+    assert server.create_workspace_app498.__module__.endswith(".app498")
+    from eagleeye.interfaces.web import app498
     # The 492 layer must still be built on the integrated 489 workspace.
-    assert app497.create_workspace_app495.__module__.endswith(".app495")
+    assert app498.create_workspace_app497.__module__.endswith(".app497")
