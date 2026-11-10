@@ -134,6 +134,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("PersonOSINT Intelligence", "Gemeinsamer Arbeitsbereich",
+                        "Personen, Unternehmen und Benutzernamen aus öffentlichen Quellen recherchieren; "
+                        "mit Fallakte, WARC, Entitäten, Graph und Bericht fortsetzen.",
+                        "/workbench/personosint495", "Personenrecherche öffnen")
+                   if getattr(app.state, "personosint495", False) else "")
                 + (card("PersonOSINT-Entitäten prüfen", "Prüfkandidaten",
                         "Personen und Organisationen aus einem PersonOSINT-Export kontrolliert als Vorschläge vormerken; "
                         "keine automatische Identitätszuordnung.",

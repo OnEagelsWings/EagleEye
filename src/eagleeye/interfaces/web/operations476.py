@@ -161,7 +161,9 @@ def attach_workbench(app, workspace_build):
                        "/workbench/dorks482"),
                   ] + ([step(3,"Recherchefunde sichern",
                        "Einen tatsächlich im Browser geprüften Treffer als ungeprüften Fallhinweis speichern.",
-                       "/workbench/leads483")] if stage>=483 else []) + ([step(3,"PersonOSINT-Quellen übernehmen",
+                       "/workbench/leads483")] if stage>=483 else []) + ([step(3,"PersonOSINT Intelligence",
+                       "Gezielt öffentliche Quellen recherchieren und Ergebnisse in der einen Fallakte weiterverarbeiten.",
+                       "/workbench/personosint495")] if getattr(app.state,"personosint495",False) else []) + ([step(3,"PersonOSINT-Quellen übernehmen",
                        "Öffentliche Recherchetreffer aus dem Claude-PersonOSINT-Export als ungeprüfte Hinweise aufnehmen.",
                        "/workbench/personosint493")] if getattr(app.state,"personosint493",False) else []) + [
                   step(3,"Öffentliche Datenquellen",
