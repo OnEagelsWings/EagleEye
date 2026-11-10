@@ -60,6 +60,29 @@ def _windows_descendant_pids(parent_pid):
         return []
 
 
+def _windows_port_owner_pid(port, install):
+    """Identify only the installed EagleEye process listening on our health port."""
+    import re
+    netstat = subprocess.run(["netstat", "-ano", "-p", "TCP"],
+                             capture_output=True, text=True, timeout=12, check=True)
+    candidates = set()
+    for line in netstat.stdout.splitlines():
+        parts = line.split()
+        if len(parts) >= 5 and parts[0].upper() == "TCP" and parts[3].upper() == "LISTENING":
+            if parts[1].rsplit(":", 1)[-1] == str(port):
+                candidates.add(int(parts[4]))
+    for pid in candidates:
+        script = ("$p=Get-CimInstance Win32_Process -Filter 'ProcessId=" + str(pid) +
+                  "'; if($p){$p.CommandLine}")
+        result = subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
+                                 "-Command", script], capture_output=True,
+                                text=True, timeout=12, check=True)
+        command = result.stdout.strip().lower()
+        if str(install.resolve()).lower() in command and "python" in command:
+            return pid
+    return None
+
+
 def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
@@ -71,6 +94,7 @@ def _check(root,install,python):
     job = None
     job_error = None
     descendant_pids = []
+    server_pid = None
     try:
         if os.name == "nt":
             try:
@@ -93,6 +117,9 @@ def _check(root,install,python):
                     if data.get("ok") and data.get("build")=="500.0":
                         if os.name == "nt" and job is None:
                             descendant_pids = _windows_descendant_pids(proc.pid)
+                            server_pid = _windows_port_owner_pid(port, install)
+                            if server_pid is None:
+                                raise RuntimeError("Cannot identify installed EagleEye server process on health port")
                         return True
                 except (OSError,ValueError,KeyError,TimeoutError):pass
             time.sleep(0.3)
@@ -122,7 +149,7 @@ def _check(root,install,python):
         elif os.name == "nt":
             # The launcher may already have exited, so /T on its PID alone
             # cannot find an orphaned server. Stop the captured children too.
-            for pid in reversed(descendant_pids):
+            for pid in reversed(list(dict.fromkeys(descendant_pids + ([server_pid] if server_pid else [])))):
                 completed = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],
                                            capture_output=True, text=True, timeout=20, check=False)
                 print("Windows descendant stop " + str(pid) + ": " + str(completed.returncode), flush=True)
