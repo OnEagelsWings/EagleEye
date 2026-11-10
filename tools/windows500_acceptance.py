@@ -18,7 +18,7 @@ def _check(root,install,python):
     command=[str(python),"-I","-m","eagleeye.bootstrap.desktop476",
              "--install-root",str(install),"--no-browser"]
     proc=subprocess.Popen(command,cwd=install,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
-                          text=True)
+                          text=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
     try:
         runtime=root/"data"/"runtime_126_0"/"workspace.json"
         for i in range(150):
@@ -39,12 +39,20 @@ def _check(root,install,python):
         # The desktop launcher may spawn the web server as a child process.
         # Killing only the launcher leaves that child holding eagleeye.db open
         # on Windows, preventing workspace cleanup and masking restart issues.
-        if os.name == "nt":
-            tree = subprocess.run(
-                ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                capture_output=True, text=True, timeout=15, check=False,
-            )
-            if tree.returncode != 0 and proc.poll() is None:
+        # First request a graceful Uvicorn shutdown: it closes SQLite pools,
+        # worker threads and the workspace lock. Force termination is fallback.
+        if proc.poll() is None and os.name == "nt":
+            import signal
+            try:
+                proc.send_signal(signal.CTRL_BREAK_EVENT)
+                proc.communicate(timeout=12)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+        if proc.poll() is None:
+            if os.name == "nt":
+                subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                               capture_output=True, text=True, timeout=15, check=False)
+            if proc.poll() is None:
                 proc.kill()
         try:
             proc.communicate(timeout=15)
