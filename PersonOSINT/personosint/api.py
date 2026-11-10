@@ -43,6 +43,15 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
 __all__ = ["create_app", "default_data_dir"]
 
 
+def _ev_public(row: dict) -> dict:
+    """Beleg für die Oberfläche: interne Dateinamen entfernen, stattdessen sagen, was vorhanden ist."""
+    row = dict(row)
+    row["has_warc"] = bool(row.pop("warc_file", ""))
+    row["has_text"] = bool(row.pop("text_file", ""))
+    row.pop("file", None)
+    return row
+
+
 def _download(content: bytes, filename: str, media: str) -> Response:
     ascii_name = filename.encode("ascii", "replace").decode().replace("?", "_")
     return Response(content, media_type=media, headers={
@@ -396,9 +405,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     @app.get("/api/cases/{cid}/evidence")
     def evidence_list(cid: int, _: dict = READ) -> list[dict]:
         rows = db.all("SELECT * FROM evidence WHERE case_id = ? ORDER BY id DESC", (cid,))
-        for r in rows:
-            r.pop("file", None)
-        return rows
+        return [_ev_public(r) for r in rows]
 
     @app.post("/api/cases/{cid}/evidence", status_code=201)
     def evidence_capture(cid: int, payload: dict = Body(...), case: dict = WRITE) -> dict:
@@ -411,11 +418,83 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
             row = db.one("SELECT url FROM findings WHERE id = ? AND case_id = ?", (fid, cid))
             url = row["url"] if row else ""
         try:
-            row = ev.capture(p, cid, url, finding_id=fid, fact_id=int(payload.get("fact_id") or 0) or None, note=payload.get("note", ""))
+            row = ev.capture(p, cid, url, finding_id=fid, fact_id=int(payload.get("fact_id") or 0) or None, note=payload.get("note", ""),
+                             wayback_timestamp=str(payload.get("wayback_timestamp") or ""))
         except ev.EvidenceError as exc:
             raise Invalid(str(exc)) from exc
-        row.pop("file", None)
-        return row
+        return _ev_public(row)
+
+    @app.get("/api/cases/{cid}/evidence/wayback")
+    def evidence_wayback(cid: int, url: str, case: dict = WRITE) -> list[dict]:
+        """Frühere Fassungen einer Adresse im Internet Archive (Abfrage über den Netzausgang des Falls)."""
+        from . import evidence as ev
+
+        p.require_briefing(case)
+        try:
+            return ev.wayback_versions(p, cid, url)
+        except ev.EvidenceError as exc:
+            raise Invalid(str(exc)) from exc
+
+    @app.post("/api/cases/{cid}/evidence/document", status_code=201)
+    async def evidence_document(cid: int, file: UploadFile = File(...), entity_id: int = 0, note: str = "", _: dict = WRITE) -> dict:
+        """Dokument (PDF, Word, Bild, Text, E-Mail) als Beleg importieren – ohne Außenkontakt."""
+        from . import documents
+
+        content = await file.read(documents.MAX_UPLOAD + 1)
+        try:
+            row = documents.import_document(p, cid, file.filename or "dokument", content, entity_id=entity_id or None, note=note)
+        except documents.DocumentError as exc:
+            raise Invalid(str(exc)) from exc
+        return _ev_public(row)
+
+    @app.get("/api/cases/{cid}/evidence/families")
+    def evidence_families(cid: int, level: str = "normal", _: dict = READ) -> dict:
+        res = p.evidence_families(cid, level)
+        res.pop("url_family", None)
+        return res
+
+    @app.get("/api/cases/{cid}/evidence/{eid}/text")
+    def evidence_text(cid: int, eid: int, _: dict = READ) -> dict:
+        from . import documents
+        from . import evidence as ev
+
+        row = db.one("SELECT * FROM evidence WHERE id = ? AND case_id = ?", (eid, cid))
+        if not row:
+            raise NotFound("Beleg nicht gefunden.")
+        pages = ev.text_pages(p, row)
+        return {"evidence": _ev_public(row), "pages": pages, "mentions": documents.mentions(p, cid, pages)}
+
+    @app.get("/api/cases/{cid}/evidence/{eid}/verify")
+    def evidence_verify(cid: int, eid: int, _: dict = READ) -> dict:
+        from . import evidence as ev
+
+        res = ev.verify(p, cid, eid)
+        p.log(cid, "Beleg geprüft", f"B{eid:04d}: " + ("unverändert" if res.get("ok") else f"ABWEICHUNG – {res.get('message', '')}"))
+        return res
+
+    @app.get("/api/cases/{cid}/evidence/{eid}/warc")
+    def evidence_warc(cid: int, eid: int, _: dict = READ) -> Response:
+        from . import evidence as ev
+
+        try:
+            row, data = ev.warc_of(p, cid, eid)
+        except ev.EvidenceError as exc:
+            raise Invalid(str(exc)) from exc
+        p.log(cid, "WARC heruntergeladen", f"B{eid:04d} · {row['url']}")
+        return _download(data, f"Beleg_B{eid:04d}.warc.gz", "application/warc")
+
+    @app.delete("/api/cases/{cid}/evidence/{eid}")
+    def evidence_delete(cid: int, eid: int, _: dict = MANAGE) -> Response:
+        """Löscht einen Beleg samt Dateien (z. B. falsch importiertes Dokument). Die Prüfsumme bleibt im Protokoll."""
+        from . import evidence as ev
+
+        row = db.one("SELECT * FROM evidence WHERE id = ? AND case_id = ?", (eid, cid))
+        if not row:
+            raise NotFound("Beleg nicht gefunden.")
+        ev.delete_files(p, row)
+        db.execute("DELETE FROM evidence WHERE id = ?", (eid,))
+        p.log(cid, "Beleg gelöscht", f"B{eid:04d} · {ev.KINDS.get(row['kind'], row['kind'])} · {row['filename'] or row['url']} · SHA-256 {row['sha256']}")
+        return Response(status_code=204)
 
     @app.post("/api/cases/{cid}/evidence/confirmed")
     def evidence_capture_confirmed(cid: int, case: dict = WRITE) -> dict:
@@ -432,7 +511,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
             row, data = ev.content_of(p, cid, eid)
         except ev.EvidenceError as exc:
             raise Invalid(str(exc)) from exc
-        p.log(cid, "Beleg heruntergeladen", f"B{eid:04d} · {row['url']}")
+        p.log(cid, "Beleg heruntergeladen", f"B{eid:04d} · {row['url'] or row['filename']}")
         # immer als Anhang und ohne Ausführung im Browser (archivierte Seiten können Skripte enthalten)
         return _download(data, f"Beleg_B{eid:04d}{ev.EXT.get(row['content_type'], '.bin')}", "application/octet-stream")
 
@@ -625,6 +704,42 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def admin_redflags_save(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
         return p.save_redflag_config(payload)
 
+    @app.get("/api/admin/correlation-rules")
+    def admin_correlation(_: dict = Depends(admin_ok)) -> dict:
+        from . import correlation
+        from .facts import PREDICATES
+
+        return {"rules": correlation.load_rules(p), "predicates": {k: v["label"] for k, v in PREDICATES.items()},
+                "example": correlation.BUILTIN[0]}
+
+    @app.put("/api/admin/correlation-rules")
+    def admin_correlation_save(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        from . import correlation
+
+        correlation.save_rule(p, payload)
+        return {"rules": correlation.load_rules(p)}
+
+    @app.post("/api/admin/correlation-rules/{key}/enabled")
+    def admin_correlation_enable(key: str, payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        from . import correlation
+
+        correlation.set_enabled(p, key, bool(payload.get("enabled")))
+        return {"rules": correlation.load_rules(p)}
+
+    @app.delete("/api/admin/correlation-rules/{key}")
+    def admin_correlation_delete(key: str, _: dict = Depends(admin_ok)) -> dict:
+        from . import correlation
+
+        correlation.delete_rule(p, key)
+        return {"rules": correlation.load_rules(p)}
+
+    @app.get("/api/components")
+    def components(_: dict = Depends(user_ok)) -> dict:
+        """Welche optionalen Bausteine sind auf diesem Server nutzbar (Texterkennung, WARC, Haupttext)?"""
+        from . import documents, webarchive
+
+        return {"ocr": documents.ocr_status(), **webarchive.available()}
+
     @app.get("/api/cases/{cid}/facts")
     def case_facts(cid: int, status: str | None = None, _: dict = READ) -> list[dict]:
         return p.list_facts(cid, status)
@@ -790,6 +905,44 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def searches(cid: int, _: dict = READ) -> list[dict]:
         return p.list_searches(cid)
 
+    @app.get("/api/cases/{cid}/entities/{eid}/pivots")
+    def pivots(cid: int, eid: int, _: dict = READ) -> dict:
+        from . import pivot
+
+        return pivot.suggestions(p, cid, eid)
+
+    @app.post("/api/cases/{cid}/entities/{eid}/pivots/run")
+    def pivots_run(cid: int, eid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:
+        from . import pivot
+
+        return pivot.run(p, cid, eid, str(payload.get("kind") or ""), str(payload.get("value") or ""), payload.get("sources") or None)
+
+    @app.post("/api/cases/{cid}/entities/{eid}/pivots/dismiss")
+    def pivots_dismiss(cid: int, eid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:
+        from . import pivot
+
+        pivot.dismiss(p, cid, eid, str(payload.get("kind") or ""), str(payload.get("value") or ""))
+        return pivot.suggestions(p, cid, eid)
+
+    @app.post("/api/cases/{cid}/entities/{eid}/pivots/restore")
+    def pivots_restore(cid: int, eid: int, _: dict = WRITE) -> dict:
+        from . import pivot
+
+        pivot.restore(p, cid, eid)
+        return pivot.suggestions(p, cid, eid)
+
+    @app.get("/api/cases/{cid}/entities/{eid}/routes")
+    def source_routes(cid: int, eid: int, want: str, _: dict = READ) -> list[dict]:
+        from . import pivot
+
+        return pivot.routes(p, cid, eid, want)
+
+    @app.get("/api/cases/{cid}/findings/{fid}/chain")
+    def finding_chain(cid: int, fid: int, _: dict = READ) -> list[dict]:
+        from . import pivot
+
+        return pivot.chain(p, cid, fid)
+
     @app.get("/api/cases/{cid}/findings")
     def findings(cid: int, status: str | None = None, entity_id: int | None = None, _: dict = READ) -> list[dict]:
         return p.list_findings(cid, status, entity_id)
@@ -829,6 +982,60 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         p.finish_export(export_id, content)
         p.log(cid, "Netzwerkgrafik exportiert", export_id)
         return _download(content, f"Netzwerk_{safe_filename(case['reference'])}_{export_id}.png", "image/png")
+
+    @app.get("/api/cases/{cid}/graph/analysis")
+    def graph_analysis(cid: int, _: dict = READ) -> dict:
+        return p.network_analysis(cid)
+
+    @app.get("/api/cases/{cid}/export/graph.{fmt}")
+    def graph_export(cid: int, fmt: str, case: dict = READ) -> Response:
+        """Verbindungsgraph in offenen Formaten: gexf (Gephi), ftm (FollowTheMoney), canvas (JSON Canvas/Obsidian)."""
+        from . import network
+
+        kinds = {"gexf": ("Graph (GEXF)", "application/gexf+xml", "gexf"), "ftm": ("Graph (FollowTheMoney)", "application/json", "ftm.json"),
+                 "canvas": ("Graph (JSON Canvas)", "application/json", "canvas")}
+        if fmt not in kinds:
+            raise NotFound("Unbekanntes Format (gexf, ftm, canvas).")
+        label, media, ext = kinds[fmt]
+        export_id = p.register_export(cid, label)
+        gr = p.graph(cid)
+        if fmt == "gexf":
+            content = network.gexf(gr, f"Fall {case['reference']} · Export {export_id}")
+        elif fmt == "ftm":
+            content = json.dumps(network.ftm_export(case["reference"], p.list_entities(cid), p.list_links(cid)), ensure_ascii=False, indent=1).encode()
+        else:
+            content = json.dumps(network.canvas(gr), ensure_ascii=False, indent=1).encode()
+        p.finish_export(export_id, content)
+        p.log(cid, "Graph exportiert", f"{label} · {export_id}")
+        return _download(content, f"Graph_{safe_filename(case['reference'])}_{export_id}.{ext}", media)
+
+    @app.get("/api/cases/{cid}/export/obsidian.zip")
+    def export_obsidian(cid: int, case: dict = READ) -> Response:
+        """Fall als Obsidian-Vault: Notizen mit Wikilinks, geprüfte Aussagen, Graph als Canvas. Unverschlüsselt – Hinweis liegt bei."""
+        from . import network
+
+        export_id = p.register_export(cid, "Obsidian-Vault")
+        asm = p.assessment(cid)
+        title = case["codename"] if ops.level(case["opsec_level"]).codename and case["codename"] else case["title"]
+        content = network.obsidian_vault(title=title, reference=case["reference"], export_id=export_id, entities=p.list_entities(cid),
+                                         links=p.list_links(cid), facts=[f for f in asm["facts"] if f["status"] == "bestätigt"],
+                                         graph=p.graph(cid), events=p.list_events(cid))
+        p.finish_export(export_id, content)
+        p.log(cid, "Obsidian-Vault exportiert", export_id)
+        return _download(content, f"Vault_{safe_filename(case['reference'])}_{export_id}.zip", "application/zip")
+
+    @app.post("/api/cases/{cid}/import/ftm")
+    async def import_ftm(cid: int, file: UploadFile = File(...), _: dict = WRITE) -> dict:
+        """Graph im FollowTheMoney-Format einlesen (z. B. Export aus EagleEye Build 492, Aleph, OpenSanctions) – alles bleibt ungeprüft."""
+        from . import network
+
+        raw = await file.read(5_000_001)
+        if len(raw) > 5_000_000:
+            raise Invalid("Die Datei ist größer als 5 MB.")
+        try:
+            return network.ftm_import(p, cid, raw, origin=f"FtM-Import {Path(file.filename or 'datei').name}"[:120])
+        except ValueError as exc:
+            raise Invalid(str(exc)) from exc
 
     @app.get("/api/cases/{cid}/paths")
     def paths(cid: int, a: int, b: int, max_len: int = 5, _: dict = READ) -> dict:

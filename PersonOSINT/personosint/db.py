@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-JSON_FIELDS = {"data", "reasons", "queries", "source_status", "sources", "facts_used", "checks"}
+JSON_FIELDS = {"data", "reasons", "queries", "source_status", "sources", "facts_used", "checks", "meta", "snapshot", "pivot"}
 
 # --------------------------------------------------------------------------- Schema-Migrationen
 # Platzhalter: {PK} = automatisch hochzählender Primärschlüssel, {REAL} = Gleitkommazahl
@@ -200,8 +200,33 @@ ALTER TABLE cases ADD COLUMN retention_until TEXT NOT NULL DEFAULT '';
 ALTER TABLE cases ADD COLUMN mandate_check TEXT NOT NULL DEFAULT ''
 """
 
+#: Version 1.5 – Zusammenführung mit Build 492 / SpiderFoot-Analyse:
+#: Belege mit WARC, Haupttext und importierten Dokumenten; Suchläufe mit Konfigurations-Snapshot und Herkunft (Folgesuche)
+MIGRATION_8 = """
+ALTER TABLE evidence ADD COLUMN kind TEXT NOT NULL DEFAULT 'web';
+ALTER TABLE evidence ADD COLUMN warc_file TEXT NOT NULL DEFAULT '';
+ALTER TABLE evidence ADD COLUMN warc_sha256 TEXT NOT NULL DEFAULT '';
+ALTER TABLE evidence ADD COLUMN text_file TEXT NOT NULL DEFAULT '';
+ALTER TABLE evidence ADD COLUMN filename TEXT NOT NULL DEFAULT '';
+ALTER TABLE evidence ADD COLUMN meta TEXT NOT NULL DEFAULT '{{}}';
+ALTER TABLE evidence ADD COLUMN entity_id INTEGER;
+ALTER TABLE searches ADD COLUMN snapshot TEXT NOT NULL DEFAULT '{{}}';
+ALTER TABLE searches ADD COLUMN pivot TEXT NOT NULL DEFAULT '{{}}';
+ALTER TABLE identifiers ADD COLUMN finding_id INTEGER;
+CREATE TABLE pivots (
+    id {PK}, case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE, entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL, value TEXT NOT NULL, normalized TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'verworfen',
+    decided_by TEXT NOT NULL DEFAULT '', decided_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX ix_pivots_key ON pivots(entity_id, kind, normalized);
+CREATE TABLE correlation_rules (
+    id {PK}, rule_key TEXT NOT NULL UNIQUE, definition TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1,
+    created_by TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+)
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6),
-                                     (7, MIGRATION_7)]
+                                     (7, MIGRATION_7), (8, MIGRATION_8)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 

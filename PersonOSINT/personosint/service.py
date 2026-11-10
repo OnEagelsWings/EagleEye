@@ -273,7 +273,9 @@ class Platform:
                                 "Lokale Referenzdaten", (lambda src, kind, value, http, n=name: self.refdata.findings(n, kind, value)),
                                 license=meta["license"], reliability=meta["reliability"], local=True, rate_per_min=0,
                                 test_query=("name", "Vladimir Putin")))
-        return list(SOURCES) + list(ONLINE_SOURCES) + local
+        from .pivot import apply_manifest
+
+        return apply_manifest(list(SOURCES) + list(ONLINE_SOURCES) + local)
 
     def source_map(self) -> dict[str, Source]:
         return {s.key: s for s in self.all_sources()}
@@ -827,8 +829,10 @@ class Platform:
         case = self.get_case(case_id)
         for e in self.db.all("SELECT photo FROM entities WHERE case_id = ? AND photo != ''", (case_id,)):
             (self.data_dir / "photos" / e["photo"]).unlink(missing_ok=True)
-        for ev in self.db.all("SELECT file FROM evidence WHERE case_id = ? AND file != ''", (case_id,)):
-            (self.data_dir / "evidence" / ev["file"]).unlink(missing_ok=True)
+        for ev in self.db.all("SELECT file, warc_file, text_file FROM evidence WHERE case_id = ?", (case_id,)):
+            for name in (ev["file"], ev["warc_file"], ev["text_file"]):
+                if name:
+                    (self.data_dir / "evidence" / name).unlink(missing_ok=True)
         self.db.execute("DELETE FROM cases WHERE id = ?", (case_id,))
         # Personenbezogene Protokolltexte schwärzen; Hashes bleiben, damit die Kette prüfbar bleibt
         self.db.execute("UPDATE audit SET detail = '[gelöscht]', redacted = 1 WHERE case_id = ?", (case_id,))
@@ -942,7 +946,8 @@ class Platform:
         return p if p.exists() else None
 
     # ------------------------------------------------------------------ Identifikatoren
-    def add_identifier(self, case_id: int, entity_id: int, payload: dict[str, Any], log: bool = True, source: str = "Analyst") -> dict[str, Any]:
+    def add_identifier(self, case_id: int, entity_id: int, payload: dict[str, Any], log: bool = True, source: str = "Analyst",
+                       finding_id: int | None = None) -> dict[str, Any]:
         e = self._entity(case_id, entity_id)
         kind = payload.get("kind") or "other"
         value = (payload.get("value") or "").strip()
@@ -960,7 +965,7 @@ class Platform:
             return existing
         iid = self.db.insert("identifiers", {"case_id": case_id, "entity_id": entity_id, "kind": kind, "value": value,
                                              "normalized": norm, "source": payload.get("source") or source,
-                                             "verified": 1 if payload.get("verified") else 0, "created_at": now_iso()})
+                                             "verified": 1 if payload.get("verified") else 0, "created_at": now_iso(), "finding_id": finding_id})
         if log:
             self.log(case_id, "Identifikator ergänzt", f"{e['label']}: {IDENTIFIER_KINDS[kind]} = {value}")
             self.touch(case_id)
@@ -981,9 +986,11 @@ class Platform:
                  "exposure": "lokal" if s.local else SOURCE_EXPOSURE.get(s.key, "plattform"),
                  "requires_key": s.requires_key, "key_optional": s.key_optional, "key_set": bool(keys.get(s.key)),
                  "unavailable": self.source_unavailable(s, keys), "license": s.license, "cost": s.cost,
-                 "reliability": s.reliability, "docs": s.docs, "key_help": s.key_help} for s in self.all_sources()]
+                 "reliability": s.reliability, "docs": s.docs, "key_help": s.key_help,
+                 "produces": list(s.produces), "produces_labels": [IDENTIFIER_KINDS.get(k, k) for k in s.produces]} for s in self.all_sources()]
 
-    def plan_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None) -> list[tuple[str, str, str]]:
+    def plan_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None,
+                    only: tuple[str, str] | None = None) -> list[tuple[str, str, str]]:
         idents = self.db.all("SELECT * FROM identifiers WHERE entity_id = ? AND case_id = ?", (entity_id, case_id))
         smap = self.source_map()
         keys = source_keys or list(smap)
@@ -995,6 +1002,8 @@ class Platform:
             seen = set()
             for ident in idents:
                 kind = "name" if ident["kind"] == "alias" else ident["kind"]
+                if only and (kind, ident["normalized"]) != only:
+                    continue
                 if kind in src.kinds and ident["normalized"] not in seen:
                     seen.add(ident["normalized"])
                     # Benutzernamen/E-Mails normalisiert abfragen (ohne @, Kleinschreibung)
@@ -1002,14 +1011,17 @@ class Platform:
                     plan.append((key, kind, value))
         return plan
 
-    def run_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None) -> dict[str, Any]:
+    def run_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None,
+                   only: tuple[str, str] | None = None, pivot: dict[str, Any] | None = None) -> dict[str, Any]:
+        """``only`` begrenzt die Suche auf eine Kennung (Art, normalisierter Wert); ``pivot`` hält fest, aus welchem
+        Treffer diese Folgesuche entstand (Herkunftskette)."""
         case = self.get_case(case_id)
         subject = self.get_entity(case_id, entity_id)
         lv = ops.level(case["opsec_level"])
         self.require_briefing(case)
         smap = self.source_map()
         keys_now = self.api_keys()
-        full_plan = self.plan_search(case_id, entity_id, source_keys)
+        full_plan = self.plan_search(case_id, entity_id, source_keys, only)
         unavailable = [x for x in full_plan if self.source_unavailable(smap[x[0]], keys_now)]
         full_plan = [x for x in full_plan if x not in unavailable]
         expo = lambda k: "lokal" if smap[k].local else SOURCE_EXPOSURE.get(k, "plattform")  # noqa: E731
@@ -1022,8 +1034,16 @@ class Platform:
         if not plan:
             raise OpsecBlocked(f"Alle gewählten Quellen überschreiten die für OPSEC-Stufe {lv.key} erlaubte Exposition.")
         http = self.case_http(case)  # wirft OpsecBlocked, wenn der Ausgang fehlt oder nicht erreichbar ist
+        from . import __version__
+
+        # Konfigurations-Snapshot je Lauf (Muster aus SpiderFoot): macht nachvollziehbar, womit und worüber gesucht wurde
+        snapshot = {"version": __version__, "opsec_level": lv.key, "egress": http.egress, "egress_kind": self.case_profile(case).kind,
+                    "sources": [{"key": k, "label": smap[k].label, "reliability": smap[k].reliability, "exposure": expo(k),
+                                 "license": smap[k].license} for k in dict.fromkeys(x[0] for x in plan)],
+                    "blocked": sorted({smap[k].label for k, _, _ in blocked}), "unavailable": sorted({smap[k].label for k, _, _ in unavailable})}
         sid = self.db.insert("searches", {"case_id": case_id, "entity_id": entity_id, "started_at": now_iso(),
-                                          "queries": [{"source": k, "kind": kd, "value": v} for k, kd, v in plan]})
+                                          "queries": [{"source": k, "kind": kd, "value": v} for k, kd, v in plan],
+                                          "snapshot": snapshot, "pivot": pivot or {}})
         status: list[dict[str, Any]] = [{"source": smap[k].label, "query": v, "ok": False, "count": 0,
                                          "message": f"Durch OPSEC-Stufe {lv.key} gesperrt (Exposition „{EXPOSURE[expo(k)]['label']}“)"}
                                         for k, _, v in blocked]
@@ -1060,7 +1080,9 @@ class Platform:
             new_facts += self._store_claims(case_id, fid, subject, smap[c["source_key"]], c)
         self.db.update("searches", sid, {"finished_at": now_iso(), "source_status": status, "result_count": new})
         ok = sum(1 for s in status if s["ok"])
-        self.log(case_id, "Suche ausgeführt", f"{subject['label']}: {len(plan)} Abfragen über „{http.egress}“, {ok} erfolgreich, {new} neue Treffer"
+        self.log(case_id, "Folgesuche ausgeführt" if pivot else "Suche ausgeführt",
+                 (f"aus „{pivot['origin'].get('label', '')}“ ({pivot['kind']}: {pivot['value']}, Tiefe {pivot['depth']}) · " if pivot else "")
+                 + f"{subject['label']}: {len(plan)} Abfragen über „{http.egress}“, {ok} erfolgreich, {new} neue Treffer"
                  + (f", {len(blocked)} durch OPSEC gesperrt" if blocked else ""))
         self.touch(case_id)
         return {"search_id": sid, "case": case["reference"], "queries": len(plan), "new_findings": new, "new_facts": new_facts, "egress": http.egress,
@@ -1183,11 +1205,42 @@ class Platform:
     def assessment(self, case_id: int) -> dict[str, Any]:
         facts = self.list_facts(case_id)
         profiles = {e["id"]: e for e in self.db.all("SELECT id, data FROM entities WHERE case_id = ? AND type = 'person'", (case_id,))}
-        res = analysis.assess(facts, profiles)
+        fams = self.evidence_families(case_id)
+        res = analysis.assess(facts, profiles, origins=fams["url_family"])
         res["redflags"] = analysis.red_flags(res, self.redflag_config())
         res["stats"]["redflags"] = len(res["redflags"])
+        from . import correlation
+
+        res["correlations"] = correlation.evaluate(correlation.load_rules(self), facts)
+        res["stats"]["correlations"] = len(res["correlations"])
+        res["origins"] = {"documents": fams["documents"], "independent_origins": fams["independent_origins"], "duplicate_documents": fams["duplicate_documents"]}
         res["legend"] = {"reliability": analysis.RELIABILITY, "credibility": analysis.CREDIBILITY}
         return res
+
+    def evidence_families(self, case_id: int, level: str = "normal") -> dict[str, Any]:
+        """Quellfamilien der Belege eines Falls: „N Belege / M unabhängige Ursprünge“ (siehe lineage.py)."""
+        from . import evidence as ev
+        from . import lineage
+
+        if level not in lineage.LEVELS:
+            raise Invalid("Unbekannte Stufe (streng, normal, locker).")
+        rows = self.db.all("SELECT id, kind, url, final_url, title, filename, retrieved_at, text_file FROM evidence WHERE case_id = ? ORDER BY id", (case_id,))
+        docs = [{"id": r["id"], "title": r["title"] or r["filename"] or r["url"], "url": r["url"], "kind": r["kind"],
+                 "first_seen": r["retrieved_at"], "text": ev.text_of(self, r)} for r in rows]
+        res = lineage.source_families(docs, level)
+        fam_of = lineage.origin_map(res)
+        # Adresse → Familie: nur Familien mit mehreren Mitgliedern verändern die Zählung unabhängiger Quellen
+        multi = {f["family"] for f in res["families"] if f["size"] > 1}
+        res["url_family"] = {u: fam_of[r["id"]] for r in rows for u in (r["url"], r["final_url"]) if u and fam_of.get(r["id"]) in multi}
+        for fam in res["families"]:
+            for m in fam["members"]:
+                m["label"] = f"B{m['id']:04d}"
+        return res
+
+    def network_analysis(self, case_id: int) -> dict[str, Any]:
+        from . import network
+
+        return network.analyse(self.graph(case_id))
 
     def update_fact(self, case_id: int, fact_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         fa = self.db.one("SELECT * FROM facts WHERE id = ? AND case_id = ?", (fact_id, case_id))
@@ -1345,9 +1398,10 @@ class Platform:
             self._link_once(case_id, person, eid, "besitzt Konto", conf, evidence)
             created.append(label)
             if data.get("benutzername"):
-                self.add_identifier(case_id, person, {"kind": "username", "value": str(data["benutzername"]).split("@")[0], "verified": True}, log=False, source=f["source"])
+                self.add_identifier(case_id, person, {"kind": "username", "value": str(data["benutzername"]).split("@")[0], "verified": True}, log=False,
+                                    source=f["source"], finding_id=f["id"])
             if f["url"]:
-                self.add_identifier(case_id, person, {"kind": "url", "value": f["url"], "verified": True}, log=False, source=f["source"])
+                self.add_identifier(case_id, person, {"kind": "url", "value": f["url"], "verified": True}, log=False, source=f["source"], finding_id=f["id"])
             if data.get("organisation"):
                 oid, _ = self._find_or_create(case_id, "organisation", str(data["organisation"]).lstrip("@"))
                 self._link_once(case_id, person, oid, "arbeitet bei", max(30, conf - 20), evidence)
@@ -1471,6 +1525,16 @@ class Platform:
                             "WHERE a.case_id = ?", (case_id,))
         for r in names:
             add(r["a"], r["b"], f"Gleicher Name „{r['value']}“ – möglicherweise dieselbe Person (Dublette?)", "identisch mit (vermutet)", 30)
+        # Begründeter Namensabgleich über Schreibweisen und Schriften (aus Build 492) – nur Prüfvorschlag, nie Zusammenführung
+        from .namematch import is_candidate
+
+        for etype in ("person", "organisation"):
+            same = sorted((e for e in ents.values() if e["type"] == etype), key=lambda e: e["id"])[:300]
+            for i, ea in enumerate(same):
+                for eb in same[i + 1:]:
+                    hit, score, reason = is_candidate(ea["label"], eb["label"])
+                    if hit:
+                        add(ea["id"], eb["id"], f"Mögliche Dublette ({round(score * 100)} %): {reason}", "identisch mit (vermutet)", 35)
         persons = [e for e in ents.values() if e["type"] == "person"]
         for f in self.db.all("SELECT entity_id, title, snippet, url FROM findings WHERE case_id = ? AND status = 'bestätigt'", (case_id,)):
             text = fold(f"{f['title']} {f['snippet']}")

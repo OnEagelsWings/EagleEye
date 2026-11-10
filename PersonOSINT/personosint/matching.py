@@ -14,10 +14,20 @@ _TITLES = {"dr", "prof", "herr", "frau", "mr", "mrs", "ms", "von", "van", "der",
 
 
 def fold(text: str) -> str:
-    """Kleinbuchstaben, Umlaute transliteriert, Akzente entfernt."""
+    """Kleinbuchstaben, Umlaute transliteriert, Akzente entfernt; andere Schriften (Kyrillisch, Griechisch,
+    Arabisch, Hebräisch …) werden in lateinische Buchstaben übertragen, damit Namen vergleichbar bleiben."""
     text = (text or "").casefold().translate(_TRANSLIT)
     text = unicodedata.normalize("NFKD", text)
-    return "".join(c for c in text if not unicodedata.combining(c))
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    if not text.isascii():
+        from .namematch import transliterate
+
+        text = transliterate(text)
+        if not text.isascii():
+            from anyascii import anyascii
+
+            text = anyascii(text).casefold()
+    return text
 
 
 def contains_term(text: str, term: str) -> bool:
@@ -97,6 +107,13 @@ def name_similarity(a: str, b: str) -> float:
     # Nachname (letztes Token) soll besonders zählen
     if ta[-1] != tb[-1] and jaro_winkler(ta[-1], tb[-1]) < 0.9 and not set(ta) & set(tb[-1:]):
         score *= 0.8
+    if score < 0.95:
+        # Abgleich über Schriften, Umlaut-Schreibweisen, Initialen und Reihenfolge (aus Build 492) – hebt nur an, senkt nie
+        from .namematch import THRESHOLD, compare_names
+
+        strong = compare_names(a, b)[0]
+        if strong >= THRESHOLD:
+            score = max(score, strong)
     return round(score, 3)
 
 

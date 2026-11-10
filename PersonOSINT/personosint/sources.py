@@ -31,6 +31,10 @@ class HttpResponse:
     status: int
     body: bytes
     url: str
+    #: Antwort-Kopfzeilen, Statustext und gesendete Kopfzeilen – für die WARC-Aufzeichnung von Belegen
+    headers: list[tuple[str, str]] = field(default_factory=list)
+    reason: str = ""
+    request_headers: list[tuple[str, str]] = field(default_factory=list)
 
     def json(self) -> Any:
         try:
@@ -59,10 +63,12 @@ class Http:
         self._opener = build_opener(self.profile)
 
     def get(self, url: str, headers: dict[str, str] | None = None) -> HttpResponse:
-        req = urllib.request.Request(url, headers={"User-Agent": self.user_agent, "Accept": "application/json, text/html;q=0.8", **(headers or {})})
+        sent = {"User-Agent": self.user_agent, "Accept": "application/json, text/html;q=0.8", **(headers or {})}
+        req = urllib.request.Request(url, headers=sent)
         try:
             with self._opener.open(req, timeout=self.timeout) as resp:  # noqa: S310 - Allowlist pro Quelle
-                return HttpResponse(resp.status, resp.read(2_000_000), resp.geturl())
+                return HttpResponse(resp.status, resp.read(2_000_000), resp.geturl(), headers=[(str(k), str(v)) for k, v in resp.getheaders()],
+                                    reason=str(getattr(resp, "reason", "") or ""), request_headers=list(sent.items()))
         except urllib.error.HTTPError as exc:
             return HttpResponse(exc.code, exc.read(200_000) if exc.fp else b"", url)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -129,6 +135,9 @@ class Source:
     local: bool = False
     #: Testabfrage für den Selbsttest in der Verwaltung
     test_query: tuple[str, str] = ("name", "Angela Merkel")
+    #: Arten von Kennungen, die Treffer dieser Quelle liefern können (Gegenstück zu ``kinds`` = verarbeitet).
+    #: Daraus entstehen Folgesuch-Vorschläge – ausgeführt wird erst nach Freigabe (siehe pivot.py).
+    produces: tuple[str, ...] = ()
 
     def run(self, kind: str, value: str, http: Http) -> list[dict[str, Any]]:
         if isinstance(http, RecordingHttp):

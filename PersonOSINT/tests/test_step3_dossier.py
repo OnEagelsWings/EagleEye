@@ -45,8 +45,10 @@ def test_evidence_capture_and_package(tmp_path, backend):
     ev = r.json()
     assert ev["sha256"] == hashlib.sha256(PAGE).hexdigest() and ev["title"] == "Registerauszug Nordhafen"
     assert "alert" not in ev["excerpt"] and ev["archive_url"].startswith("http://web.archive.org/") and "file" not in ev
-    stored = list((tmp_path / "evidence").iterdir())
-    assert len(stored) == 1 and PAGE not in stored[0].read_bytes()          # verschlüsselt abgelegt
+    files = sorted((tmp_path / "evidence").iterdir())
+    assert len(files) == 3 and all(PAGE not in f.read_bytes() for f in files)   # Original, WARC und Textfassung – alles verschlüsselt
+    stored = [f for f in files if f.name.endswith(".enc") and ".warc." not in f.name and ".txt." not in f.name]
+    assert len(stored) == 1 and ev["has_warc"] and ev["has_text"] and "warc_file" not in ev
     dl = anna.get(f"/api/cases/{cid}/evidence/{ev['id']}/download")
     assert dl.content == PAGE and dl.headers["content-type"] == "application/octet-stream" and "attachment" in dl.headers["content-disposition"]
     # SSRF-Schutz

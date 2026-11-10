@@ -73,7 +73,8 @@ class Ctx:
                 self.ev_finding[e["finding_id"]].append(e)
             if e["fact_id"]:
                 self.ev_fact[e["fact_id"]].append(e)
-            self.ev_url.setdefault(e["url"], e)
+            if e["url"]:
+                self.ev_url.setdefault(e["url"], e)
         self.graph = p.graph(case_id)
         self.links = p.list_links(case_id)
         self.events = p.list_events(case_id)

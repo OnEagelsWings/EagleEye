@@ -163,8 +163,30 @@ def _subject_key(fa: dict[str, Any]) -> str:
     return f"e{fa['subject_entity_id']}" if fa.get("subject_entity_id") else "n" + normalize("name", fa["subject_label"])
 
 
-def assess(facts: list[dict[str, Any]], profiles: dict[int, dict[str, Any]]) -> dict[str, Any]:
-    """Bewertet alle Aussagen eines Falls. ``profiles``: Entity-ID -> Profil (für Abgleich mit Analystenangaben)."""
+def _independent(peers: list[dict[str, Any]], origins: dict[str, Any]) -> int:
+    """Zahl unabhängiger Ursprünge: gleiche Quelle zählt einmal – und ebenso Quellen, deren Belege (nahezu) denselben Text haben."""
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for peer in peers:
+        src = "s:" + str(peer["source_key"])
+        find(src)
+        fam = origins.get(peer.get("source_url") or "")
+        if fam is not None:
+            parent[find(src)] = find(f"f:{fam}")
+    return len({find(x) for x in parent if x.startswith("s:")})
+
+
+def assess(facts: list[dict[str, Any]], profiles: dict[int, dict[str, Any]], origins: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Bewertet alle Aussagen eines Falls. ``profiles``: Entity-ID -> Profil (für Abgleich mit Analystenangaben).
+    ``origins``: Beleg-Adresse -> Quellfamilie (aus lineage.py); übernommene Texte zählen dann nicht als eigene Bestätigung."""
+    origins = origins or {}
     active = [f for f in facts if f["status"] != "verworfen"]
     by_norm: dict[str, list] = defaultdict(list)
     for f in active:
@@ -203,7 +225,8 @@ def assess(facts: list[dict[str, Any]], profiles: dict[int, dict[str, Any]]) -> 
     for f in facts:
         peers = by_norm.get(f["norm_key"], [])
         sources = sorted({p["source_label"] for p in peers}) if f["status"] != "verworfen" else [f["source_label"]]
-        n_src = len({p["source_key"] for p in peers}) if f["status"] != "verworfen" else 1
+        n_keys = len({p["source_key"] for p in peers}) if f["status"] != "verworfen" else 1
+        n_src = _independent(peers, origins) if (origins and f["status"] != "verworfen") else n_keys
         rel = f["reliability"] or "F"
         if f["status"] == "verworfen":
             cred = 5
@@ -220,6 +243,7 @@ def assess(facts: list[dict[str, Any]], profiles: dict[int, dict[str, Any]]) -> 
         final = f["credibility"] or cred
         out_facts.append({**f, "credibility_auto": cred, "credibility_final": final, "code": f"{rel}{final}",
                           "code_text": f"{RELIABILITY.get(rel, '')} · {CREDIBILITY[final]}", "sources": sources, "corroboration": n_src,
+                          "same_origin": n_keys - n_src,
                           "contradiction": f["id"] in contradicted})
     stats = {"facts": len(facts), "confirmed": sum(1 for f in facts if f["status"] == "bestätigt"),
              "rejected": sum(1 for f in facts if f["status"] == "verworfen"),
