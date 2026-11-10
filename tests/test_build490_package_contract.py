@@ -15,9 +15,9 @@ def test_build490_package_and_installer_agree():
                      isinstance(target, ast.Name) and target.id == "BUILD" for target in node.targets))
     assert build == "500.0"
     installer = (ROOT / "INSTALL_EAGLEEYE_500.py").read_text(encoding="utf-8")
-    assert 'PACKAGE_VERSION = "490.0.0"' in installer
-    assert 'RUNTIME_DIR = ".eagleeye-runtime-490"' in installer
-    assert 'RECEIPT = "install-receipt-490.json"' in installer
+    assert 'PACKAGE_VERSION = "500.0.0"' in installer
+    assert 'RUNTIME_DIR = ".eagleeye-runtime-500"' in installer
+    assert 'RECEIPT = "install-receipt-500.json"' in installer
     assert "editable" in installer and "in_runtime" in installer
 
 
