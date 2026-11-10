@@ -79,6 +79,8 @@ def attach_personosint495(app, build: str) -> None:
     @app.get("/workbench/personosint495", response_class=HTMLResponse)
     def person_workbench(request: Request, case_id: str = "", kind: str = "person", term: str = ""):
         _user, _case = case_access(app, request, case_id)
+        # Existing canonical public-provider registry: read-only catalogue, no network call.
+        provider_catalog = app.state.context.provider_collection_120.list_providers()
         try:
             links = external_links(term, kind)
         except ValueError as exc:
@@ -116,6 +118,21 @@ def attach_personosint495(app, build: str) -> None:
                     escape(link["url"], quote=True) + '">Öffentliche Suche öffnen (' +
                     escape(link["host"]) + ')</a></p></section>'
                 )
+        # Show the *real* governed adapters already present in EagleEye, rather
+        # than presenting manual Claude-source links as if they were automated.
+        relevant_types = {"public_code_profile", "scholarly_identity", "scholarly_metadata",
+                          "corporate_registry", "authority_identity", "social_profile"}
+        governed = [p for p in provider_catalog if p.get("provider_type") in relevant_types]
+        body += ("<h2>Bestehende kontrollierte EagleEye-Provider (" + str(len(governed)) + ")</h2>"
+                 "<p>Diese Adapter verwenden den gemeinsamen Recherche- und Freigabemotor. "
+                 "Ihre Ausführung ist hier nicht automatisch erlaubt; Live-Abfragen erfordern "
+                 "eine gültige fallgebundene Suchfreigabe.</p>")
+        for adapter in governed:
+            body += ('<section class="card"><strong>' + escape(adapter["label"]) + '</strong>'
+                     '<p>' + escape(", ".join(adapter.get("allowed_hosts", []))) + '</p>'
+                     '<p class="muted">' + escape(str(adapter.get("terms_profile") or "")) + '</p></section>')
+        body += ('<p><a href="/workbench/expert?' + escape(urlencode({"case_id":case_id}),quote=True) +
+                 '">Gemeinsame freigabepflichtige Expertenwerkzeuge öffnen</a></p>')
         body += "<h2>Weiter im gemeinsamen EagleEye-Fall</h2><div class='grid'>"
         for title, path in WORKFLOW:
             url = path + "?" + urlencode({"case_id":case_id})

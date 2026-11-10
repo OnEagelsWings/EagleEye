@@ -35,6 +35,9 @@ def test_person_osint_uses_existing_case_auth_and_full_pipeline(workspace):
     assert response.status_code == 200
     assert "PersonOSINT Intelligence" in response.text
     assert "github.com" in response.text
+    assert "Bestehende kontrollierte EagleEye-Provider" in response.text
+    assert "GitHub public profile" in response.text
+    assert "OpenAlex public authors" in response.text
     assert "M%C3%BCller" in response.text
     assert 'referrerpolicy="no-referrer"' in response.text
     for route in ("/workbench/personosint493", "/workbench/personosint494",

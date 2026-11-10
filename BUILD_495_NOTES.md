@@ -19,7 +19,7 @@ session, team_governance, document store, research lead table and audit**.
   decisions; never inferred verified identities or automatic graph edges.
 - **495:** Unified `/workbench/personosint495`: deliberate public person,
   username and company research links, canonical source/graph/report
-  tools and the two import workbenches.
+  tools and the two import workbenches.\n  The workspace also enumerates the already-existing governed provider adapters\n  (GitHub, GitLab, OpenAlex, Wikidata and more) from the canonical provider registry;\n  it does not execute them without an approved search intent.
 - **495:** From a lead, open a prefilled **WARC capture** form (GET makes no
   outbound request; POST requires the normal authorization and consent).
 - **Startup:** Windows/Linux launchers now respect data separation; normal
