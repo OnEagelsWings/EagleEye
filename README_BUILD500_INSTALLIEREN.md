@@ -7,7 +7,7 @@
 1. Entpacke `EagleEye-500-Internal-Windows-RC.zip` in einen neuen Programmordner,
    beispielsweise `C:\\EagleEye500\\`. Nicht im bestehenden Fall-Datenordner
    installieren.
-2. Installiere Python **3.12 oder neuer** und achte auf einen verfügbaren
+2. Installiere Python **3.12.x** (das Offline-Wheelpaket ist für CPython 3.12 auf Windows gebaut) und achte auf einen verfügbaren
    `py`- bzw. `python`-Befehl.
 3. Starte `START_EAGLEEYE_PRO.bat`. Der Installer legt seine eigene,
    nicht-editierbare Python-Laufzeit `.eagleeye-runtime-500` an und verwendet
