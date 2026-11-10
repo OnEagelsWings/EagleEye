@@ -34,6 +34,32 @@ def _windows_job_for_process(proc):
     return kernel, job
 
 
+def _windows_descendant_pids(parent_pid):
+    """Snapshot descendants before the launcher exits (taskkill /T then loses them)."""
+    script = (
+        "$p=Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId;"
+        "$ids=@([int]$args[0]);$out=@();"
+        "do {$found=@($p | Where-Object { $ids -contains [int]$_.ParentProcessId -and "
+        "$out -notcontains [int]$_.ProcessId });"
+        "$new=@($found | ForEach-Object {[int]$_.ProcessId});"
+        "$out+= $new;$ids=$new} while ($ids.Count -gt 0);"
+        "$out | ConvertTo-Json -Compress"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script, str(parent_pid)],
+            capture_output=True, text=True, timeout=12, check=True,
+        )
+        raw = result.stdout.strip()
+        if not raw:
+            return []
+        value = json.loads(raw)
+        return [int(pid) for pid in (value if isinstance(value, list) else [value])]
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print("Windows descendant discovery failed: " + str(exc), flush=True)
+        return []
+
+
 def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
@@ -44,6 +70,7 @@ def _check(root,install,python):
                           text=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
     job = None
     job_error = None
+    descendant_pids = []
     try:
         if os.name == "nt":
             try:
@@ -64,6 +91,8 @@ def _check(root,install,python):
                             "http://127.0.0.1:"+str(port)+"/health",timeout=0.4) as response:
                         data=json.loads(response.read(16000))
                     if data.get("ok") and data.get("build")=="500.0":
+                        if os.name == "nt" and job is None:
+                            descendant_pids = _windows_descendant_pids(proc.pid)
                         return True
                 except (OSError,ValueError,KeyError,TimeoutError):pass
             time.sleep(0.3)
@@ -91,10 +120,15 @@ def _check(root,install,python):
             finally:
                 kernel.CloseHandle(handle)
         elif os.name == "nt":
-            # Kill descendants even if the launcher has already exited.
-            completed = subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                                       capture_output=True, text=True, timeout=20, check=False)
-            print("Windows process-tree fallback: " + str(completed.returncode) + " " + completed.stderr[-300:], flush=True)
+            # The launcher may already have exited, so /T on its PID alone
+            # cannot find an orphaned server. Stop the captured children too.
+            for pid in reversed(descendant_pids):
+                completed = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],
+                                           capture_output=True, text=True, timeout=20, check=False)
+                print("Windows descendant stop " + str(pid) + ": " + str(completed.returncode), flush=True)
+            if proc.poll() is None:
+                subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                               capture_output=True, text=True, timeout=20, check=False)
         elif proc.poll() is None:
             proc.kill()
         try:
