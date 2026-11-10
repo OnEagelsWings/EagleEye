@@ -1,4 +1,4 @@
-name: EagleEye Build 493 Unified PersonOSINT Intake
+name: EagleEye Unified PersonOSINT Integration 493-495
 on:
   pull_request:
     paths:
@@ -8,6 +8,10 @@ on:
       - 'src/eagleeye/interfaces/web/server.py'
       - 'src/eagleeye/interfaces/web/intel492.py'
       - 'tests/test_build493_personosint.py'
+      - 'tests/test_build494_personosint.py'
+      - 'src/eagleeye/application/personosint494.py'
+      - 'src/eagleeye/interfaces/web/personosint494.py'
+      - 'src/eagleeye/interfaces/web/app494.py'
       - 'tests/test_build490_package_contract.py'
       - 'tests/test_build490_server_selection.py'
       - 'START_EAGLEEYE_PRO.*'
@@ -41,6 +45,7 @@ jobs:
         run: >
           python -m pytest -q
           tests/test_build493_personosint.py
+          tests/test_build494_personosint.py
           tests/test_build490_package_contract.py
           tests/test_build490_server_selection.py
           tests/test_build490_real_server_start.py
