@@ -38,7 +38,7 @@ def _windows_descendant_pids(parent_pid):
     """Snapshot descendants before the launcher exits (taskkill /T then loses them)."""
     script = (
         "$p=Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId;"
-        "$ids=@([int]$args[0]);$out=@();"
+        "$ids=@(" + str(int(parent_pid)) + ");$out=@();"
         "do {$found=@($p | Where-Object { $ids -contains [int]$_.ParentProcessId -and "
         "$out -notcontains [int]$_.ProcessId });"
         "$new=@($found | ForEach-Object {[int]$_.ProcessId});"
@@ -47,7 +47,7 @@ def _windows_descendant_pids(parent_pid):
     )
     try:
         result = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script, str(parent_pid)],
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True, text=True, timeout=12, check=True,
         )
         raw = result.stdout.strip()
