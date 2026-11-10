@@ -59,10 +59,9 @@ def _check(root,install,python):
             deadline = time.monotonic() + 20
             while True:
                 try:
-                    with db.open("rb+") as handle:
-                        import msvcrt
-                        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-                        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    probe = db.with_name(db.name + ".handle-probe")
+                    db.rename(probe)
+                    probe.rename(db)
                     break
                 except OSError as exc:
                     if time.monotonic() >= deadline:
