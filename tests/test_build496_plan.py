@@ -59,7 +59,7 @@ def test_full_plan_lifecycle_with_canonical_case_audit(workspace):
     plan = p.get_plan(ctx,cid,plan["plan_id"])
     assert plan["state"] == "approved"
     assert form(client, "/workbench/plan496/step", cid, token, plan_id=plan["plan_id"],
-                kind="manual_source",instruction="Noch eine Quelle prüfen und Dokumentation erstellen.").status_code == 422
+                kind="manual_source",instruction="Noch eine Quelle prüfen und Dokumentation erstellen.").status_code == 409
     step = steps[0]
     result = form(client, "/workbench/plan496/annotate", cid, token, plan_id=plan["plan_id"],
                   step_id=step["step_id"], expected_hash=step["record_hash"], decision="done",
@@ -70,6 +70,7 @@ def test_full_plan_lifecycle_with_canonical_case_audit(workspace):
     assert form(client, "/workbench/plan496/annotate", cid, token, plan_id=plan["plan_id"],
                 step_id=step["step_id"], expected_hash=step["record_hash"], decision="blocked",
                 note="Zweite Prüfung wäre unzulässig, Vorgang wird nicht wiederholt.").status_code == 409
+    _ = ctx.provider_collection_120  # ensure canonical provider tables exist for the zero-run check
     assert ctx.db.one("SELECT count(*) AS n FROM provider_runs_120")["n"] == 0
     assert client.get("/workbench/plan496", params={"case_id": other, "plan_id":plan["plan_id"]}).status_code == 404
 
@@ -92,6 +93,7 @@ def test_plan_proposals_no_live_network_and_bounded_providers(workspace, monkeyp
     with pytest.raises(p.PlanError, match="Only provider proposals"):
         p.add_step(ctx,user,cid,plan["plan_id"],"manual_source",
                    "Keine unbekannten Provider einschleusen.","github_public_profile_120")
+    _ = ctx.provider_collection_120  # ensure canonical provider tables exist for the zero-run check
     assert ctx.db.one("SELECT count(*) AS n FROM provider_runs_120")["n"] == 0
     assert client.get("/workbench/plan496",params={"case_id":cid,"plan_id":plan["plan_id"]}).status_code == 200
     assert "github_public_profile_120" in client.get(
