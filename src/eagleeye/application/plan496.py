@@ -33,11 +33,13 @@ def _at() -> str:
 def _safe_text(value: object, *, field: str, minimum: int, maximum: int) -> str:
     if not isinstance(value, str):
         raise PlanError(field + " must be text")
+    # Validate raw input before whitespace normalization: split() would otherwise
+    # silently erase newlines, tabs and other controls from the audit record.
+    if any(unicodedata.category(ch) in {"Cc", "Cf", "Cs", "Zl", "Zp"} for ch in value):
+        raise PlanError(field + " contains forbidden Unicode controls")
     value = " ".join(value.split())
     if not minimum <= len(value) <= maximum:
         raise PlanError(field + " must contain " + str(minimum) + "–" + str(maximum) + " characters")
-    if any(unicodedata.category(ch) in {"Cc", "Cf", "Cs", "Zl", "Zp"} for ch in value):
-        raise PlanError(field + " contains forbidden Unicode controls")
     return value
 
 
