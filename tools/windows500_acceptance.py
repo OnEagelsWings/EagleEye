@@ -90,7 +90,7 @@ def _windows_installed_runtime_pids(install):
     script = (
         "$root='" + runtime + "';"
         "Get-CimInstance Win32_Process | Where-Object {"
-        " $_.ExecutablePath -and $_.ExecutablePath.ToLower().StartsWith($root + '\\\\')"
+        " $_.ExecutablePath -and $_.ExecutablePath.ToLower().StartsWith($root + '\\')"
         "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
     )
     try:
