@@ -150,8 +150,13 @@ class RuntimePaths:
             for directory in values.values():
                 # Even an in-workspace alias can merge distinct module stores,
                 # compromising evidence provenance and backup isolation.
-                if directory.is_symlink():
-                    raise ValueError("Internal release module directories cannot be symbolic links")
+                # Check intermediate components too: a nested in-workspace
+                # alias can merge two independent stores without escaping root.
+                cursor = workspace
+                for component in directory.relative_to(runtime_root).parts:
+                    cursor = cursor / component
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release module directories cannot traverse symbolic links")
                 target = directory.resolve()
                 if not target.is_relative_to(workspace):
                     raise ValueError("Internal release module directories must stay inside the workspace")
