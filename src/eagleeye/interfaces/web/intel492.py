@@ -134,6 +134,10 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("Kontrollierte Provider-Läufe", "Build 497 – Offline/Live",
+                        "Freigegebene Suchpläne mit dem vorhandenen, gesicherten Provider-Motor verbinden; "
+                        "Live nur mit eigener Suchfreigabe.", "/workbench/run497", "Provider-Schritte öffnen")
+                   if getattr(app.state, "execution497", False) else "")
                 + (card("Ermittlungsplan und Freigaben", "Build 496 – Arbeitsplan",
                         "Fallbezogene Recherchepläne mit Vorschlägen, Rollenprüfung und Audit, "
                         "ohne unkontrollierte Netzwerkausführung.",
