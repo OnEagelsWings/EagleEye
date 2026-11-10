@@ -1,3 +1,7 @@
+## EagleEye Build 492 – Quellen beweisfest sichern und auswerten
+
+**Geführte Recherche** enthält vier neue Schritte: **Webseite als Beleg sichern** (WARC-Original + prüfbarer Haupttext, auch aus dem Internet Archive), **Struktur & Texterkennung** (Tabellen, Überschriften, OCR für Scans), **Quellenunabhängigkeit** („N Dokumente / M unabhängige Ursprünge“) und **Netzwerkanalyse** (Gruppen, Brückenpersonen, GEXF/FollowTheMoney-Export). Die Entity-Prüfung nutzt einen stärkeren, begründeten Abgleich. Alles bleibt Prüfmaterial – keine automatische Bestätigung. Installierte Paketnummer bleibt 490.0. Details, Messwerte und Grenzen: [BUILD_492_NOTES.md](BUILD_492_NOTES.md).
+
 ## EagleEye Build 482 – Dork-Recherche, Bildakte, Graph und bestehender Ermittlungsablauf
 
 **Windows:** Archiv vollständig entpacken, `START_EAGLEEYE_PRO.bat` starten. Bestehende Falldaten nicht überschreiben. Python 3.12+ erforderlich. Der Installer heißt `INSTALL_EAGLEEYE_482.py`.

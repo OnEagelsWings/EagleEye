@@ -1,5 +1,7 @@
 # Auswahl externer Systeme für EagleEye (Stand 9. Nov. 2026)
 
+> **Umsetzungsstand:** A1–A5 und B1 sind in Build 492 umgesetzt, mit begründeten Abweichungen (Docling zurückgestellt, Tesseract direkt statt OCRmyPDF, FtM-Format ohne PyICU-Paket). Siehe [BUILD_492_NOTES.md](../BUILD_492_NOTES.md).
+
 **Grundlage:** Lücken aus `BUILD_455_GOAL_GAP_AUDIT.md`, `OPERATIONAL_CAPABILITY_RECOVERY_AUDIT.md`
 und `PLAN_476_480_OPERATIVE.md`, abgeglichen mit dem vorhandenen Code (`pyproject.toml`, `src/`).
 Die Lizenzen wurden am 9.11.2026 direkt bei den Quell-Repositories abgefragt.
