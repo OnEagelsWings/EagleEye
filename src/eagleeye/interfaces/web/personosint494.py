@@ -71,6 +71,8 @@ def attach_personosint494(app, build: str) -> None:
             body += "</section>"
         if not rows:
             body += "<p>Keine Entitätsvorschläge aus PersonOSINT vorhanden.</p>"
+        if getattr(app.state, "transfer499", False):
+            body += '<p><a href="/workbench/transfer499?' + escape(urlencode({"case_id":case_id}),quote=True) + '">Geprüfte Vorschläge mit Falldokument in den Graph übernehmen</a></p>'
         body += (
             '<p><a href="/entities462?' + escape(urlencode({"case_id":case_id}), quote=True) +
             '">Geprüfte Entitäten manuell in der zentralen Fallakte bearbeiten</a></p>'
