@@ -5,15 +5,15 @@ title EagleEye Build 500
 
 where py >nul 2>nul
 if %errorlevel%==0 (
-    set "PYTHON=py -3"
+    set "PYTHON=py -3.12"
 ) else (
     set "PYTHON=python"
 )
 
-%PYTHON% -c "import sys; raise SystemExit(0 if sys.version_info >= (3,12) else 1)"
+%PYTHON% -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3,12) else 1)"
 if errorlevel 1 (
     echo.
-    echo EagleEye requires Python 3.12 or newer.
+    echo EagleEye requires Python 3.12.x for this offline Windows release.
     echo Install Python and then run this file again.
     echo.
     pause
