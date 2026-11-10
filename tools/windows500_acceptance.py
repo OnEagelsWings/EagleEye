@@ -83,6 +83,31 @@ def _windows_port_owner_pid(port, install):
     return None
 
 
+
+def _windows_installed_runtime_pids(install):
+    """Find lingering Python workers from this isolated CI installation only."""
+    runtime = str((install / ".eagleeye-runtime-500").resolve()).lower().replace("'", "''")
+    script = (
+        "$root='" + runtime + "';"
+        "Get-CimInstance Win32_Process | Where-Object {"
+        " $_.ExecutablePath -and $_.ExecutablePath.ToLower().StartsWith($root + '\\\\')"
+        "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, timeout=12, check=True,
+        )
+        raw = result.stdout.strip()
+        if not raw:
+            return []
+        ids = json.loads(raw)
+        return [int(pid) for pid in (ids if isinstance(ids, list) else [ids])]
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print("Installed-runtime worker discovery failed: " + str(exc), flush=True)
+        return []
+
+
 def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
@@ -167,6 +192,18 @@ def _check(root,install,python):
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.communicate(timeout=5)
+        if os.name == "nt":
+            # Detached multiprocessing workers may no longer be descendants of
+            # the desktop launcher or the health-port listener. The CI install
+            # is unique: only terminate Python executables inside its private
+            # venv, never a global Python process or another EagleEye install.
+            for pid in _windows_installed_runtime_pids(install):
+                completed = subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    capture_output=True, text=True, timeout=20, check=False,
+                )
+                print("Isolated runtime worker stop " + str(pid) + ": "
+                      + str(completed.returncode), flush=True)
         # Windows may release SQLite file handles after the launcher exits.
         # Do not proceed to restart or remove the temporary workspace until
         # the database is actually free of handles (including child servers).
