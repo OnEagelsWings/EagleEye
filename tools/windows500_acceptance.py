@@ -43,9 +43,16 @@ def _check(root,install,python):
     proc=subprocess.Popen(command,cwd=install,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
                           text=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
     job = None
+    job_error = None
     try:
         if os.name == "nt":
-            job = _windows_job_for_process(proc)
+            try:
+                job = _windows_job_for_process(proc)
+            except OSError as exc:
+                # Hosted Windows runners may already place processes in a job
+                # that rejects nested assignment. Preserve an explicit fallback.
+                job_error = str(exc)
+                print("Windows job assignment unavailable; using process-tree fallback: " + job_error, flush=True)
         runtime=root/"data"/"runtime_126_0"/"workspace.json"
         for i in range(150):
             if proc.poll() is not None:raise RuntimeError("Server exited before healthy: "+str(proc.returncode))
@@ -83,6 +90,11 @@ def _check(root,install,python):
                     raise ctypes.WinError(ctypes.get_last_error())
             finally:
                 kernel.CloseHandle(handle)
+        elif os.name == "nt":
+            # Kill descendants even if the launcher has already exited.
+            completed = subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                                       capture_output=True, text=True, timeout=20, check=False)
+            print("Windows process-tree fallback: " + str(completed.returncode) + " " + completed.stderr[-300:], flush=True)
         elif proc.poll() is None:
             proc.kill()
         try:
