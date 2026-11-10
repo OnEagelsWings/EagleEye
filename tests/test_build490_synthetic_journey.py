@@ -246,6 +246,16 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         assert hashlib.sha256(artifact.read_bytes()).hexdigest() == exported_hashes[artifact.name]
     with ZipFile(package) as archive:
         assert archive.testzip() is None, "Case archive has a corrupt member"
+        # Reject ambiguous or escaping paths in the actual approved export.
+        # An otherwise valid ZIP must never contain duplicate names or paths
+        # that could escape the extraction directory on Windows or Linux.
+        names = archive.namelist()
+        assert len(names) == len(set(names)), "Duplicate ZIP member names"
+        for name in names:
+            normalized = name.replace("\\", "/")
+            parts = normalized.split("/")
+            assert not normalized.startswith("/") and not re.match(r"^[A-Za-z]:", normalized)
+            assert all(part not in {"", ".", ".."} for part in parts if part or name.endswith("/"))
         members = {Path(name).name for name in archive.namelist()}
         assert all(Path(exported_paths[kind]).name in members
                    for kind in ("json", "docx", "pdf", "manifest"))
