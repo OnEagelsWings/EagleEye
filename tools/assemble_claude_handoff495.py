@@ -85,7 +85,7 @@ def main() -> None:
     manifest = {
         "type": "source-only-development-handoff",
         "status": "NOT AN INSTALLER / NOT PRODUCTION APPROVED",
-        "base": "EagleEye 490 installed package with integrated 492-494 development layers",
+        "base": "EagleEye installed package 490.0 with integration development layers 492-496",
         "eagleeye_commit": current_sha, "personosint_reference_commit": reference_sha,
         "eagleeye_files": len(current), "personosint_reference_files": len(reference),
         "separate_reference_no_auto_merge": True,
@@ -107,7 +107,7 @@ def main() -> None:
         "Die vollständig geprüfte Windows-Installation, der Live-Quellentest und "
         "die Freigabe des zusammengeführten Produktes stehen noch aus.\n\n"
         "## Tests\n"
-        "`python -m pip install -e '.[test]'` innerhalb von EagleEye/EagleEye; "
+        "`python -m pip install -e '.[test]'` innerhalb von EagleEye; "
         "dann `pytest -q tests/test_build493_personosint.py tests/test_build494_personosint.py "
         "tests/test_build496_plan.py tests/test_build490_server_selection.py`.\n"
     )
