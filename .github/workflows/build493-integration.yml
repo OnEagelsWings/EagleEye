@@ -1,4 +1,4 @@
-name: EagleEye Unified OSINT Integration 493-498
+name: EagleEye Unified OSINT Integration 493-499
 on:
   pull_request:
     paths:
@@ -13,6 +13,11 @@ on:
       - 'tests/test_build496_plan.py'
       - 'tests/test_build497_execution.py'
       - 'tests/test_build498_ai.py'
+      - 'tests/test_build499_transfer.py'
+      - 'src/eagleeye/application/transfer499.py'
+      - 'src/eagleeye/interfaces/web/transfer499.py'
+      - 'src/eagleeye/interfaces/web/app499.py'
+      - 'src/eagleeye/application/entity_registry461.py'
       - 'src/eagleeye/application/ai498.py'
       - 'src/eagleeye/interfaces/web/ai498.py'
       - 'src/eagleeye/interfaces/web/app498.py'
@@ -67,6 +72,7 @@ jobs:
           tests/test_build496_plan.py
           tests/test_build497_execution.py
           tests/test_build498_ai.py
+          tests/test_build499_transfer.py
           tests/test_build490_package_contract.py
           tests/test_build490_server_selection.py
           tests/test_build490_real_server_start.py
