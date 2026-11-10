@@ -86,11 +86,20 @@ def _windows_port_owner_pid(port, install):
 
 def _windows_installed_runtime_pids(install):
     """Find lingering Python workers from this isolated CI installation only."""
-    runtime = str((install / ".eagleeye-runtime-500").resolve()).lower().replace("'", "''")
+    # A Windows venv launcher may resolve to the base interpreter in CIM.
+    # Match the exact private python.exe command prefix as well as its image
+    # path; never match a generic install directory or unrelated Python.
+    runtime_path = (install / ".eagleeye-runtime-500").resolve()
+    runtime = str(runtime_path).lower().replace("'", "''")
+    interpreter = str(runtime_path / "Scripts" / "python.exe").lower().replace("'", "''")
     script = (
-        "$root='" + runtime + "';"
+        "$root='" + runtime + "';$py='" + interpreter + "';"
         "Get-CimInstance Win32_Process | Where-Object {"
-        " $_.ExecutablePath -and $_.ExecutablePath.ToLower().StartsWith($root + '\\')"
+        " $exe=([string]$_.ExecutablePath).ToLower();"
+        " $cmd=([string]$_.CommandLine).TrimStart().ToLower();"
+        " ($exe.StartsWith($root + '\\\\')) -or"
+        " ($cmd.StartsWith('\\\"' + $py + '\\\" ') -or"
+        "  $cmd.StartsWith($py + ' '))"
         "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
     )
     try:
