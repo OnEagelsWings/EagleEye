@@ -14,7 +14,7 @@ no unreviewed relationship confirmation.
 ## Already implemented; do not rewrite
 
 1. Normal entry: `src/eagleeye/interfaces/web/server.py` selects
-   `app495`, built upon the original 492 chain. Installed identity remains
+   `app496`, built on 495 and the original 492 chain. Installed identity remains
    490.0 until the installer and runtime are updated as a release unit.
 2. `personosint493.py` (application+web): bounded JSON export import into
    existing `research_leads_483` with source URL canonicalization, CSRF,
@@ -30,8 +30,23 @@ no unreviewed relationship confirmation.
 7. Tests: `tests/test_build493_personosint.py`,
    `tests/test_build494_personosint.py`,
    `tests/test_build495_person_workbench.py`, current server/launcher tests.
-8. GitHub Actions source bundle workflow:
+8. Build 496: case-scoped investigation plan with strict step kinds, RBAC,
+   tamper hashes, audit, human review and manual outcome notes. Plan approval
+   does NOT authorize live source access. Endpoint:
+   `/workbench/plan496`. Tests: `tests/test_build496_plan.py`.
+9. GitHub Actions source bundle workflow:
    `.github/workflows/build495-claude-handoff.yml`.
+
+## Next milestones after 496
+
+- **497:** controlled provider execution using already-approved search intent
+  and query IDs (existing ProviderCollection120), queue, retries, audit and
+  replay tests. No live action merely because a plan was approved.
+- **498:** AI proposals with strict schemas, read-only retrieval and
+  human-approved tool dispatch. No unsupervised outbound requests.
+- **499:** recoverable candidate/graph/evidence transfer, OPSEC, backup/restore,
+  WARC provenance and sensible retention.
+- **500:** installable Windows internal release after full real runtime checks.
 
 ## First jobs for Claude Code
 
@@ -59,7 +74,7 @@ photos/telephone/email identifiers or carrying over someone else's permissions.
 ```sh
 git switch integration/build493-unified-personosint
 python -m pip install -e '.[test]'
-python -m pytest -q tests/test_build493_personosint.py tests/test_build494_personosint.py tests/test_build495_person_workbench.py tests/test_build490_server_selection.py
+python -m pytest -q tests/test_build496_plan.py tests/test_build495_person_workbench.py tests/test_build490_server_selection.py
 ```
 
 Keep historical accepted Builds 398 and 478 untouched.

@@ -92,12 +92,12 @@ def main() -> None:
         "files_sha256": files,
     }
     instructions = (
-        "# EagleEye – Übergabe an Claude Code\n\n"
+        "# EagleEye – aktuelle Übergabe an Claude Code\n\n"
         "Diese ZIP ist eine vollständige QUELLCODE-Übergabe, kein freigegebenes Windows-Installationspaket.\n\n"
         "## Verzeichnisse\n"
         "- `EagleEye/`: aktueller gemeinsamer Integrationszweig\n"
         "- `ClaudePersonOSINT/PersonOSINT/`: Originalcode von Claude aus dem separaten Branch\n\n"
-        "Die 492/493/494-Schichten sind bereits in der Startfabrik eingebunden. "
+        "Die 492/493/494/495/496-Schichten sind bereits in der Startfabrik eingebunden. "
         "PersonOSINT-Fallexporte können als ungeprüfte HTTPS-Links und "
         "unbestätigte Entitätsvorschläge importiert werden. "
         "Die zweite Anwendung bleibt eine Code-Referenz, nicht eine zweite operative Datenbank.\n\n"
@@ -109,7 +109,7 @@ def main() -> None:
         "## Tests\n"
         "`python -m pip install -e '.[test]'` innerhalb von EagleEye/EagleEye; "
         "dann `pytest -q tests/test_build493_personosint.py tests/test_build494_personosint.py "
-        "tests/test_build490_server_selection.py`.\n"
+        "tests/test_build496_plan.py tests/test_build490_server_selection.py`.\n"
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(args.output, "w") as z:

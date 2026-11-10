@@ -1,4 +1,4 @@
-name: EagleEye 495 Claude Code Source Handoff ZIP
+name: EagleEye 496 Claude Code Source Handoff ZIP
 on:
   pull_request:
     paths:
@@ -9,6 +9,12 @@ on:
       - 'src/eagleeye/interfaces/web/app49*.py'
       - 'src/eagleeye/interfaces/web/server.py'
       - 'tests/test_build494_personosint.py'
+      - 'tests/test_build496_plan.py'
+      - 'src/eagleeye/application/plan496.py'
+      - 'src/eagleeye/interfaces/web/plan496.py'
+      - 'src/eagleeye/interfaces/web/app496.py'
+      - 'BUILD_496_NOTES.md'
+      - 'CLAUDE_INTEGRATION_HANDOFF.md'
       - 'BUILD_49*_NOTES.md'
   workflow_dispatch:
 
@@ -38,13 +44,13 @@ jobs:
           python EagleEye/tools/assemble_claude_handoff495.py
           --eagleeye EagleEye
           --personosint ClaudePersonOSINT
-          --output EagleEye-495-ClaudeCode-SourceHandoff.zip
+          --output EagleEye-496-ClaudeCode-SourceHandoff.zip
       - name: Check archive contains both codebases and manifest
         run: |
           python - <<'PY'
           import json
           from zipfile import ZipFile
-          with ZipFile("EagleEye-495-ClaudeCode-SourceHandoff.zip") as z:
+          with ZipFile("EagleEye-496-ClaudeCode-SourceHandoff.zip") as z:
               names = set(z.namelist())
               assert any(x.startswith("EagleEye/src/eagleeye/") for x in names)
               assert any(x.startswith("ClaudePersonOSINT/PersonOSINT/personosint/") for x in names)
@@ -55,9 +61,9 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: EagleEye-495-ClaudeCode-SourceHandoff
+          name: EagleEye-496-ClaudeCode-SourceHandoff
           path: |
-            EagleEye-495-ClaudeCode-SourceHandoff.zip
-            EagleEye-495-ClaudeCode-SourceHandoff.zip.sha256
+            EagleEye-496-ClaudeCode-SourceHandoff.zip
+            EagleEye-496-ClaudeCode-SourceHandoff.zip.sha256
           retention-days: 30
           if-no-files-found: error
