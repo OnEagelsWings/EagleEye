@@ -46,7 +46,7 @@ def attach_personosint493(app, build: str) -> None:
     app.state.personosint493 = True
 
     @app.get("/workbench/personosint493", response_class=HTMLResponse)
-    def intake_page(request: Request, case_id: str = "", imported: int = 0):
+    def intake_page(request: Request, case_id: str = ""):
         user, case = case_access(app, request, case_id)
         allowed = "research.run" in ctx.team_governance_359.effective_capabilities(user, case_id)
         token = escape(request.cookies.get(CSRF_COOKIE, ""), quote=True)
@@ -56,8 +56,6 @@ def attach_personosint493(app, build: str) -> None:
             "Prüfentscheidungen, Belege, Nutzerkonten oder fremde Falldatenbanken.</p>"
             "<p>Bitte PersonOSINT unter Dossier &amp; Export → Falldaten (JSON) exportieren. "
             "Die Datei wird nicht dauerhaft auf EagleEye gespeichert.</p>"
-            + ("<p class='card'>Importiert: " + str(imported) +
-               " ungeprüfte Suchhinweise.</p>" if imported else "")
         )
         if allowed:
             body += (
@@ -119,7 +117,7 @@ def attach_personosint493(app, build: str) -> None:
                     }
                 )
             return RedirectResponse(
-                "/workbench/personosint493?" + urlencode({"case_id": case_id, "imported": len(new)}),
+                "/workbench/leads483?" + urlencode({"case_id": case_id}),
                 status_code=303,
             )
         finally:
