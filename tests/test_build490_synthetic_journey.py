@@ -231,6 +231,7 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         confirmation="EXPORT DOSSIER 447",
     )
     from pathlib import Path
+    from zipfile import ZipFile
     import hashlib
     package = Path(exported["export"]["paths"]["case_package"])
     assert package.is_file()
