@@ -226,3 +226,34 @@ def test_live_revocation_after_fixture_blocks_candidate_intake():
     service._record_fixture.assert_called_once()
     service._store_intake.assert_not_called()
     service._record_run_failure.assert_not_called()
+
+
+@pytest.mark.parametrize("altered_query", [
+    "PUBLIC archive records",
+    "public  archive records",
+    "public archive records ",
+    "public archive records OR unrelated",
+])
+def test_live_approval_query_changes_are_not_silently_accepted(altered_query):
+    """Case-sensitive operators and spacing must match the approved query."""
+    service = _service()
+    service.db = SimpleNamespace(one=Mock(return_value={
+        "case_id": "case-1", "intent_id": "intent-1",
+        "intent_state": "approved", "query_state": "approved",
+        "provider": "public_test", "query_text": "public archive records",
+        "target_id": None,
+    }))
+    if altered_query == "public archive records ":
+        # Harmless outer form whitespace is deliberately tolerated.
+        ProviderCollection120Service._validate_search_approval(
+            service, case_id="case-1", provider_key="public_test",
+            query=altered_query, search_intent_id="intent-1",
+            search_query_id="query-1",
+        )
+    else:
+        with pytest.raises(ProviderAuthorizationError, match="differs from approved"):
+            ProviderCollection120Service._validate_search_approval(
+                service, case_id="case-1", provider_key="public_test",
+                query=altered_query, search_intent_id="intent-1",
+                search_query_id="query-1",
+            )
