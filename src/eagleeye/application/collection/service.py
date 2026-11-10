@@ -491,7 +491,9 @@ class ProviderCollection120Service:
             raise ProviderAuthorizationError("search intent and query require approval")
         if str(row["provider"]) != provider_key:
             raise ProviderAuthorizationError("approved query names a different provider")
-        if " ".join(str(row["query_text"]).split()).casefold() != " ".join(query.split()).casefold():
+        # Search operators, whitespace and letter case can change provider semantics.
+        # Require the approved query bytes (apart from outer form whitespace).
+        if str(row["query_text"]).strip() != query.strip():
             raise ProviderAuthorizationError("execution query differs from approved query")
 
     # ---------- controls ----------
