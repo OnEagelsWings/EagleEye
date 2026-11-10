@@ -31,6 +31,16 @@ ADVANCED_VIEWS = (
 
 # Explicitly scoped GET endpoints. Missing routes are reported, not faked.
 SPECIAL_TOOLS = (
+    ("Dork-Recherche", "/workbench/dorks482",
+     "Vorhandenen DorkEngine-Generator für öffentliche Suchlinks benutzen; keine automatischen Suchtreffer."),
+    ("Recherchefunde und Suchhinweise", "/workbench/leads483",
+     "Öffentliche Suchtreffer manuell als fallgebundene, ausdrücklich ungeprüfte Leads aufnehmen."),
+    ("Bildakte und Metadaten", "/workbench/images482",
+     "Bestehende Bildanalyse Build 353/354 für lokale Originale, EXIF und Ähnlichkeit."),
+    ("Lokaler Bildvergleich und Bildbeziehungen", "/workbench/media484",
+     "Bildähnlichkeit und Metadatenkandidaten ausdrücklich getrennt von bestätigten Graphrelationen prüfen."),
+    ("Pilotprüfung des gesamten Falls", "/workbench/pilot485",
+     "Echte Zähler und Quellstatus; keine automatische Kunden- oder Sicherheitsfreigabe."),
     ("Dokumente und Originalanker", "/documents458",
      "Lokaler PDF/TXT/Markdown-Import und verifizierbare Fundstellen."),
     ("Quelleninventar", "/workbench/sources",
@@ -49,6 +59,10 @@ SPECIAL_TOOLS = (
      "Quellengebundene Entwürfe; Ollama und lokal geladenes Modell erforderlich."),
     ("Arbeitsbefunde", "/workbench/findings",
      "Menschliche, an Originalanker gebundene vorläufige Beobachtungen (ab Build 478)."),
+    ("Evidence → Claims → Dossier (Original-Workflow)", "/workbench/closure",
+     "Echte Fallstände, Quellenlücke und vorhandene Vier-Augen-Gates nachvollziehen."),
+    ("Dokument in prüfbare Evidence überführen", "/workbench/bridge481",
+     "Nach Extraktionsfreigabe und menschlicher Herkunftsbegründung – neue Evidence bleibt ungeprüft."),
     ("Quellenkritischer Arbeitsbericht", "/workbench/report",
      "Arbeitsbericht, keine behördliche/freigegebene Dossierfassung (ab Build 479)."),
 )

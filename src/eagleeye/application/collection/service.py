@@ -198,6 +198,12 @@ class ProviderCollection120Service:
             raise ProviderAuthorizationError("provider does not support live execution")
         if mode == "replay" and not definition.supports_replay:
             raise ProviderAuthorizationError("provider does not support replay execution")
+        # Live network access must be bound to an approved case search, not only
+        # to the operator confirmation phrase. Replay remains available offline.
+        if mode == "live" and (not search_intent_id or not search_query_id):
+            raise ProviderAuthorizationError(
+                "live provider runs require an approved case search intent and query"
+            )
         if search_intent_id or search_query_id:
             self._validate_search_approval(
                 case_id=case_id,
@@ -205,6 +211,7 @@ class ProviderCollection120Service:
                 query=query,
                 search_intent_id=search_intent_id,
                 search_query_id=search_query_id,
+                target_id=target_id,
             )
         request = ProviderRunRequest(
             case_id=case_id,
@@ -246,12 +253,31 @@ class ProviderCollection120Service:
         fixture_ids: list[str] = []
         try:
             for index, http_request in enumerate(http_requests):
+                # A reviewer may revoke or narrow the search while a multi-request
+                # provider run is in progress. Recheck before each network request;
+                # replay remains an offline, non-network operation.
+                if mode == "live":
+                    self._validate_search_approval(
+                        case_id=case_id,
+                        provider_key=provider_key,
+                        query=query,
+                        search_intent_id=search_intent_id,
+                        search_query_id=search_query_id,
+                        target_id=target_id,
+                    )
                 response, used_attempts = self._execute_request(
                     run_id=run_id,
                     request_index=index,
                     provider=definition,
                     http_request=http_request,
                     mode=mode,
+                    before_network_attempt=(
+                        lambda: self._validate_search_approval(
+                            case_id=case_id, provider_key=provider_key, query=query,
+                            search_intent_id=search_intent_id,
+                            search_query_id=search_query_id, target_id=target_id,
+                        )
+                    ) if mode == "live" else None,
                 )
                 attempts += used_attempts
                 total_latency += int(response.elapsed_ms)
@@ -263,6 +289,17 @@ class ProviderCollection120Service:
                     fixture_ids.append(self._record_fixture(provider_key, response, run_id))
                 if len(normalized) >= request.max_results:
                     break
+            # Approval can be withdrawn while the final HTTP response is being
+            # processed. Do not persist its candidates after revocation.
+            if mode == "live":
+                self._validate_search_approval(
+                    case_id=case_id,
+                    provider_key=provider_key,
+                    query=query,
+                    search_intent_id=search_intent_id,
+                    search_query_id=search_query_id,
+                    target_id=target_id,
+                )
             intake_ids, duplicate_count = self._store_intake(run_id, request, normalized)
             result_count = len(intake_ids)
             denominator = max(1, result_count + duplicate_count)
@@ -309,6 +346,7 @@ class ProviderCollection120Service:
         provider: ProviderDefinition,
         http_request: ProviderHttpRequest,
         mode: str,
+        before_network_attempt: Callable[[], None] | None = None,
     ) -> tuple[ProviderTransportResponse, int]:
         canonical = self.policy.validate_url(
             http_request.url,
@@ -325,6 +363,10 @@ class ProviderCollection120Service:
         self._check_circuit(provider)
         last_error: Exception | None = None
         for attempt_number in range(1, provider.max_attempts + 1):
+            # Revocation is an authorization failure, not a provider transport
+            # failure: do not consume a rate slot or retry a revoked request.
+            if before_network_attempt is not None:
+                before_network_attempt()
             now = self.clock()
             self._consume_rate_limit(provider, now)
             try:
@@ -409,18 +451,21 @@ class ProviderCollection120Service:
         query: str,
         search_intent_id: str,
         search_query_id: str,
+        target_id: str = "",
     ) -> None:
         if not search_intent_id or not search_query_id:
             raise ProviderAuthorizationError("intent and query approval references must be supplied together")
         row = self.db.one(
             """SELECT q.query_text,q.provider,q.state query_state,q.intent_id,
-                      i.case_id,i.state intent_state
+                      i.case_id,i.target_id,i.state intent_state
                FROM search_queries_114 q JOIN search_intents_114 i ON i.intent_id=q.intent_id
                WHERE q.query_id=?""",
             (search_query_id,),
         )
         if not row or row["intent_id"] != search_intent_id or row["case_id"] != case_id:
             raise ProviderAuthorizationError("search approval references do not belong to this case")
+        if (row.get("target_id") or "") != (target_id or ""):
+            raise ProviderAuthorizationError("approved search target differs from execution target")
         if row["intent_state"] != "approved" or row["query_state"] != "approved":
             raise ProviderAuthorizationError("search intent and query require approval")
         if str(row["provider"]) != provider_key:

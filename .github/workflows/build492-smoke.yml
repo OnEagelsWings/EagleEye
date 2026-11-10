@@ -1,0 +1,46 @@
+name: EagleEye Build 492 Evidence Capture & Analysis Smoke
+on:
+  pull_request:
+    paths:
+      - 'src/eagleeye/**'
+      - 'eagleeye_pro/**'
+      - 'tests/test_build492_*.py'
+      - 'tests/benchmarks/entity_pairs_492*.json'
+      - 'tests/test_build488_*.py'
+      - 'tests/test_build490_server_selection.py'
+      - 'pyproject.toml'
+      - '.github/workflows/build492-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install (new Build 492 dependencies must resolve to wheels on both systems)
+        run: python -m pip install -e '.[test]'
+      - name: Install Tesseract OCR (Linux only; on Windows the real-OCR test is skipped)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y tesseract-ocr tesseract-ocr-deu
+      - name: Build 492 features, entity benchmark and adjacent workflow
+        run: python -m pytest -q tests/test_build492_intel.py tests/test_build490_server_selection.py tests/test_build488_candidates.py tests/test_build488_integration.py tests/test_build490_synthetic_journey.py
+      - name: Install Chromium browser test runtime
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install 'playwright>=1.61,<2'
+          python -m playwright install --with-deps chromium
+      - name: Real Chromium check (phone width, CSP, capture form)
+        if: runner.os == 'Linux'
+        run: python -m pytest -q tests/test_build492_browser.py

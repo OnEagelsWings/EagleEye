@@ -53,7 +53,8 @@ def page(title, case_id, body, build):
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'
-       '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a></nav></header><main><h1>'+escape(title)+'</h1>'
+       '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a>'
+       '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a>' + ('<a href="'+link('/workbench/sources487')+'">Quellenzuordnung</a>' if int(str(build).split(".")[0]) >= 487 else '') + ('<a href="'+link('/workbench/entities488')+'">Entity-Prüfung</a>' if int(str(build).split(".")[0]) >= 488 else '') + '</nav></header><main><h1>'+escape(title)+'</h1>'
        +body+'<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
        ' Nur öffentliche oder synthetische, unkritische Quellen verwenden. KI-Entwürfe'
        ' und Beziehungen sind nicht automatisch bestätigte Tatsachen.</p>'
@@ -91,7 +92,8 @@ def attach_workbench(app, workspace_build):
         html = html.replace('href="/legacy"', 'href="'+escape(expert_url,quote=True)+'"')
         html = html.replace(
             "</nav>", '<a href="'+escape(href,quote=True)+'">Geführte Recherche</a>'
-            '<a href="'+escape(expert_url,quote=True)+'">Alle Ermittlungswerkzeuge</a></nav>', 1)
+            '<a href="'+escape(expert_url,quote=True)+'">Alle Ermittlungswerkzeuge</a>'
+            '</nav>', 1)
         return HTMLResponse(html, status_code=result.status_code,
                             headers={"Cache-Control":"no-store"})
 
@@ -111,8 +113,14 @@ def attach_workbench(app, workspace_build):
             case_id = str(cases[0]["case_id"])
         user,case = case_access(app,request,case_id)
         docs = ctx.document_intelligence_458.documents(identity=user,case_id=case_id)
+        # Number steps in their actual displayed order: previous versions
+        # duplicated step six once advanced tools and sources were appended.
+        step_index = 0
+        intel = bool(getattr(app.state, "intel492", False))
         def step(n,title,desc,path):
-            return ('<section class="card"><h2>'+str(n)+'. '+escape(title)+'</h2>'
+            nonlocal step_index
+            step_index += 1
+            return ('<section class="card"><h2>'+str(step_index)+'. '+escape(title)+'</h2>'
                 '<p>'+escape(desc)+'</p><a href="'+escape(path+"?"+urlencode({"case_id":case_id}),quote=True)
                 +'">Jetzt öffnen →</a></section>')
         steps = [
@@ -124,6 +132,9 @@ def attach_workbench(app, workspace_build):
             step(6,"Erweiterte Ermittlungswerkzeuge",
                  "Vorhandene KI-, Evidence-, Claims-, Graph-, Timeline- und Dossierfunktionen fallbezogen öffnen.",
                  "/workbench/expert"),
+            step(7,"Evidence → Claims → Dossier",
+                 "Original-Evidence und importierte Dokumente unterscheiden, belegte Claims und formale Vier-Augen-Freigabe nachvollziehen.",
+                 "/workbench/closure"),
         ]
         if stage>=477:
             steps.append(step(6,"Quellenbestand","Alle importierten Dokumente mit Herkunft und Vollständigkeit sehen.","/workbench/sources"))
@@ -133,9 +144,96 @@ def attach_workbench(app, workspace_build):
             steps.append(step(8,"Arbeitsbericht","Quellengebundenen Bericht zur manuellen Prüfung und Weiterarbeit erzeugen.","/workbench/report"))
         if stage>=480:
             steps.append(step(9,"Prüfpunkt 480","Belegstand und offene Einsatzgrenzen transparent überprüfen.","/workbench/checkpoint"))
+        if stage>=481:
+            steps.append(step(10,"Geprüfte Quellen als Evidence übernehmen","Originaldokument nach manueller Extraktionsprüfung fallgebunden in die prüfpflichtige Evidence-Kette aufnehmen.","/workbench/bridge481"))
+        if stage>=482:
+            # The operator sees six stable work phases, not an unsorted build ledger.
+            # Older build factories retain the exact previous layout.
+            step_index = 0
+            phases = [
+                ("1 · Auftrag und Fall",
+                 [step(1,"Rechercheauftrag definieren",
+                       "Rechtsgrundlage, Ziel und erlaubte Methoden zuerst dokumentieren.",
+                       "/workflow461")]),
+                ("2 · Recherche",
+                 [step(2,"Dork-Recherche",
+                       "Öffentliche Suchlinks mit der vorhandenen Dork-Engine erzeugen.",
+                       "/workbench/dorks482"),
+                  ] + ([step(3,"Recherchefunde sichern",
+                       "Einen tatsächlich im Browser geprüften Treffer als ungeprüften Fallhinweis speichern.",
+                       "/workbench/leads483")] if stage>=483 else []) + [
+                  step(3,"Öffentliche Datenquellen",
+                       "DNS-, RDAP- oder DOI-Quellen im definierten Fall abrufen.",
+                       "/collect469")] + ([step(3,"Webseite als Beleg sichern",
+                       "Öffentliche oder archivierte Seite als WARC-Original mit prüfbarem Haupttext sichern.",
+                       "/workbench/intel/web")] if intel else [])),
+                ("3 · Quellen und Evidence",
+                 [step(4,"Originaldokumente sichern",
+                       "TXT/PDF importieren, Herkunft und Textanker prüfen.",
+                       "/documents458"),
+                  step(5,"Bildakte und Metadaten",
+                       "Bildoriginale, EXIF und lokale Ähnlichkeitsanalyse prüfen.",
+                       "/workbench/images482"),
+                  ] + ([step(5,"Bildbeziehungen vergleichen",
+                        "Vorhandene lokale Ähnlichkeitskandidaten anhand der Originalbilder bewerten.",
+                        "/workbench/media484")] if stage>=484 else []) + [
+
+                  ] + ([step(5,"Struktur & Texterkennung",
+                        "Tabellen, Überschriften und Scans (OCR) als zusätzliche Fundstellen erschließen.",
+                        "/workbench/intel/documents"),
+                        step(5,"Quellenunabhängigkeit",
+                        "Übernommene und gespiegelte Texte erkennen: wie viele unabhängige Ursprünge?",
+                        "/workbench/intel/lineage")] if intel else []) + [
+                  step(6,"Quelleninventar",
+                       "Originaldokumente und Vollständigkeit überprüfen.",
+                       "/workbench/sources"),
+                  step(7,"Geprüfte Dokumente als Evidence",
+                       "Nur nach ausdrücklicher manueller Extraktionsprüfung übernehmen.",
+                       "/workbench/bridge481")]),
+                ("4 · Entitäten und Graph",
+                 [step(8,"Interaktiver Beziehungsgraph",
+                       "Belegverknüpfungen und unbestätigte Beziehungen prüfen.",
+                       "/graph464")] + ([step(9,"Entity-Kandidaten prüfen",
+                       "Ähnliche reale Fallentitäten manuell prüfen und auditieren – keine automatische Zusammenführung.",
+                       "/workbench/entities488")] if stage>=488 else []) + [
+                  ] + ([step(9,"Netzwerkanalyse",
+                       "Gruppen, Brückenpersonen und am besten belegte Verbindungswege auswerten.",
+                       "/workbench/intel/network")] if intel else []) + [
+                  step(9,"KI-Ermittler",
+                       "Quellengebundene Vorschläge – nicht bestätigte Tatsachen.",
+                       "/assistant471")]),
+                ("5 · Prüfung und Gegenbelege",
+                 [step(10,"Evidence → Claims → Dossier",
+                       "Bestehende Prüf- und Vier-Augen-Gates nachvollziehen.",
+                       "/workbench/closure"),
+                  step(11,"Quellenkritische Fallprüfung",
+                       "Widersprüche und Beleglücken offen kennzeichnen.",
+                       "/review465"),
+                  step(12,"Quellengebundene Arbeitsbefunde",
+                       "Eigene Beobachtungen mit Originaltextstellen sichern.",
+                       "/workbench/findings")]),
+                ("6 · Ergebnis und Übergabe",
+                 [step(13,"Quellenkritischer Arbeitsbericht",
+                       "Einen überprüfbaren, ausdrücklich nicht freigegebenen Arbeitsbericht exportieren.",
+                       "/workbench/report"),
+                  step(14,"Operativer Prüfpunkt",
+                       "Vollständigkeit und Freigabegrenzen vor Übergabe prüfen.",
+                       "/workbench/checkpoint"),
+                  step(15,"Erweiterte Ermittlungswerkzeuge",
+                       "Originale Evidence-, KI-, Graph- und Dossiersysteme öffnen.",
+                       "/workbench/expert")
+                  ] + ([step(16,"Pilotprüfung: vollständiger Recherchefall",
+                      "Den echten Fallbestand und die nicht erfüllten Prüfungen überprüfen.",
+                      "/workbench/pilot485")] if stage>=485 else [])),
+            ]
+            grouped = "".join(
+                '<section aria-label="'+escape(heading,quote=True)+'"><h2>'+escape(heading)+
+                '</h2><div class="grid">'+ "".join(cards)+'</div></section>'
+                for heading,cards in phases
+            )
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
         body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
-        body += '<div class="grid">'+"".join(steps)+'</div>'
+        body += grouped if stage>=482 else '<div class="grid">'+"".join(steps)+'</div>'
         return HTMLResponse(page("Dein Ermittlungs- und Rechercheablauf",case_id,body,workspace_build),
                             headers={"Cache-Control":"no-store"})
 
