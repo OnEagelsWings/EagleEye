@@ -134,6 +134,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("Interner Release-Check", "Build 500 – GO/HOLD",
+                        "Integrationsstand, kontrollierte Quellen und offene Freigabevoraussetzungen "
+                        "im aktuellen Fall einsehen.",
+                        "/workbench/release500", "Release-Status öffnen")
+                   if getattr(app.state, "internal_candidate500", False) else "")
                 + (card("Geprüfte Entitäten in den Graph", "Build 499 – Belegbezug",
                         "Manuell geprüfte PersonOSINT-Kandidaten mit einem Falldokument "
                         "als unbestätigte Graphknoten erfassen; kein Identitätsbeweis.",

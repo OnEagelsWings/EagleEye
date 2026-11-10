@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title EagleEye Build 490
+title EagleEye Build 500
 
 where py >nul 2>nul
 if %errorlevel%==0 (
@@ -23,10 +23,10 @@ if errorlevel 1 (
 rem The bootstrap stores settings and cases outside the program directory.
 rem Do not override EAGLEEYE_SETTINGS_DIR or EAGLEEYE_DATA_DIR here.
 rem Default: %%LOCALAPPDATA%%\EagleEye-490\workspace (or user-selected folder).
-%PYTHON% INSTALL_EAGLEEYE_490.py
+%PYTHON% INSTALL_EAGLEEYE_500.py
 if errorlevel 1 goto :failed
 
-set "RUNTIME_PY=.eagleeye-runtime-490\Scripts\python.exe"
+set "RUNTIME_PY=.eagleeye-runtime-500\Scripts\python.exe"
 if not exist "%RUNTIME_PY%" goto :failed
 
 "%RUNTIME_PY%" -I -m eagleeye.bootstrap.desktop476 --install-root "%CD%"
@@ -35,8 +35,8 @@ exit /b 0
 
 :failed
 echo.
-echo EagleEye Build 490 did not install or start successfully.
-echo Run: %PYTHON% INSTALL_EAGLEEYE_490.py --check
+echo EagleEye Build 500 did not install or start successfully.
+echo Run: %PYTHON% INSTALL_EAGLEEYE_500.py --check
 echo.
 pause
 exit /b 1
