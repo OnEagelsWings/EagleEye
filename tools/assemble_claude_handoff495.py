@@ -95,7 +95,7 @@ def main() -> None:
         "# EagleEye – Übergabe an Claude Code\n\n"
         "Diese ZIP ist eine vollständige QUELLCODE-Übergabe, kein freigegebenes Windows-Installationspaket.\n\n"
         "## Verzeichnisse\n"
-        "- `EagleEye/EagleEye/`: aktueller gemeinsamer Integrationszweig\n"
+        "- `EagleEye/`: aktueller gemeinsamer Integrationszweig\n"
         "- `ClaudePersonOSINT/PersonOSINT/`: Originalcode von Claude aus dem separaten Branch\n\n"
         "Die 492/493/494-Schichten sind bereits in der Startfabrik eingebunden. "
         "PersonOSINT-Fallexporte können als ungeprüfte HTTPS-Links und "
