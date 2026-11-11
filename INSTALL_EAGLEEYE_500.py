@@ -159,7 +159,9 @@ print(json.dumps({
 def _ensure_runtime(root: Path, *, quiet: bool = False) -> Path:
     runtime_python = _runtime_python(root)
     runtime_dir = root / RUNTIME_DIR
-    if runtime_dir.is_symlink() or runtime_python.is_symlink():
+    # Check intermediate Scripts/bin too: rmtree and venv creation must never
+    # traverse or reuse a runtime component linked into another installation.
+    if _runtime_path_linked(root):
         raise RuntimeError("Linked runtime paths are forbidden for Build 500")
     if runtime_python.is_file():
         return runtime_python
