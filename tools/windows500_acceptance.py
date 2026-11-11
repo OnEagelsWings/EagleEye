@@ -174,6 +174,17 @@ def _check(root,install,python):
                 proc.communicate(timeout=12)
             except (OSError, subprocess.TimeoutExpired):
                 pass
+        # Stop the *verified* loopback listener and its subprocess tree before
+        # terminating the launcher job. A detached server may have workers
+        # outside that job; killing the launcher first can orphan them and
+        # leave the SQLite handle open on Windows.
+        if os.name == "nt" and server_pid is not None:
+            completed = subprocess.run(
+                ["taskkill", "/PID", str(server_pid), "/T", "/F"],
+                capture_output=True, text=True, timeout=20, check=False,
+            )
+            print("Verified server tree stop " + str(server_pid) + ": "
+                  + str(completed.returncode), flush=True)
         # The launcher can exit before its server child. Always terminate the
         # entire Windows job, even when proc.poll() already reports exit.
         if job is not None:
