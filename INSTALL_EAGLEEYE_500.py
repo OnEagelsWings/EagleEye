@@ -227,6 +227,7 @@ def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
         "server_file": probe.get("server_file", ""),
         "editable": probe.get("editable"),
         "isolated_import": True,
+        "offline_wheelhouse": (root / "wheelhouse").is_dir(),
     }
     temp = path.with_suffix(".tmp")
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -262,6 +263,11 @@ def main(argv=None) -> int:
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"EagleEye Build 500 offline verification failed: {exc}", file=sys.stderr)
             return 2
+    # A previously verified offline installation must not silently become
+    # trusted after its entire wheelhouse has been removed.
+    if _read_receipt(root).get("offline_wheelhouse") and not (root / "wheelhouse").is_dir():
+        print("EagleEye Build 500 offline wheelhouse removed after installation", file=sys.stderr)
+        return 2
     fingerprint = _source_fingerprint(root)
     receipt = _read_receipt(root)
     probe = _probe(root)
