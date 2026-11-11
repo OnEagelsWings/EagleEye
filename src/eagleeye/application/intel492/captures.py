@@ -57,8 +57,8 @@ def store_capture(ctx, *, identity: dict, case_id: str, result: dict, kind: str)
     temp.replace(target)
     try:
         imported = ctx.document_intelligence_458.import_bytes(
-            identity=identity, case_id=case_id, filename=capture_id + ".txt", raw=result["document"],
-            title=("Web: " if kind == "live" else "Archiv: ") + result["title"],
+            identity=identity, case_id=case_id, filename=capture_id + result.get("document_suffix", ".txt"),
+            raw=result["document"], title=("Web: " if kind == "live" else "Archiv: ") + result["title"],
             source_url=result["url"])
         meta = result["metadata"]
         row = {"capture_id": capture_id, "case_id": case_id, "document_id": imported["document_id"],
@@ -82,12 +82,18 @@ def store_capture(ctx, *, identity: dict, case_id: str, result: dict, kind: str)
     return row
 
 
-def captures_for_case(ctx, case_id: str, limit: int = 200) -> list[dict]:
+def captures_for_case(ctx, case_id: str, limit: int = 200, *, verify: bool = True) -> list[dict]:
+    """verify=False skips reading the WARC files (for views that only need metadata)."""
     rows = [dict(r) for r in ctx.db.all(
         "SELECT * FROM web_capture_492 WHERE case_id=? ORDER BY captured_at DESC LIMIT ?", (case_id, limit))]
-    for row in rows:
-        row["integrity_ok"] = verify_capture(ctx, row)
+    if verify:
+        for row in rows:
+            row["integrity_ok"] = verify_capture(ctx, row)
     return rows
+
+
+def capture_count(ctx, case_id: str) -> int:
+    return int(ctx.db.one("SELECT COUNT(*) AS n FROM web_capture_492 WHERE case_id=?", (case_id,))["n"])
 
 
 def capture_row(ctx, capture_id: str) -> dict:

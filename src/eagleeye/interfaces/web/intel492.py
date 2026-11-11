@@ -19,6 +19,7 @@ from starlette.concurrency import run_in_threadpool
 from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye.application.build488.reviews import reviews_for_case
 from eagleeye.application.intel492 import captures, docstructure, entitymatch, lineage, network, webcapture
+from eagleeye.application.intel492.throttle import Throttle
 from .app364 import CSRF_COOKIE
 from .findings478 import bounded_form, verify_post
 from .operations476 import case_access, page
@@ -91,6 +92,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
     docstructure.initialize(ctx)
     ctx.entity_candidate_matcher = entitymatch.suggest_case_pairs_492
     app.state.intel492 = True
+    app.state.intel492_throttle = Throttle()
 
     def render(title, case_id, body, status=200):
         return HTMLResponse(page(title, case_id, EXTRA_CSS + _stack_tables(body), build), status_code=status,
@@ -104,7 +106,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
     def hub(request: Request, case_id: str = ""):
         user, case = case_access(app, request, case_id)
         docs = ctx.document_intelligence_458.documents(identity=user, case_id=case_id)
-        caps = captures.captures_for_case(ctx, case_id)
+        cap_count = captures.capture_count(ctx, case_id)
         pdfs = [d for d in docs if d["media_type"] == "application/pdf"]
         enriched = sum(1 for d in pdfs if docstructure.enrichment_for(ctx, d["document_id"]))
         ocr_ok, engine = docstructure.ocr_available()
@@ -118,9 +120,9 @@ def attach_intel492(app, build: str, base_dir) -> None:
         body = ('<p>Werkzeuge, um Quellen beweisfest zu sichern und den Fall auszuwerten. Alle Ergebnisse sind '
                 '<strong>Prüfmaterial</strong> – sie bestätigen keine Tatsachen und führen nichts automatisch zusammen.</p>'
                 '<div class="grid">'
-                + card("Webseite als Beleg sichern", _count(len(caps), "Web-Beleg", "Web-Belege"),
-                       "Eine öffentliche Seite oder eine archivierte Fassung als WARC-Original sichern; "
-                       "der Haupttext wird als prüfbares Dokument mit Textankern angelegt.", "/workbench/intel/web", "Seite sichern")
+                + card("Webseite als Beleg sichern", _count(cap_count, "Web-Beleg", "Web-Belege"),
+                       "Eine öffentliche Seite, ein PDF oder eine archivierte Fassung als WARC-Original sichern; "
+                       "der Inhalt wird als prüfbares Dokument mit Fundstellen angelegt.", "/workbench/intel/web", "Seite sichern")
                 + card("Struktur & Texterkennung", f"{enriched} / {len(pdfs)} PDFs ergänzt",
                        "Tabellen, Überschriften und – bei Scans – OCR-Text als zusätzliche Fundstellen anlegen. "
                        + ("Texterkennung verfügbar." if ocr_ok else "Texterkennung nicht installiert."),
@@ -151,21 +153,34 @@ def attach_intel492(app, build: str, base_dir) -> None:
                  '<span>Mir ist bewusst, dass der Zielserver bzw. das Internet Archive diesen Abruf und meine '
                  'IP-Adresse sieht. Die Adresse enthält keine vertraulichen Angaben.</span></label>')
         if redirect:
-            notice += ('<section class="card warn"><h2>Die Seite leitet weiter</h2><p>HTTP ' + str(redirect["status"]) +
-                       ' nach: <code>' + escape(redirect["location"] or "unbekannt") + '</code></p>'
-                       '<p>Weiterleitungen werden nicht automatisch verfolgt. Prüfe das Ziel und sichere es bei Bedarf bewusst.</p>'
-                       + ('<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
-                          '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="url" value="' +
-                          escape(redirect["location"], quote=True) + '">' + opsec + '<button>Weiterleitungsziel sichern</button></form>'
-                          if allowed and redirect["location"].startswith(("http://", "https://")) else "") + '</section>')
+            via = [v for v in redirect.get("via", []) if v][: webcapture.MAX_CONFIRMED_HOPS + 1]
+            target = redirect.get("location") or ""
+            box = ('<section class="card warn" role="alert"><h2>Die Seite leitet weiter</h2>'
+                   '<p>Von <code>' + escape(redirect.get("from") or url) + '</code><br>nach <code>' +
+                   escape(target or "unbekannt") + '</code> (HTTP ' + str(redirect["status"]) + ')</p>')
+            if not redirect.get("followable"):
+                box += '<p>' + escape(redirect.get("problem") or "Dieses Ziel wird nicht automatisch gesichert. Prüfe die Adresse und gib sie bei Bedarf direkt ein.") + '</p>'
+            elif len(via) > webcapture.MAX_CONFIRMED_HOPS:
+                box += ('<p>Die Weiterleitungskette ist länger als ' + str(webcapture.MAX_CONFIRMED_HOPS) +
+                        ' bestätigte Schritte. Prüfe das Ziel und gib die endgültige Adresse direkt ein.</p>')
+            elif allowed:
+                box += ('<p>Weiterleitungen auf denselben Server verfolgt EagleEye selbst. Dieses Ziel liegt auf einem '
+                        'anderen Server. Prüfe es und bestätige den Abruf, wenn du diesen Server kontaktieren willst.</p>'
+                        '<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
+                        '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="url" value="' + escape(target, quote=True) + '">' +
+                        "".join('<input type="hidden" name="via" value="' + escape(v, quote=True) + '">' for v in via) +
+                        opsec + '<button>Weiterleitungsziel sichern</button></form>')
+            notice += box + '</section>'
         if allowed:
             forms = ('<section class="card"><h2>Live-Seite sichern</h2>'
                      '<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
                      '<input type="hidden" name="csrf" value="' + token + '">'
-                     '<label>Öffentliche Adresse<input name="url" type="url" required maxlength="2000" placeholder="https://…" value="' + escape(url, quote=True) + '"></label>'
+                     '<label>Öffentliche Adresse (Webseite oder PDF)<input name="url" type="url" required maxlength="2000" placeholder="https://…" value="' + escape(url, quote=True) + '"></label>'
                      + opsec + '<button>Seite jetzt sichern</button></form>'
                      '<p class="muted">Gespeichert werden: die unveränderte Serverantwort als WARC-Datei (Archivstandard), deren SHA-256 und der '
-                     'erkannte Haupttext als Dokument mit Fundstellen. Keine Weiterleitungen, keine internen Adressen, max. 3 MB.</p></section>'
+                     'Inhalt als Dokument mit Fundstellen – bei Webseiten der erkannte Haupttext, bei PDFs das PDF selbst. '
+                     'Weiterleitungen auf denselben Server werden verfolgt und mitgesichert, andere erst nach deiner Bestätigung. '
+                     'Keine internen Adressen. Webseiten bis 3 MB, PDFs bis 12 MB.</p></section>'
                      '<section class="card"><h2>Archivierte Fassungen (Internet Archive)</h2>'
                      '<form method="post" action="/workbench/intel/web/wayback"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
                      '<input type="hidden" name="csrf" value="' + token + '">'
@@ -193,13 +208,14 @@ def attach_intel492(app, build: str, base_dir) -> None:
         for row in rows:
             integrity = '<span class="ok">✓ unverändert</span>' if row["integrity_ok"] else '<span class="bad">✗ Integrität verletzt</span>'
             table += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=row["document_id"]) + '">' +
-                      escape(row["page_title"] or row["url"]) + '</a><br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
+                      escape(row["page_title"] or row["url"]) + '</a>' + (' <span class="pill">PDF</span>' if row["content_type"] == "application/pdf" else '') +
+                      '<br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
                       '<td>' + ("Archiv" if row["kind"] == "archive" else "Live") + '<br><span class="muted">' + escape(row["captured_at"][:16].replace("T", " ")) + ' UTC</span></td>'
                       '<td>' + escape(row["page_published"] or "–") + '</td><td>' + integrity + '</td>'
                       '<td><a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=row["capture_id"]) + '">WARC</a> · '
                       '<a href="' + _link("/workbench/findings", case_id=case_id, document_id=row["document_id"]) + '">Befund notieren</a></td></tr>')
         listing = ('<section class="card"><h2>Gesicherte Web-Belege (' + str(len(rows)) + ')</h2>'
-                   + ('<table><thead><tr><th>Seite</th><th>Art / erfasst</th><th>Veröffentlicht laut Seite</th><th>Original</th><th>Weiter</th></tr></thead><tbody>'
+                   + ('<table><thead><tr><th>Seite</th><th>Art / erfasst</th><th>Datum laut Quelle</th><th>Original</th><th>Weiter</th></tr></thead><tbody>'
                       + table + '</tbody></table>' if rows else '<p>Noch keine Web-Belege gesichert.</p>') + '</section>')
         body = back(case_id) + notice + snap_html + forms + listing
         return render("Webseite als Beleg sichern", case_id, body, status)
@@ -208,8 +224,22 @@ def attach_intel492(app, build: str, base_dir) -> None:
     def web_view(request: Request, case_id: str = "", done: str = ""):
         user, _ = case_access(app, request, case_id)
         message = {"live": "Seite gesichert. Bitte Haupttext und Fundstellen im Dokument prüfen.",
+                   "pdf": "PDF gesichert. Die Fundstellen stammen direkt aus dem PDF; Tabellen und gescannte Seiten "
+                          "lassen sich unter „Struktur & Texterkennung“ ergänzen.",
                    "archive": "Archivierte Fassung gesichert. Bitte Haupttext und Fundstellen prüfen."}.get(done, "")
         return web_page(request, user, case_id, message=message)
+
+    def throttled(request, user, case_id, url, host):
+        """Return an error page when the per-user or per-server limit is reached, else None."""
+        limiter = app.state.intel492_throttle
+        wait, scope = limiter.check(str(user.get("user_id") or user["username"]), host)
+        if not wait:
+            return None
+        limit = limiter.per_host if scope == "host" else limiter.per_user
+        text = ("Abruflimit erreicht: höchstens " + str(limit) + " Abrufe pro Minute" +
+                (" je Zielserver" if scope == "host" else "") + ". Bitte in " + str(wait) + " Sekunden erneut versuchen.")
+        ctx.audit.log("web_capture_throttled_492", "web_capture", "", case_id, {"actor": user["username"], "scope": scope})
+        return web_page(request, user, case_id, url=url, error=text, status=429)
 
     @app.post("/workbench/intel/web/wayback", response_class=HTMLResponse)
     async def wayback_list(request: Request):
@@ -220,6 +250,9 @@ def attach_intel492(app, build: str, base_dir) -> None:
         archive_url = str(form.get("archive_url") or "").strip()
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=archive_url, error="Bitte die Übermittlung an web.archive.org bestätigen.", status=422)
+        blocked = throttled(request, user, case_id, archive_url, webcapture.WAYBACK_HOST)
+        if blocked is not None:
+            return blocked
         try:
             snaps = await run_in_threadpool(webcapture.wayback_snapshots, archive_url)
         except webcapture.CaptureError as exc:
@@ -228,17 +261,23 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return web_page(request, user, case_id, url=archive_url, snapshots=snaps)
 
     async def _capture_post(request: Request, kind: str):
-        form = await bounded_form(request, max_bytes=8192)
+        form = await bounded_form(request, max_bytes=16384)
         case_id = str(form.get("case_id") or "")
         user, _ = case_access(app, request, case_id, "research.run")
         verify_post(app, request, user, form.get("csrf", ""))
         url = str(form.get("url") or "").strip()
+        via = [str(v) for v in form.getlist("via")][: webcapture.MAX_CONFIRMED_HOPS]
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422)
+        result = None
         try:
+            host = webcapture.WAYBACK_HOST if kind == "archive" else (urlsplit(webcapture.normalize_public_url(url)).hostname or "")
             archive_url = webcapture.wayback_raw_url(str(form.get("timestamp") or ""), url) if kind == "archive" else ""
-            result = await run_in_threadpool(webcapture.capture, url, archive_url=archive_url,
-                                             kind="Archivfassung" if kind == "archive" else "Live-Seite")
+            blocked = throttled(request, user, case_id, url, host)
+            if blocked is not None:
+                return blocked
+            result = await run_in_threadpool(lambda: webcapture.capture(
+                url, archive_url=archive_url, kind="Archivfassung" if kind == "archive" else "Live-Seite", via=via))
             if result.get("redirect"):
                 return web_page(request, user, case_id, url=url, redirect=result)
 
@@ -248,9 +287,19 @@ def attach_intel492(app, build: str, base_dir) -> None:
             await run_in_threadpool(store)
         except webcapture.CaptureError as exc:
             return web_page(request, user, case_id, url=url, error=str(exc), status=422)
-        except (ValueError, PermissionError) as exc:
-            return web_page(request, user, case_id, url=url, error="Speichern nicht möglich: " + str(exc)[:200], status=422)
-        return RedirectResponse("/workbench/intel/web?" + urlencode({"case_id": case_id, "done": kind}), status_code=303)
+        except Exception as exc:
+            # A broken PDF fails inside the PDF parser with library-specific errors; no
+            # parser details are shown to the user. Everything else must stay visible as a bug.
+            if result and result.get("content_type") == "application/pdf":
+                text = ("Das PDF konnte nicht übernommen werden. Mögliche Gründe: verschlüsselt, beschädigt, "
+                        "ohne Seiten oder mehr als 160 Seiten.")
+            elif isinstance(exc, (ValueError, PermissionError)):
+                text = "Speichern nicht möglich: " + str(exc)[:200]
+            else:
+                raise
+            return web_page(request, user, case_id, url=url, error=text, status=422)
+        done = "pdf" if result.get("content_type") == "application/pdf" and kind == "live" else kind
+        return RedirectResponse("/workbench/intel/web?" + urlencode({"case_id": case_id, "done": done}), status_code=303)
 
     @app.post("/workbench/intel/web")
     async def web_capture(request: Request):
@@ -348,7 +397,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
             level = "normal"
         service = ctx.document_intelligence_458
         docs = service.documents(identity=user, case_id=case_id)[:500]
-        cap_by_doc = {c["document_id"]: c for c in captures.captures_for_case(ctx, case_id, limit=500)}
+        cap_by_doc = {c["document_id"]: c for c in captures.captures_for_case(ctx, case_id, limit=500, verify=False)}
         prepared = []
         for d in docs:
             anchors = service.anchors(identity=user, document_id=d["document_id"])["anchors"]

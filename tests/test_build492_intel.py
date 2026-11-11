@@ -142,7 +142,7 @@ def test_capture_guards_store_nothing(workspace, fake_network, mode):
     if mode == "redirect":
         fake_network.responses[url] = (302, [("Location", "https://other.example/login")], b"")
     if mode == "not_html":
-        fake_network.responses[url] = (200, [("Content-Type", "application/pdf")], b"%PDF-1.4")
+        fake_network.responses[url] = (200, [("Content-Type", "image/png")], b"\x89PNG....")
     if mode == "no_text":
         fake_network.responses[url] = (200, [("Content-Type", "text/html")], b"<html><body><nav>x</nav></body></html>")
     if mode == "too_large":
