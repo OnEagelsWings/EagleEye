@@ -275,3 +275,208 @@ def test_transport_validates_every_address_then_tries_them_in_order():
     dead.connection_classes = {"https": _Conn, "http": _Conn}
     with pytest.raises(webcapture.CaptureError, match="nicht erreichbar"):
         dead.get("https://news.example/", accept="text/html")
+
+
+# ------------------------------------------- enrichment as background job
+import json
+import time
+
+from eagleeye.application.intel492 import docstructure, enrichjobs
+from test_build475_ai_checkpoint import member
+from test_build492_intel import _pdf_with_table_and_scan
+
+
+def _scan_pdf(pages=3):
+    """PDF whose pages carry only an image (no text layer)."""
+    doc = fitz.open()
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 60, 30), 0)
+    pix.clear_with(255)
+    for _ in range(pages):
+        doc.new_page().insert_image(fitz.Rect(72, 72, 272, 172), pixmap=pix)
+    return doc.tobytes()
+
+
+def _fake_ocr(monkeypatch, engine=None, available=True):
+    engine = engine or (lambda image: [{"text": "Gescannter Text einer Seite", "confidence": 90.0, "box": [300, 300, 900, 360]}])
+    monkeypatch.setattr(docstructure, "ocr_available", lambda: (available, "fake-ocr" if available else ""))
+    monkeypatch.setattr(docstructure, "tesseract_page", engine)
+
+
+def _start(workspace, document_id, path="/workbench/intel/documents", **extra):
+    app, client, user, case_id, *_ = workspace
+    return client.post(path, data={"case_id": case_id, "csrf": csrf_session(workspace), "document_id": document_id, **extra},
+                       follow_redirects=False)
+
+
+def _kinds(ctx, user, document_id):
+    anchors = ctx.document_intelligence_458.anchors(identity=user, document_id=document_id)["anchors"]
+    return sorted(a["anchor_kind"] for a in anchors)
+
+
+@ws
+def test_enrichment_is_queued_shows_progress_and_finishes(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    app.state.intel492_autostart = False
+    _fake_ocr(monkeypatch)
+    pdf = ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="b.pdf",
+                                                     raw=_pdf_with_table_and_scan(), title="Jahresbericht")
+    queued = _start(workspace, pdf["document_id"])
+    assert queued.status_code == 303 and "done=queued" in queued.headers["location"]
+    assert _start(workspace, pdf["document_id"]).status_code == 303, "a second click joins the active job"
+    status = client.get("/workbench/intel/jobs.json", params={"case_id": case_id}).json()["jobs"]
+    assert len(status) == 1 and status[0]["status"] == "queued" and status[0]["document_id"] == pdf["document_id"]
+    page = client.get("/workbench/intel/documents", params={"case_id": case_id, "done": "queued"}).text
+    assert "wartet auf Verarbeitung" in page and "<progress" in page and "Abbrechen" in page
+    assert 'src="/workbench/intel/progress.js"' in page and "Auftrag gestartet" in page
+    script = client.get("/workbench/intel/progress.js")
+    assert script.status_code == 200 and script.headers["content-type"].startswith("application/javascript")
+    final = enrichjobs.process_next(ctx)
+    assert final["status"] == "succeeded" and final["done"] == final["total"] == 2
+    assert enrichjobs.process_next(ctx) is None
+    assert {"table", "heading", "ocr_paragraph"} <= set(_kinds(ctx, user, pdf["document_id"]))
+    assert client.get("/workbench/intel/jobs.json", params={"case_id": case_id}).json() == {"jobs": []}
+    done = client.get("/workbench/intel/documents", params={"case_id": case_id}).text
+    assert "1 Tabelle" in done and "bereits ergänzt" in done and "<progress" not in done and "progress.js" not in done
+    assert client.get("/workbench/intel/jobs.json", params={"case_id": workspace[5]}).json() == {"jobs": []}
+
+
+@ws
+def test_text_recognition_can_be_caught_up_after_installation(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    app.state.intel492_autostart = False
+    pdf = ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="b.pdf",
+                                                     raw=_pdf_with_table_and_scan(), title="Jahresbericht")
+    doc_id = pdf["document_id"]
+    _fake_ocr(monkeypatch, available=False)
+    assert _start(workspace, doc_id).status_code == 303 and enrichjobs.process_next(ctx)["status"] == "succeeded"
+    first = _kinds(ctx, user, doc_id)
+    assert "table" in first and "ocr_paragraph" not in first
+    page = client.get("/workbench/intel/documents", params={"case_id": case_id}).text
+    assert "gescannte Seiten noch ohne Texterkennung" in page and "Texterkennung nachholen" not in page
+    assert _start(workspace, doc_id).status_code == 422, "nothing to do while no OCR engine is installed"
+    _fake_ocr(monkeypatch, available=True)
+    assert "Texterkennung nachholen" in client.get("/workbench/intel/documents", params={"case_id": case_id}).text
+    assert _start(workspace, doc_id).status_code == 303 and enrichjobs.process_next(ctx)["status"] == "succeeded"
+    second = _kinds(ctx, user, doc_id)
+    assert second.count("ocr_paragraph") == 1 and second.count("table") == first.count("table"), "structure is not duplicated"
+    row = docstructure.enrichment_for(ctx, doc_id)
+    assert row["ocr_engine"] == "fake-ocr" and row["ocr_paragraphs"] == 1 and json.loads(row["ocr_pages"]) == [2]
+    assert docstructure._hash(row) == row["record_hash"]
+    service = ctx.document_intelligence_458
+    assert service._document(doc_id)["state"] == "review_required"
+    assert _start(workspace, doc_id).status_code == 422 and "bereits ergänzt" in client.get(
+        "/workbench/intel/documents", params={"case_id": case_id}).text
+
+
+@ws
+def test_cancelled_run_writes_nothing_and_can_be_restarted(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    app.state.intel492_autostart = False
+    pdf = ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="scan.pdf",
+                                                     raw=_scan_pdf(3), title="Scan")
+    doc_id = pdf["document_id"]
+    before = _kinds(ctx, user, doc_id)
+    seen = []
+
+    def cancelling_engine(image):
+        seen.append(1)
+        if len(seen) == 1:  # the user presses "Abbrechen" while page 1 is being read
+            job = enrichjobs.jobs_for_case(ctx, case_id)[doc_id]
+            assert _start(workspace, doc_id, path="/workbench/intel/documents/cancel", job_id=job["job_id"]).status_code == 303
+        return [{"text": "Gescannter Text einer Seite", "confidence": 90.0, "box": [0, 0, 10, 10]}]
+
+    _fake_ocr(monkeypatch, engine=cancelling_engine)
+    assert _start(workspace, doc_id).status_code == 303
+    assert enrichjobs.process_next(ctx)["status"] == "cancelled"
+    assert len(seen) == 1, "the run stops before the next page"
+    assert _kinds(ctx, user, doc_id) == before and docstructure.enrichment_for(ctx, doc_id) is None
+    page = client.get("/workbench/intel/documents", params={"case_id": case_id, "done": "cancelled"}).text
+    assert "Letzter Lauf wurde abgebrochen" in page and "Fundstellen ergänzen" in page and "keine Fundstellen geschrieben" in page
+    # cancelling a queued job, then a clean restart
+    _fake_ocr(monkeypatch)
+    assert _start(workspace, doc_id).status_code == 303
+    job = enrichjobs.jobs_for_case(ctx, case_id)[doc_id]
+    assert _start(workspace, doc_id, path="/workbench/intel/documents/cancel", job_id=job["job_id"]).status_code == 303
+    assert enrichjobs.process_next(ctx) is None
+    assert _start(workspace, doc_id).status_code == 303 and enrichjobs.process_next(ctx)["status"] == "succeeded"
+    assert _kinds(ctx, user, doc_id).count("ocr_paragraph") == 3
+
+
+@ws
+def test_failed_run_shows_a_reason_without_internals_and_can_be_retried(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    app.state.intel492_autostart = False
+    pdf = ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="scan.pdf",
+                                                     raw=_scan_pdf(1), title="Scan")
+    doc_id = pdf["document_id"]
+
+    def broken(image):
+        raise RuntimeError("secret/path/tesseract crashed")
+
+    _fake_ocr(monkeypatch, engine=broken)
+    assert _start(workspace, doc_id).status_code == 303
+    assert enrichjobs.process_next(ctx)["status"] == "dead_letter"
+    page = client.get("/workbench/intel/documents", params={"case_id": case_id}).text
+    assert "Letzter Versuch fehlgeschlagen" in page and "RuntimeError" in page and "secret/path" not in page
+    assert docstructure.enrichment_for(ctx, doc_id) is None and "Fundstellen ergänzen" in page
+    _fake_ocr(monkeypatch)
+    assert _start(workspace, doc_id).status_code == 303 and enrichjobs.process_next(ctx)["status"] == "succeeded"
+
+
+@ws
+def test_worker_thread_drains_the_queue_on_its_own(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    _fake_ocr(monkeypatch)
+    ids = [ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename=f"s{i}.pdf",
+                                                      raw=_scan_pdf(2), title=f"Scan {i}")["document_id"] for i in range(2)]
+    for doc_id in ids:
+        assert _start(workspace, doc_id).status_code == 303
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        jobs = enrichjobs.jobs_for_case(ctx, case_id)
+        if all(jobs[d]["status"] == "succeeded" for d in ids):
+            break
+        time.sleep(0.05)
+    assert all(enrichjobs.jobs_for_case(ctx, case_id)[d]["status"] == "succeeded" for d in ids)
+    assert all(_kinds(ctx, user, d).count("ocr_paragraph") == 2 for d in ids)
+    deadline = time.monotonic() + 5
+    while app.state.intel492_worker is not None and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert app.state.intel492_worker is None, "the worker thread ends when the queue is empty"
+
+
+@ws
+def test_job_permissions_type_isolation_and_restart_recovery(workspace, monkeypatch):
+    app, client, admin, case_id, doc_id, other_case, other_doc = workspace
+    ctx = app.state.context
+    app.state.intel492_autostart = False
+    _fake_ocr(monkeypatch)
+    pdf = ctx.document_intelligence_458.import_bytes(identity=admin, case_id=case_id, filename="scan.pdf",
+                                                     raw=_scan_pdf(1), title="Scan")["document_id"]
+    engine = ctx.job_engine_348
+    foreign = engine.enqueue(job_type="crawler_demo", payload={"x": 1}, case_id=case_id)
+    assert _start(workspace, pdf).status_code == 303
+    job = enrichjobs.jobs_for_case(ctx, case_id)[pdf]
+    # a job of another case cannot be cancelled through this case
+    data = {"case_id": other_case, "csrf": csrf_session(workspace), "job_id": job["job_id"]}
+    assert client.post("/workbench/intel/documents/cancel", data=data).status_code == 404
+    # simulate a crash mid-run: the job stays "running" with our worker id
+    assert engine.claim(worker_id=enrichjobs.WORKER_ID, lease_seconds=3600, job_types=[enrichjobs.JOB_TYPE])["job_id"] == job["job_id"]
+    assert enrichjobs.process_next(ctx) is None, "foreign job types are never claimed by this worker"
+    assert engine.get(foreign["job_id"])["status"] == "queued"
+    assert enrichjobs.recover_interrupted(ctx) == 1 and engine.get(job["job_id"])["status"] == "queued"
+    assert enrichjobs.process_next(ctx)["status"] == "succeeded"
+    assert engine.claim(worker_id="generic")["job_id"] == foreign["job_id"], "unfiltered claim keeps its behaviour"
+    # read-only members can watch but neither start nor cancel
+    second = ctx.document_intelligence_458.import_bytes(identity=admin, case_id=case_id, filename="scan2.pdf",
+                                                        raw=_scan_pdf(1), title="Scan 2")["document_id"]
+    member(workspace, "read_only")
+    token = csrf_session(workspace, "member475", "Independent!Secret_881")
+    assert client.post("/workbench/intel/documents", data={"case_id": case_id, "csrf": token, "document_id": second}).status_code == 403
+    assert client.post("/workbench/intel/documents/cancel", data={"case_id": case_id, "csrf": token, "job_id": job["job_id"]}).status_code == 403
+    assert "Rechercheberechtigung nötig" in client.get("/workbench/intel/documents", params={"case_id": case_id}).text

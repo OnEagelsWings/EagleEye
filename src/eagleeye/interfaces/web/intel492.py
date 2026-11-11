@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from html import escape
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
@@ -18,7 +19,7 @@ from starlette.concurrency import run_in_threadpool
 
 from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye.application.build488.reviews import reviews_for_case
-from eagleeye.application.intel492 import captures, docstructure, entitymatch, lineage, network, webcapture
+from eagleeye.application.intel492 import captures, docstructure, enrichjobs, entitymatch, lineage, network, webcapture
 from eagleeye.application.intel492.throttle import Throttle
 from .app364 import CSRF_COOKIE
 from .findings478 import bounded_form, verify_post
@@ -28,7 +29,7 @@ EXTRA_CSS = ('<style>.ok{color:#9af3de}.bad{color:#ffb4a8}.muted{color:#c2d3e3;f
              '.pill{display:inline-block;border:1px solid #647b93;border-radius:999px;padding:.1rem .6rem;margin:.1rem .2rem .1rem 0;font-size:.85rem}'
              '.stat{font-size:1.6rem;font-weight:700;display:block}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}'
              '.row form{margin:0}label.check{display:flex;gap:.5rem;align-items:flex-start}label.check input{width:auto;margin:.35rem 0 0}'
-             'details summary{cursor:pointer}'
+             'details summary{cursor:pointer}progress{width:100%;max-width:14rem;height:1rem;vertical-align:middle}'
              '@media (max-width:640px){table.stack thead{position:absolute;left:-9999px}'
              'table.stack tr{display:block;border:1px solid #647b93;border-radius:10px;padding:.4rem .8rem;margin:.6rem 0}'
              'table.stack td{display:block;border:0;padding:.25rem 0;word-break:normal;overflow-wrap:anywhere}'
@@ -325,6 +326,82 @@ def attach_intel492(app, build: str, base_dir) -> None:
                                  "Cache-Control": "no-store"})
 
     # ------------------------------------------------------- documents / OCR
+    worker_lock = threading.Lock()
+
+    def worker_loop():
+        try:
+            while True:
+                if enrichjobs.process_next(ctx) is None:
+                    with worker_lock:  # decide under the lock, so a job queued right now is not missed
+                        if not ctx.db.one("SELECT 1 AS x FROM phase15_jobs WHERE job_type=? AND status='queued' LIMIT 1",
+                                          (enrichjobs.JOB_TYPE,)):
+                            app.state.intel492_worker = None
+                            return
+        except Exception:  # database closed during shutdown: the job is re-queued on next start
+            with worker_lock:
+                app.state.intel492_worker = None
+
+    def kick_worker():
+        if not app.state.intel492_autostart:
+            return
+        with worker_lock:
+            thread = app.state.intel492_worker
+            if thread is None or not thread.is_alive():
+                thread = threading.Thread(target=worker_loop, name="intel492-enrich", daemon=True)
+                app.state.intel492_worker = thread
+                thread.start()
+
+    app.state.intel492_autostart = True
+    app.state.intel492_worker = None
+    app.state.intel492_kick = kick_worker
+    if enrichjobs.recover_interrupted(ctx) or ctx.db.one(
+            "SELECT 1 AS x FROM phase15_jobs WHERE job_type=? AND status='queued' LIMIT 1", (enrichjobs.JOB_TYPE,)):
+        kick_worker()
+
+    @app.get("/workbench/intel/progress.js")
+    def progress_script():
+        # Same-origin asset: the inherited CSP blocks inline scripts.
+        script = """(function () {
+  "use strict";
+  var root = document.querySelector("[data-jobs-url]");
+  if (!root) return;
+  var failures = 0;
+  function tick() {
+    fetch(root.getAttribute("data-jobs-url"), {credentials: "same-origin", headers: {"Accept": "application/json"}})
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(function (data) {
+        failures = 0;
+        var active = {};
+        data.jobs.forEach(function (job) { active[job.job_id] = job; });
+        var finished = false;
+        document.querySelectorAll("[data-job]").forEach(function (el) {
+          var job = active[el.getAttribute("data-job")];
+          if (!job) { finished = true; return; }
+          var bar = el.querySelector("progress");
+          var text = el.querySelector(".job-text");
+          if (job.status === "running" && job.total > 0) {
+            bar.max = job.total; bar.value = job.done;
+            text.textContent = "Seite " + job.done + " von " + job.total;
+          } else {
+            bar.removeAttribute("value");
+            text.textContent = job.status === "running" ? "wird vorbereitet" : "wartet auf Verarbeitung";
+          }
+        });
+        if (finished) { window.location.reload(); } else { window.setTimeout(tick, 2000); }
+      })
+      .catch(function () { failures += 1; if (failures < 5) window.setTimeout(tick, 4000); });
+  }
+  window.setTimeout(tick, 1500);
+})();"""
+        return Response(script, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+    @app.get("/workbench/intel/jobs.json")
+    def jobs_status(request: Request, case_id: str = ""):
+        case_access(app, request, case_id)
+        active = [{k: job[k] for k in ("job_id", "document_id", "status", "done", "total")}
+                  for job in enrichjobs.jobs_for_case(ctx, case_id).values() if job["status"] in enrichjobs.ACTIVE]
+        return Response(json.dumps({"jobs": active}), media_type="application/json", headers={"Cache-Control": "no-store"})
+
     @app.get("/workbench/intel/documents", response_class=HTMLResponse)
     def documents_view(request: Request, case_id: str = "", done: str = ""):
         user, _ = case_access(app, request, case_id)
@@ -332,36 +409,81 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 if d["media_type"] == "application/pdf"]
         ocr_ok, engine = docstructure.ocr_available()
         allowed = _can_run(ctx, user, case_id)
+        jobs = enrichjobs.jobs_for_case(ctx, case_id)
+        token = _csrf(request)
         info = ('<p class="card">' + ('<span class="ok">✓ Texterkennung verfügbar</span> (' + escape(engine) + ')'
                 if ocr_ok else '<span class="bad">Texterkennung (Tesseract) ist auf diesem Rechner nicht installiert.</span> '
                 'Tabellen und Überschriften werden trotzdem erkannt. Für gescannte Seiten Tesseract installieren '
-                '(Windows: Installer der UB Mannheim, Sprachpaket Deutsch) und EagleEye neu starten.') + '</p>')
-        if done:
-            info = '<p class="card ok" role="status">Fundstellen ergänzt. Bitte die Extraktion im Dokument prüfen.</p>' + info
-        rows = ""
+                '(Windows: Installer der UB Mannheim, Sprachpaket Deutsch) und EagleEye neu starten. '
+                'Die Texterkennung lässt sich danach für bereits ergänzte Dokumente nachholen.') + '</p>')
+        notice = {"queued": "Auftrag gestartet. Du kannst weiterarbeiten; der Stand wird hier angezeigt.",
+                  "cancelled": "Auftrag abgebrochen. Es wurden keine Fundstellen geschrieben."}.get(done, "")
+        if notice:
+            info = '<p class="card ok" role="status">' + notice + '</p>' + info
+
+        def form(path, label, **fields):
+            return ('<form method="post" action="' + path + '"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
+                    '"><input type="hidden" name="csrf" value="' + token + '">' +
+                    "".join('<input type="hidden" name="' + k + '" value="' + escape(v, quote=True) + '">' for k, v in fields.items()) +
+                    '<button>' + label + '</button></form>')
+
+        rows, any_active = "", False
         for d in docs:
             enr = docstructure.enrichment_for(ctx, d["document_id"])
+            job = jobs.get(d["document_id"])
+            mode = docstructure.pending_work(d, enr, ocr_ok)
             if enr:
-                state = (f'{enr["tables"]} Tabellen · {enr["headings"]} Überschriften · {enr["ocr_paragraphs"]} OCR-Absätze'
-                         + (f' (Ø Erkennungssicherheit {enr["ocr_mean_confidence"]} %)' if enr["ocr_mean_confidence"] is not None else ""))
-                action = '<span class="muted">bereits ergänzt</span>'
+                state = (_count(enr["tables"], "Tabelle", "Tabellen") + ' · ' + _count(enr["headings"], "Überschrift", "Überschriften") +
+                         ' · ' + _count(enr["ocr_paragraphs"], "OCR-Absatz", "OCR-Absätze") +
+                         (f' (Ø Erkennungssicherheit {enr["ocr_mean_confidence"]} %)' if enr["ocr_mean_confidence"] is not None else ""))
+                if not enr["ocr_engine"] and d["ocr_required"]:
+                    state += ' · gescannte Seiten noch ohne Texterkennung'
             else:
-                state = "OCR erforderlich" if d["ocr_required"] else "nur Fließtext-Anker"
+                state = "enthält gescannte Seiten ohne Text" if d["ocr_required"] else "nur Fließtext-Fundstellen"
+            state = escape(state)
+            if job and job["status"] in enrichjobs.ACTIVE:
+                any_active = True
+                running = job["status"] == "running" and job["total"] > 0
+                state = ('<span data-job="' + escape(job["job_id"], quote=True) + '"><progress aria-label="Fortschritt" ' +
+                         ('max="' + str(job["total"]) + '" value="' + str(job["done"]) + '"' if running else '') + '></progress> '
+                         '<span class="job-text">' + (f'Seite {job["done"]} von {job["total"]}' if running else
+                                                      ("wird vorbereitet" if job["status"] == "running" else "wartet auf Verarbeitung")) + '</span></span>')
+                action = form("/workbench/intel/documents/cancel", "Abbrechen", job_id=job["job_id"]) if allowed else ''
+            else:
+                if job and mode and job["status"] in ("dead_letter", "failed"):
+                    state += '<br><span class="bad">Letzter Versuch fehlgeschlagen: ' + escape(job["error"] or "unbekannter Fehler") + '</span>'
+                elif job and mode and job["status"] == "cancelled":
+                    state += '<br><span class="muted">Letzter Lauf wurde abgebrochen.</span>'
                 if not allowed:
                     action = '<span class="muted">Rechercheberechtigung nötig</span>'
                 elif d["state"] != "review_required":
                     action = '<span class="muted">bereits geprüft – nicht mehr ergänzbar</span>'
+                elif mode == "full":
+                    action = form("/workbench/intel/documents", "Fundstellen ergänzen", document_id=d["document_id"])
+                elif mode == "ocr":
+                    action = form("/workbench/intel/documents", "Texterkennung nachholen", document_id=d["document_id"])
                 else:
-                    action = ('<form method="post" action="/workbench/intel/documents"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
-                              '"><input type="hidden" name="csrf" value="' + _csrf(request) + '"><input type="hidden" name="document_id" value="' +
-                              escape(d["document_id"], quote=True) + '"><button>Fundstellen ergänzen</button></form>')
+                    action = '<span class="muted">bereits ergänzt</span>'
             rows += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=d["document_id"]) + '">' + escape(d["title"]) +
-                     '</a><br><span class="muted">' + str(d["page_count"]) + ' Seiten</span></td><td>' + escape(state) + '</td><td>' + action + '</td></tr>')
+                     '</a><br><span class="muted">' + _count(d["page_count"], "Seite", "Seiten") + '</span></td><td>' + state + '</td><td>' + action + '</td></tr>')
+        live = ('<p class="muted"><a href="' + _link("/workbench/intel/documents", case_id=case_id) + '">Stand aktualisieren</a></p>'
+                '<script src="/workbench/intel/progress.js" defer></script>') if any_active else ''
+        table = ('<div data-jobs-url="' + _link("/workbench/intel/jobs.json", case_id=case_id) + '">'
+                 '<table><thead><tr><th>PDF</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/documents458", case_id=case_id) + '">PDF importieren →</a></p>')
         body = (back(case_id) + '<p>Ergänzt Fundstellen für Tabellen, Überschriften und gescannte Seiten. Bestehende Fundstellen und das '
-                'Original bleiben unverändert. Möglich, solange die Extraktion noch nicht geprüft wurde.</p>' + info +
-                ('<table><thead><tr><th>PDF</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>' + rows + '</tbody></table>'
-                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/documents458", case_id=case_id) + '">PDF importieren →</a></p>'))
+                'Original bleiben unverändert. Möglich, solange die Extraktion noch nicht geprüft wurde. Die Verarbeitung läuft im '
+                'Hintergrund; bei langen Scans dauert die Texterkennung einige Minuten.</p>' + info + table + live)
         return render("Struktur & Texterkennung", case_id, body)
+
+    def _document_in_case(document_id, case_id):
+        try:
+            doc = ctx.document_intelligence_458._document(document_id)
+        except KeyError:
+            raise HTTPException(404, "Dokument nicht gefunden.") from None
+        if doc["case_id"] != case_id:
+            raise HTTPException(403, "Dokument gehört nicht zu diesem Fall.")
+        return doc
 
     @app.post("/workbench/intel/documents")
     async def documents_enrich(request: Request):
@@ -370,24 +492,26 @@ def attach_intel492(app, build: str, base_dir) -> None:
         user, _ = case_access(app, request, case_id, "research.run")
         verify_post(app, request, user, form.get("csrf", ""))
         document_id = str(form.get("document_id") or "")
+        _document_in_case(document_id, case_id)
         try:
-            doc = ctx.document_intelligence_458._document(document_id)
-        except KeyError:
-            raise HTTPException(404, "Dokument nicht gefunden.") from None
-        if doc["case_id"] != case_id:
-            raise HTTPException(403, "Dokument gehört nicht zu diesem Fall.")
-        ocr_ok, engine = docstructure.ocr_available()
-
-        def work():
             with ctx.audit.actor_scope(user["username"]):
-                return docstructure.enrich_document(ctx, identity=user, document_id=document_id,
-                                                    ocr_engine=docstructure.tesseract_page if ocr_ok else None,
-                                                    engine_name=engine)
-        try:
-            await run_in_threadpool(work)
+                enrichjobs.enqueue(ctx, identity=user, document_id=document_id)
         except (ValueError, PermissionError) as exc:
             raise HTTPException(422, str(exc)) from None
-        return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "1"}), status_code=303)
+        kick_worker()
+        return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "queued"}), status_code=303)
+
+    @app.post("/workbench/intel/documents/cancel")
+    async def documents_cancel(request: Request):
+        form = await bounded_form(request, max_bytes=4096)
+        case_id = str(form.get("case_id") or "")
+        user, _ = case_access(app, request, case_id, "research.run")
+        verify_post(app, request, user, form.get("csrf", ""))
+        try:
+            enrichjobs.cancel(ctx, case_id=case_id, job_id=str(form.get("job_id") or ""), actor=user["username"])
+        except KeyError:
+            raise HTTPException(404, "Auftrag nicht gefunden.") from None
+        return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "cancelled"}), status_code=303)
 
     # ---------------------------------------------------------------- lineage
     @app.get("/workbench/intel/lineage", response_class=HTMLResponse)

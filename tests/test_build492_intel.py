@@ -15,7 +15,7 @@ import fitz
 import pytest
 
 from eagleeye.application.entity_registry461 import EntityRegistry461
-from eagleeye.application.intel492 import captures, docstructure, webcapture
+from eagleeye.application.intel492 import captures, docstructure, enrichjobs, webcapture
 from eagleeye.application.intel492.entitymatch import compare_names, ftm_entities, suggest_case_pairs_492
 from eagleeye.application.build488.candidates import suggest_case_pairs
 from eagleeye.interfaces.web.app448 import COOKIE
@@ -251,10 +251,13 @@ def test_structure_and_ocr_anchors_are_added_before_review_only(workspace, monke
     monkeypatch.setattr(docstructure, "ocr_available", lambda: (True, "fake-ocr"))
     monkeypatch.setattr(docstructure, "tesseract_page", fake_ocr)
     token = csrf_session(workspace)
+    app.state.intel492_autostart = False  # run the queued job in this thread, deterministically
     view = client.get("/workbench/intel/documents", params={"case_id": case_id}).text
     assert "Jahresbericht" in view and "Fundstellen ergänzen" in view
     assert client.post("/workbench/intel/documents", data={"case_id": case_id, "csrf": token,
                        "document_id": pdf["document_id"]}, follow_redirects=False).status_code == 303
+    assert len(service.anchors(identity=user, document_id=pdf["document_id"])["anchors"]) == len(before)
+    assert enrichjobs.process_next(ctx)["status"] == "succeeded"
     after = service.anchors(identity=user, document_id=pdf["document_id"])["anchors"]
     kinds = {a["anchor_kind"] for a in after}
     assert {"table", "heading", "ocr_paragraph"} <= kinds and len(after) > len(before)
