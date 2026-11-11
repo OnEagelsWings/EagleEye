@@ -253,7 +253,10 @@ def main(argv=None) -> int:
     root = _root()
     # Offline mode is an integrity contract, including --check and an already
     # installed runtime. Never report readiness for a tampered wheelhouse.
-    if args.offline:
+    # A bundled wheelhouse is part of the installation trust boundary even
+    # when the operator does not explicitly pass --offline. Verify it before
+    # accepting a cached receipt or reporting --check as ready.
+    if args.offline or (root / "wheelhouse").exists():
         try:
             _verify_wheelhouse(root)
         except (OSError, ValueError, RuntimeError) as exc:
