@@ -70,7 +70,11 @@ def _read_receipt(root: Path) -> dict:
 
 
 def _probe(root: Path) -> dict:
+    runtime_dir = root / RUNTIME_DIR
     runtime_python = _runtime_python(root)
+    # Never follow a linked runtime into another installation (including legacy builds).
+    if runtime_dir.is_symlink() or runtime_python.is_symlink():
+        return {"ready": False, "reason": "runtime_link_forbidden"}
     if not runtime_python.is_file():
         return {"ready": False, "reason": "runtime_python_missing"}
 
@@ -139,9 +143,11 @@ print(json.dumps({
 
 def _ensure_runtime(root: Path, *, quiet: bool = False) -> Path:
     runtime_python = _runtime_python(root)
+    runtime_dir = root / RUNTIME_DIR
+    if runtime_dir.is_symlink() or runtime_python.is_symlink():
+        raise RuntimeError("Linked runtime paths are forbidden for Build 500")
     if runtime_python.is_file():
         return runtime_python
-    runtime_dir = root / RUNTIME_DIR
     if runtime_dir.exists():
         shutil.rmtree(runtime_dir)
     if not quiet:
