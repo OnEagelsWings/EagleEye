@@ -161,7 +161,7 @@ def _verify_wheelhouse(root: Path) -> None:
     """Fail closed if the supposedly-offline wheelhouse is incomplete or modified."""
     folder = root / "wheelhouse"
     manifest = folder / "MANIFEST-SHA256.json"
-    if not folder.is_dir() or not manifest.is_file() or folder.is_symlink():
+    if not folder.is_dir() or not manifest.is_file() or folder.is_symlink() or manifest.is_symlink():
         raise RuntimeError("Offline wheelhouse or SHA-256 manifest is missing")
     try:
         expected = json.loads(manifest.read_text(encoding="utf-8"))
@@ -169,7 +169,7 @@ def _verify_wheelhouse(root: Path) -> None:
         raise RuntimeError("Wheelhouse manifest invalid") from exc
     if not isinstance(expected, dict) or not expected:
         raise RuntimeError("Wheelhouse manifest empty")
-    wheels = {p.name:p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
+    if any(\n        not isinstance(name, str) or not name.endswith(".whl")\n        or not isinstance(digest, str) or len(digest) != 64\n        or any(ch not in "0123456789abcdef" for ch in digest)\n        for name, digest in expected.items()\n    ):\n        raise RuntimeError("Wheelhouse manifest contains invalid names or SHA-256 values")\n    wheels = {p.name: p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
     if set(wheels) != set(expected):
         raise RuntimeError("Wheelhouse has unexpected or missing wheels")
     if not any(n.lower().startswith("eagleeye_personosint_pro-500.0.0") for n in wheels):
