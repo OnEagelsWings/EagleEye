@@ -98,6 +98,7 @@ def _windows_installed_runtime_pids(install):
         " $exe=([string]$_.ExecutablePath).ToLower();"
         " $cmd=([string]$_.CommandLine).TrimStart().ToLower();"
         " ($exe.StartsWith($root + '\\')) -or"
+        " ($cmd -eq $py) -or ($cmd -eq (([char]34) + $py + ([char]34))) -or"
         " ($cmd.StartsWith(([char]34) + $py + ([char]34) + ' ') -or"
         "  $cmd.StartsWith($py + ' '))"
         "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
