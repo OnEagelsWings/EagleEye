@@ -480,3 +480,119 @@ def test_job_permissions_type_isolation_and_restart_recovery(workspace, monkeypa
     assert client.post("/workbench/intel/documents", data={"case_id": case_id, "csrf": token, "document_id": second}).status_code == 403
     assert client.post("/workbench/intel/documents/cancel", data={"case_id": case_id, "csrf": token, "job_id": job["job_id"]}).status_code == 403
     assert "Rechercheberechtigung nötig" in client.get("/workbench/intel/documents", params={"case_id": case_id}).text
+
+
+# ------------------------------------------------ entity matching at scale
+import random
+
+from eagleeye.application.intel492 import entitymatch
+from eagleeye.application.intel492.entitymatch import CandidateCache, compare_names, suggest_case_pairs_492
+
+_FIRST = ["Maximilian", "Anna", "Jürgen", "Olga", "Mehmet", "Sergej", "Christina", "Christian", "Friedrich", "Katharina",
+          "Alexander", "Владимир", "Ольга", "Γιώργος", "Sebastian", "Stefanie", "Wolfgang", "Elisabeth"]
+_LAST = ["Müller", "Schmidt", "Weiß", "Öztürk", "Ivanov", "Zimmermann", "Hoffmann", "Papadopoulos", "Иванов", "Кузнецов",
+         "Schäfer", "Fischer", "Beethoven", "Hohenstein", "Großmann", "Lindenberg", "Rosenthal", "Winterfeld"]
+_FIRMS = ["Nordwind Energie", "Rhein Invest", "Alpha Capital", "Beispiel Holding", "Hanse Logistik", "Berlin Media",
+          "Lindenberg Consulting", "Winterfeld Immobilien", "Zukunft Stiftung", "Müller & Söhne"]
+_FORMS = ["GmbH", "AG", "GmbH & Co KG", "Ltd", "SE", "UG"]
+
+
+def _typo(rng, word):
+    if len(word) < 7:
+        return word
+    i = rng.randrange(1, len(word) - 1)
+    return rng.choice([word[:i] + word[i + 1:], word[:i] + "x" + word[i + 1:], word[:i] + word[i] + word[i:]])
+
+
+def _random_entities(seed, count):
+    rng = random.Random(seed)
+    fold = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+    names = []
+    while len(names) < count:
+        if rng.random() < 0.7:
+            first, last, kind = rng.choice(_FIRST), rng.choice(_LAST), "person"
+            variant = rng.choice(["plain", "initial", "swap", "fold", "typo", "typo2", "middle", "upper"])
+            name = {"plain": f"{first} {last}", "initial": f"{first[0]}. {last}", "swap": f"{last}, {first}",
+                    "fold": f"{first} {last}".translate(fold), "typo": f"{first} {_typo(rng, last)}",
+                    "typo2": f"{_typo(rng, first)} {_typo(rng, last)}", "middle": f"{first} {rng.choice(_FIRST)} {last}",
+                    "upper": f"{first} {last}".upper()}[variant]
+        else:
+            firm, form = rng.choice(_FIRMS), rng.choice(_FORMS)
+            kind = rng.choice(["company", "organization"])
+            name = rng.choice([f"{firm} {form}", f"{firm.replace(' ', '-')} {form}", f"{_typo(rng, firm)} {form}",
+                               f"{firm[0]}. {form}", f"{firm} {form}".translate(fold)])
+        names.append((name, kind))
+    return [(str(i), name, kind) for i, (name, kind) in enumerate(names)]
+
+
+@pytest.mark.parametrize("seed", [1, 2, 3, 4])
+def test_blocking_finds_exactly_the_candidates_of_the_full_comparison(seed):
+    entities = _random_entities(seed, 260)
+    fast = entitymatch._all_candidates("c", entities, 0.88, True)
+    full = entitymatch._all_candidates("c", entities, 0.88, False)
+    assert len(full) > 50, "the generated data must actually contain candidates"
+    assert fast == full
+    lower = entitymatch._all_candidates("c", entities[:120], 0.5, True)
+    assert lower == entitymatch._all_candidates("c", entities[:120], 0.5, False)
+
+
+def test_matcher_scales_to_the_case_limit():
+    entities = [{"case_id": "c", "entity_id": i, "name": n, "entity_type": k} for i, n, k in _random_entities(7, 1000)]
+    started = time.perf_counter()
+    result = suggest_case_pairs_492("c", entities)
+    elapsed = time.perf_counter() - started
+    assert len(result) == 100
+    # Measured 0.4 s on the development machine (33 s before blocking); generous bound for slow CI runners.
+    assert elapsed < 6, f"1000 entities took {elapsed:.1f}s"
+    assert suggest_case_pairs_492("c", entities[:40], threshold=0.0, limit=500) == \
+        suggest_case_pairs_492("c", entities[:40], threshold=0.0, limit=500, blocking=False)
+
+
+def test_a_candidate_needs_a_real_shared_name_part():
+    assert compare_names("M. B.", "Max Beispiel")[0] < 0.88, "initials alone are not enough"
+    assert compare_names("A. GmbH", "Alpha GmbH")[0] < 0.88, "an initial plus the legal form is not enough"
+    assert compare_names("Nordwind GmbH & Co KG", "Südstern GmbH & Co KG")[0] < 0.88
+    assert compare_names("M. Beispiel", "Max Beispiel")[0] >= 0.88
+    assert compare_names("Alpha Bank GmbH", "Alpha Bahn GmbH")[0] < 0.88, "short parts must match exactly"
+    assert compare_names("Lindenberg Consulting GmbH", "Lindenberg Consultin GmbH")[0] >= 0.88
+    assert compare_names("Y GmbH", "Y Gmbh")[0] == 1.0
+
+
+def test_candidate_cache_recomputes_only_when_entities_change():
+    calls = []
+
+    def matcher(case_id, entities):
+        calls.append(len(entities))
+        return suggest_case_pairs_492(case_id, entities)
+
+    cache = CandidateCache(matcher, max_entries=2)
+    base = [{"case_id": "c", "entity_id": "1", "name": "Max Müller", "entity_type": "person"},
+            {"case_id": "c", "entity_id": "2", "name": "Max Mueller", "entity_type": "person"}]
+    first = cache("c", base)
+    first[0]["review_status"] = "tampered"  # callers get copies
+    assert cache("c", list(reversed(base)))[0]["review_status"] == "unreviewed"
+    assert calls == [2] and (cache.hits, cache.misses) == (1, 1)
+    renamed = [dict(base[0], name="Moritz Müller"), base[1]]
+    assert cache("c", renamed) == [] and calls == [2, 2]
+    cache("d", [dict(e, case_id="d") for e in base])
+    cache("c", base)  # evicted by the two newer entries, computed again
+    assert calls == [2, 2, 2, 2]
+
+
+@ws
+def test_review_page_uses_the_cache_between_view_and_decision(workspace):
+    from pathlib import Path
+    from eagleeye.application.entity_registry461 import EntityRegistry461
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    with EntityRegistry461(Path(ctx.base_dir) / "entity_registry_462.sqlite3") as registry:
+        a = registry.create_entity(case_id=case_id, kind="person", label="Max Müller")
+        b = registry.create_entity(case_id=case_id, kind="person", label="Mueller, Max")
+    cache = ctx.entity_candidate_matcher
+    assert isinstance(cache, CandidateCache)
+    assert "Max Müller" in client.get("/workbench/entities488", params={"case_id": case_id}).text
+    saved = client.post("/workbench/entities488", data={
+        "case_id": case_id, "csrf": csrf_session(workspace), "left_entity_id": a["id"], "right_entity_id": b["id"],
+        "decision": "needs_evidence", "confirm": "yes", "rationale": "Gleiche Schreibweise, Beleg für Identität fehlt noch."},
+        follow_redirects=False)
+    assert saved.status_code == 303 and cache.misses == 1 and cache.hits >= 1

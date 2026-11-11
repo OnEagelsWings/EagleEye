@@ -91,7 +91,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
     ctx = app.state.context
     captures.initialize(ctx)
     docstructure.initialize(ctx)
-    ctx.entity_candidate_matcher = entitymatch.suggest_case_pairs_492
+    ctx.entity_candidate_matcher = entitymatch.CandidateCache()
     app.state.intel492 = True
     app.state.intel492_throttle = Throttle()
 
