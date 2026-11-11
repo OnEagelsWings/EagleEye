@@ -686,3 +686,59 @@ def test_fingerprints_are_stored_and_refreshed_when_anchors_change(workspace, mo
     # cross-case documents never share the table rows
     foreign = workspace[5]
     assert ctx.db.one("SELECT COUNT(*) AS n FROM lineage_sketch_492 WHERE case_id=?", (foreign,))["n"] == 0
+
+
+# --------------------------------------------------------- backup / restore (S5)
+from eagleeye.bootstrap.recovery479 import create_backup, restore_backup
+from eagleeye.interfaces.web.app492 import create_workspace_app492
+
+
+@ws
+def test_build492_material_survives_backup_and_restore(workspace, fake_network, monkeypatch, tmp_path):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    app.state.intel492_autostart = False
+    _fake_ocr(monkeypatch)
+    fake_network.responses["https://news.example/x"] = (200, HTML, ARTICLE)
+    fake_network.responses["https://register.example/a.pdf"] = (200, [("Content-Type", "application/pdf")], _pdf())
+    assert post(workspace, "https://news.example/x").status_code == 303
+    assert post(workspace, "https://register.example/a.pdf").status_code == 303
+    scan = ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="scan.pdf",
+                                                      raw=_scan_pdf(2), title="Scan")["document_id"]
+    assert _start(workspace, scan).status_code == 303 and enrichjobs.process_next(ctx)["status"] == "succeeded"
+    assert client.get("/workbench/intel/lineage", params={"case_id": case_id}).status_code == 200
+    before = {row["capture_id"]: row for row in captures.captures_for_case(ctx, case_id)}
+    sketches_before = ctx.db.one("SELECT COUNT(*) AS n FROM lineage_sketch_492 WHERE case_id=?", (case_id,))["n"]
+    assert len(before) == 2 and all(r["integrity_ok"] for r in before.values()) and sketches_before >= 4
+
+    archive = tmp_path.parent / (tmp_path.name + "-492-backup.zip")
+    target = tmp_path.parent / (tmp_path.name + "-492-restored")
+    try:
+        result = create_backup(ctx.base_dir, archive)
+        assert any(name.startswith("data/webcapture_492/") or "/webcapture_492/" in name
+                   for name in __import__("zipfile").ZipFile(archive).namelist()), "WARC files are part of the backup"
+        receipt = restore_backup(archive, target)
+        assert receipt["verified_files"] == result["files"]
+        fresh = create_workspace_app492(base_dir=target)
+        try:
+            rctx = fresh.state.context
+            after = {row["capture_id"]: row for row in captures.captures_for_case(rctx, case_id)}
+            assert set(after) == set(before)
+            for capture_id, row in after.items():
+                assert row["integrity_ok"], "record hash, WARC hash and replayed payload still match"
+                assert {k: row[k] for k in before[capture_id] if k != "integrity_ok"} == \
+                       {k: v for k, v in before[capture_id].items() if k != "integrity_ok"}
+            enriched = docstructure.enrichment_for(rctx, scan)
+            assert enriched and docstructure._hash(enriched) == enriched["record_hash"] and enriched["ocr_paragraphs"] == 2
+            assert rctx.db.one("SELECT COUNT(*) AS n FROM lineage_sketch_492 WHERE case_id=?", (case_id,))["n"] == sketches_before
+            assert enrichjobs.jobs_for_case(rctx, case_id)[scan]["status"] == "succeeded"
+            # tampering in the restored copy is still detected
+            row = next(iter(after.values()))
+            path = captures.warc_root(rctx) / row["warc_relpath"]
+            path.write_bytes(path.read_bytes()[:-3] + b"xyz")
+            assert not captures.verify_capture(rctx, captures.capture_row(rctx, row["capture_id"]))
+        finally:
+            fresh.state.context.close()
+    finally:
+        archive.unlink(missing_ok=True)
+        __import__("shutil").rmtree(target, ignore_errors=True)

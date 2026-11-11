@@ -95,7 +95,7 @@ Bereits vorhanden und deshalb wiederzuverwenden statt neu zu bauen:
 
 Größen: **S** = klein, **M** = mittel, **L** = groß. Zuordnung zu Roadmap-Builds in Klammern.
 
-### Stufe 1 – Härten (zuerst)
+### Stufe 1 – Härten (zuerst) – **umgesetzt 11.11.2026**, Nachweise in [BUILD_492_NOTES.md](../BUILD_492_NOTES.md#härtung-stufe-1-aus-docsplan_nach_492md)
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|
@@ -113,6 +113,8 @@ Größen: **S** = klein, **M** = mittel, **L** = groß. Zuordnung zu Roadmap-Bui
 | Wiederherstellungstest für WARC-Belege | S5 | S |
 
 Ziel: 1000 Entitäten unter 2 s; 500 Dokumente unter 1 s nach dem ersten Aufruf; kein Seitenaufruf über 5 s.
+
+Erreicht: 1000 Entitäten 0,4 s; 500 Dokumente 0,03 s nach dem ersten Aufruf (1,2 s einmalig); Texterkennung läuft im Hintergrund. Gemessen in der Entwicklungsumgebung, nicht auf dem Windows-Laptop.
 
 ### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494)
 

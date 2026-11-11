@@ -436,7 +436,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
             if enr:
                 state = (_count(enr["tables"], "Tabelle", "Tabellen") + ' · ' + _count(enr["headings"], "Überschrift", "Überschriften") +
                          ' · ' + _count(enr["ocr_paragraphs"], "OCR-Absatz", "OCR-Absätze") +
-                         (f' (Ø Erkennungssicherheit {enr["ocr_mean_confidence"]} %)' if enr["ocr_mean_confidence"] is not None else ""))
+                         (' (Ø Erkennungssicherheit ' + f'{enr["ocr_mean_confidence"]:.1f}'.replace('.', ',') + ' %)' if enr["ocr_mean_confidence"] is not None else ""))
                 if not enr["ocr_engine"] and d["ocr_required"]:
                     state += ' · gescannte Seiten noch ohne Texterkennung'
             else:

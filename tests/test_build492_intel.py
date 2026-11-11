@@ -268,7 +268,7 @@ def test_structure_and_ocr_anchors_are_added_before_review_only(workspace, monke
     assert all(service._rh(service._anchor(a["anchor_id"])) == service._anchor(a["anchor_id"])["record_hash"] for a in after)
     doc = service._document(pdf["document_id"])
     assert doc["state"] == "review_required" and doc["record_hash"] == service._rh(doc)
-    assert "Ø Erkennungssicherheit 91.5" in client.get("/workbench/intel/documents", params={"case_id": case_id}).text
+    assert "Ø Erkennungssicherheit 91,5" in client.get("/workbench/intel/documents", params={"case_id": case_id}).text
     # second run and wrong case are refused
     assert client.post("/workbench/intel/documents", data={"case_id": case_id, "csrf": token,
                        "document_id": pdf["document_id"]}).status_code == 422
