@@ -1,6 +1,7 @@
 """Build 500 Windows: real installed-runtime start, loopback health, restart and data continuity."""
 from __future__ import annotations
 import ctypes
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -388,7 +389,7 @@ def main():
         main_db=root/"data"/"eagleeye.db"
         if not main_db.is_file():raise RuntimeError("First start did not create case database")
         # Verify persisted database content, not merely that a database file exists.
-        with sqlite3.connect(main_db) as connection:
+        with closing(sqlite3.connect(main_db)) as connection:
             connection.execute("CREATE TABLE IF NOT EXISTS build500_acceptance_marker (value TEXT NOT NULL)")
             connection.execute("INSERT INTO build500_acceptance_marker(value) VALUES (?)", ("restart-preserved",))
             connection.commit()
@@ -396,7 +397,7 @@ def main():
         checksum=hashlib.sha256(sentinel.read_bytes()).hexdigest()
         assert _check(root,install,python)
         assert main_db.is_file()
-        with sqlite3.connect(main_db) as connection:
+        with closing(sqlite3.connect(main_db)) as connection:
             persisted=connection.execute("SELECT value FROM build500_acceptance_marker").fetchall()
         if persisted != [("restart-preserved",)]:
             raise RuntimeError("Case database content was not preserved across restart")
