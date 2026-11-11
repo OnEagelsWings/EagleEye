@@ -169,7 +169,18 @@ def _verify_wheelhouse(root: Path) -> None:
         raise RuntimeError("Wheelhouse manifest invalid") from exc
     if not isinstance(expected, dict) or not expected:
         raise RuntimeError("Wheelhouse manifest empty")
-    if any(\n        not isinstance(name, str) or not name.endswith(".whl")\n        or not isinstance(digest, str) or len(digest) != 64\n        or any(ch not in "0123456789abcdef" for ch in digest)\n        for name, digest in expected.items()\n    ):\n        raise RuntimeError("Wheelhouse manifest contains invalid names or SHA-256 values")\n    wheels = {p.name: p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
+    if any(
+        not isinstance(name, str)
+        or not name.endswith(".whl")
+        or Path(name).name != name
+        or "/" in name or "\\" in name
+        or not isinstance(digest, str)
+        or len(digest) != 64
+        or any(ch not in "0123456789abcdef" for ch in digest)
+        for name, digest in expected.items()
+    ):
+        raise RuntimeError("Wheelhouse manifest contains invalid names or SHA-256 values")
+    wheels = {p.name: p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
     if set(wheels) != set(expected):
         raise RuntimeError("Wheelhouse has unexpected or missing wheels")
     if not any(n.lower().startswith("eagleeye_personosint_pro-500.0.0") for n in wheels):
