@@ -39,5 +39,33 @@ class SourceFingerprintLinksTest(unittest.TestCase):
                 installer._source_fingerprint(root)
 
 
+    def test_nested_directory_link_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "release"
+            nested = root / "src" / "eagleeye"
+            nested.mkdir(parents=True)
+            external = Path(tmp) / "legacy"
+            external.mkdir()
+            (external / "private.py").write_text("private = 1", encoding="utf-8")
+            try:
+                (nested / "linked").symlink_to(external, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(str(exc))
+            with self.assertRaisesRegex(RuntimeError, "Linked source paths"):
+                installer._source_fingerprint(root)
+
+    def test_dangling_nested_link_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "release"
+            nested = root / "src" / "eagleeye"
+            nested.mkdir(parents=True)
+            try:
+                (nested / "missing.py").symlink_to(Path(tmp) / "does-not-exist.py")
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(str(exc))
+            with self.assertRaisesRegex(RuntimeError, "Linked source paths"):
+                installer._source_fingerprint(root)
+
+
 if __name__ == "__main__":
     unittest.main()
