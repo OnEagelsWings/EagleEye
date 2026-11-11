@@ -134,6 +134,45 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + card("Netzwerkanalyse", _count(len(graph['relations']), "Beziehung", "Beziehungen"),
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege im Beziehungsgraph.",
                        "/workbench/intel/network", "Netzwerk auswerten")
+                + (card("Interner Release-Check", "Build 500 – GO/HOLD",
+                        "Integrationsstand, kontrollierte Quellen und offene Freigabevoraussetzungen "
+                        "im aktuellen Fall einsehen.",
+                        "/workbench/release500", "Release-Status öffnen")
+                   if getattr(app.state, "internal_candidate500", False) else "")
+                + (card("Geprüfte Entitäten in den Graph", "Build 499 – Belegbezug",
+                        "Manuell geprüfte PersonOSINT-Kandidaten mit einem Falldokument "
+                        "als unbestätigte Graphknoten erfassen; kein Identitätsbeweis.",
+                        "/workbench/transfer499", "Beleggebundene Übernahme öffnen")
+                   if getattr(app.state, "transfer499", False) else "")
+                + (card("Lokale KI-Planvorschläge", "Build 498 – human review",
+                        "Ein vorhandenes lokales Ollama-Modell schlägt streng typisierte Arbeitsschritte vor; "
+                        "alle Vorschläge müssen vor Übernahme manuell geprüft werden.",
+                        "/workbench/ai498", "KI-Planvorschläge öffnen")
+                   if getattr(app.state, "ai498", False) else "")
+                + (card("Kontrollierte Provider-Läufe", "Build 497 – Offline/Live",
+                        "Freigegebene Suchpläne mit dem vorhandenen, gesicherten Provider-Motor verbinden; "
+                        "Live nur mit eigener Suchfreigabe.", "/workbench/run497", "Provider-Schritte öffnen")
+                   if getattr(app.state, "execution497", False) else "")
+                + (card("Ermittlungsplan und Freigaben", "Build 496 – Arbeitsplan",
+                        "Fallbezogene Recherchepläne mit Vorschlägen, Rollenprüfung und Audit, "
+                        "ohne unkontrollierte Netzwerkausführung.",
+                        "/workbench/plan496", "Ermittlungsplan öffnen")
+                   if getattr(app.state, "investigation_plan496", False) else "")
+                + (card("PersonOSINT Intelligence", "Gemeinsamer Arbeitsbereich",
+                        "Personen, Unternehmen und Benutzernamen aus öffentlichen Quellen recherchieren; "
+                        "mit Fallakte, WARC, Entitäten, Graph und Bericht fortsetzen.",
+                        "/workbench/personosint495", "Personenrecherche öffnen")
+                   if getattr(app.state, "personosint495", False) else "")
+                + (card("PersonOSINT-Entitäten prüfen", "Prüfkandidaten",
+                        "Personen und Organisationen aus einem PersonOSINT-Export kontrolliert als Vorschläge vormerken; "
+                        "keine automatische Identitätszuordnung.",
+                        "/workbench/personosint494", "Personen und Entitäten prüfen")
+                   if getattr(app.state, "personosint494", False) else "")
+                + (card("PersonOSINT-Export übernehmen", "Fallimport",
+                        "PersonOSINT-JSON manuell in die vorhandene Fallakte übernehmen: nur ungeprüfte öffentliche HTTPS-Links, "
+                        "keine Entitäten und keine automatische Evidence.",
+                        "/workbench/personosint493", "PersonOSINT-Import öffnen")
+                   if getattr(app.state, "personosint493", False) else "")
                 + '</div>')
         return render("Sichern & Auswerten", case_id, body)
 
@@ -205,11 +244,11 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return render("Webseite als Beleg sichern", case_id, body, status)
 
     @app.get("/workbench/intel/web", response_class=HTMLResponse)
-    def web_view(request: Request, case_id: str = "", done: str = ""):
+    def web_view(request: Request, case_id: str = "", done: str = "", url: str = ""):
         user, _ = case_access(app, request, case_id)
         message = {"live": "Seite gesichert. Bitte Haupttext und Fundstellen im Dokument prüfen.",
                    "archive": "Archivierte Fassung gesichert. Bitte Haupttext und Fundstellen prüfen."}.get(done, "")
-        return web_page(request, user, case_id, message=message)
+        return web_page(request, user, case_id, url=url[:2000], message=message)
 
     @app.post("/workbench/intel/web/wayback", response_class=HTMLResponse)
     async def wayback_list(request: Request):

@@ -159,9 +159,15 @@ def attach_workbench(app, workspace_build):
                  [step(2,"Dork-Recherche",
                        "Öffentliche Suchlinks mit der vorhandenen Dork-Engine erzeugen.",
                        "/workbench/dorks482"),
-                  ] + ([step(3,"Recherchefunde sichern",
+                  ] + ([step(2,"Ermittlungsplan & Freigabe",
+                       "Rechercheziele, Arbeitsschritte, Quellfreigaben und Ergebnisse protokollieren.",
+                       "/workbench/plan496")] if getattr(app.state, "investigation_plan496", False) else []) + ([step(3,"Recherchefunde sichern",
                        "Einen tatsächlich im Browser geprüften Treffer als ungeprüften Fallhinweis speichern.",
-                       "/workbench/leads483")] if stage>=483 else []) + [
+                       "/workbench/leads483")] if stage>=483 else []) + ([step(3,"PersonOSINT Intelligence",
+                       "Gezielt öffentliche Quellen recherchieren und Ergebnisse in der einen Fallakte weiterverarbeiten.",
+                       "/workbench/personosint495")] if getattr(app.state,"personosint495",False) else []) + ([step(3,"PersonOSINT-Quellen übernehmen",
+                       "Öffentliche Recherchetreffer aus dem Claude-PersonOSINT-Export als ungeprüfte Hinweise aufnehmen.",
+                       "/workbench/personosint493")] if getattr(app.state,"personosint493",False) else []) + [
                   step(3,"Öffentliche Datenquellen",
                        "DNS-, RDAP- oder DOI-Quellen im definierten Fall abrufen.",
                        "/collect469")] + ([step(3,"Webseite als Beleg sichern",
@@ -199,6 +205,9 @@ def attach_workbench(app, workspace_build):
                   ] + ([step(9,"Netzwerkanalyse",
                        "Gruppen, Brückenpersonen und am besten belegte Verbindungswege auswerten.",
                        "/workbench/intel/network")] if intel else []) + [
+                  ] + ([step(9,"PersonOSINT-Entitäten prüfen",
+                       "Externe Personen und Organisationen mit Prüfvermerk vormerken, ohne den Graph zu verändern.",
+                       "/workbench/personosint494")] if getattr(app.state,"personosint494",False) else []) + [
                   step(9,"KI-Ermittler",
                        "Quellengebundene Vorschläge – nicht bestätigte Tatsachen.",
                        "/assistant471")]),
