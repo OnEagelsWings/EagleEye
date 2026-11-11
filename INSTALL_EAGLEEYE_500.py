@@ -51,7 +51,15 @@ def _source_fingerprint(root: Path) -> str:
                 and not p.name.endswith((".pyc", ".pyo"))
             )
     for path in sorted(files, key=lambda p: p.relative_to(root).as_posix()):
-        rel = path.relative_to(root).as_posix().encode("utf-8")
+        # The package fingerprint must never follow a linked source file or
+        # directory outside this release tree (including a legacy install).
+        relative = path.relative_to(root)
+        current = root
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                raise RuntimeError("Linked source paths are forbidden for Build 500")
+        rel = relative.as_posix().encode("utf-8")
         digest.update(len(rel).to_bytes(4, "big"))
         digest.update(rel)
         data = path.read_bytes()
