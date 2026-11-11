@@ -118,6 +118,37 @@ def _windows_installed_runtime_pids(install):
         return []
 
 
+def _windows_workspace_workers(root, install):
+    """Find only Python processes whose command explicitly names this test workspace.
+
+    This catches workers detached from both launcher and listener trees. Do not
+    terminate processes merely because they are named python.exe.
+    """
+    workspace = str(root.resolve()).lower().replace("'", "''")
+    runtime = str((install / ".eagleeye-runtime-500").resolve()).lower().replace("'", "''")
+    script = (
+        "$ws='" + workspace + "';$rt='" + runtime + "';"
+        "Get-CimInstance Win32_Process | Where-Object {"
+        " $cmd=([string]$_.CommandLine).ToLower();"
+        " $exe=([string]$_.ExecutablePath).ToLower();"
+        " $cmd.Contains($ws) -and ($cmd.Contains($rt) -or $exe.StartsWith($rt + '\\'))"
+        "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, timeout=12, check=True,
+        )
+        raw = result.stdout.strip()
+        if not raw:
+            return []
+        value = json.loads(raw)
+        return [int(pid) for pid in (value if isinstance(value, list) else [value])]
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print("Workspace worker discovery failed: " + str(exc), flush=True)
+        return []
+
+
 def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
@@ -224,6 +255,17 @@ def _check(root,install,python):
                     capture_output=True, text=True, timeout=20, check=False,
                 )
                 print("Isolated runtime worker stop " + str(pid) + ": "
+                      + str(completed.returncode), flush=True)
+        if os.name == "nt":
+            # A server worker can escape the launcher's job and lose its
+            # original parent. Restrict this final cleanup to processes that
+            # explicitly identify BOTH this disposable workspace and runtime.
+            for pid in _windows_workspace_workers(root, install):
+                completed = subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    capture_output=True, text=True, timeout=20, check=False,
+                )
+                print("Verified workspace worker stop " + str(pid) + ": "
                       + str(completed.returncode), flush=True)
         # Windows may release SQLite file handles after the launcher exits.
         # Do not proceed to restart or remove the temporary workspace until
