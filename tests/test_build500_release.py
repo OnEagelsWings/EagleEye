@@ -61,3 +61,21 @@ def test_offline_wheelhouse_rejects_unverified_archive(tmp_path):
     (wheelhouse / "unverified-500.0.tar.gz").write_bytes(b"unsealed source archive")
     with pytest.raises(RuntimeError, match="unverified"):
         installer._verify_wheelhouse(tmp_path)
+
+
+def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    (tmp_path / "wheelhouse").mkdir()
+    verified = []
+    commands = []
+    monkeypatch.setattr(installer, "_verify_wheelhouse", lambda root: verified.append(root))
+    monkeypatch.setattr(installer.subprocess, "run", lambda command, **kwargs: commands.append(command))
+    installer._install(tmp_path, tmp_path / "python", quiet=True)
+    assert verified == [tmp_path]
+    assert len(commands) == 1
+    assert "--no-index" in commands[0]
+    assert "--find-links" in commands[0]
+    assert "eagleeye-personosint-pro==500.0.0" in commands[0]
