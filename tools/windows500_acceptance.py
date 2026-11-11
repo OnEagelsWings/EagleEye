@@ -121,8 +121,10 @@ def _windows_installed_runtime_pids(install):
 def _windows_workspace_workers(root, install):
     """Find only Python processes whose command explicitly names this test workspace.
 
-    This catches workers detached from both launcher and listener trees. Do not
-    terminate processes merely because they are named python.exe.
+    This catches workers detached from both launcher and listener trees. Require
+    a Python executable as well as both workspace and runtime identity: the
+    PowerShell discovery command itself contains these strings and must never
+    be selected for termination.
     """
     workspace = str(root.resolve()).lower().replace("'", "''")
     runtime = str((install / ".eagleeye-runtime-500").resolve()).lower().replace("'", "''")
@@ -131,7 +133,9 @@ def _windows_workspace_workers(root, install):
         "Get-CimInstance Win32_Process | Where-Object {"
         " $cmd=([string]$_.CommandLine).ToLower();"
         " $exe=([string]$_.ExecutablePath).ToLower();"
-        " $cmd.Contains($ws) -and ($cmd.Contains($rt) -or $exe.StartsWith($rt + '\\'))"
+        " $isPython=($exe.EndsWith('\\python.exe') -or $exe.EndsWith('\\pythonw.exe'));"
+        " $isPython -and $cmd.Contains($ws) -and"
+        " ($cmd.Contains($rt) -or $exe.StartsWith($rt + '\\'))"
         "} | Select-Object -ExpandProperty ProcessId | ConvertTo-Json -Compress"
     )
     try:
