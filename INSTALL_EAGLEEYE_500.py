@@ -69,11 +69,26 @@ def _read_receipt(root: Path) -> dict:
         return {}
 
 
+def _runtime_path_linked(root: Path) -> bool:
+    """Reject links at every runtime path component, not only its endpoints."""
+    runtime = root / RUNTIME_DIR
+    python = _runtime_python(root)
+    current = runtime
+    while True:
+        if current.is_symlink():
+            return True
+        if current == python:
+            break
+        # Check the Scripts/bin directory before checking the executable.
+        current = current / ("Scripts" if os.name == "nt" else "bin") if current == runtime else python
+    return False
+
+
 def _probe(root: Path) -> dict:
     runtime_dir = root / RUNTIME_DIR
     runtime_python = _runtime_python(root)
     # Never follow a linked runtime into another installation (including legacy builds).
-    if runtime_dir.is_symlink() or runtime_python.is_symlink():
+    if _runtime_path_linked(root):
         return {"ready": False, "reason": "runtime_link_forbidden"}
     if not runtime_python.is_file():
         return {"ready": False, "reason": "runtime_python_missing"}
