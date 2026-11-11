@@ -231,6 +231,14 @@ def main(argv=None) -> int:
         return 2
 
     root = _root()
+    # Offline mode is an integrity contract, including --check and an already
+    # installed runtime. Never report readiness for a tampered wheelhouse.
+    if args.offline:
+        try:
+            _verify_wheelhouse(root)
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"EagleEye Build 500 offline verification failed: {exc}", file=sys.stderr)
+            return 2
     fingerprint = _source_fingerprint(root)
     receipt = _read_receipt(root)
     probe = _probe(root)
