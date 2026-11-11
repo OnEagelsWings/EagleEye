@@ -368,7 +368,8 @@ def _check(root,install,python):
                                 capture_output=True, text=True, timeout=12, check=False,
                             )
                             print("Windows Python process snapshot: " + snapshot.stdout[-8000:], flush=True)
-                            print("SQLite lock owners (Restart Manager): " +\n                                  json.dumps(_windows_sqlite_lock_owners(db)), flush=True)
+                            print("SQLite lock owners (Restart Manager): " +
+                                  json.dumps(_windows_sqlite_lock_owners(db)), flush=True)
                         except (OSError, subprocess.SubprocessError) as diagnostic_error:
                             print("Windows lock diagnostics unavailable: " + str(diagnostic_error), flush=True)
                         raise RuntimeError("Windows server retained SQLite database handle after stop") from exc
