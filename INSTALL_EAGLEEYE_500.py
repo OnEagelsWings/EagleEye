@@ -180,6 +180,15 @@ def _verify_wheelhouse(root: Path) -> None:
         for name, digest in expected.items()
     ):
         raise RuntimeError("Wheelhouse manifest contains invalid names or SHA-256 values")
+    # pip --find-links also considers source archives. Do not allow unsealed
+    # archives, links or other payloads alongside the verified wheel set.
+    entries = list(folder.iterdir())
+    if any(
+        p.is_symlink() or not p.is_file()
+        or (p.name != manifest.name and p.name not in expected)
+        for p in entries
+    ):
+        raise RuntimeError("Wheelhouse contains unverified files or links")
     wheels = {p.name: p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
     if set(wheels) != set(expected):
         raise RuntimeError("Wheelhouse has unexpected or missing wheels")
