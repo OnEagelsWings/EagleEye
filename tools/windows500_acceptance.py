@@ -159,7 +159,10 @@ def _check(root,install,python):
              EAGLEEYE_BROWSER="none")
     command=[str(python),"-I","-m","eagleeye.bootstrap.desktop476",
              "--install-root",str(install),"--no-browser"]
-    proc=subprocess.Popen(command,cwd=install,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+    # A PIPE can fill during a verbose first start and deadlock the launcher.
+    # Keep the output in a private file so health polling and shutdown progress.
+    log = tempfile.TemporaryFile(mode="w+t", encoding="utf-8")
+    proc=subprocess.Popen(command,cwd=install,env=env,stdout=log,stderr=subprocess.STDOUT,
                           text=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
     job = None
     job_error = None
@@ -285,8 +288,11 @@ def _check(root,install,python):
                     break
                 except OSError as exc:
                     if time.monotonic() >= deadline:
+                        log.seek(0)
+                        print("Installed launcher output (last 12000 chars): " + log.read()[-12000:], flush=True)
                         raise RuntimeError("Windows server retained SQLite database handle after stop") from exc
                     time.sleep(0.2)
+        log.close()
 
 def main():
     if os.name!="nt":raise SystemExit("Windows acceptance runs on Windows runner only")
