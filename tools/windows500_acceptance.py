@@ -290,6 +290,20 @@ def _check(root,install,python):
                     if time.monotonic() >= deadline:
                         log.seek(0)
                         print("Installed launcher output (last 12000 chars): " + log.read()[-12000:], flush=True)
+                        # Capture a bounded process inventory to identify an
+                        # escaped worker without terminating unrelated processes.
+                        try:
+                            snapshot = subprocess.run(
+                                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                                 "Get-CimInstance Win32_Process | Where-Object {"
+                                 " $_.Name -match 'python|eagleeye' } |"
+                                 " Select-Object ProcessId,ParentProcessId,Name,CommandLine |"
+                                 " ConvertTo-Json -Compress"],
+                                capture_output=True, text=True, timeout=12, check=False,
+                            )
+                            print("Windows Python process snapshot: " + snapshot.stdout[-8000:], flush=True)
+                        except (OSError, subprocess.SubprocessError) as diagnostic_error:
+                            print("Windows lock diagnostics unavailable: " + str(diagnostic_error), flush=True)
                         raise RuntimeError("Windows server retained SQLite database handle after stop") from exc
                     time.sleep(0.2)
         log.close()
