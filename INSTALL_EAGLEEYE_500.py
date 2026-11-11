@@ -41,6 +41,8 @@ def _source_fingerprint(root: Path) -> str:
     ]
     files: list[Path] = []
     for item in roots:
+        if item.is_symlink():
+            raise RuntimeError("Linked source paths are forbidden for Build 500")
         if item.is_file():
             files.append(item)
         elif item.is_dir():
