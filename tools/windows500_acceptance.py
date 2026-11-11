@@ -274,6 +274,11 @@ def _check(root,install,python):
                 )
                 print("Verified workspace worker stop " + str(pid) + ": "
                       + str(completed.returncode), flush=True)
+        # The acceptance process must not retain a SQLite connection of its own.
+        # Collect any finalized connection wrappers before testing exclusive access;
+        # this does not weaken the lock assertion or touch unrelated processes.
+        import gc
+        gc.collect()
         # Windows may release SQLite file handles after the launcher exits.
         # Do not proceed to restart or remove the temporary workspace until
         # the database is actually free of handles (including child servers).
