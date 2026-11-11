@@ -91,6 +91,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
     ctx = app.state.context
     captures.initialize(ctx)
     docstructure.initialize(ctx)
+    lineage.initialize(ctx)
     ctx.entity_candidate_matcher = entitymatch.CandidateCache()
     app.state.intel492 = True
     app.state.intel492_throttle = Throttle()
@@ -522,13 +523,12 @@ def attach_intel492(app, build: str, base_dir) -> None:
         service = ctx.document_intelligence_458
         docs = service.documents(identity=user, case_id=case_id)[:500]
         cap_by_doc = {c["document_id"]: c for c in captures.captures_for_case(ctx, case_id, limit=500, verify=False)}
-        prepared = []
-        for d in docs:
-            anchors = service.anchors(identity=user, document_id=d["document_id"])["anchors"]
-            prepared.append({"document_id": d["document_id"], "title": d["title"], "source_url": d["source_url"],
-                             "first_seen": _first_seen(d, cap_by_doc.get(d["document_id"])),
-                             "text": lineage.document_text(anchors)})
-        result = lineage.source_families(prepared, level=level)
+        sketches = lineage.case_sketches(ctx, identity=user, documents=docs)  # stored per document
+        prepared = [{"document_id": d["document_id"], "title": d["title"], "source_url": d["source_url"],
+                     "first_seen": _first_seen(d, cap_by_doc.get(d["document_id"])),
+                     "word_count": sketches[d["document_id"]][0], "signature": sketches[d["document_id"]][1]}
+                    for d in docs]
+        result = lineage.families(prepared, level=level)
         levels = "".join('<a class="pill" href="' + _link("/workbench/intel/lineage", case_id=case_id, level=k) + '"' +
                          (' aria-current="true"><strong>' + escape(k) + '</strong>' if k == level else '>' + escape(k)) +
                          '</a>' for k in lineage.LEVELS)

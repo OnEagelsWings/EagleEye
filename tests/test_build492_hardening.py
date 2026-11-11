@@ -596,3 +596,93 @@ def test_review_page_uses_the_cache_between_view_and_decision(workspace):
         "decision": "needs_evidence", "confirm": "yes", "rationale": "Gleiche Schreibweise, Beleg für Identität fehlt noch."},
         follow_redirects=False)
     assert saved.status_code == 303 and cache.misses == 1 and cache.hits >= 1
+
+
+# ----------------------------------------------- source families: own MinHash + cache
+import numpy as np
+
+from eagleeye.application.intel492 import lineage
+
+
+def _texts(seed, count, words=600):
+    rng = random.Random(seed)
+    vocab = [hashlib.md5(str(i).encode()).hexdigest()[:rng.randint(3, 9)] for i in range(4000)]
+    return [" ".join(rng.choices(vocab, k=words)) for _ in range(count)]
+
+
+def test_minhash_estimate_tracks_exact_jaccard():
+    rng = random.Random(11)
+    vocab = [hashlib.md5(str(i).encode()).hexdigest()[:rng.randint(3, 9)] for i in range(3000)]
+    errors = []
+    for _ in range(40):
+        base = rng.choices(vocab, k=400)
+        keep = rng.uniform(0.05, 0.98)
+        other = [w if rng.random() < keep else rng.choice(vocab) for w in base]
+        a, b = " ".join(base), " ".join(other)
+        sa, sb = lineage.shingles(a), lineage.shingles(b)
+        exact = len(sa & sb) / len(sa | sb)
+        errors.append(abs(lineage.similarity(lineage.sketch(a)[1], lineage.sketch(b)[1]) - exact))
+    # 128 hash functions: standard error about 0.044 at J = 0.5
+    assert sum(errors) / len(errors) < 0.03 and max(errors) < 0.15
+    assert lineage.sketch("zu kurz") == (2, None)
+    words, sig = lineage.sketch(_texts(1, 1)[0])
+    assert words == 600 and sig.dtype == np.uint64 and sig.shape == (lineage.NUM_PERM,)
+    assert np.array_equal(sig, lineage.sketch(_texts(1, 1)[0])[1]), "deterministic across runs"
+
+
+def test_families_scale_and_no_scipy_or_datasketch_needed():
+    texts = _texts(3, 500)
+    texts[10] = texts[3]  # one exact copy
+    prepared = []
+    for i, text in enumerate(texts):
+        words, sig = lineage.sketch(text)
+        prepared.append({"document_id": str(i), "title": str(i), "source_url": "", "first_seen": "",
+                         "word_count": words, "signature": sig})
+    started = time.perf_counter()
+    result = lineage.families(prepared)
+    assert time.perf_counter() - started < 1.0
+    assert result["compared"] == 500 and result["independent_origins"] == 499
+    assert {m["document_id"] for m in result["families"][0]["members"]} == {"3", "10"}
+    import eagleeye.application.intel492.lineage as module
+    assert "datasketch" not in open(module.__file__, encoding="utf-8").read()
+
+
+@ws
+def test_fingerprints_are_stored_and_refreshed_when_anchors_change(workspace, monkeypatch):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    service = ctx.document_intelligence_458
+    texts = _texts(5, 3, words=120)
+    ids = [service.import_bytes(identity=user, case_id=case_id, filename=f"t{i}.txt", raw=t.encode(), title=f"T{i}",
+                                source_url=f"https://s{i}.example/")["document_id"] for i, t in enumerate(texts)]
+    calls = []
+    original = service.anchors
+
+    def counting(**kwargs):
+        calls.append(kwargs["document_id"])
+        return original(**kwargs)
+
+    monkeypatch.setattr(service, "anchors", counting)
+    assert client.get("/workbench/intel/lineage", params={"case_id": case_id}).status_code == 200
+    first = len(calls)
+    assert first == 4  # three new documents plus the fixture document
+    assert ctx.db.one("SELECT COUNT(*) AS n FROM lineage_sketch_492 WHERE case_id=?", (case_id,))["n"] == 4
+    for level in ("streng", "normal", "locker"):
+        assert client.get("/workbench/intel/lineage", params={"case_id": case_id, "level": level}).status_code == 200
+    assert len(calls) == first, "views reuse the stored fingerprints"
+    # an added anchor (e.g. OCR) changes the text: only that document is recomputed
+    first_anchor = original(identity=user, document_id=ids[0])["anchors"][0]["anchor_id"]
+    anchor = service._anchor(first_anchor)  # raw row in table column order
+    anchor.pop("record_hash")
+    anchor.update(anchor_id="anchor458_extra", ordinal=999, anchor_kind="ocr_paragraph")
+    anchor["record_hash"] = service._rh(anchor)
+    ctx.db.execute("INSERT INTO phase20_document_anchor_458 VALUES(" + ",".join("?" for _ in anchor) + ")", tuple(anchor.values()))
+    assert client.get("/workbench/intel/lineage", params={"case_id": case_id}).status_code == 200
+    assert calls[first:] == [ids[0]]
+    # a stored fingerprint from an older algorithm is recomputed, not trusted
+    ctx.db.execute("UPDATE lineage_sketch_492 SET algo='old' WHERE document_id=?", (ids[1],))
+    client.get("/workbench/intel/lineage", params={"case_id": case_id})
+    assert calls[-1] == ids[1]
+    # cross-case documents never share the table rows
+    foreign = workspace[5]
+    assert ctx.db.one("SELECT COUNT(*) AS n FROM lineage_sketch_492 WHERE case_id=?", (foreign,))["n"] == 0
