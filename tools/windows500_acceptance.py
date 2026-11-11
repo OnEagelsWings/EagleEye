@@ -153,6 +153,67 @@ def _windows_workspace_workers(root, install):
         return []
 
 
+
+def _windows_sqlite_lock_owners(db):
+    """Ask Windows Restart Manager which processes hold the exact SQLite file."""
+    if os.name != "nt":
+        return []
+    from ctypes import wintypes
+    class FILETIME(ctypes.Structure):
+        _fields_ = [("dwLowDateTime", wintypes.DWORD),
+                    ("dwHighDateTime", wintypes.DWORD)]
+    class UNIQUE_PROCESS(ctypes.Structure):
+        _fields_ = [("dwProcessId", wintypes.DWORD),
+                    ("ProcessStartTime", FILETIME)]
+    class PROCESS_INFO(ctypes.Structure):
+        _fields_ = [("Process", UNIQUE_PROCESS),
+                    ("strAppName", wintypes.WCHAR * 256),
+                    ("strServiceShortName", wintypes.WCHAR * 64),
+                    ("ApplicationType", wintypes.DWORD),
+                    ("AppStatus", wintypes.ULONG),
+                    ("TSSessionId", wintypes.DWORD),
+                    ("bRestartable", wintypes.BOOL)]
+    manager = ctypes.WinDLL("Rstrtmgr", use_last_error=True)
+    manager.RmStartSession.argtypes = [
+        ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, wintypes.LPWSTR]
+    manager.RmRegisterResources.argtypes = [
+        wintypes.DWORD, wintypes.UINT, ctypes.POINTER(wintypes.LPCWSTR),
+        wintypes.UINT, ctypes.c_void_p, wintypes.UINT, ctypes.c_void_p]
+    manager.RmGetList.argtypes = [
+        wintypes.DWORD, ctypes.POINTER(wintypes.UINT),
+        ctypes.POINTER(wintypes.UINT), ctypes.POINTER(PROCESS_INFO),
+        ctypes.POINTER(wintypes.DWORD)]
+    manager.RmEndSession.argtypes = [wintypes.DWORD]
+    session = wintypes.DWORD()
+    key = ctypes.create_unicode_buffer(33)
+    status = manager.RmStartSession(ctypes.byref(session), 0, key)
+    if status:
+        return [{"restart_manager_error": int(status)}]
+    try:
+        resources = (wintypes.LPCWSTR * 1)(str(db.resolve()))
+        status = manager.RmRegisterResources(session, 1, resources, 0, None, 0, None)
+        if status:
+            return [{"register_error": int(status)}]
+        needed = wintypes.UINT()
+        count = wintypes.UINT()
+        reboot = wintypes.DWORD()
+        status = manager.RmGetList(session, ctypes.byref(needed),
+                                   ctypes.byref(count), None, ctypes.byref(reboot))
+        if status not in (0, 234):  # ERROR_MORE_DATA
+            return [{"list_error": int(status)}]
+        if not needed.value:
+            return []
+        entries = (PROCESS_INFO * needed.value)()
+        count.value = needed.value
+        status = manager.RmGetList(session, ctypes.byref(needed),
+                                   ctypes.byref(count), entries, ctypes.byref(reboot))
+        if status:
+            return [{"list_error": int(status)}]
+        return [{"pid": int(item.Process.dwProcessId), "application": item.strAppName}
+                for item in entries[:count.value]]
+    finally:
+        manager.RmEndSession(session)
+
 def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
@@ -306,7 +367,7 @@ def _check(root,install,python):
                                  " ConvertTo-Json -Compress"],
                                 capture_output=True, text=True, timeout=12, check=False,
                             )
-                            print("Windows Python process snapshot: " + snapshot.stdout[-8000:], flush=True)
+                            print("Windows Python process snapshot: " + snapshot.stdout[-8000:], flush=True)\n                            print("SQLite lock owners (Restart Manager): " +\n                                  json.dumps(_windows_sqlite_lock_owners(db)), flush=True)
                         except (OSError, subprocess.SubprocessError) as diagnostic_error:
                             print("Windows lock diagnostics unavailable: " + str(diagnostic_error), flush=True)
                         raise RuntimeError("Windows server retained SQLite database handle after stop") from exc
