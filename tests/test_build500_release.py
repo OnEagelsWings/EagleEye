@@ -40,3 +40,24 @@ def test_app500_has_integrated_routes_and_release_hold(workspace):
     assert r.status_code==200
     assert "Release Candidate" in r.text and "OFFEN" in r.text
     assert client.get("/workbench/release500",params={"case_id":"unknown"}).status_code==403
+
+
+def test_offline_wheelhouse_rejects_unverified_archive(tmp_path):
+    import hashlib
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    wheelhouse = tmp_path / "wheelhouse"
+    wheelhouse.mkdir()
+    wheel_name = "eagleeye_personosint_pro-500.0.0-py3-none-any.whl"
+    payload = b"sealed-wheel-fixture"
+    (wheelhouse / wheel_name).write_bytes(payload)
+    (wheelhouse / "MANIFEST-SHA256.json").write_text(
+        json.dumps({wheel_name: hashlib.sha256(payload).hexdigest()}), encoding="utf-8"
+    )
+    installer._verify_wheelhouse(tmp_path)
+    (wheelhouse / "unverified-500.0.tar.gz").write_bytes(b"unsealed source archive")
+    with pytest.raises(RuntimeError, match="unverified"):
+        installer._verify_wheelhouse(tmp_path)
