@@ -204,7 +204,7 @@ def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: 
         print(f"[EagleEye {BUILD}] Installing package {PACKAGE_VERSION} into the local runtime...")
     command = [str(runtime_python), "-m", "pip", "install",
                "--disable-pip-version-check", "--upgrade"]
-    if offline or (os.name == "nt" and (root / "wheelhouse").is_dir()):
+    if offline or (root / "wheelhouse").exists():
         _verify_wheelhouse(root)
         command += ["--no-index", "--find-links", str(root / "wheelhouse"),
                     PACKAGE + "==" + PACKAGE_VERSION]
