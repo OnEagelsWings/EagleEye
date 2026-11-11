@@ -62,6 +62,8 @@ def _source_fingerprint(root: Path) -> str:
 
 def _read_receipt(root: Path) -> dict:
     path = root / RUNTIME_DIR / RECEIPT
+    if _runtime_path_linked(root) or path.is_symlink():
+        return {}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return payload if isinstance(payload, dict) else {}
@@ -253,6 +255,8 @@ def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
         "offline_wheelhouse": (root / "wheelhouse").is_dir(),
     }
     temp = path.with_suffix(".tmp")
+    if _runtime_path_linked(root) or path.is_symlink() or temp.is_symlink():
+        raise RuntimeError("Linked installer receipt paths are forbidden for Build 500")
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     try:
         temp.chmod(0o600)
