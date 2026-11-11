@@ -46,8 +46,13 @@ def _source_fingerprint(root: Path) -> str:
         if item.is_file():
             files.append(item)
         elif item.is_dir():
+            # Reject links even when they point to directories, are dangling,
+            # or are skipped by rglob traversal. Never silently omit linked code.
+            descendants = list(item.rglob("*"))
+            if any(p.is_symlink() for p in descendants):
+                raise RuntimeError("Linked source paths are forbidden for Build 500")
             files.extend(
-                p for p in item.rglob("*")
+                p for p in descendants
                 if p.is_file()
                 and "__pycache__" not in p.parts
                 and not p.name.endswith((".pyc", ".pyo"))
