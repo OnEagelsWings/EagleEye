@@ -29,6 +29,10 @@ def _runtime_python(root: Path) -> Path:
 
 
 def _source_fingerprint(root: Path) -> str:
+    # Do not accept an installation root that aliases another release tree.
+    # In particular, a linked root must not fingerprint a legacy installation.
+    if root.is_symlink():
+        raise RuntimeError("Linked source paths are forbidden for Build 500")
     digest = hashlib.sha256()
     roots = [
         root / "INSTALL_EAGLEEYE_500.py",
