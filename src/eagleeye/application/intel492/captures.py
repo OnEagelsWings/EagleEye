@@ -121,3 +121,47 @@ def verify_capture(ctx, row: dict) -> bool:
         return status == row["http_status"] and hashlib.sha256(payload).hexdigest() == row["body_sha256"]
     except (OSError, CaptureError, ValueError, KeyError):
         return False
+
+
+def provenance_for_document(ctx, case_id: str, document_id: str) -> dict | None:
+    """Web-capture provenance of a Build-458 document, or None if it was not captured.
+
+    The WARC file is verified on every call; callers decide how to treat a failed check.
+    """
+    row = ctx.db.one("SELECT * FROM web_capture_492 WHERE document_id=?", (str(document_id),))
+    if not row:
+        return None
+    row = dict(row)
+    if row["case_id"] != str(case_id):
+        raise ValueError("Web-Beleg gehört nicht zu diesem Fall.")
+    return {
+        "capture_id": row["capture_id"], "kind": row["kind"], "url": row["url"],
+        "archive_url": row["archive_url"], "captured_at": row["captured_at"],
+        "http_status": row["http_status"], "server_ip": row["ip_address"],
+        "content_type": row["content_type"], "response_sha256": row["body_sha256"],
+        "warc_sha256": row["warc_sha256"], "warc_bytes": row["warc_bytes"],
+        "page_title": row["page_title"], "page_author": row["page_author"],
+        "page_published": row["page_published"], "extractor": row["extractor"],
+        "captured_by": row["created_by"], "capture_record_hash": row["record_hash"],
+        "network_fetch_at_capture": True,
+        "integrity_verified": verify_capture(ctx, row),
+    }
+
+
+def report_fields(provenance: dict) -> list[tuple[str, str]]:
+    """German label/value pairs for reports. Truth of the content is never implied."""
+    fields = [("Web-Beleg", ("Archivfassung (Internet Archive)" if provenance["kind"] == "archive" else "Live-Abruf")
+                            + " durch EagleEye, gesichert als WARC-Datei"),
+              ("Erfasste Adresse", provenance["url"])]
+    if provenance["archive_url"]:
+        fields.append(("Archivquelle", provenance["archive_url"]))
+    fields += [
+        ("Abrufzeit (UTC)", provenance["captured_at"]),
+        ("HTTP-Status / Server-IP", f"{provenance['http_status']} / {provenance['server_ip']}"),
+        ("SHA-256 der Originalantwort", provenance["response_sha256"]),
+        ("SHA-256 der WARC-Datei", provenance["warc_sha256"]),
+        ("WARC-Integrität beim Export", "unverändert (Datensatz, Datei und Wiedergabe geprüft)"
+         if provenance["integrity_verified"] else "VERLETZT – Beleg nicht verwenden, Original prüfen"),
+        ("Weiterleitungen", "im Dokumentkopf und in der WARC-Datei verzeichnet"),
+    ]
+    return fields

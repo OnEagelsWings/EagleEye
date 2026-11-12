@@ -94,6 +94,24 @@ def attach_intel492(app, build: str, base_dir) -> None:
     lineage.initialize(ctx)
     ctx.entity_candidate_matcher = entitymatch.CandidateCache()
     app.state.intel492 = True
+    ctx.document_web_provenance = lambda case_id, document_id: captures.provenance_for_document(ctx, case_id, document_id)
+
+    def report_web_fields(case_id, document_id):
+        provenance = captures.provenance_for_document(ctx, case_id, document_id)
+        return captures.report_fields(provenance) if provenance else []
+
+    def report_web_summary(case_id, document_id):
+        provenance = captures.provenance_for_document(ctx, case_id, document_id)
+        if not provenance:
+            return ""
+        state = ('<span class="ok">✓ WARC unverändert</span>' if provenance["integrity_verified"]
+                 else '<span class="bad">✗ WARC verändert – nicht verwenden</span>')
+        kind = "Archivfassung" if provenance["kind"] == "archive" else "Web-Beleg"
+        return ('<p>' + kind + ', abgerufen ' + escape(provenance["captured_at"][:16].replace("T", " ")) + ' UTC · ' + state +
+                ' · <a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=provenance["capture_id"]) + '">WARC</a></p>')
+
+    app.state.report_web_fields = report_web_fields
+    app.state.report_web_summary = report_web_summary
     app.state.intel492_throttle = Throttle()
 
     def render(title, case_id, body, status=200):
