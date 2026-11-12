@@ -51,6 +51,29 @@ class SourceFingerprintLinksTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Linked source paths"):
                 installer._source_fingerprint(linked_root)
 
+    def test_fresh_runtime_uses_no_linked_python(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            python = installer._ensure_runtime(root, quiet=True)
+            self.assertTrue(python.is_file())
+            self.assertFalse(installer._runtime_path_linked(root))
+            self.assertEqual(installer._ensure_runtime(root, quiet=True), python)
+
+    def test_root_preserves_link_for_validation(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            real = Path(tmp) / "real"
+            real.mkdir()
+            link = Path(tmp) / "alias"
+            try:
+                link.symlink_to(real, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(str(exc))
+            with patch.object(installer, "__file__", str(link / "INSTALL_EAGLEEYE_500.py")):
+                self.assertEqual(installer._root(), link)
+                with self.assertRaisesRegex(RuntimeError, "Linked source paths"):
+                    installer._source_fingerprint(installer._root())
+
     def test_nested_directory_link_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "release"
