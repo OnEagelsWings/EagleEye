@@ -192,3 +192,127 @@ def test_read_only_member_sees_capture_state_but_no_capture_link(workspace, fake
     csrf_session(workspace, "member475", "Independent!Secret_881")
     page = client.get("/workbench/leads483", params={"case_id": case_id}).text
     assert "✓ Als Web-Beleg gesichert" in page and "Als Web-Beleg sichern →" not in page
+
+
+# ---------------------------------------- S2 source families -> claim independence
+from eagleeye_pro.phase20.entity_lineage456 import LINEAGE_CONFIRM
+
+AGENCY = ("Die Firma X hat am Montag die vollständige Übernahme der Y GmbH mit Sitz in Hamburg bekanntgegeben. "
+          "Der Kaufpreis wurde nicht genannt. Nach Angaben aus Unternehmenskreisen soll die Transaktion bis Ende "
+          "des Jahres abgeschlossen sein. Die Kartellbehörde muss noch zustimmen. Beide Unternehmen beschäftigen "
+          "zusammen rund 2000 Mitarbeiter in Deutschland und Österreich.")
+OWN = ("Im Handelsregister ist seit 2021 Max Beispiel als Geschäftsführer der Y GmbH eingetragen. Er war zuvor bei "
+       "einer Beratungsfirma in München tätig und ist an zwei weiteren Gesellschaften beteiligt, deren "
+       "Jahresabschlüsse seit 2023 fehlen. Eine Anfrage blieb unbeantwortet.")
+
+
+def _evidence_case(workspace):
+    """Three syndicated copies + one independent text, all accepted as evidence and linked to one claim."""
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    service = ctx.document_intelligence_458
+    texts = {"agentur": AGENCY, "zeitung1": AGENCY + " Die Redaktion hat bei X nachgefragt.",
+             "zeitung2": "Hamburg (dpa) " + AGENCY.replace("Montag", "Dienstag"), "eigen": OWN}
+    docs, evidence = {}, {}
+    for name, text in texts.items():
+        docs[name] = service.import_bytes(identity=user, case_id=case_id, filename=name + ".txt", raw=text.encode(),
+                                          title=name, source_url=f"https://{name}.example/a")["document_id"]
+        _approve_extraction(workspace, docs[name])
+        assert _promote(workspace, docs[name]).status_code == 303
+    mapping = {r["document_id"]: r["evidence_id"] for r in ctx.db.all(
+        "SELECT document_id, evidence_id FROM document_evidence_bridge_481 WHERE case_id=?", (case_id,))}
+    for name, doc_id in docs.items():
+        evidence[name] = mapping[doc_id]
+        ctx.evidence_claims_dossier_447.review_evidence(identity=user, evidence_id=evidence[name], decision="accepted",
+                                                        note="Original geprüft.", confirmation="REVIEW EVIDENCE 447")
+    claim = ctx.evidence_claims_dossier_447.propose_claim(identity=user, case_id=case_id,
+                                                          statement="Die Firma X übernimmt die Y GmbH.",
+                                                          support_evidence_ids=list(evidence.values()))
+    return docs, evidence, claim["claim_id"]
+
+
+def _origins(ctx, user, claim_id):
+    return ctx.entity_lineage_456.claim_source_lineage(identity=user, claim_id=claim_id)["summary"]["support"]
+
+
+def _review_own_group(ctx, user, evidence_id, group):
+    evidence = ctx.evidence_claims_dossier_447.evidence(evidence_id)
+    ctx.entity_lineage_456.review_source_lineage(
+        identity=user, evidence_id=evidence_id, source_family=group, independence_group=group, origin_key=group,
+        source_role="primary", countable=True, rationale="Einzeln geprüfte Herkunft.", confirmation=LINEAGE_CONFIRM,
+        expected_evidence_hash=evidence["record_hash"])
+
+
+@ws
+def test_confirmed_source_family_counts_once_in_the_claim(workspace):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    docs, evidence, claim_id = _evidence_case(workspace)
+    # Separate reviews per website: the copies count as three independent origins.
+    for name in ("agentur", "zeitung1", "zeitung2", "eigen"):
+        _review_own_group(ctx, user, evidence[name], "origin:" + name)
+    assert _origins(ctx, user, claim_id)["reviewed_independent_origins"] == 4
+    page = client.get("/workbench/intel/lineage", params={"case_id": case_id}).text
+    assert "verschiedenen Ursprüngen zugeordnet" in page and "Als gemeinsamen Ursprung bestätigen" in page
+    family_docs = re.findall(r'name="document_id" value="([^"]+)"', page)
+    assert sorted(family_docs) == sorted(docs[n] for n in ("agentur", "zeitung1", "zeitung2"))
+    confirm = client.post("/workbench/intel/lineage/confirm", data={
+        "case_id": case_id, "csrf": csrf_session(workspace), "level": "normal", "confirm": "yes",
+        "rationale": "Gleicher Agenturtext, nur Ortsmarke und Wochentag geändert.", "document_id": family_docs},
+        follow_redirects=False)
+    assert confirm.status_code == 303 and "done=confirmed" in confirm.headers["location"]
+    support = _origins(ctx, user, claim_id)
+    assert support["mentions"] == 4 and support["reviewed_independent_origins"] == 2, "family + independent text"
+    lineages = [ctx.entity_lineage_456.evidence_lineage(identity=user, evidence_id=evidence[n])
+                for n in ("agentur", "zeitung1", "zeitung2")]
+    groups = {x["independence_group"] for x in lineages}
+    assert len(groups) == 1 and next(iter(groups)).startswith("family492:")
+    # documents imported in the same second: the earliest is decided deterministically, exactly one is primary
+    assert sorted(x["source_role"] for x in lineages) == ["mirror", "mirror", "primary"]
+    assert all("Quellfamilie Build 492: 3 Dokumente" in x["review_rationale"] for x in lineages)
+    own = ctx.entity_lineage_456.evidence_lineage(identity=user, evidence_id=evidence["eigen"])
+    assert own["independence_group"] == "origin:eigen", "the independent text keeps its own review"
+    after = client.get(confirm.headers["location"]).text
+    assert "Gemeinsamer Ursprung bestätigt" in after and "✓ In Claims zählen diese Belege als <strong>ein</strong> Ursprung" in after
+    assert "Als gemeinsamen Ursprung bestätigen" not in after
+
+
+@ws
+def test_family_confirmation_guards(workspace):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    docs, evidence, claim_id = _evidence_case(workspace)
+    family = [docs[n] for n in ("agentur", "zeitung1", "zeitung2")]
+
+    def confirm(document_ids, **extra):
+        data = {"case_id": case_id, "csrf": csrf_session(workspace), "level": "normal", "confirm": "yes",
+                "rationale": "Gleicher Agenturtext, geprüft.", "document_id": list(document_ids)}
+        data.update(extra)
+        data = {k: v for k, v in data.items() if v is not None}
+        return client.post("/workbench/intel/lineage/confirm", data=data, follow_redirects=False)
+
+    assert confirm(family[:2]).status_code == 422, "an incomplete family is refused"
+    assert confirm(family + [docs["eigen"]]).status_code == 409, "a document outside the family is refused"
+    assert confirm(family, rationale="kurz").status_code == 422
+    assert confirm(family, confirm=None).status_code == 422
+    assert confirm(family, csrf="forged").status_code == 403
+    assert _origins(ctx, user, claim_id)["reviewed_independent_origins"] == 0, "nothing was written"
+    # Investigators may see the family but the confirmation is a reviewer decision.
+    member(workspace, "investigator")
+    csrf_session(workspace, "member475", "Independent!Secret_881")
+    page = client.get("/workbench/intel/lineage", params={"case_id": case_id}).text
+    assert "Aufgabe einer Person mit Quellenprüfungsrecht" in page and "Als gemeinsamen Ursprung bestätigen" not in page
+    data = {"case_id": case_id, "csrf": client.cookies.get("ee_auth_csrf"), "level": "normal", "confirm": "yes",
+            "rationale": "Gleicher Agenturtext, geprüft.", "document_id": family}
+    assert client.post("/workbench/intel/lineage/confirm", data=data).status_code == 403
+
+
+@ws
+def test_family_without_enough_evidence_points_to_the_bridge(workspace):
+    app, client, user, case_id, *_ = workspace
+    service = app.state.context.document_intelligence_458
+    for name, text in {"a": AGENCY, "b": AGENCY + " Nachtrag der Redaktion."}.items():
+        service.import_bytes(identity=user, case_id=case_id, filename=name + ".txt", raw=text.encode(), title=name)
+    page = client.get("/workbench/intel/lineage", params={"case_id": case_id}).text
+    assert "2 Dokumente mit weitgehend gleichem Text" in page and "noch keine Evidence" in page
+    assert "/workbench/bridge481?" in page and "Als gemeinsamen Ursprung bestätigen" not in page

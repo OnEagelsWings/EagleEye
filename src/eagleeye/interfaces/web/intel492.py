@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye.application.build488.reviews import reviews_for_case
 from eagleeye.application.intel492 import captures, docstructure, enrichjobs, entitymatch, lineage, network, webcapture
+from eagleeye.application.intel492 import lineage_review
 from eagleeye.application.intel492.throttle import Throttle
 from .app364 import CSRF_COOKIE
 from .findings478 import bounded_form, verify_post
@@ -579,11 +580,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "cancelled"}), status_code=303)
 
     # ---------------------------------------------------------------- lineage
-    @app.get("/workbench/intel/lineage", response_class=HTMLResponse)
-    def lineage_view(request: Request, case_id: str = "", level: str = Query("normal")):
-        user, _ = case_access(app, request, case_id)
-        if level not in lineage.LEVELS:
-            level = "normal"
+    def case_families(user, case_id, level):
         service = ctx.document_intelligence_458
         docs = service.documents(identity=user, case_id=case_id)[:500]
         cap_by_doc = {c["document_id"]: c for c in captures.captures_for_case(ctx, case_id, limit=500, verify=False)}
@@ -592,30 +589,80 @@ def attach_intel492(app, build: str, base_dir) -> None:
                      "first_seen": _first_seen(d, cap_by_doc.get(d["document_id"])),
                      "word_count": sketches[d["document_id"]][0], "signature": sketches[d["document_id"]][1]}
                     for d in docs]
-        result = lineage.families(prepared, level=level)
+        return lineage.families(prepared, level=level)
+
+    @app.get("/workbench/intel/lineage", response_class=HTMLResponse)
+    def lineage_view(request: Request, case_id: str = "", level: str = Query("normal"), done: str = ""):
+        user, _ = case_access(app, request, case_id)
+        if level not in lineage.LEVELS:
+            level = "normal"
+        result = case_families(user, case_id, level)
+        may_review = "source.review" in ctx.team_governance_359.effective_capabilities(user, case_id)
+        token = _csrf(request)
         levels = "".join('<a class="pill" href="' + _link("/workbench/intel/lineage", case_id=case_id, level=k) + '"' +
                          (' aria-current="true"><strong>' + escape(k) + '</strong>' if k == level else '>' + escape(k)) +
                          '</a>' for k in lineage.LEVELS)
         summary = ('<div class="grid"><section class="card"><span class="stat">' + str(result["compared"]) + '</span>Dokumente verglichen</section>'
                    '<section class="card"><span class="stat">' + str(result["independent_origins"]) + '</span>unabhängige Ursprünge</section>'
                    '<section class="card"><span class="stat">' + str(result["duplicate_documents"]) + '</span>Übernahmen / Spiegelungen</section></div>')
+        evidence_labels = {"unreviewed": "Evidence ungeprüft", "accepted": "Evidence angenommen", "rejected": "Evidence verworfen",
+                           "context_only": "Evidence nur Kontext"}
         cards = ""
         for fam in result["families"]:
             if fam["size"] < 2:
                 continue
-            members = "".join('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
-                              '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
-                              escape(m["first_seen"] or "Zeit unbekannt") + '</span></li>' for m in fam["members"])
+            states = {s["document_id"]: s for s in lineage_review.member_states(ctx, user, case_id, fam["members"])}
+            status = lineage_review.family_status(list(states.values()))
+            items = ""
+            for m in fam["members"]:
+                st = states[m["document_id"]]
+                if not st["evidence_id"]:
+                    claim_state = "noch keine Evidence"
+                elif not st["lineage_reviewed"]:
+                    claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · Herkunft nicht geprüft"
+                elif st["group"].startswith(lineage_review.GROUP_PREFIX):
+                    claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · gemeinsamer Ursprung bestätigt"
+                else:
+                    claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · eigene Ursprungsgruppe geprüft"
+                items += ('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
+                          '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
+                          escape(m["first_seen"] or "Zeit unbekannt") + ' · ' + escape(claim_state) + '</span></li>')
+            if status == "one_origin":
+                verdict = '<p class="ok">✓ In Claims zählen diese Belege als <strong>ein</strong> Ursprung.</p>'
+            elif status == "split":
+                verdict = ('<p class="bad" role="alert">Diese fast gleichen Texte sind in der Herkunftsprüfung verschiedenen Ursprüngen '
+                           'zugeordnet. In Claims würden sie als mehrere unabhängige Quellen zählen. Bitte prüfen.</p>')
+            elif status == "too_few":
+                verdict = ('<p class="muted">Für die Zählung in Claims zuerst mindestens zwei dieser Dokumente nach der Extraktionsprüfung über '
+                           '<a href="' + _link("/workbench/bridge481", case_id=case_id) + '">Quelle → Evidence</a> übernehmen.</p>')
+            else:
+                verdict = '<p class="muted">Herkunft der zugehörigen Evidence ist noch nicht (vollständig) geprüft.</p>'
+            form = ""
+            with_evidence = [m["document_id"] for m in fam["members"] if states[m["document_id"]]["evidence_id"]]
+            if status in ("open", "split") and len(with_evidence) >= 2:
+                if may_review:
+                    form = ('<form method="post" action="/workbench/intel/lineage/confirm"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
+                            '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="level" value="' + escape(level, quote=True) + '">' +
+                            "".join('<input type="hidden" name="document_id" value="' + escape(d, quote=True) + '">' for d in with_evidence) +
+                            '<label>Begründung für den gemeinsamen Ursprung<textarea name="rationale" required minlength="12" maxlength="3000" rows="3" '
+                            'placeholder="z. B. gleicher Agenturtext, nur Ortsmarke und Wochentag geändert"></textarea></label>'
+                            '<label class="check"><input type="checkbox" name="confirm" value="yes" required><span>Ich habe die Texte verglichen. '
+                            'Das bestätigt nur die gemeinsame Herkunft, nicht den Inhalt.</span></label>'
+                            '<button>Als gemeinsamen Ursprung bestätigen</button></form>')
+                else:
+                    form = '<p class="muted">Die Bestätigung eines gemeinsamen Ursprungs ist Aufgabe einer Person mit Quellenprüfungsrecht.</p>'
             cards += ('<section class="card"><h2>' + str(fam["size"]) + ' Dokumente mit weitgehend gleichem Text</h2>'
                       '<p>Ähnlichkeit ' + escape(str(fam["min_similarity"])) + '–' + escape(str(fam["max_similarity"])) +
                       ' · ' + str(len(fam["hosts"])) + ' Websites. Frühester Beleg im Fall: <strong>' + escape(fam["earliest"]["title"]) +
-                      '</strong> – das ist ein Hinweis, kein Nachweis des Ursprungs.</p><ol>' + members + '</ol></section>')
+                      '</strong> – das ist ein Hinweis, kein Nachweis des Ursprungs.</p><ol>' + items + '</ol>' + verdict + form + '</section>')
         singles = sum(1 for f in result["families"] if f["size"] == 1)
         skipped = ""
         if result["skipped"]:
             skipped = ('<details class="card"><summary>' + str(len(result["skipped"])) + ' Dokumente mit zu wenig Text nicht verglichen</summary><ul>' +
                        "".join('<li>' + escape(s["title"]) + '</li>' for s in result["skipped"]) + '</ul></details>')
-        body = (back(case_id) + '<p>Zählt, wie viele <strong>voneinander unabhängige Ursprünge</strong> hinter den Belegen stehen. '
+        notice = ('<p class="card ok" role="status">Gemeinsamer Ursprung bestätigt. Die zugehörigen Claims zählen diese Belege jetzt als einen Ursprung.</p>'
+                  if done == "confirmed" else "")
+        body = (back(case_id) + notice + '<p>Zählt, wie viele <strong>voneinander unabhängige Ursprünge</strong> hinter den Belegen stehen. '
                 'Übernommene Agenturmeldungen oder gespiegelte Seiten sind keine unabhängige Bestätigung.</p>'
                 '<p class="row">Vergleich: ' + levels + '<span class="muted">streng = nahezu identisch, locker = auch stark bearbeitete Übernahmen</span></p>'
                 + summary + (cards or ('<p class="card">Keine übernommenen oder gespiegelten Texte gefunden.</p>' if result["compared"] >= 2 else
@@ -623,6 +670,32 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + str(lineage.MIN_WORDS) + ' Wörtern Text benötigt.</p>')) +
                 ('<p class="muted">' + _count(singles, "Dokument steht", "Dokumente stehen") + ' für sich.</p>' if singles and result["compared"] >= 2 else "") + skipped)
         return render("Quellenunabhängigkeit", case_id, body)
+
+    @app.post("/workbench/intel/lineage/confirm")
+    async def lineage_confirm(request: Request):
+        form = await bounded_form(request, max_bytes=16384)
+        case_id = str(form.get("case_id") or "")
+        user, _ = case_access(app, request, case_id, "source.review")
+        verify_post(app, request, user, form.get("csrf", ""))
+        if form.get("confirm") != "yes":
+            raise HTTPException(422, "Bitte bestätige den Vergleich der Texte.")
+        level = str(form.get("level") or "normal")
+        if level not in lineage.LEVELS:
+            raise HTTPException(422, "Unbekannte Vergleichsstufe.")
+        posted = [str(v) for v in form.getlist("document_id")][:50]
+        result = case_families(user, case_id, level)
+        family = next((f for f in result["families"] if set(posted) <= {m["document_id"] for m in f["members"]} and f["size"] >= 2), None)
+        if family is None:
+            raise HTTPException(409, "Die Quellfamilie hat sich seit dem Öffnen der Seite verändert. Bitte neu laden und erneut prüfen.")
+        try:
+            with ctx.audit.actor_scope(user["username"]):
+                lineage_review.confirm_family(ctx, identity=user, case_id=case_id, family=family,
+                                              document_ids=posted, rationale=str(form.get("rationale") or ""))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        except PermissionError as exc:
+            raise HTTPException(409, "Bestätigung nicht möglich: " + str(exc)[:200]) from None
+        return RedirectResponse("/workbench/intel/lineage?" + urlencode({"case_id": case_id, "level": level, "done": "confirmed"}), status_code=303)
 
     # ---------------------------------------------------------------- network
     @app.get("/workbench/intel/network", response_class=HTMLResponse)
