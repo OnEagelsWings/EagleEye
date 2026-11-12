@@ -19,7 +19,7 @@ RECEIPT = "install-receipt-500.json"
 
 
 def _root() -> Path:
-    return Path(__file__).resolve().parent
+    return Path(os.path.abspath(__file__)).parent
 
 
 def _runtime_python(root: Path) -> Path:
@@ -191,7 +191,7 @@ def _ensure_runtime(root: Path, *, quiet: bool = False) -> Path:
     if not quiet:
         print(f"[EagleEye {BUILD}] Creating isolated local runtime...")
     try:
-        venv.EnvBuilder(with_pip=True, clear=False, symlinks=os.name != "nt").create(runtime_dir)
+        venv.EnvBuilder(with_pip=True, clear=False, symlinks=False).create(runtime_dir)
     except Exception:
         if runtime_dir.exists():
             shutil.rmtree(runtime_dir, ignore_errors=True)
@@ -314,7 +314,11 @@ def main(argv=None) -> int:
     if _read_receipt(root).get("offline_wheelhouse") and not (root / "wheelhouse").is_dir():
         print("EagleEye Build 500 offline wheelhouse removed after installation", file=sys.stderr)
         return 2
-    fingerprint = _source_fingerprint(root)
+    try:
+        fingerprint = _source_fingerprint(root)
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"EagleEye Build 500 source verification failed: {exc}", file=sys.stderr)
+        return 2
     receipt = _read_receipt(root)
     probe = _probe(root)
     receipt_matches = (
