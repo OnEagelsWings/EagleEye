@@ -22,7 +22,7 @@ from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
 from eagleeye.bootstrap.desktop476 import write_start_status, _atomic_json
 
-from .app492 import create_workspace_app492
+from .app499 import create_workspace_app499
 
 
 def create_workspace_app(*, base_dir=None):
@@ -31,7 +31,7 @@ def create_workspace_app(*, base_dir=None):
     Keep the installed build identifier until the package/installer version is
     advanced as one tested release unit. Do not silently claim Build 490 GO.
     """
-    return create_workspace_app492(base_dir=base_dir, workspace_build=BUILD)
+    return create_workspace_app499(base_dir=base_dir, workspace_build=BUILD)
 
 
 def _free_port(host: str, preferred: int) -> int:

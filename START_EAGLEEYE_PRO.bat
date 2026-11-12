@@ -20,8 +20,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "EAGLEEYE_SETTINGS_DIR=%CD%\.eagleeye-config-490"
-set "EAGLEEYE_DATA_DIR=%CD%\.eagleeye-data-490"
+rem The bootstrap stores settings and cases outside the program directory.
+rem Do not override EAGLEEYE_SETTINGS_DIR or EAGLEEYE_DATA_DIR here.
+rem Default: %%LOCALAPPDATA%%\EagleEye-490\workspace (or user-selected folder).
 %PYTHON% INSTALL_EAGLEEYE_490.py
 if errorlevel 1 goto :failed
 

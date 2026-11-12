@@ -8,8 +8,8 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
   exit 1
 }
 
-export EAGLEEYE_SETTINGS_DIR="$PWD/.eagleeye-config-490"
-export EAGLEEYE_DATA_DIR="$PWD/.eagleeye-data-490"
+# Use XDG-based, persistent external settings/workspace from desktop476.
+# Do not redirect case data into the upgradeable installation tree.
 "$PYTHON_BIN" INSTALL_EAGLEEYE_490.py
 RUNTIME_PY=".eagleeye-runtime-490/bin/python"
 if [ ! -x "$RUNTIME_PY" ]; then

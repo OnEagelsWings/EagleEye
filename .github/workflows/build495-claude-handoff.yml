@@ -1,0 +1,69 @@
+name: EagleEye 496 Claude Code Source Handoff ZIP
+on:
+  pull_request:
+    paths:
+      - 'tools/assemble_claude_handoff495.py'
+      - '.github/workflows/build495-claude-handoff.yml'
+      - 'src/eagleeye/application/personosint49*.py'
+      - 'src/eagleeye/interfaces/web/personosint49*.py'
+      - 'src/eagleeye/interfaces/web/app49*.py'
+      - 'src/eagleeye/interfaces/web/server.py'
+      - 'tests/test_build494_personosint.py'
+      - 'tests/test_build496_plan.py'
+      - 'src/eagleeye/application/plan496.py'
+      - 'src/eagleeye/interfaces/web/plan496.py'
+      - 'src/eagleeye/interfaces/web/app496.py'
+      - 'BUILD_496_NOTES.md'
+      - 'CLAUDE_INTEGRATION_HANDOFF.md'
+      - 'BUILD_49*_NOTES.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: EagleEye
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          path: ClaudePersonOSINT
+          ref: claude/osint-platform-person-search-r875rx
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create reproducible two-branch source ZIP
+        run: >
+          python EagleEye/tools/assemble_claude_handoff495.py
+          --eagleeye EagleEye
+          --personosint ClaudePersonOSINT
+          --output EagleEye-496-ClaudeCode-SourceHandoff.zip
+      - name: Check archive contains both codebases and manifest
+        run: |
+          python - <<'PY'
+          import json
+          from zipfile import ZipFile
+          with ZipFile("EagleEye-496-ClaudeCode-SourceHandoff.zip") as z:
+              names = set(z.namelist())
+              assert any(x.startswith("EagleEye/src/eagleeye/") for x in names)
+              assert any(x.startswith("ClaudePersonOSINT/PersonOSINT/personosint/") for x in names)
+              manifest = json.loads(z.read("MANIFEST.sha256.json"))
+              assert manifest["eagleeye_files"] > 100
+              assert manifest["personosint_reference_files"] > 30
+          print("Both codebases and SHA-256 manifest present")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EagleEye-496-ClaudeCode-SourceHandoff
+          path: |
+            EagleEye-496-ClaudeCode-SourceHandoff.zip
+            EagleEye-496-ClaudeCode-SourceHandoff.zip.sha256
+          retention-days: 30
+          if-no-files-found: error

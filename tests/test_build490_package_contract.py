@@ -26,7 +26,9 @@ def test_normal_launchers_select_isolated_install():
         launcher = (ROOT / f"START_EAGLEEYE_PRO.{suffix}").read_text(encoding="utf-8")
         assert "INSTALL_EAGLEEYE_490.py" in launcher
         assert ".eagleeye-runtime-490" in launcher
-        assert ".eagleeye-config-490" in launcher
-        assert ".eagleeye-data-490" in launcher
+        # Historical launcher contract was unsafe: it placed cases below the install root.
+        assert ".eagleeye-config-490" not in launcher
+        assert ".eagleeye-data-490" not in launcher
+        assert "EAGLEEYE_DATA_DIR=" not in launcher
         assert "INSTALL_EAGLEEYE_487.py" not in launcher
         assert "INSTALL_EAGLEEYE_398.py" not in launcher

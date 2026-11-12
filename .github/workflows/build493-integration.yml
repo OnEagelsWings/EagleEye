@@ -1,0 +1,78 @@
+name: EagleEye Unified OSINT Integration 493-499
+on:
+  pull_request:
+    paths:
+      - 'src/eagleeye/application/personosint493.py'
+      - 'src/eagleeye/interfaces/web/personosint493.py'
+      - 'src/eagleeye/interfaces/web/app493.py'
+      - 'src/eagleeye/interfaces/web/server.py'
+      - 'src/eagleeye/interfaces/web/intel492.py'
+      - 'tests/test_build493_personosint.py'
+      - 'tests/test_build494_personosint.py'
+      - 'tests/test_build495_person_workbench.py'
+      - 'tests/test_build496_plan.py'
+      - 'tests/test_build497_execution.py'
+      - 'tests/test_build498_ai.py'
+      - 'tests/test_build499_transfer.py'
+      - 'src/eagleeye/application/transfer499.py'
+      - 'src/eagleeye/interfaces/web/transfer499.py'
+      - 'src/eagleeye/interfaces/web/app499.py'
+      - 'src/eagleeye/application/entity_registry461.py'
+      - 'src/eagleeye/application/ai498.py'
+      - 'src/eagleeye/interfaces/web/ai498.py'
+      - 'src/eagleeye/interfaces/web/app498.py'
+      - 'src/eagleeye/application/execution497.py'
+      - 'src/eagleeye/interfaces/web/execution497.py'
+      - 'src/eagleeye/interfaces/web/app497.py'
+      - 'src/eagleeye/application/plan496.py'
+      - 'src/eagleeye/interfaces/web/plan496.py'
+      - 'src/eagleeye/interfaces/web/app496.py'
+      - 'CLAUDE_INTEGRATION_HANDOFF.md'
+      - 'BUILD_496_NOTES.md'
+      - 'src/eagleeye/interfaces/web/personosint495.py'
+      - 'src/eagleeye/interfaces/web/app495.py'
+      - 'src/eagleeye/application/personosint494.py'
+      - 'src/eagleeye/interfaces/web/personosint494.py'
+      - 'src/eagleeye/interfaces/web/app494.py'
+      - 'tests/test_build490_package_contract.py'
+      - 'tests/test_build490_server_selection.py'
+      - 'START_EAGLEEYE_PRO.*'
+      - 'EAGLEEYE_*.bat'
+      - '.github/workflows/build493-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: '1'
+
+jobs:
+  focused-integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install active development package
+        run: python -m pip install -e '.[test]'
+      - name: Verify Build 493 intake, current launcher and app factory
+        run: >
+          python -m pytest -q
+          tests/test_build493_personosint.py
+          tests/test_build494_personosint.py
+          tests/test_build495_person_workbench.py
+          tests/test_build496_plan.py
+          tests/test_build497_execution.py
+          tests/test_build498_ai.py
+          tests/test_build499_transfer.py
+          tests/test_build490_package_contract.py
+          tests/test_build490_server_selection.py
+          tests/test_build490_real_server_start.py
