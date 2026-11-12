@@ -39,6 +39,18 @@ class SourceFingerprintLinksTest(unittest.TestCase):
                 installer._source_fingerprint(root)
 
 
+    def test_linked_release_root_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real_root = Path(tmp) / "legacy-release"
+            real_root.mkdir()
+            linked_root = Path(tmp) / "build500"
+            try:
+                linked_root.symlink_to(real_root, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(str(exc))
+            with self.assertRaisesRegex(RuntimeError, "Linked source paths"):
+                installer._source_fingerprint(linked_root)
+
     def test_nested_directory_link_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "release"
