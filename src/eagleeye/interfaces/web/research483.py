@@ -136,10 +136,10 @@ def attach_research483(app,build):
             '<form action="/workbench/leads483" method="post">'
             '<input type="hidden" name="case_id" value="'+escape(case_id,quote=True)+'">'
             '<input type="hidden" name="csrf" value="'+escape(request.cookies.get(CSRF_COOKIE,""),quote=True)+'">'
-            '<label>Öffentliche HTTPS-URL</label><input required type="url" name="url" maxlength="1800">'
-            '<label>Seitentitel oder Befundthema</label><input required name="title" maxlength="240">'
-            '<label>Woher stammt der Link? Warum ist er relevant?</label>'
-            '<textarea required name="note" maxlength="1600" rows="3"></textarea>'
+            '<label for="lead483-url">Öffentliche HTTPS-URL</label><input id="lead483-url" required type="url" name="url" maxlength="1800">'
+            '<label for="lead483-title">Seitentitel oder Befundthema</label><input id="lead483-title" required name="title" maxlength="240">'
+            '<label for="lead483-note">Woher stammt der Link? Warum ist er relevant?</label>'
+            '<textarea id="lead483-note" required name="note" maxlength="1600" rows="3"></textarea>'
             '<button type="submit">Als ungeprüften Suchhinweis speichern</button></form></section>'
         )
         entries="".join(

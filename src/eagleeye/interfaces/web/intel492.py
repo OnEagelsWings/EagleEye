@@ -58,6 +58,19 @@ KIND_DE = {"person": "Person", "organization": "Organisation", "company": "Unter
            "event": "Ereignis", "document": "Dokument"}
 
 
+def _when(value: str) -> str:
+    """ISO date or timestamp -> '12.11.2026' or '12.11.2026 13:01'; anything else unchanged."""
+    match = re.match(r"(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?", str(value or ""))
+    if not match:
+        return str(value or "")
+    y, m, d, hh, mm = match.groups()
+    return f"{d}.{m}.{y}" + (f" {hh}:{mm}" if hh else "")
+
+
+def _sim(value) -> str:
+    return "–" if value is None else f"{float(value):.2f}".replace(".", ",")
+
+
 def _count(n: int, one: str, many: str) -> str:
     return f"{n} {one if n == 1 else many}"
 
@@ -626,7 +639,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                     claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · eigene Ursprungsgruppe geprüft"
                 items += ('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
                           '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
-                          escape(m["first_seen"] or "Zeit unbekannt") + ' · ' + escape(claim_state) + '</span></li>')
+                          escape(_when(m["first_seen"]) or "Zeit unbekannt") + ' · ' + escape(claim_state) + '</span></li>')
             if status == "one_origin":
                 verdict = '<p class="ok">✓ In Claims zählen diese Belege als <strong>ein</strong> Ursprung.</p>'
             elif status == "split":
@@ -652,7 +665,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 else:
                     form = '<p class="muted">Die Bestätigung eines gemeinsamen Ursprungs ist Aufgabe einer Person mit Quellenprüfungsrecht.</p>'
             cards += ('<section class="card"><h2>' + str(fam["size"]) + ' Dokumente mit weitgehend gleichem Text</h2>'
-                      '<p>Ähnlichkeit ' + escape(str(fam["min_similarity"])) + '–' + escape(str(fam["max_similarity"])) +
+                      '<p>Ähnlichkeit ' + _sim(fam["min_similarity"]) + '–' + _sim(fam["max_similarity"]) +
                       ' · ' + str(len(fam["hosts"])) + ' Websites. Frühester Beleg im Fall: <strong>' + escape(fam["earliest"]["title"]) +
                       '</strong> – das ist ein Hinweis, kein Nachweis des Ursprungs.</p><ol>' + items + '</ol>' + verdict + form + '</section>')
         singles = sum(1 for f in result["families"] if f["size"] == 1)
