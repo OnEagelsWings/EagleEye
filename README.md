@@ -1,4 +1,9 @@
-## EagleEye PersonOSINT 1.4 – Personen- und Investigativrecherche mit Top-Dossier
+## Gemeinsamer Stand: EagleEye Build 500 (Kandidat) + Build 492 gehärtet + PersonOSINT 1.5
+
+Dieser Branch führt die drei Arbeitslinien zusammen. Prüfbericht zu Build 493–500 und Vorschlag für die weitere
+Zusammenführung: [CLAUDE_REVIEW_UND_UEBERGABE_500.md](CLAUDE_REVIEW_UND_UEBERGABE_500.md).
+
+## EagleEye PersonOSINT 1.5 – Personen- und Investigativrecherche mit Top-Dossier
 
 Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
 Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem

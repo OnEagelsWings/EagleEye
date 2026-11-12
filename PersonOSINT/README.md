@@ -1,4 +1,4 @@
-# EagleEye PersonOSINT 1.4
+# EagleEye PersonOSINT 1.5
 
 **Investigativrecherche · Personensuche · Vermisstenrecherche · Verbindungsanalyse · Word-Dossiers**
 
@@ -18,6 +18,13 @@
 > Löschfristen mit Erinnerung und Übersicht, Sicherheitsprüfung mit acht behobenen Befunden ([SECURITY_REVIEW.md](SECURITY_REVIEW.md)),
 > Entwürfe für Verarbeitungsverzeichnis, DSFA, Löschkonzept und TOM ([docs/compliance](docs/compliance/README.md)),
 > Pilot- und Abnahmeplan ([docs/pilot](docs/pilot/Pilot_und_Abnahme.md)) sowie Schulungsunterlagen ([docs/schulung](docs/schulung/)).
+>
+> **Neu in 1.5 – Zusammenführung:** Die Fähigkeiten aus EagleEye Build 492 und die Muster aus der SpiderFoot-/Obsidian-Analyse
+> sind eingebaut: Web-Belege zusätzlich als **WARC** mit Wiedergabeprüfung und sauberem Haupttext, frühere Fassungen aus dem
+> Internet Archive, **Dokument-Import** mit Texterkennung, **Quellenunabhängigkeit** (übernommene Texte zählen nicht als
+> Bestätigung), begründeter **Namensabgleich über Schriften**, Netzwerkanalyse mit Export für Gephi, FollowTheMoney und
+> Obsidian, **Folgesuchen** mit Freigabe und Herkunftskette, Korrelationsregeln – und die **Übergabe an die EagleEye-Fallakte**
+> (Build 493–500). Siehe [docs/ZUSAMMENFUEHRUNG.md](docs/ZUSAMMENFUEHRUNG.md).
 
 EagleEye PersonOSINT ist eine lokale OSINT-Plattform, die auf den Grundsätzen von EagleEye Build 380 aufbaut
 (nur öffentliche Quellen, menschliche Prüfung, Zweckbindung, Protokollierung). Sie wurde als schlankes,

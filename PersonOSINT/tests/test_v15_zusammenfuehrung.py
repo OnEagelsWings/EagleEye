@@ -528,3 +528,67 @@ def test_schema_migration_adds_new_columns_and_backup_knows_new_tables(tmp_path)
     ev = anna.post(f"/api/cases/{cid}/evidence", json={"url": "https://zeitung.example.com/hafen"}).json()
     assert anna.delete(f"/api/cases/{cid}").status_code in (200, 204, 403)
     del ev
+
+
+# --------------------------------------------------------------------------- Brücke zur EagleEye-Fallakte (Build 493/494 von ChatGPT)
+
+def _eagleeye_parsers():
+    """Lädt die Übernahme-Parser aus dem EagleEye-Hauptprogramm, ohne dessen übrige Abhängigkeiten zu brauchen."""
+    import importlib
+    import sys
+    import types
+
+    app_dir = Path(__file__).resolve().parents[2] / "src" / "eagleeye" / "application"
+    if not (app_dir / "personosint493.py").is_file() or not (app_dir / "personosint494.py").is_file():
+        return None
+    pkg = types.ModuleType("ee_bridge")
+    pkg.__path__ = [str(app_dir)]
+    sys.modules.setdefault("ee_bridge", pkg)
+    return importlib.import_module("ee_bridge.personosint493"), importlib.import_module("ee_bridge.personosint494")
+
+
+def test_handover_package_is_split_and_accepted_by_eagleeye_intake(tmp_path):
+    from personosint import bridge
+
+    app, admin, anna, cid, sid = _case(tmp_path)
+    p = app.state.platform
+    for i in range(120):                                              # mehr als EagleEye in einer Datei annimmt
+        status = "verworfen" if i % 10 == 0 else "bestätigt" if i % 3 == 0 else "neu"
+        url = f"http://unsicher.example/{i}" if i % 15 == 1 else f"https://quelle{i % 7}.example/artikel/{i}"
+        p.db.insert("findings", {"case_id": cid, "entity_id": sid, "source": "Testquelle", "category": "Web", "title": f"Fundstelle {i}", "url": url,
+                                 "snippet": "", "query": "", "data": {}, "score": i % 100, "reasons": [], "fingerprint": f"fp{i}", "status": status,
+                                 "created_at": "2024-01-01T00:00:00+00:00"})
+    for i in range(170):
+        anna.post(f"/api/cases/{cid}/entities", json={"type": "organisation" if i % 2 else "person", "label": f"Eintrag {i:03d}"})
+    anna.post(f"/api/cases/{cid}/entities", json={"type": "telefon", "label": "+49 30 123456"})
+    anna.post(f"/api/cases/{cid}/entities/{sid}/identifiers", json={"kind": "email", "value": "geheim@example.org"})
+    r = anna.get(f"/api/cases/{cid}/export/eagleeye.zip")
+    assert r.status_code == 200 and "Uebergabe_EagleEye_" in r.headers["content-disposition"]
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    names = sorted(z.namelist())
+    assert names == ["Entitaeten_01.json", "Entitaeten_02.json", "Hinweise_01.json", "Hinweise_02.json", "LIESMICH.txt"]
+    leads = [json.loads(z.read(n)) for n in names if n.startswith("Hinweise")]
+    ents = [json.loads(z.read(n)) for n in names if n.startswith("Entitaeten")]
+    # 120 Treffer − 12 verworfene − 8 ohne https = 100 Fundstellen → zwei Dateien; 170 neue Einträge + Zielperson = 171 → zwei Dateien
+    assert [len(x["findings"]) for x in leads] == [50, 50] and [len(x["entities"]) for x in ents] == [150, 21]
+    flat = [f for x in leads for f in x["findings"]]
+    assert all(f["url"].startswith("https://") and f["status"] != "verworfen" for f in flat) and flat[0]["status"] == "bestätigt"
+    raw = r.content + b"".join(z.read(n) for n in names)
+    assert b"geheim@example.org" not in raw and b"+49 30 123456" not in b"".join(z.read(n) for n in names if n != "LIESMICH.txt")
+    assert all(max(len(x["findings"]), 0) <= bridge.LEADS_PER_FILE for x in leads) and all(len(x["entities"]) <= bridge.ENTITIES_PER_FILE for x in ents)
+    assert "Übergabe an EagleEye" in [e["kind"] for e in anna.get(f"/api/cases/{cid}/opsec").json()["exports"]]
+    parsers = _eagleeye_parsers()
+    if parsers is None:
+        pytest.skip("EagleEye-Hauptprogramm liegt nicht neben PersonOSINT (eigenständiges Paket)")
+    p493, p494 = parsers
+    assert (p493.MAX_LEADS, p494.MAX_ENTITIES) == (bridge.LEADS_PER_FILE, bridge.ENTITIES_PER_FILE)       # Grenzen stimmen überein
+    for name in names:
+        if name.startswith("Hinweise"):
+            preview = p493.parse_personosint_export(z.read(name))
+            assert len(preview.leads) == len(json.loads(z.read(name))["findings"]) and preview.skipped == 0
+        elif name.startswith("Entitaeten"):
+            preview = p494.parse_entity_suggestions(z.read(name))
+            assert len(preview.proposals) == len(json.loads(z.read(name))["entities"]) and preview.skipped == 0
+    # Gegenprobe: der ungeteilte Standardexport wird von EagleEye abgelehnt – genau dafür gibt es die Übergabe
+    with pytest.raises(p493.PersonOSINTImportError):
+        p493.parse_personosint_export(anna.get(f"/api/cases/{cid}/export/case.json").content)

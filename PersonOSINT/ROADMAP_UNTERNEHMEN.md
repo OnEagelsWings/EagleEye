@@ -267,3 +267,11 @@ Vor der kommerziellen Nutzung sind diese Punkte mit Fachanwalt bzw. Datenschutzb
 | Schulung | Analysten-Handbuch, Admin-Handbuch, OPSEC-Kurzkarte in [docs/schulung](docs/schulung/) – Durchführung offen. |
 | Live-Test der Quellen | offen: in der Entwicklungsumgebung waren die Dienste nicht erreichbar; im Pilot je Quelle „Testen“ (Pilotplan V4). |
 | Docker-Produktionsbuild | Image ohne PDF gebaut und getestet; PDF/A in gleichwertigem Ubuntu-Image getestet; Debian-Build mit LibreOffice im Pilot prüfen. |
+
+
+## Stand Version 1.5 – Zusammenführung
+
+Umgesetzt: Dokument-Import mit Texterkennung (bisher offen als 4.4), Graph-Import/-Export (3.5), WARC-Belege, Quellfamilien,
+Namensabgleich über Schriften, Folgesuchen mit Herkunftskette, Korrelationsregeln, Übergabe an die EagleEye-Fallakte.
+Übersicht: [docs/ZUSAMMENFUEHRUNG.md](docs/ZUSAMMENFUEHRUNG.md). Offen bleibt die Entscheidung, ob EagleEye (Einzelplatz) und
+PersonOSINT (Teambetrieb) zu **einer** Anwendung verschmelzen – Vorschlag dazu im Prüfbericht im Hauptordner.

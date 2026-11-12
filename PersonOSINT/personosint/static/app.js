@@ -1279,6 +1279,7 @@
               ${meta.pdf ? '<button class="btn btn-lg" data-fmt="pdf">⬇ PDF/A</button>' : '<span class="small muted">PDF/A: LibreOffice auf dem Server installieren</span>'}</div>
             <div class="row" style="margin-top:.7rem"><a class="btn" href="/api/cases/${ov.case.id}/export/beweispaket.zip">🗄 Beweispaket (${evid.length} Belege)</a>
               <a class="btn" href="/api/cases/${ov.case.id}/graph.png">🕸️ Netzwerkgrafik</a><a class="btn" href="/api/cases/${ov.case.id}/export/case.json">🗂️ Falldaten (JSON)</a>
+              <a class="btn" href="/api/cases/${ov.case.id}/export/eagleeye.zip" title="Fundstellen und Einträge passend geteilt für die Übernahme in die EagleEye-Fallakte (Build 493/494). Dort bleibt alles ungeprüft.">🔁 Übergabe an EagleEye</a>
               ${missing ? `<a class="btn" href="/api/cases/${ov.case.id}/export/poster.docx">🆘 Suchplakat</a>` : ""}</div>
           </div>
           <div class="card"><div class="card-head"><h2>📎 Belege (${evid.length})</h2>

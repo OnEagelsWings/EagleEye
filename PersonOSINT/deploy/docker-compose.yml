@@ -24,6 +24,7 @@ services:
       context: ..
       args:
         WITH_PDF: ${EAGLEEYE_WITH_PDF:-1}
+        WITH_OCR: ${EAGLEEYE_WITH_OCR:-1}
     image: eagleeye-app:latest
     restart: unless-stopped
     depends_on:

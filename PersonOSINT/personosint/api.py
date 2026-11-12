@@ -1116,6 +1116,17 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         subj = p.subject(cid)
         return _download(content, f"Suchplakat_{safe_filename(subj['label'] if subj else case['title'])}.docx", DOCX)
 
+    @app.get("/api/cases/{cid}/export/eagleeye.zip")
+    def export_eagleeye(cid: int, case: dict = READ) -> Response:
+        """Übergabe an die EagleEye-Fallakte (Build 493/494): passend geteilte Dateien, nur was EagleEye verarbeitet."""
+        from . import bridge
+
+        export_id = p.register_export(cid, "Übergabe an EagleEye")
+        content = bridge.package(p, cid, export_id)
+        p.finish_export(export_id, content)
+        p.log(cid, "Übergabe an EagleEye exportiert", export_id)
+        return _download(content, f"Uebergabe_EagleEye_{case['reference']}_{export_id}.zip", "application/zip")
+
     @app.get("/api/cases/{cid}/export/case.json")
     def export_json(cid: int, case: dict = READ) -> Response:
         export_id = p.register_export(cid, "Falldaten (JSON)")
