@@ -38,6 +38,8 @@ def create_workspace_app500(*,base_dir=None,workspace_build="500.0"):
             '<tr><td>Interne Einsatzfreigabe</td><td>OFFEN – Release Candidate</td></tr></table>')
         return HTMLResponse(page("EagleEye Internal 500 – Bereitschaft",case_id,body,workspace_build),
                             headers={"Cache-Control":"no-store","Referrer-Policy":"no-referrer"})
+    from .public_sources501 import attach_public_sources501
+    attach_public_sources501(app, workspace_build)
     return app
 
 create_app=create_workspace_app500

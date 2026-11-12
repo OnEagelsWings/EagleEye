@@ -168,6 +168,9 @@ def attach_workbench(app, workspace_build):
                        "/workbench/personosint495")] if getattr(app.state,"personosint495",False) else []) + ([step(3,"PersonOSINT-Quellen übernehmen",
                        "Öffentliche Recherchetreffer aus dem Claude-PersonOSINT-Export als ungeprüfte Hinweise aufnehmen.",
                        "/workbench/personosint493")] if getattr(app.state,"personosint493",False) else []) + [
+                  ] + ([step(3,"Öffentliche Quellen und Personenrecherche",
+                       "Nachrichten, Personenverzeichnisse, Forschung und Register gemeinsam auswählen und fallgebunden abfragen.",
+                       "/workbench/public-sources")] if getattr(app.state,"public_sources501",False) else []) + [
                   step(3,"Öffentliche Datenquellen",
                        "DNS-, RDAP- oder DOI-Quellen im definierten Fall abrufen.",
                        "/collect469")] + ([step(3,"Webseite als Beleg sichern",
