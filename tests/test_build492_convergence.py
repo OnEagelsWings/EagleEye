@@ -104,3 +104,91 @@ def test_working_report_shows_web_capture_provenance(workspace, fake_network):
     path.write_bytes(path.read_bytes()[:-4] + b"evil")
     assert "VERLETZT – Beleg nicht verwenden" in client.get("/workbench/report.md", params={"case_id": case_id}).text
     assert "✗ WARC verändert" in client.get("/workbench/report", params={"case_id": case_id}).text
+
+
+# ------------------------------------------------------- S4 lead -> web evidence
+import re
+
+from eagleeye.interfaces.web.research483 import propose
+from test_build475_ai_checkpoint import member
+
+
+def _lead(workspace, url="https://news.example/x", case=None):
+    app, client, user, case_id, *_ = workspace
+    return propose(app.state.context, user, case or case_id, url, "Bericht über die Übernahme",
+                   "Treffer aus der Dork-Recherche, im Browser geöffnet und als relevant eingeschätzt.")
+
+
+@ws
+def test_lead_offers_capture_prefills_url_and_shows_result(workspace, fake_network):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    fake_network.responses["https://news.example/x"] = (200, HTML, ARTICLE)
+    lead = _lead(workspace)
+    csrf_session(workspace)
+    leads = client.get("/workbench/leads483", params={"case_id": case_id}).text
+    link = re.search(r'href="(/workbench/intel/web\?[^"]+)">Als Web-Beleg sichern', leads)
+    assert link, "each lead offers the capture"
+    page = client.get(link.group(1).replace("&amp;", "&"))
+    assert page.status_code == 200 and "Aus dem Recherchefund" in page.text
+    assert 'value="https://news.example/x"' in page.text and 'name="lead_id" value="' + lead["lead_id"] in page.text
+    assert fake_network.calls == [], "opening the prefilled form contacts nobody"
+    done = post(workspace, "https://news.example/x", lead_id=lead["lead_id"])
+    assert done.status_code == 303 and done.headers["location"].startswith("/workbench/leads483?")
+    row = captures.captures_for_case(ctx, case_id)[0]
+    assert ctx.db.one("SELECT lead_id FROM web_capture_lead_492 WHERE capture_id=?", (row["capture_id"],))["lead_id"] == lead["lead_id"]
+    after = client.get(done.headers["location"]).text
+    assert "✓ Als Web-Beleg gesichert am" in after and "(eben gesichert)" in after
+    assert "Erneut als Web-Beleg sichern" in after and row["document_id"] in after
+    assert "Ungeprüfter Suchhinweis – keine Evidence" in after, "the lead itself stays a lead"
+
+
+@ws
+def test_lead_binding_survives_a_confirmed_redirect(workspace, fake_network):
+    app, client, user, case_id, *_ = workspace
+    ctx = app.state.context
+    fake_network.responses.update({
+        "https://short.example/abc": (302, [("Location", "https://news.example/x")], b""),
+        "https://news.example/x": (200, HTML, ARTICLE)})
+    lead = _lead(workspace, url="https://short.example/abc")
+    first = post(workspace, "https://short.example/abc", lead_id=lead["lead_id"])
+    assert "Die Seite leitet weiter" in first.text
+    assert re.findall(r'name="lead_id" value="([^"]+)"', first.text)[0] == lead["lead_id"]
+    via = re.findall(r'name="via" value="([^"]+)"', first.text)
+    assert post(workspace, "https://news.example/x", via=via, lead_id=lead["lead_id"]).status_code == 303
+    row = captures.captures_for_case(ctx, case_id)[0]
+    assert ctx.db.one("SELECT lead_id FROM web_capture_lead_492 WHERE capture_id=?", (row["capture_id"],))["lead_id"] == lead["lead_id"]
+    assert "✓ Als Web-Beleg gesichert" in client.get("/workbench/leads483", params={"case_id": case_id}).text
+
+
+@ws
+def test_foreign_or_unknown_lead_is_refused_and_nothing_is_fetched(workspace, fake_network):
+    app, client, user, case_id, doc_id, other_case, *_ = workspace
+    ctx = app.state.context
+    fake_network.responses["https://news.example/x"] = (200, HTML, ARTICLE)
+    foreign = _lead(workspace, case=other_case)
+    assert client.get("/workbench/intel/web", params={"case_id": case_id, "lead": foreign["lead_id"]}).status_code == 422
+    assert post(workspace, "https://news.example/x", lead_id=foreign["lead_id"]).status_code == 422
+    assert post(workspace, "https://news.example/x", lead_id="lead483_unknown").status_code == 422
+    assert fake_network.calls == [] and captures.captures_for_case(ctx, case_id) == []
+
+
+@ws
+def test_capture_without_explicit_link_is_still_shown_at_the_matching_lead(workspace, fake_network):
+    app, client, user, case_id, *_ = workspace
+    fake_network.responses["https://news.example/x"] = (200, HTML, ARTICLE)
+    _lead(workspace, url="https://NEWS.example/x")
+    assert post(workspace, "https://news.example/x").status_code == 303
+    assert "✓ Als Web-Beleg gesichert" in client.get("/workbench/leads483", params={"case_id": case_id}).text
+
+
+@ws
+def test_read_only_member_sees_capture_state_but_no_capture_link(workspace, fake_network):
+    app, client, admin, case_id, *_ = workspace
+    fake_network.responses["https://news.example/x"] = (200, HTML, ARTICLE)
+    lead = _lead(workspace)
+    assert post(workspace, "https://news.example/x", lead_id=lead["lead_id"]).status_code == 303
+    member(workspace, "read_only")
+    csrf_session(workspace, "member475", "Independent!Secret_881")
+    page = client.get("/workbench/leads483", params={"case_id": case_id}).text
+    assert "✓ Als Web-Beleg gesichert" in page and "Als Web-Beleg sichern →" not in page

@@ -24,6 +24,7 @@ from eagleeye.application.intel492.throttle import Throttle
 from .app364 import CSRF_COOKIE
 from .findings478 import bounded_form, verify_post
 from .operations476 import case_access, page
+from .research483 import listed as listed_leads
 
 EXTRA_CSS = ('<style>.ok{color:#9af3de}.bad{color:#ffb4a8}.muted{color:#c2d3e3;font-size:.92rem}'
              '.pill{display:inline-block;border:1px solid #647b93;border-radius:999px;padding:.1rem .6rem;margin:.1rem .2rem .1rem 0;font-size:.85rem}'
@@ -110,6 +111,28 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return ('<p>' + kind + ', abgerufen ' + escape(provenance["captured_at"][:16].replace("T", " ")) + ' UTC · ' + state +
                 ' · <a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=provenance["capture_id"]) + '">WARC</a></p>')
 
+    def lead_actions(request, user, case_id, leads):
+        found = captures.captures_by_lead(ctx, case_id, leads)
+        allowed = _can_run(ctx, user, case_id)
+        just_saved = request.query_params.get("captured", "")
+        out = {}
+        for lead in leads:
+            rows = found.get(lead["lead_id"], [])
+            html = ""
+            if rows:
+                last = rows[0]
+                html += ('<p role="status">✓ Als Web-Beleg gesichert am ' + escape(last["captured_at"][:16].replace("T", " ")) + ' UTC'
+                         + (' (eben gesichert)' if lead["lead_id"] == just_saved else '') + ' · <a href="' +
+                         _link("/documents458", case_id=case_id, document_id=last["document_id"]) + '">Dokument öffnen</a> · <a href="' +
+                         _link("/workbench/findings", case_id=case_id, document_id=last["document_id"]) + '">Befund notieren</a>'
+                         + (' · ' + str(len(rows)) + ' Sicherungen' if len(rows) > 1 else '') + '</p>')
+            if allowed:
+                html += ('<p><a href="' + _link("/workbench/intel/web", case_id=case_id, lead=lead["lead_id"]) + '">'
+                         + ('Erneut als Web-Beleg sichern' if rows else 'Als Web-Beleg sichern') + ' →</a></p>')
+            out[lead["lead_id"]] = html
+        return out
+
+    app.state.lead_actions = lead_actions
     app.state.report_web_fields = report_web_fields
     app.state.report_web_summary = report_web_summary
     app.state.intel492_throttle = Throttle()
@@ -160,11 +183,25 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return render("Sichern & Auswerten", case_id, body)
 
     # ------------------------------------------------------------- web capture
-    def web_page(request, user, case_id, *, url="", message="", error="", redirect=None, snapshots=None, status=200):
+    def lead_for(case_id, lead_id):
+        """The research lead (Build 483) in this case, integrity-checked, or 422."""
+        if not lead_id:
+            return None
+        lead = next((x for x in listed_leads(ctx, case_id) if x["lead_id"] == lead_id), None)
+        if lead is None:
+            raise HTTPException(422, "Der Recherchefund gehört nicht zu diesem Fall.")
+        return lead
+
+    def web_page(request, user, case_id, *, url="", message="", error="", redirect=None, snapshots=None, status=200, lead=None):
         rows = captures.captures_for_case(ctx, case_id)
         allowed = _can_run(ctx, user, case_id)
         token = _csrf(request)
+        lead_input = ('<input type="hidden" name="lead_id" value="' + escape(lead["lead_id"], quote=True) + '">') if lead else ""
         notice = ""
+        if lead:
+            notice += ('<p class="card">Aus dem Recherchefund <strong>' + escape(lead["title"]) + '</strong>. '
+                       'Die Adresse ist übernommen; abgerufen wird erst nach deiner Bestätigung. '
+                       '<a href="' + _link("/workbench/leads483", case_id=case_id) + '">Zurück zu den Recherchefunden</a></p>')
         if message:
             notice += '<p class="card ok" role="status">' + escape(message) + '</p>'
         if error:
@@ -188,13 +225,13 @@ def attach_intel492(app, build: str, base_dir) -> None:
                         'anderen Server. Prüfe es und bestätige den Abruf, wenn du diesen Server kontaktieren willst.</p>'
                         '<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
                         '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="url" value="' + escape(target, quote=True) + '">' +
-                        "".join('<input type="hidden" name="via" value="' + escape(v, quote=True) + '">' for v in via) +
+                        "".join('<input type="hidden" name="via" value="' + escape(v, quote=True) + '">' for v in via) + lead_input +
                         opsec + '<button>Weiterleitungsziel sichern</button></form>')
             notice += box + '</section>'
         if allowed:
             forms = ('<section class="card"><h2>Live-Seite sichern</h2>'
                      '<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
-                     '<input type="hidden" name="csrf" value="' + token + '">'
+                     '<input type="hidden" name="csrf" value="' + token + '">' + lead_input +
                      '<label>Öffentliche Adresse (Webseite oder PDF)<input name="url" type="url" required maxlength="2000" placeholder="https://…" value="' + escape(url, quote=True) + '"></label>'
                      + opsec + '<button>Seite jetzt sichern</button></form>'
                      '<p class="muted">Gespeichert werden: die unveränderte Serverantwort als WARC-Datei (Archivstandard), deren SHA-256 und der '
@@ -241,13 +278,14 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return render("Webseite als Beleg sichern", case_id, body, status)
 
     @app.get("/workbench/intel/web", response_class=HTMLResponse)
-    def web_view(request: Request, case_id: str = "", done: str = ""):
+    def web_view(request: Request, case_id: str = "", done: str = "", lead: str = ""):
         user, _ = case_access(app, request, case_id)
+        source = lead_for(case_id, lead)
         message = {"live": "Seite gesichert. Bitte Haupttext und Fundstellen im Dokument prüfen.",
                    "pdf": "PDF gesichert. Die Fundstellen stammen direkt aus dem PDF; Tabellen und gescannte Seiten "
                           "lassen sich unter „Struktur & Texterkennung“ ergänzen.",
                    "archive": "Archivierte Fassung gesichert. Bitte Haupttext und Fundstellen prüfen."}.get(done, "")
-        return web_page(request, user, case_id, message=message)
+        return web_page(request, user, case_id, message=message, url=source["url"] if source else "", lead=source)
 
     def throttled(request, user, case_id, url, host):
         """Return an error page when the per-user or per-server limit is reached, else None."""
@@ -287,8 +325,9 @@ def attach_intel492(app, build: str, base_dir) -> None:
         verify_post(app, request, user, form.get("csrf", ""))
         url = str(form.get("url") or "").strip()
         via = [str(v) for v in form.getlist("via")][: webcapture.MAX_CONFIRMED_HOPS]
+        lead = lead_for(case_id, str(form.get("lead_id") or "")) if kind == "live" else None
         if form.get("opsec") != "yes":
-            return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422)
+            return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422, lead=lead)
         result = None
         try:
             host = webcapture.WAYBACK_HOST if kind == "archive" else (urlsplit(webcapture.normalize_public_url(url)).hostname or "")
@@ -299,14 +338,18 @@ def attach_intel492(app, build: str, base_dir) -> None:
             result = await run_in_threadpool(lambda: webcapture.capture(
                 url, archive_url=archive_url, kind="Archivfassung" if kind == "archive" else "Live-Seite", via=via))
             if result.get("redirect"):
-                return web_page(request, user, case_id, url=url, redirect=result)
+                return web_page(request, user, case_id, url=url, redirect=result, lead=lead)
 
             def store():
                 with ctx.audit.actor_scope(user["username"]):
-                    return captures.store_capture(ctx, identity=user, case_id=case_id, result=result, kind=kind)
+                    row = captures.store_capture(ctx, identity=user, case_id=case_id, result=result, kind=kind)
+                    if lead:
+                        captures.link_lead(ctx, case_id=case_id, capture_id=row["capture_id"], lead_id=lead["lead_id"],
+                                           created_at=row["captured_at"])
+                    return row
             await run_in_threadpool(store)
         except webcapture.CaptureError as exc:
-            return web_page(request, user, case_id, url=url, error=str(exc), status=422)
+            return web_page(request, user, case_id, url=url, error=str(exc), status=422, lead=lead)
         except Exception as exc:
             # A broken PDF fails inside the PDF parser with library-specific errors; no
             # parser details are shown to the user. Everything else must stay visible as a bug.
@@ -317,9 +360,12 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 text = "Speichern nicht möglich: " + str(exc)[:200]
             else:
                 raise
-            return web_page(request, user, case_id, url=url, error=text, status=422)
+            return web_page(request, user, case_id, url=url, error=text, status=422, lead=lead)
         done = "pdf" if result.get("content_type") == "application/pdf" and kind == "live" else kind
-        return RedirectResponse("/workbench/intel/web?" + urlencode({"case_id": case_id, "done": done}), status_code=303)
+        target = {"case_id": case_id, "done": done}
+        if lead:
+            return RedirectResponse("/workbench/leads483?" + urlencode({"case_id": case_id, "captured": lead["lead_id"]}), status_code=303)
+        return RedirectResponse("/workbench/intel/web?" + urlencode(target), status_code=303)
 
     @app.post("/workbench/intel/web")
     async def web_capture(request: Request):

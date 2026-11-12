@@ -127,6 +127,8 @@ def attach_research483(app,build):
     def get_leads(request:Request,case_id:str=""):
         user,case=case_access(app,request,case_id)
         rows=listed(ctx,case_id)
+        lead_actions=getattr(app.state,'lead_actions',None)  # later builds: capture as web evidence
+        actions=lead_actions(request,user,case_id,rows) if lead_actions else {}
         form=(
             '<section class="card"><h2>1. Öffentlichen Treffer als Suchhinweis aufnehmen</h2>'
             '<p>Recherchelink zuerst im Browser öffnen und Herkunft beurteilen. '
@@ -146,7 +148,8 @@ def attach_research483(app,build):
             '<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
             escape(x["url"],quote=True)+'">Originaladresse im Browser prüfen</a></p>'
             '<p>'+escape(x["analyst_note"])+'</p>'
-            '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p></section>'
+            '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p>'+
+            actions.get(x["lead_id"],"")+'</section>'
             for x in rows
         )
         body=('<p>Fall: <strong>'+escape(str(case.get("title") or ""))+'</strong> · '+
