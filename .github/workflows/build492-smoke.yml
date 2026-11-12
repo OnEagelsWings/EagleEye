@@ -7,6 +7,7 @@ on:
       - 'tests/test_build492_*.py'
       - 'tests/benchmarks/entity_pairs_492*.json'
       - 'tests/test_build488_*.py'
+      - 'tests/test_build479_report_recovery.py'
       - 'tests/test_build490_server_selection.py'
       - 'pyproject.toml'
       - '.github/workflows/build492-smoke.yml'
@@ -35,7 +36,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get install -y tesseract-ocr tesseract-ocr-deu
       - name: Build 492 features, entity benchmark and adjacent workflow
-        run: python -m pytest -q tests/test_build492_intel.py tests/test_build490_server_selection.py tests/test_build488_candidates.py tests/test_build488_integration.py tests/test_build490_synthetic_journey.py
+        run: python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build490_server_selection.py tests/test_build488_candidates.py tests/test_build488_integration.py tests/test_build479_report_recovery.py tests/test_build490_synthetic_journey.py
       - name: Install Chromium browser test runtime
         if: runner.os == 'Linux'
         run: |
