@@ -101,9 +101,25 @@ Nebenbefunde während der Arbeit, mit behoben:
 Weiterhin nicht gemessen: echte Live-Abrufe, Zeichensatz- und PDF-Verhalten realer Server, Laufzeit der
 Texterkennung an echten 160-Seiten-Scans auf dem Windows-Laptop.
 
+## Zusammenführen (Stufe 2 aus docs/PLAN_NACH_492.md)
+
+| Punkt | Umsetzung | Nachweis |
+|---|---|---|
+| S3 Herkunft in Evidence und Dossier | Beim Übergang „Quelle → Evidence“ trägt das Abrufereignis jetzt einen Block `web_capture` (Adresse, Archivquelle, Abrufzeit, HTTP-Status, Server-IP, SHA-256 von Antwort und WARC, Integritätsprüfung). Die URL gilt nicht mehr als „vom Nutzer angegeben“. Eine manipulierte WARC-Datei verhindert die Übernahme. Claim-Snapshots enthalten die Evidence-Herkunft, damit trägt auch der JSON-Export des Dossiers den Block – ohne Änderung am Dossier-Format. | `test_web_capture_provenance_travels_into_evidence`, `test_tampered_warc_blocks_promotion_to_evidence` |
+| S3 Herkunft im Arbeitsbericht | Markdown-Export und Prüfseite zeigen Web-Herkunft und den WARC-Zustand zum Exportzeitpunkt. | `test_working_report_shows_web_capture_provenance` |
+| S4 Recherchefund → Web-Beleg | Jeder Recherchefund bietet „Als Web-Beleg sichern“; die Adresse wird übernommen, abgerufen wird erst nach Bestätigung. Der Bezug bleibt über bestätigte Weiterleitungen erhalten. Der Fund zeigt danach, wann er gesichert wurde. | 5 Tests, u. a. fremde Funde vor jedem Netzkontakt abgelehnt |
+| S2 Quellfamilien → Claims | Die Seite „Quellenunabhängigkeit“ zeigt je Familie den Evidence- und Herkunftsstand und warnt, wenn fast gleiche Texte verschiedenen Ursprüngen zugeordnet sind. Wer Quellen prüfen darf, bestätigt den gemeinsamen Ursprung mit Begründung; das schreibt die reguläre Herkunftsprüfung aus 456. | Ende-zu-Ende: Claim mit 3 übernommenen Texten + 1 eigenem zählt vorher 4, nachher 2 unabhängige Ursprünge |
+| S1 Freigabemodell | **offen – Entscheidung nötig** (siehe Plan) | – |
+
+Nebenbefunde, mit behoben:
+* Im Formular der Recherchefunde (483) waren Beschriftungen und Felder nicht verknüpft; Screenreader und
+  Klick auf die Beschriftung erreichten die Felder nicht.
+* Die Herkunftsprüfung aus 456 war nur als JSON-Schnittstelle erreichbar; Quellfamilien sind jetzt ein
+  bedienbarer Weg dorthin.
+
 ## Prüfen
 
 ```bash
-python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
+python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
 python -m pytest -q tests/test_build492_browser.py   # benötigt Playwright + Chromium
 ```

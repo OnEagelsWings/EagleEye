@@ -19,8 +19,10 @@ from eagleeye.interfaces.web.app492 import create_workspace_app492
 from test_build471_local_ai import workspace  # noqa: F401  (fixture)
 from test_build492_intel import ARTICLE, FakeTransport, _pdf_with_table_and_scan
 from test_build492_hardening import _pdf, _scan_pdf
+from test_build492_convergence import _evidence_case, _lead
 
-PAGES = ["/workbench", "/workbench/intel", "/workbench/intel/web", "/workbench/intel/documents",
+PAGES = ["/workbench", "/workbench/intel", "/workbench/intel/web", "/workbench/intel/documents", "/workbench/leads483",
+         "/workbench/report",
          "/workbench/intel/lineage", "/workbench/intel/network", "/workbench/entities488"]
 SHOTS = os.environ.get("EAGLEEYE_SCREENSHOT_DIR", "")
 
@@ -45,6 +47,8 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
     monkeypatch.setattr(docstructure, "tesseract_page", slow_ocr)
     ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="scan.pdf",
                                                raw=_scan_pdf(3), title="Gescannter Bericht")
+    _evidence_case(workspace)  # syndicated copies as accepted evidence in one claim: family review form
+    _lead(workspace, url="https://news.example/x")
     monkeypatch.setattr(webcapture, "PinnedTransport", FakeTransport)
     ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="bericht.pdf",
                                                raw=_pdf_with_table_and_scan(), title="Jahresbericht 2025")
@@ -136,7 +140,7 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
                         overflow = page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth")
                         assert overflow <= 1, f"{path} scrolls horizontally by {overflow}px at {width}px"
                         unlabeled = page.evaluate("""() => [...document.querySelectorAll('main input:not([type=hidden]), main select, main textarea')]
-                            .filter(el => !el.closest('label') && !el.getAttribute('aria-label')).length""")
+                            .filter(el => !el.closest('label') && !el.getAttribute('aria-label') && !(el.id && document.querySelector('label[for="' + el.id + '"]'))).length""")
                         assert unlabeled == 0, path
                         if SHOTS:
                             Path(SHOTS).mkdir(parents=True, exist_ok=True)

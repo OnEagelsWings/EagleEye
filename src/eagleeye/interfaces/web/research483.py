@@ -127,6 +127,8 @@ def attach_research483(app,build):
     def get_leads(request:Request,case_id:str=""):
         user,case=case_access(app,request,case_id)
         rows=listed(ctx,case_id)
+        lead_actions=getattr(app.state,'lead_actions',None)  # later builds: capture as web evidence
+        actions=lead_actions(request,user,case_id,rows) if lead_actions else {}
         form=(
             '<section class="card"><h2>1. Öffentlichen Treffer als Suchhinweis aufnehmen</h2>'
             '<p>Recherchelink zuerst im Browser öffnen und Herkunft beurteilen. '
@@ -134,10 +136,10 @@ def attach_research483(app,build):
             '<form action="/workbench/leads483" method="post">'
             '<input type="hidden" name="case_id" value="'+escape(case_id,quote=True)+'">'
             '<input type="hidden" name="csrf" value="'+escape(request.cookies.get(CSRF_COOKIE,""),quote=True)+'">'
-            '<label>Öffentliche HTTPS-URL</label><input required type="url" name="url" maxlength="1800">'
-            '<label>Seitentitel oder Befundthema</label><input required name="title" maxlength="240">'
-            '<label>Woher stammt der Link? Warum ist er relevant?</label>'
-            '<textarea required name="note" maxlength="1600" rows="3"></textarea>'
+            '<label for="lead483-url">Öffentliche HTTPS-URL</label><input id="lead483-url" required type="url" name="url" maxlength="1800">'
+            '<label for="lead483-title">Seitentitel oder Befundthema</label><input id="lead483-title" required name="title" maxlength="240">'
+            '<label for="lead483-note">Woher stammt der Link? Warum ist er relevant?</label>'
+            '<textarea id="lead483-note" required name="note" maxlength="1600" rows="3"></textarea>'
             '<button type="submit">Als ungeprüften Suchhinweis speichern</button></form></section>'
         )
         def capture_link(lead):
@@ -153,8 +155,10 @@ def attach_research483(app,build):
             '<p><strong>Ungeprüfter Suchhinweis – keine Evidence</strong></p>'
             '<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
             escape(x["url"],quote=True)+'">Originaladresse im Browser prüfen</a></p>'
-            '<p>'+escape(x["analyst_note"])+'</p>' + capture_link(x) +
-            '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p></section>'
+            '<p>'+escape(x["analyst_note"])+'</p>'
+            '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p>'+
+            # Prefer the lead-bound capture action (Build 492 S4); fall back to the plain link.
+            (actions.get(x["lead_id"]) or capture_link(x))+'</section>'
             for x in rows
         )
         body=('<p>Fall: <strong>'+escape(str(case.get("title") or ""))+'</strong> · '+
