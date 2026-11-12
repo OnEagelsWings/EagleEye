@@ -1,3 +1,13 @@
+## Aktueller Integrationsstand – öffentliche Quellen und Personenrecherche
+
+Fall öffnen → **Geführte Recherche → Öffentliche Quellen und Personenrecherche**.
+42 Quellen sind nach Thema, Person, Unternehmen, Benutzername, Webadresse und Ort erschlossen.
+20 Katalogeinträge verwenden ausführbare Adapter; 22 zeigen ausdrücklich einen manuellen,
+Download- oder noch einzurichtenden Zugang. Suchpakete, konkrete Suchfreigaben, einmalige
+Providerläufe und die Übergabe als ungeprüfter Fallhinweis verwenden die vorhandene Fallakte.
+Neue Personenadapter: **GND/lobid** und **Abgeordnetenwatch**. Keine automatische
+Identitätsbestätigung oder Graphverknüpfung. [Umfang, Quellen und geprüfter Stand](docs/FREE_PUBLIC_SOURCES_PERSONS.md).
+
 ## EagleEye Build 492 – Quellen beweisfest sichern und auswerten
 
 **Geführte Recherche** enthält vier neue Schritte: **Webseite als Beleg sichern** (WARC-Original + prüfbarer Haupttext, auch aus dem Internet Archive), **Struktur & Texterkennung** (Tabellen, Überschriften, OCR für Scans), **Quellenunabhängigkeit** („N Dokumente / M unabhängige Ursprünge“) und **Netzwerkanalyse** (Gruppen, Brückenpersonen, GEXF/FollowTheMoney-Export). Die Entity-Prüfung nutzt einen stärkeren, begründeten Abgleich. Alles bleibt Prüfmaterial – keine automatische Bestätigung. Installierte Paketnummer bleibt 490.0. Details, Messwerte und Grenzen: [BUILD_492_NOTES.md](BUILD_492_NOTES.md).
