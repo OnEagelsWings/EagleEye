@@ -15,7 +15,7 @@ ohne Textkonflikt zusammenführen.
 | GitHub Actions auf `e8507bb` | alle 13 gelaufenen Prüfungen grün, auch `windows-offline-release` (war bis `2cc6d1d` elfmal rot) |
 | Volle Regression (`tools/run_checkpoint_regression480.py`) auf `2cc6d1d`, Linux, Python 3.13 | **1896 bestanden**, 3 übersprungen, 118 bewusst ausgeschlossen, 11 min |
 | Gezielte Tests Build 492 + 493–500 auf dem **zusammengeführten** Stand | 113 bestanden |
-| Volle Regression auf dem zusammengeführten Stand | siehe Abschnitt 6 |
+| Volle Regression auf dem **zusammengeführten** Stand (Build 500 + gehärtetes 492 + Fix zu Befund 3), Linux, Python 3.13 | **1951 bestanden**, 3 übersprungen, 118 bewusst ausgeschlossen, 12 min |
 | PersonOSINT 1.5 | 96 Tests bestanden (76 auf SQLite, 20 zusätzlich auf PostgreSQL), Browser-Abnahme der neuen Oberfläche ohne Fehler |
 | Abhängigkeiten von Build 500 (`pip-audit` auf der installierten Umgebung) | **57 bekannte Lücken** in 3 Paketen, siehe Befund 2 |
 
@@ -89,4 +89,7 @@ Regel für alle Schritte: nichts doppelt speichern, nichts automatisch bestätig
 
 ## 6. Volle Regression auf dem zusammengeführten Stand
 
-Wird nach Abschluss des Laufs hier eingetragen.
+`python tools/run_checkpoint_regression480.py` auf Commit `af5c9cf` des gemeinsamen Branches (Linux, Python 3.13,
+Chromium 1243 für die Browser-Tests): **1951 bestanden, 3 übersprungen, 118 ausgeschlossen, 0 Fehler** in 11:45 min.
+Die drei übersprungenen Tests brauchen einen echten Virenscanner (ClamAV) und laufen nur in dessen eigener CI.
+Nicht geprüft: Windows (dort gilt euer Actions-Lauf) und echte Netzabfragen (alle Tests arbeiten mit nachgebildeten Antworten).
