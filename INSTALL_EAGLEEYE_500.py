@@ -19,7 +19,7 @@ RECEIPT = "install-receipt-500.json"
 
 
 def _root() -> Path:
-    return Path(__file__).resolve().parent
+    return Path(os.path.abspath(__file__)).parent
 
 
 def _runtime_python(root: Path) -> Path:
@@ -29,6 +29,10 @@ def _runtime_python(root: Path) -> Path:
 
 
 def _source_fingerprint(root: Path) -> str:
+    # Do not accept an installation root that aliases another release tree.
+    # In particular, a linked root must not fingerprint a legacy installation.
+    if root.is_symlink():
+        raise RuntimeError("Linked source paths are forbidden for Build 500")
     digest = hashlib.sha256()
     roots = [
         root / "INSTALL_EAGLEEYE_500.py",
@@ -41,17 +45,32 @@ def _source_fingerprint(root: Path) -> str:
     ]
     files: list[Path] = []
     for item in roots:
+        if item.is_symlink():
+            raise RuntimeError("Linked source paths are forbidden for Build 500")
         if item.is_file():
             files.append(item)
         elif item.is_dir():
+            # Reject links even when they point to directories, are dangling,
+            # or are skipped by rglob traversal. Never silently omit linked code.
+            descendants = list(item.rglob("*"))
+            if any(p.is_symlink() for p in descendants):
+                raise RuntimeError("Linked source paths are forbidden for Build 500")
             files.extend(
-                p for p in item.rglob("*")
+                p for p in descendants
                 if p.is_file()
                 and "__pycache__" not in p.parts
                 and not p.name.endswith((".pyc", ".pyo"))
             )
     for path in sorted(files, key=lambda p: p.relative_to(root).as_posix()):
-        rel = path.relative_to(root).as_posix().encode("utf-8")
+        # The package fingerprint must never follow a linked source file or
+        # directory outside this release tree (including a legacy install).
+        relative = path.relative_to(root)
+        current = root
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                raise RuntimeError("Linked source paths are forbidden for Build 500")
+        rel = relative.as_posix().encode("utf-8")
         digest.update(len(rel).to_bytes(4, "big"))
         digest.update(rel)
         data = path.read_bytes()
@@ -62,6 +81,8 @@ def _source_fingerprint(root: Path) -> str:
 
 def _read_receipt(root: Path) -> dict:
     path = root / RUNTIME_DIR / RECEIPT
+    if _runtime_path_linked(root) or path.is_symlink():
+        return {}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return payload if isinstance(payload, dict) else {}
@@ -69,8 +90,27 @@ def _read_receipt(root: Path) -> dict:
         return {}
 
 
+def _runtime_path_linked(root: Path) -> bool:
+    """Reject links at every runtime path component, not only its endpoints."""
+    runtime = root / RUNTIME_DIR
+    python = _runtime_python(root)
+    current = runtime
+    while True:
+        if current.is_symlink():
+            return True
+        if current == python:
+            break
+        # Check the Scripts/bin directory before checking the executable.
+        current = current / ("Scripts" if os.name == "nt" else "bin") if current == runtime else python
+    return False
+
+
 def _probe(root: Path) -> dict:
+    runtime_dir = root / RUNTIME_DIR
     runtime_python = _runtime_python(root)
+    # Never follow a linked runtime into another installation (including legacy builds).
+    if _runtime_path_linked(root):
+        return {"ready": False, "reason": "runtime_link_forbidden"}
     if not runtime_python.is_file():
         return {"ready": False, "reason": "runtime_python_missing"}
 
@@ -139,15 +179,19 @@ print(json.dumps({
 
 def _ensure_runtime(root: Path, *, quiet: bool = False) -> Path:
     runtime_python = _runtime_python(root)
+    runtime_dir = root / RUNTIME_DIR
+    # Check intermediate Scripts/bin too: rmtree and venv creation must never
+    # traverse or reuse a runtime component linked into another installation.
+    if _runtime_path_linked(root):
+        raise RuntimeError("Linked runtime paths are forbidden for Build 500")
     if runtime_python.is_file():
         return runtime_python
-    runtime_dir = root / RUNTIME_DIR
     if runtime_dir.exists():
         shutil.rmtree(runtime_dir)
     if not quiet:
         print(f"[EagleEye {BUILD}] Creating isolated local runtime...")
     try:
-        venv.EnvBuilder(with_pip=True, clear=False, symlinks=os.name != "nt").create(runtime_dir)
+        venv.EnvBuilder(with_pip=True, clear=False, symlinks=False).create(runtime_dir)
     except Exception:
         if runtime_dir.exists():
             shutil.rmtree(runtime_dir, ignore_errors=True)
@@ -161,7 +205,7 @@ def _verify_wheelhouse(root: Path) -> None:
     """Fail closed if the supposedly-offline wheelhouse is incomplete or modified."""
     folder = root / "wheelhouse"
     manifest = folder / "MANIFEST-SHA256.json"
-    if not folder.is_dir() or not manifest.is_file() or folder.is_symlink():
+    if not folder.is_dir() or not manifest.is_file() or folder.is_symlink() or manifest.is_symlink():
         raise RuntimeError("Offline wheelhouse or SHA-256 manifest is missing")
     try:
         expected = json.loads(manifest.read_text(encoding="utf-8"))
@@ -169,7 +213,27 @@ def _verify_wheelhouse(root: Path) -> None:
         raise RuntimeError("Wheelhouse manifest invalid") from exc
     if not isinstance(expected, dict) or not expected:
         raise RuntimeError("Wheelhouse manifest empty")
-    wheels = {p.name:p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
+    if any(
+        not isinstance(name, str)
+        or not name.endswith(".whl")
+        or Path(name).name != name
+        or "/" in name or "\\" in name
+        or not isinstance(digest, str)
+        or len(digest) != 64
+        or any(ch not in "0123456789abcdef" for ch in digest)
+        for name, digest in expected.items()
+    ):
+        raise RuntimeError("Wheelhouse manifest contains invalid names or SHA-256 values")
+    # pip --find-links also considers source archives. Do not allow unsealed
+    # archives, links or other payloads alongside the verified wheel set.
+    entries = list(folder.iterdir())
+    if any(
+        p.is_symlink() or not p.is_file()
+        or (p.name != manifest.name and p.name not in expected)
+        for p in entries
+    ):
+        raise RuntimeError("Wheelhouse contains unverified files or links")
+    wheels = {p.name: p for p in folder.glob("*.whl") if p.is_file() and not p.is_symlink()}
     if set(wheels) != set(expected):
         raise RuntimeError("Wheelhouse has unexpected or missing wheels")
     if not any(n.lower().startswith("eagleeye_personosint_pro-500.0.0") for n in wheels):
@@ -184,7 +248,7 @@ def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: 
         print(f"[EagleEye {BUILD}] Installing package {PACKAGE_VERSION} into the local runtime...")
     command = [str(runtime_python), "-m", "pip", "install",
                "--disable-pip-version-check", "--upgrade"]
-    if offline or (os.name == "nt" and (root / "wheelhouse").is_dir()):
+    if offline or (root / "wheelhouse").exists():
         _verify_wheelhouse(root)
         command += ["--no-index", "--find-links", str(root / "wheelhouse"),
                     PACKAGE + "==" + PACKAGE_VERSION]
@@ -207,8 +271,11 @@ def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
         "server_file": probe.get("server_file", ""),
         "editable": probe.get("editable"),
         "isolated_import": True,
+        "offline_wheelhouse": (root / "wheelhouse").is_dir(),
     }
     temp = path.with_suffix(".tmp")
+    if _runtime_path_linked(root) or path.is_symlink() or temp.is_symlink():
+        raise RuntimeError("Linked installer receipt paths are forbidden for Build 500")
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     try:
         temp.chmod(0o600)
@@ -231,7 +298,27 @@ def main(argv=None) -> int:
         return 2
 
     root = _root()
-    fingerprint = _source_fingerprint(root)
+    # Offline mode is an integrity contract, including --check and an already
+    # installed runtime. Never report readiness for a tampered wheelhouse.
+    # A bundled wheelhouse is part of the installation trust boundary even
+    # when the operator does not explicitly pass --offline. Verify it before
+    # accepting a cached receipt or reporting --check as ready.
+    if args.offline or (root / "wheelhouse").exists():
+        try:
+            _verify_wheelhouse(root)
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"EagleEye Build 500 offline verification failed: {exc}", file=sys.stderr)
+            return 2
+    # A previously verified offline installation must not silently become
+    # trusted after its entire wheelhouse has been removed.
+    if _read_receipt(root).get("offline_wheelhouse") and not (root / "wheelhouse").is_dir():
+        print("EagleEye Build 500 offline wheelhouse removed after installation", file=sys.stderr)
+        return 2
+    try:
+        fingerprint = _source_fingerprint(root)
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"EagleEye Build 500 source verification failed: {exc}", file=sys.stderr)
+        return 2
     receipt = _read_receipt(root)
     probe = _probe(root)
     receipt_matches = (
