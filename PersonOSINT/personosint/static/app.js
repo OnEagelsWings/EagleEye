@@ -684,7 +684,8 @@
         "Person wählen, Quellen anhaken und <b>Suche starten</b>. Abgefragt werden nur Quellen, für die passende Identifikatoren vorliegen.",
         "Jeder Treffer erhält einen <b>Score (0–100)</b> mit Begründung – z. B. Namensgleichheit, Ort, Arbeitgeber, exakte E-Mail.",
         "Prüfen Sie jeden Treffer: <b>✓ Bestätigen</b> übernimmt ihn als Erkenntnis und erzeugt automatisch Knoten/Verbindungen im Graphen; <b>✗ Verwerfen</b> blendet ihn aus.",
-        "Eigene Funde (z. B. aus den Recherchelinks oder Gesprächen) erfassen Sie über <b>„＋ Eigene Erkenntnis“</b>."], !findings.length)}
+        "Eigene Funde (z. B. aus den Recherchelinks oder Gesprächen) erfassen Sie über <b>„＋ Eigene Erkenntnis“</b>.",
+        "<b>🧭 Folgesuchen:</b> Aus bestätigten Treffern entstehen Vorschläge für die nächste Suche (z. B. ein neu gefundener Benutzername oder eine Domain). Gesucht wird erst, wenn Sie den Vorschlag freigeben. <b>Herkunft</b> an jedem Treffer zeigt, über welche Zwischenschritte er gefunden wurde."], !findings.length)}
       <div class="split">
         <div>
           <div class="card">
@@ -709,6 +710,7 @@
             <button class="btn btn-primary btn-lg" id="s-run" style="width:100%;justify-content:center;margin-top:.8rem" ${person ? "" : "disabled"}>🔎 Suche starten</button>
           </div>
           <div class="card" id="s-status">${renderSearchStatus(state.lastSearch, searches)}</div>
+          <div class="card" id="s-pivot"></div>
           <div class="card" id="s-watch"></div>
         </div>
         <div class="card">
@@ -764,6 +766,7 @@
         renderCase();
       });
       if (!state.ov.permissions.includes("write")) $$("[data-ev]", $("#f-list")).forEach((x) => x.classList.add("hidden"));
+      $$("[data-chain]", $("#f-list")).forEach((b) => (b.onclick = () => showChain(ov.case.id, Number(b.dataset.chain))));
       $$("[data-review]", $("#f-list")).forEach((b) => b.onclick = async () => {
         const card = b.closest(".finding");
         const note = $("input", card) ? $("input", card).value : "";
@@ -776,7 +779,55 @@
     draw();
     $$("[data-fv]", el).forEach((b) => (b.onclick = () => { state.findingView = b.dataset.fv; renderCase(); }));
     if (state.findingView === "groups" && person) renderGroups(ov, person);
+    renderPivots(ov, person);
     renderWatches(ov, person);
+  }
+
+  async function renderPivots(ov, person) {
+    const box = $("#s-pivot");
+    if (!box) return;
+    if (!person) { box.innerHTML = ""; box.classList.add("hidden"); return; }
+    let pv;
+    try { pv = await api("GET", `/api/cases/${ov.case.id}/entities/${person.id}/pivots`); } catch (_) { box.classList.add("hidden"); return; }
+    const canWrite = ov.permissions.includes("write");
+    box.classList.remove("hidden");
+    box.innerHTML = `<div class="card-head"><h3>🧭 Folgesuchen (${pv.items.length})</h3></div>
+      <p class="small muted" style="margin:0 0 .4rem">Neue Kennungen aus <b>bestätigten</b> Treffern. Nichts wird automatisch abgefragt – Sie geben jede Folgesuche frei. Höchstens ${pv.max_depth} Stufen vom Ausgangspunkt.</p>
+      ${pv.items.map((it, i) => `<div class="pivot" data-pi="${i}">
+        <div><span class="badge b-blue">${esc(it.kind_label)}</span> <b>${esc(it.value)}</b> <span class="badge b-grey" title="Entfernung vom Ausgangspunkt der Recherche">Stufe ${it.depth}</span></div>
+        <div class="small muted">aus: ${esc(it.origin.label)} (${esc(it.origin.source)})</div>
+        <div class="srcs">${it.sources.map((x) => `<label title="${esc(x.usable ? "liefert: " + (x.produces.join(", ") || "Treffer") : x.reason)}" class="${x.usable ? "" : "src-disabled"}"><input type="checkbox" value="${esc(x.key)}" ${x.usable ? "checked" : "disabled"}> ${esc(x.label)} ${expoBadge(x.exposure)}${x.usable ? "" : ` <span class="muted">– ${esc(x.reason)}</span>`}</label>`).join("")}</div>
+        ${canWrite ? `<div class="row"><button class="btn btn-sm btn-primary" data-prun>🔎 Freigeben & suchen</button><button class="btn btn-sm" data-pdis>Verwerfen</button></div>` : ""}</div>`).join("")
+        || '<div class="small muted">Keine offenen Vorschläge. Sie entstehen, sobald bestätigte Treffer neue Kennungen enthalten (Benutzername, E-Mail, Domain, Firma …).</div>'}
+      ${pv.too_deep ? `<div class="small muted" style="margin-top:.4rem">${pv.too_deep} Vorschlag/Vorschläge liegen weiter als ${pv.max_depth} Stufen vom Ausgangspunkt und werden nicht angeboten. Wenn Sie dem trotzdem nachgehen wollen: Kennung von Hand bei der Person eintragen.</div>` : ""}
+      ${pv.dismissed ? `<div class="small" style="margin-top:.4rem">${pv.dismissed} verworfen · ${canWrite ? '<a href="#" id="p-restore">wieder anzeigen</a>' : ""}</div>` : ""}`;
+    $$(".pivot", box).forEach((row) => {
+      const it = pv.items[Number(row.dataset.pi)];
+      const run = $("[data-prun]", row), dis = $("[data-pdis]", row);
+      if (run) run.onclick = async () => {
+        const srcs = $$("input:checked", row).map((c) => c.value);
+        if (!srcs.length) return toast("Bitte mindestens eine Quelle wählen.", "err");
+        run.disabled = true; run.innerHTML = '<span class="spinner"></span> suche …';
+        try {
+          const r = await api("POST", `/api/cases/${ov.case.id}/entities/${person.id}/pivots/run`, { kind: it.kind, value: it.value, sources: srcs });
+          state.lastSearch = r; state.findingFilter = "neu";
+          toast(`Folgesuche: ${r.new_findings} neue Treffer`, "ok");
+        } catch (e) { toast(e.message, "err"); }
+        renderCase();
+      };
+      if (dis) dis.onclick = async () => { await guard(() => api("POST", `/api/cases/${ov.case.id}/entities/${person.id}/pivots/dismiss`, { kind: it.kind, value: it.value })); renderPivots(ov, person); };
+    });
+    const rs = $("#p-restore", box);
+    if (rs) rs.onclick = async (e) => { e.preventDefault(); await guard(() => api("POST", `/api/cases/${ov.case.id}/entities/${person.id}/pivots/restore`)); renderPivots(ov, person); };
+  }
+
+  async function showChain(caseId, findingId) {
+    const steps = await guard(() => api("GET", `/api/cases/${caseId}/findings/${findingId}/chain`));
+    const label = (st) => st.type === "start" ? `★ ${esc(st.label)}` : st.type === "search" ? `🔎 Suche ${fmtTs(st.at)}${st.egress ? " · über " + esc(st.egress) : ""}${st.depth ? " · Stufe " + st.depth : ""}`
+      : st.type === "finding" ? `📄 ${esc(st.label)} <span class="muted">(${esc(st.source)}, ${esc(st.status)})</span>` : st.type === "identifier" ? `🔑 ${esc(st.kind_label)}: <b>${esc(st.value)}</b>` : esc(st.label);
+    modal("Herkunft des Treffers", `<p class="small muted">So wurde dieser Treffer gefunden – vom Ausgangspunkt über jede Zwischenkennung. Jede Folgesuche wurde von einer Person freigegeben und steht im Protokoll.</p>
+      <div class="chain">${steps.map((st, i) => `${i ? '<span class="arrow">→</span>' : ""}<span class="step s-${esc(st.type)}">${label(st)}</span>`).join("")}</div>`,
+      '<button class="btn" data-close>Schließen</button>', { width: "760px" });
   }
 
   async function renderWatches(ov, person) {
@@ -853,6 +904,7 @@
               : `<button class="btn btn-sm" data-review="neu">↺ Erneut prüfen</button>`}
             ${f.url && f.url.startsWith("http") ? `<button class="btn btn-sm ev-btn" data-ev="${f.id}" title="Seite über den Fall-Netzausgang abrufen, verschlüsselt archivieren und mit SHA-256 versiegeln">📎 Beleg sichern</button>` : ""}
             ${f.evidence_count ? `<span class="badge b-green" title="gesicherte Belege">📎 ${f.evidence_count} gesichert</span>` : ""}
+            ${f.search_id ? `<button class="btn btn-sm" data-chain="${f.id}" title="Über welche Zwischenschritte wurde dieser Treffer gefunden?">🧭 Herkunft</button>` : ""}
           </div>
         </div>
       </div></div>`;
@@ -866,7 +918,12 @@
         ${last.status.some((s) => !s.ok) ? `<div class="small muted">Nicht erreichbare Quellen deuten meist auf fehlende Internetverbindung, Firewall oder Rate-Limits hin. Später erneut versuchen.</div>` : ""}`;
     }
     if (searches.length) {
-      return `<h3>Bisherige Suchen</h3><ul class="source-status" style="padding-left:1rem">${searches.slice(0, 6).map((s) => `<li>${fmtTs(s.started_at)} · ${esc(s.entity_label || "")}: ${s.result_count} neue Treffer${(s.source_status || []).some((x) => !x.ok) ? " ⚠️" : ""}</li>`).join("")}</ul>`;
+      return `<h3>Bisherige Suchen</h3><ul class="source-status" style="padding-left:1rem">${searches.slice(0, 6).map((s) => {
+        const sn = s.snapshot || {}, pv = s.pivot || {};
+        return `<li>${fmtTs(s.started_at)} · ${esc(s.entity_label || "")}: ${s.result_count} neue Treffer${(s.source_status || []).some((x) => !x.ok) ? " ⚠️" : ""}
+          ${pv.kind ? `<br><span class="small">↳ Folgesuche (Stufe ${pv.depth}): ${esc(pv.value)}</span>` : ""}
+          ${sn.sources ? `<details class="small muted"><summary>Konfiguration dieses Laufs</summary>Version ${esc(sn.version)} · OPSEC ${sn.opsec_level} · Ausgang „${esc(sn.egress)}“ (${esc(sn.egress_kind)})<br>
+            Quellen: ${sn.sources.map((q) => `${esc(q.label)} [${esc(q.reliability)}, ${esc(q.exposure)}]`).join("; ")}${(sn.blocked || []).length ? "<br>gesperrt: " + sn.blocked.map(esc).join(", ") : ""}</details>` : ""}</li>`; }).join("")}</ul>`;
     }
     return `<h3>Noch keine Suche</h3><div class="small muted">Starten Sie oben die erste Suche.</div>`;
   }
@@ -892,7 +949,8 @@
 
   // ------------------------------------------------------------------ Tab: Verbindungen
   async function tabGraph(el, ov) {
-    const [gr, sugg, ents] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/graph`), api("GET", `/api/cases/${ov.case.id}/suggestions`), api("GET", `/api/cases/${ov.case.id}/entities`)]);
+    const [gr, sugg, ents, net] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/graph`), api("GET", `/api/cases/${ov.case.id}/suggestions`), api("GET", `/api/cases/${ov.case.id}/entities`),
+      api("GET", `/api/cases/${ov.case.id}/graph/analysis`).catch(() => null)]);
     const types = [...new Set(gr.nodes.map((n) => n.type))];
     const entOpts = (sel) => ents.map((e) => opt(e.id, `${e.label} (${e.type_label})`, sel)).join("");
     el.innerHTML = `
@@ -900,7 +958,8 @@
         "<b>Ziehen</b> verschiebt Knoten (fixiert sie), <b>Doppelklick</b> löst sie wieder; Hintergrund ziehen = verschieben, Mausrad = zoomen.",
         "Knotengröße = Anzahl Verbindungen. ★ = Zielperson. <b>Gestrichelte</b> Linien = unsichere Verbindung (< 50 %).",
         "<b>Pfadsuche</b>: Zwei Einträge wählen – alle Wege zwischen ihnen werden gelb hervorgehoben (z. B. „Wie hängen A und B zusammen?“).",
-        "<b>Vorschläge</b> findet ungeprüfte Zusammenhänge: gemeinsame Identifikatoren, gemeinsame Kontakte, gleiche Orte, Erwähnungen."], !gr.edges.length)}
+        "<b>Vorschläge</b> findet ungeprüfte Zusammenhänge: gemeinsame Identifikatoren, gemeinsame Kontakte, gleiche Orte, Erwähnungen – und <b>mögliche Dubletten</b> (gleiche Person in anderer Schreibweise oder Schrift), jeweils mit Begründung.",
+        "<b>Netzwerkanalyse</b> zeigt Gruppen, <b>Brücken</b> (Einträge, die sonst getrennte Gruppen verbinden) und unverbundene Einträge. <b>Austausch</b> exportiert den Graphen für Gephi, Aleph/OpenSanctions (FollowTheMoney) und Obsidian."], !gr.edges.length)}
       <div class="graph-wrap">
         <div class="graph-stage" id="stage">
           <canvas id="cv" aria-label="Netzwerkgraph"></canvas>
@@ -937,8 +996,28 @@
           <div class="card"><h3>⭐ Schlüsselakteure</h3>
             ${gr.key_nodes.length ? `<table class="tbl"><tr><th>Eintrag</th><th title="Anzahl Verbindungen">Verb.</th><th title="Vermittlerrolle (Betweenness)">Vermittler</th></tr>${gr.key_nodes.map((n) => `<tr><td><a href="#" data-focus="${n.id}">${esc(n.label)}</a></td><td>${n.degree}</td><td>${n.betweenness.toFixed(2)}</td></tr>`).join("")}</table>
             <div class="small muted" style="margin-top:.3rem">„Vermittler“ = wie oft ein Eintrag auf kürzesten Wegen zwischen anderen liegt.</div>` : '<div class="small muted">Noch keine Verbindungen.</div>'}</div>
+          ${net && net.edges ? `<div class="card" id="g-net"><h3>🕸 Netzwerkanalyse</h3>
+            <div class="small muted">${net.nodes} Einträge · ${net.edges} Verbindungen · ${net.components} getrennte Teile. Orientierung für die Recherche – eine Verbindung ist so belastbar wie ihr Beleg.</div>
+            ${net.bridges.length ? `<h4 style="margin:.6rem 0 .1rem">Brücken</h4><ul class="net-list">${net.bridges.map((b) => `<li><a href="#" data-focus="${b.id}">${esc(b.label)}</a> <span class="muted">${b.connects_groups > 1 ? "verbindet " + b.connects_groups + " Gruppen" : "einziger Weg zu einem Teil des Netzes"}${b.cut_point ? " · Trennstelle" : ""}</span></li>`).join("")}</ul>` : ""}
+            ${net.groups.length ? `<h4 style="margin:.6rem 0 .1rem">Gruppen (${net.groups.length})</h4><ul class="net-list">${net.groups.slice(0, 8).map((g) => `<li>${g.slice(0, 6).map((m) => `<a href="#" data-focus="${m.id}">${esc(m.label)}</a>`).join(", ")}${g.length > 6 ? ` <span class="muted">+ ${g.length - 6}</span>` : ""}</li>`).join("")}</ul>` : ""}
+            ${net.isolated.length ? `<div class="small muted">Ohne Verbindung: ${net.isolated.slice(0, 10).map((m) => esc(m.label)).join(", ")}${net.isolated.length > 10 ? " …" : ""}</div>` : ""}</div>` : ""}
+          <div class="card"><h3>⇄ Austausch</h3>
+            <div class="small muted" style="margin-bottom:.4rem">Offene Formate – jeder Export erhält eine Export-ID und steht im Register.</div>
+            <div class="row"><a class="btn btn-sm" href="/api/cases/${ov.case.id}/export/graph.gexf" title="Für Gephi und andere Graph-Programme">GEXF (Gephi)</a>
+              <a class="btn btn-sm" href="/api/cases/${ov.case.id}/export/graph.ftm" title="FollowTheMoney – Format von Aleph und OpenSanctions">FollowTheMoney</a>
+              <a class="btn btn-sm" href="/api/cases/${ov.case.id}/export/graph.canvas" title="JSON Canvas – z. B. für Obsidian">Canvas</a>
+              <a class="btn btn-sm" href="/api/cases/${ov.case.id}/export/obsidian.zip" title="Notizen mit Verknüpfungen, geprüfte Aussagen und Graph – unverschlüsselt, Hinweis liegt bei">Obsidian-Vault</a></div>
+            ${ov.permissions.includes("write") ? `<div class="row" style="margin-top:.5rem"><label class="btn btn-sm">⬆ FollowTheMoney einlesen<input type="file" id="g-ftm" hidden accept=".json,.ftm,.ndjson"></label>
+              <span class="small muted">z. B. Export aus EagleEye Build 492/500, Aleph oder OpenSanctions. Alles bleibt ungeprüft (Sicherheit 40 %).</span></div>` : ""}</div>
         </div>
       </div>`;
+    const ftmIn = $("#g-ftm", el);
+    if (ftmIn) ftmIn.onchange = async () => {
+      const fd = new FormData(); fd.append("file", ftmIn.files[0]);
+      try { const r = await api("POST", `/api/cases/${ov.case.id}/import/ftm`, fd); toast(`Eingelesen: ${r.created} neue Einträge, ${r.reused} vorhandene, ${r.links} Verbindungen${r.skipped ? ", " + r.skipped + " übersprungen" : ""}`, "ok"); }
+      catch (err) { toast(err.message, "err"); }
+      renderCase();
+    };
     const graph = new window.NetworkGraph($("#cv"), { tooltip: $("#g-tip"), onSelect: (n) => showSelection(n) });
     state.graph = graph;
     graph.setData(gr.nodes, gr.edges);
@@ -1151,15 +1230,32 @@
     const meta = state.reportMeta || (state.reportMeta = await api("GET", "/api/report/templates"));
     const tpl = state.dossierTpl && meta.templates[state.dossierTpl] ? state.dossierTpl : (missing ? "vermisst" : "volldossier");
     const unrev = !!state.dossierUnrev;
-    const [pv, evid, op] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/dossier/preview?template=${tpl}&include_unreviewed=${unrev}`),
-      api("GET", `/api/cases/${ov.case.id}/evidence`), api("GET", `/api/cases/${ov.case.id}/opsec`)]);
+    const [pv, evid, op, fam, comp] = await Promise.all([api("GET", `/api/cases/${ov.case.id}/dossier/preview?template=${tpl}&include_unreviewed=${unrev}`),
+      api("GET", `/api/cases/${ov.case.id}/evidence`), api("GET", `/api/cases/${ov.case.id}/opsec`),
+      api("GET", `/api/cases/${ov.case.id}/evidence/families`).catch(() => null), api("GET", "/api/components").catch(() => ({ ocr: {} }))]);
+    const canManage = ov.permissions.includes("manage");
+    const evNo = (id) => "B" + String(id).padStart(4, "0");
+    const KIND = { web: ["Webseite", "b-blue"], archiv: ["Archivfassung", "b-amber"], dokument: ["Dokument", "b-grey"] };
+    const evMeta = (e) => {
+      const m = e.meta || {}, out = [];
+      if (m.author) out.push("Autor laut Seite: " + m.author);
+      if (m.published) out.push("Datum laut Seite: " + fmtDate(m.published));
+      if (m.archiv_zeitpunkt) out.push("Archivstand: " + fmtTs(m.archiv_zeitpunkt));
+      if (e.kind === "dokument") out.push((m.pages || 1) + " Seite(n)" + (m.ocr_pages ? `, ${m.ocr_pages} per Texterkennung (Ø ${m.ocr_confidence || "?"} %)` : ""));
+      if (m.hinweis) out.push("⚠ " + m.hinweis);
+      if (m.warc_hinweis) out.push("⚠ " + m.warc_hinweis);
+      return out;
+    };
     const canWrite = ov.permissions.includes("write");
     const bar = (d) => d == null ? '<span class="muted small">–</span>' : `<div class="dens"><div style="width:${d}%;background:${d >= 75 ? "var(--green)" : d >= 50 ? "var(--amber)" : "var(--red)"}"></div></div><span class="small">${d} %</span>`;
     el.innerHTML = `
       ${help("So entsteht das Top-Dossier", [
         "Vorlage wählen – jede Vorlage stellt die passenden Kapitel zusammen. Die Vorschau zeigt je Kapitel die <b>Belegdichte</b>: Anteil der Aussagen, die mehrfach belegt, aus zuverlässiger Quelle bestätigt oder als Beleg gesichert sind.",
         "Jede Aussage im Dossier trägt ihren <b>Admiralty-Code</b> und eine Fußnote. Das Quellenverzeichnis nennt Abrufzeit, Verlässlichkeit und – falls gesichert – den <b>SHA-256-Hash</b> und eine Archivkopie.",
-        "<b>Belege sichern</b> ruft eine Fundstelle über den Netzausgang des Falls ab, archiviert sie verschlüsselt und versiegelt sie. Das <b>Beweispaket</b> enthält alle Belege mit Manifest und Prüfanleitung.",
+        "<b>Belege sichern</b> ruft eine Fundstelle über den Netzausgang des Falls ab, archiviert sie verschlüsselt und versiegelt sie – zusätzlich als <b>WARC</b> (Archivstandard mit Anfrage, Antwort und Kopfzeilen). Der <b>Haupttext</b> wird ohne Menü und Werbung herausgelöst.",
+        "<b>Dokumente</b> (PDF, Word, Scan, E-Mail) lassen sich als Beleg importieren. Gescannte Seiten werden per Texterkennung lesbar; das Original bleibt unverändert versiegelt.",
+        "<b>Quellenunabhängigkeit:</b> Belege mit nahezu gleichem Text (z. B. übernommene Agenturmeldungen) zählen als <b>ein</b> Ursprung – sie bestätigen sich nicht gegenseitig.",
+        "Das <b>Beweispaket</b> enthält alle Belege mit WARC-Aufzeichnung, Textfassung, Manifest und Prüfanleitung.",
         "In das Dossier gelangen nur geprüfte Aussagen – ungeprüfte nur auf Wunsch und deutlich markiert."], false)}
       <div class="grid g2">
         <div>
@@ -1187,13 +1283,29 @@
           </div>
           <div class="card"><div class="card-head"><h2>📎 Belege (${evid.length})</h2>
             <div class="right">${canWrite ? `<button class="btn btn-sm" id="ev-all" title="Alle bestätigten Treffer mit Webadresse sichern">Bestätigte Treffer sichern</button>` : ""}</div></div>
-            ${canWrite ? `<form class="row" id="ev-form"><input name="url" class="grow" placeholder="https://… Fundstelle sichern" required><button class="btn btn-sm btn-primary">Sichern</button></form>` : ""}
-            ${evid.length ? `<div style="overflow-x:auto"><table class="tbl small" style="margin-top:.5rem"><tr><th>Beleg</th><th>Fundstelle</th><th>Abruf</th><th>SHA-256</th><th></th></tr>
-              ${evid.map((e) => `<tr><td>B${String(e.id).padStart(4, "0")}</td><td><b>${esc(e.title || "")}</b><br><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url.slice(0, 60))}</a>${e.archive_url ? ` · <a href="${esc(e.archive_url)}" target="_blank" rel="noopener noreferrer">Archiv</a>` : ""}</td>
-                <td class="nowrap">${fmtTs(e.retrieved_at)}<br><span class="muted">HTTP ${e.status} · ${Math.round(e.size / 1024)} KB · ${esc(e.egress)}</span></td><td><code>${esc(e.sha256.slice(0, 16))}…</code></td>
-                <td><a class="btn btn-sm" href="/api/cases/${ov.case.id}/evidence/${e.id}/download" title="Originaldatei (als Download, wird nicht im Browser ausgeführt)">⬇</a></td></tr>`).join("")}</table></div>`
+            ${canWrite ? `<form class="row" id="ev-form"><input name="url" class="grow" placeholder="https://… Fundstelle sichern" required><button class="btn btn-sm btn-primary">Sichern</button>
+              <button type="button" class="btn btn-sm" id="ev-wb" title="Frühere Fassungen dieser Adresse im Internet Archive anzeigen und gezielt sichern">🕰 Frühere Fassungen</button></form>
+              <div class="row" style="margin-top:.4rem"><label class="btn btn-sm">📄 Dokument importieren<input type="file" id="ev-doc" hidden multiple accept=".pdf,.docx,.txt,.eml,.html,.htm,.png,.jpg,.jpeg,.tif,.tiff"></label>
+                <span class="small muted">PDF, Word, Bild, Text, E-Mail · bis 25 MB · ${comp.ocr && comp.ocr.available ? "Texterkennung aktiv (" + esc(comp.ocr.engine) + ")" : "Texterkennung nicht installiert – Scans bleiben ohne Text"}</span></div>` : ""}
+            ${evid.length ? `<div style="overflow-x:auto"><table class="tbl small" style="margin-top:.5rem"><tr><th>Beleg</th><th>Fundstelle</th><th>Abruf & Siegel</th><th></th></tr>
+              ${evid.map((e) => `<tr><td>${evNo(e.id)}<br><span class="badge ${(KIND[e.kind] || KIND.web)[1]}">${(KIND[e.kind] || KIND.web)[0]}</span></td>
+                <td><b>${esc(e.title || e.filename || "")}</b><br>${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.url.slice(0, 60))}</a>` : `<span class="muted">${esc(e.filename || "")}</span>`}${e.archive_url ? ` · <a href="${esc(e.archive_url)}" target="_blank" rel="noopener noreferrer">Archiv</a>` : ""}
+                  ${evMeta(e).map((x) => `<div class="muted">${esc(x)}</div>`).join("")}</td>
+                <td>${fmtTs(e.retrieved_at)}<br><span class="muted">${e.kind === "dokument" ? "" : "HTTP " + e.status + " · "}${Math.max(1, Math.round(e.size / 1024))} KB · ${esc(e.egress)}</span>
+                  <br><code title="SHA-256 ${esc(e.sha256)}">${esc(e.sha256.slice(0, 12))}…</code>${e.has_warc ? ' <span class="badge b-green" title="Aufzeichnung im Archivstandard WARC vorhanden">WARC</span>' : ""}</td>
+                <td class="nowrap"><a class="btn btn-sm" href="/api/cases/${ov.case.id}/evidence/${e.id}/download" title="Originaldatei (als Download, wird nicht im Browser ausgeführt)">⬇</a>
+                  ${e.has_warc ? `<a class="btn btn-sm" href="/api/cases/${ov.case.id}/evidence/${e.id}/warc" title="WARC-Aufzeichnung herunterladen">WARC</a>` : ""}
+                  ${e.has_text ? `<button class="btn btn-sm" data-ev-text="${e.id}" title="Textfassung lesen – mit Seitenangabe und Erwähnungen von Fallpersonen">Text</button>` : ""}
+                  <button class="btn btn-sm" data-ev-verify="${e.id}" title="Unverändertheit prüfen (Original, WARC, Wiedergabe)">✓</button>
+                  ${canManage ? `<button class="btn btn-sm btn-danger" data-ev-del="${e.id}" title="Beleg löschen (Prüfsumme bleibt im Protokoll)">×</button>` : ""}</td></tr>`).join("")}</table></div>`
               : '<div class="small muted" style="margin-top:.5rem">Noch keine Belege. Treffer-Karten haben eine Schaltfläche „📎 Beleg sichern“.</div>'}
           </div>
+          ${fam && fam.documents ? `<div class="card"><div class="card-head"><h2>🧬 Quellenunabhängigkeit</h2><span class="right"><b>${fam.documents}</b> Belege · <b>${fam.independent_origins}</b> unabhängige Ursprünge</span></div>
+            <p class="small muted">Belege mit nahezu gleichem Text bilden eine Quellfamilie. In der Bewertung zählt eine Familie als <b>eine</b> Quelle. Das ist ein Analysehinweis – wer tatsächlich Urheber ist, muss geprüft werden.</p>
+            ${fam.families.filter((f) => f.size > 1).map((f) => `<div class="flag"><span class="badge b-amber">${f.size} Belege · 1 Ursprung</span> ${f.members.map((m) => `<b>${esc(m.label)}</b> ${esc((m.title || "").slice(0, 50))}`).join(" · ")}
+              <div class="small muted">Übereinstimmung ${Math.round((f.min_similarity || 0) * 100)}–${Math.round((f.max_similarity || 0) * 100)} % · ${f.hosts.map(esc).join(", ")} · zuerst gesichert: ${esc("B" + String(f.earliest).padStart(4, "0"))}</div></div>`).join("")
+              || '<div class="ok-box small">Keine übernommenen oder gespiegelten Texte erkannt – alle verglichenen Belege sind eigenständig.</div>'}
+            ${fam.skipped.length ? `<div class="small muted" style="margin-top:.4rem">${fam.skipped.length} Beleg(e) ohne ausreichend Text wurden nicht verglichen.</div>` : ""}</div>` : ""}
           <div class="card" id="ai-card"></div>
         </div>
       </div>`;
@@ -1212,6 +1324,56 @@
       try { const r = await api("POST", `/api/cases/${ov.case.id}/evidence`, formData(ef)); toast(`Beleg B${String(r.id).padStart(4, "0")} gesichert`, "ok"); } catch (err) { toast(err.message, "err"); }
       renderCase();
     };
+    const wb = $("#ev-wb", el);
+    if (wb) wb.onclick = async () => {
+      const url = (ef.url.value || "").trim();
+      if (!url) return toast("Bitte zuerst die Adresse eingeben.", "err");
+      wb.disabled = true;
+      try {
+        const list = await api("GET", `/api/cases/${ov.case.id}/evidence/wayback?url=${encodeURIComponent(url)}`);
+        const m = modal("Frühere Fassungen im Internet Archive", list.length ? `<p class="small muted">Unterschiedliche Fassungen von <b>${esc(url)}</b>. „Sichern“ ruft die unveränderte Archivfassung über den Netzausgang des Falls ab und versiegelt sie als Beleg.</p>
+          <table class="tbl small"><tr><th>Archiviert am</th><th>Typ</th><th></th></tr>${list.map((v) => `<tr><td>${esc(v.label)}</td><td>${esc(v.mimetype)}</td><td><button class="btn btn-sm btn-primary" data-wbts="${esc(v.timestamp)}">Sichern</button></td></tr>`).join("")}</table>`
+          : '<div class="small muted">Das Internet Archive kennt keine Fassung dieser Adresse.</div>', '<button class="btn" data-close>Schließen</button>', { width: "560px" });
+        $$("[data-wbts]", m.el).forEach((b) => (b.onclick = async () => {
+          b.disabled = true; b.innerHTML = '<span class="spinner"></span>';
+          try { const r = await api("POST", `/api/cases/${ov.case.id}/evidence`, { url, wayback_timestamp: b.dataset.wbts }); toast(`Archivfassung als ${evNo(r.id)} gesichert`, "ok"); b.textContent = "✓ gesichert"; }
+          catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "Sichern"; }
+        }));
+        m.el.addEventListener("click", (e) => { if (e.target.closest("[data-close]") && $$("[data-wbts][disabled]", m.el).length) renderCase(); });
+      } catch (err) { toast(err.message, "err"); }
+      wb.disabled = false;
+    };
+    const ed = $("#ev-doc", el);
+    if (ed) ed.onchange = async () => {
+      let ok = 0;
+      for (const file of ed.files) {
+        const fd = new FormData(); fd.append("file", file);
+        try { const r = await api("POST", `/api/cases/${ov.case.id}/evidence/document`, fd); ok++; toast(`${file.name} als ${evNo(r.id)} importiert` + ((r.meta || {}).hinweis ? " – " + r.meta.hinweis : ""), "ok"); }
+        catch (err) { toast(`${file.name}: ${err.message}`, "err"); }
+      }
+      if (ok) renderCase();
+    };
+    $$("[data-ev-verify]", el).forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const r = await api("GET", `/api/cases/${ov.case.id}/evidence/${b.dataset.evVerify}/verify`);
+        const part = (v, t) => v === null ? "" : `${v ? "✓" : "✗"} ${t}`;
+        toast(r.ok ? `${evNo(r.id)} unverändert: ${[part(r.original, "Original"), part(r.warc, "WARC"), part(r.wiedergabe, "Wiedergabe")].filter(Boolean).join(" · ")}` : `${evNo(r.id)}: ABWEICHUNG – ${r.message}`, r.ok ? "ok" : "err");
+      } catch (err) { toast(err.message, "err"); }
+      b.disabled = false;
+    }));
+    $$("[data-ev-del]", el).forEach((b) => (b.onclick = async () => {
+      if (!(await confirmDlg(`Beleg ${evNo(b.dataset.evDel)} mit allen Dateien löschen? Die Prüfsumme bleibt im Protokoll.`))) return;
+      await guard(() => api("DELETE", `/api/cases/${ov.case.id}/evidence/${b.dataset.evDel}`), "Beleg gelöscht"); renderCase();
+    }));
+    $$("[data-ev-text]", el).forEach((b) => (b.onclick = async () => {
+      const t = await guard(() => api("GET", `/api/cases/${ov.case.id}/evidence/${b.dataset.evText}/text`));
+      const METHOD = { ocr: "Texterkennung", pdf_text: "PDF-Text", docx: "Word", text: "Text", haupttext: "Haupttext der Seite", bild: "Bild ohne Text" };
+      modal(`${evNo(t.evidence.id)} – Textfassung`, `<p class="small muted">Automatisch herausgelöster bzw. erkannter Text – Lesehilfe, kein Original. Maßgeblich ist die versiegelte Originaldatei.</p>
+        ${t.mentions.length ? `<div class="ok-box small" style="margin-bottom:.6rem"><b>Im Text genannt (Hinweis, keine Bestätigung):</b> ${t.mentions.map((m) => `${esc(m.label)} – ${t.pages.length > 1 ? "Seite " + m.pages.join(", ") : "ja"}`).join(" · ")}</div>` : ""}
+        ${t.pages.map((pg) => `<div class="doc-page"><div class="small muted">${t.pages.length > 1 ? "Seite " + pg.page + " · " : ""}${METHOD[pg.method] || esc(pg.method)}${pg.confidence != null ? ` · Erkennungssicherheit ${pg.confidence} %` : ""}</div><pre>${esc(pg.text || "(kein Text)")}</pre></div>`).join("")}`,
+        '<button class="btn" data-close>Schließen</button>', { width: "820px" });
+    }));
     const ea = $("#ev-all", el);
     if (ea) ea.onclick = async () => {
       ea.disabled = true; ea.innerHTML = '<span class="spinner dark"></span> sichere …';
@@ -1248,7 +1410,11 @@
       <div class="grid g2">
         <div class="card"><div class="card-head"><h2>🚩 Red Flags (${a.redflags.length})</h2></div>
           ${a.redflags.length ? a.redflags.map((r) => `<div class="flag"><span class="badge ${SEV[r.severity]}">${esc(r.severity)}</span> <b>${esc(r.label)}</b>${r.confirmed ? "" : ' <span class="badge b-grey" title="beruht (auch) auf ungeprüften Aussagen">ungeprüft</span>'}
-            <div class="small">${esc(r.text)}</div>${r.sources.length ? `<div class="small muted">Quellen: ${r.sources.map(esc).join(", ")}</div>` : ""}</div>`).join("") : '<div class="small muted">Keine Auffälligkeiten nach den aktiven Regeln.</div>'}</div>
+            <div class="small">${esc(r.text)}</div>${r.sources.length ? `<div class="small muted">Quellen: ${r.sources.map(esc).join(", ")}</div>` : ""}</div>`).join("") : '<div class="small muted">Keine Auffälligkeiten nach den aktiven Regeln.</div>'}
+          <h3 style="margin-top:1rem">🔗 Überschneidungen (${(a.correlations || []).length})</h3>
+          <div class="small muted" style="margin-bottom:.3rem">Regeln finden gleiche Adressen, Firmen, E-Mail-Adressen oder Technik bei mehreren Einträgen. Das sind <b>Prüfhinweise</b>, keine Bewertung.</div>
+          ${(a.correlations || []).map((c) => `<div class="flag"><span class="badge ${SEV[c.severity]}">${esc(c.severity)}</span> <b>${esc(c.label)}</b>${c.confirmed ? "" : ' <span class="badge b-grey" title="beruht (auch) auf ungeprüften Aussagen">ungeprüft</span>'}
+            <div class="small">${esc(c.headline)}</div><div class="small muted">Quellen: ${c.sources.map(esc).join(", ")}</div></div>`).join("") || '<div class="small muted">Keine Überschneidungen nach den aktiven Regeln.</div>'}</div>
         <div class="card"><div class="card-head"><h2>⚖ Widersprüche (${a.contradictions.length})</h2></div>
           ${a.contradictions.length ? a.contradictions.map((c, ci) => `<div class="flag"><b>${esc(c.subject)}</b> – ${esc(c.predicate_label)}${c.profile_value ? ` <span class="small muted">(Profil: ${esc(c.profile_value)})</span>` : ""}
             ${c.values.map((v, vi) => `<div class="row small" style="margin-top:.3rem"><span class="grow"><b>${esc(v.value)}</b> ${v.matches_profile ? '<span class="badge b-green">passt zum Profil</span>' : ""}${v.confirmed ? ' <span class="badge b-blue">bestätigt</span>' : ""}<br><span class="muted">${v.sources.map(esc).join(", ")}</span></span>
@@ -1261,7 +1427,7 @@
           ${cats[c].map((f) => `<tr class="fs-${esc(f.status)} ${f.contradiction ? "contra" : ""}"><td>${esc(f.subject_label)}</td><td class="muted">${esc(f.predicate_label)}</td>
             <td><b>${esc(f.object_label)}</b>${f.data && f.data.rolle ? ` <span class="muted">(${esc(f.data.rolle)})</span>` : ""}${f.note ? `<div class="small muted">📝 ${esc(f.note)}</div>` : ""}</td>
             <td class="small nowrap">${esc(f.valid_from || "")}${f.valid_to ? " – " + esc(f.valid_to) : ""}</td>
-            <td class="small">${f.source_url ? `<a href="${esc(f.source_url)}" target="_blank" rel="noopener noreferrer">${esc(f.source_label)}</a>` : esc(f.source_label)}${f.corroboration >= 2 ? ` <span class="badge b-green" title="${esc(f.sources.join(", "))}">${f.corroboration} Quellen</span>` : ""}</td>
+            <td class="small">${f.source_url ? `<a href="${esc(f.source_url)}" target="_blank" rel="noopener noreferrer">${esc(f.source_label)}</a>` : esc(f.source_label)}${f.corroboration >= 2 ? ` <span class="badge b-green" title="${esc(f.sources.join(", "))}">${f.corroboration} unabhängige Quellen</span>` : ""}${f.same_origin ? ` <span class="badge b-amber" title="Mehrere Quellen geben (nahezu) denselben Text wieder – sie zählen als ein Ursprung. Siehe Dossier & Export → Quellenunabhängigkeit.">gleicher Ursprung</span>` : ""}</td>
             <td>${codeBadge(f)} <span class="small muted">${esc(f.status)}</span></td>
             <td class="nowrap">${canReview ? `${f.status !== "bestätigt" ? `<button class="btn btn-sm btn-success" data-fs="${f.id}:bestätigt" title="bestätigen">✓</button>` : ""}${f.status !== "verworfen" ? `<button class="btn btn-sm" data-fs="${f.id}:verworfen" title="verwerfen">✗</button>` : ""}<button class="btn btn-sm" data-fe="${f.id}" title="Bewertung ändern">✎</button>` : ""}</td></tr>`).join("")}</table>`).join("")
           : '<div class="empty small">Noch keine Aussagen. Sie entstehen aus Quellen der Suche (z. B. Register, Wikidata, Referenzdaten).</div>'}
@@ -1634,7 +1800,8 @@
       d.sources.filter((x) => !x.local).forEach((x) => (groups[x.group] = groups[x.group] || []).push(x));
       el.innerHTML = `<div class="card"><div class="card-head"><h2>Online-Quellen</h2><span class="right small muted">Schlüssel werden verschlüsselt gespeichert und nie angezeigt.</span></div>
         ${Object.entries(groups).map(([g, list]) => `<h4 class="src-head">${esc(g)}</h4><table class="tbl"><tr><th>Quelle</th><th>Exposition</th><th>Verlässlichkeit</th><th>Lizenz / Kosten</th><th>Schlüssel</th><th></th></tr>
-          ${list.map((x) => `<tr><td><b>${esc(x.label)}</b><br><span class="small muted">${esc(x.description)}</span>${x.docs ? `<br><a class="small" href="${esc(x.docs)}" target="_blank" rel="noopener noreferrer">Dokumentation ↗</a>` : ""}</td>
+          ${list.map((x) => `<tr><td><b>${esc(x.label)}</b><br><span class="small muted">${esc(x.description)}</span>
+            <br><span class="small" title="Womit kann diese Quelle suchen – und welche neuen Kennungen können ihre Treffer liefern (Grundlage der Folgesuchen)?"><span class="muted">verarbeitet:</span> ${x.kind_labels.map(esc).join(", ")}${x.produces_labels.length ? ` · <span class="muted">liefert:</span> ${x.produces_labels.map(esc).join(", ")}` : ""}</span>${x.docs ? `<br><a class="small" href="${esc(x.docs)}" target="_blank" rel="noopener noreferrer">Dokumentation ↗</a>` : ""}</td>
             <td>${expoBadge(x.exposure)}</td><td>${relBadge(x.reliability)}</td><td class="small">${esc(x.license)}<br><span class="muted">${esc(x.cost)}</span></td>
             <td>${x.requires_key ? (x.key_set ? '<span class="badge b-green">hinterlegt</span>' : x.key_optional ? '<span class="badge b-amber">optional</span>' : '<span class="badge b-red">fehlt</span>') : '<span class="muted small">nicht nötig</span>'}</td>
             <td class="nowrap">${x.requires_key ? `<button class="btn btn-sm" data-key="${esc(x.key)}">Schlüssel …</button> ` : ""}<button class="btn btn-sm" data-test="${esc(x.key)}">Testen</button></td></tr>
@@ -1656,6 +1823,34 @@
         <table class="tbl"><tr><th>Regel</th><th>aktiv</th><th>Schweregrad</th></tr>${Object.entries(rules).map(([k, r]) => `<tr><td>${esc(r.label)}</td>
           <td><input type="checkbox" data-rf-on="${k}" ${r.enabled ? "checked" : ""} style="width:auto"></td>
           <td><select data-rf-sev="${k}" style="width:auto">${["hoch", "mittel", "niedrig"].map((x) => opt(x, x, r.severity)).join("")}</select></td></tr>`).join("")}</table></div>`);
+      const [cr, comp] = await Promise.all([api("GET", "/api/admin/correlation-rules"), api("GET", "/api/components")]);
+      const crCard = (data) => `<div class="card-head"><h2>🔗 Korrelationsregeln</h2></div>
+        <p class="small muted">Regeln finden Überschneidungen zwischen Aussagen (Reiter „Fakten & Bewertung“). Sie erzeugen nur <b>Prüfhinweise</b>. Eigene Regeln werden als Beschreibung angelegt – ohne Programmierung.</p>
+        <table class="tbl"><tr><th>Regel</th><th>Aussagearten</th><th>Schwelle</th><th>aktiv</th><th></th></tr>${data.rules.map((r) => `<tr><td><b>${esc(r.label)}</b> <span class="badge ${SEV[r.severity]}">${esc(r.severity)}</span>${r.builtin ? "" : ' <span class="badge b-blue">eigene</span>'}<br><span class="small muted">${esc(r.headline)}</span></td>
+          <td class="small">${r.predicates.map((k) => esc(data.predicates[k] || k)).join(", ")}</td><td class="small nowrap">ab ${r.min} ${esc({ subjects: "Einträgen", values: "Werten", sources: "Quellen", facts: "Aussagen" }[r.count])}</td>
+          <td><input type="checkbox" data-cr-on="${esc(r.key)}" ${r.enabled ? "checked" : ""} style="width:auto"></td>
+          <td>${r.builtin ? "" : `<button class="btn btn-sm btn-danger" data-cr-del="${esc(r.key)}">×</button>`}</td></tr>`).join("")}</table>
+        <details style="margin-top:.6rem"><summary class="small">＋ Eigene Regel anlegen</summary>
+          <p class="small muted">Felder: <code>key</code>, <code>label</code>, <code>severity</code> (hoch/mittel/niedrig), <code>predicates</code>, <code>group_by</code> (object = gleicher Wert, subject = gleiche Person/Firma),
+          <code>count</code> (subjects/values/sources/facts), <code>min</code>, <code>headline</code> mit {count}, {value}, {members}. Aussagearten: ${Object.keys(data.predicates).map(esc).join(", ")}.</p>
+          <textarea id="cr-json" rows="9" style="font-family:monospace;font-size:.8rem">${esc(JSON.stringify({ ...data.example, key: "meine_regel", label: "Meine Regel" }, null, 2))}</textarea>
+          <button class="btn btn-sm btn-primary" id="cr-save" style="margin-top:.4rem">Regel speichern</button></details>`;
+      el.insertAdjacentHTML("beforeend", `<div class="card" id="cr-card">${crCard(cr)}</div>
+        <div class="card"><h2>🧩 Bausteine auf diesem Server</h2>
+          <table class="tbl small"><tr><td><b>Texterkennung (OCR)</b> für gescannte Dokumente</td><td>${comp.ocr.available ? `<span class="badge b-green">aktiv</span> ${esc(comp.ocr.engine)} · Sprachen: ${comp.ocr.languages.map(esc).join(", ")}` : '<span class="badge b-amber">nicht installiert</span>'}${comp.ocr.hint ? `<br><span class="muted">${esc(comp.ocr.hint)}</span>` : ""}</td></tr>
+          <tr><td><b>WARC-Aufzeichnung</b> von Web-Belegen</td><td>${comp.warc ? `<span class="badge b-green">aktiv</span> ${esc(comp.warc)}` : '<span class="badge b-amber">nicht installiert</span> <span class="muted">Belege werden ohne WARC gesichert.</span>'}</td></tr>
+          <tr><td><b>Haupttext-Erkennung</b> (ohne Menü/Werbung)</td><td>${comp.haupttext ? `<span class="badge b-green">aktiv</span> ${esc(comp.haupttext)}` : '<span class="badge b-amber">nicht installiert</span> <span class="muted">Es wird der einfache Seitentext verwendet.</span>'}</td></tr></table></div>`);
+      const wireCr = () => {
+        const card = $("#cr-card");
+        $$("[data-cr-on]", card).forEach((c) => (c.onchange = async () => { const d2 = await guard(() => api("POST", `/api/admin/correlation-rules/${c.dataset.crOn}/enabled`, { enabled: c.checked }), "Gespeichert"); card.innerHTML = crCard({ ...cr, rules: d2.rules }); wireCr(); }));
+        $$("[data-cr-del]", card).forEach((b) => (b.onclick = async () => { if (!(await confirmDlg("Regel löschen?"))) return; const d2 = await guard(() => api("DELETE", `/api/admin/correlation-rules/${b.dataset.crDel}`), "Regel gelöscht"); card.innerHTML = crCard({ ...cr, rules: d2.rules }); wireCr(); }));
+        $("#cr-save", card).onclick = async () => {
+          let rule;
+          try { rule = JSON.parse($("#cr-json", card).value); } catch (_) { return toast("Die Regel ist kein gültiges JSON – bitte Klammern und Anführungszeichen prüfen.", "err"); }
+          const d2 = await guard(() => api("PUT", "/api/admin/correlation-rules", rule), "Regel gespeichert"); card.innerHTML = crCard({ ...cr, rules: d2.rules }); wireCr();
+        };
+      };
+      wireCr();
       $("#rf-save").onclick = async () => {
         const payload = {};
         Object.keys(rules).forEach((k) => (payload[k] = { enabled: $(`[data-rf-on="${k}"]`).checked, severity: $(`[data-rf-sev="${k}"]`).value }));
