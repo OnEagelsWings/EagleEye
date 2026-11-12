@@ -28,7 +28,7 @@ Katalogaufruf und Vorbereitung führen keine externen Anfragen aus.
 - Sechs zusätzliche Adapter: GND/lobid-Personen, Abgeordnetenwatch-Personen,
   HDX-Katalog, Crossref-Themen, OpenAlex-Veröffentlichungen und Common-Crawl-URL-Index.
   Zusammen mit den bestehenden Adaptern sind 36 Provider registriert.
-- 42 Quellen im kuratierten Recherchekatalog: 20 Adaptereinträge und 22 ausdrücklich
+- 55 Quellen im kuratierten Recherchekatalog: 20 Adaptereinträge und 35 ausdrücklich
   gekennzeichnete Recherche-/Download-/Einrichtungszugänge. Vorhandene Adapter außerhalb
   dieses kuratierten Katalogs bleiben erreichbar.
 - Planung verwendet `case_plans_496` und `case_plan_steps_496`; konkrete Anfragen liegen
@@ -114,3 +114,30 @@ sind dadurch nicht nachgewiesen.
 - [GLEIF API](https://www.gleif.org/en/lei-data/gleif-api)
 - [TED API](https://docs.ted.europa.eu/api/latest/search.html)
 - [DIP Bedingungen](https://dip.bundestag.de/documents/nutzungsbedingungen_dip.pdf)
+
+## Ergänzung: Bund, Bundestag und öffentliche Register
+
+Die Rechercheart **Bund, Bundestag und öffentliche Register** bündelt Bundesanzeiger,
+Unternehmensregister, Handelsregisterportal der Länder, DIP, Lobbyregister, Bundestag
+Open Data und Wissenschaftliche Dienste, Bundesrat, GovData, Bundesgesetzblatt,
+Gesetze/Rechtsprechung/Verwaltungsvorschriften im Internet, Bundeshaushalt,
+Förderdatenbank und Bundesarchiv. Dies ist ein erweiterbarer Einstieg in öffentliche
+Quellen, kein Anspruch auf Vollständigkeit aller Behördenangebote.
+
+13 neue Recherche-/Downloadzugänge; kein neuer Live-Adapter und keine automatische
+Bestellung kostenpflichtiger Unterlagen. Ein „Bundeshandelsregister“ ist keine eigene
+zusätzliche Datenbank: Das gemeinsame Registerportal der Länder und das Unternehmensregister
+werden als getrennte Zugänge geführt. Amtliche Registerkennungen, Registergericht,
+Dokumentart, Veröffentlichungsdatum und Originalfundstelle sind beim Übernehmen zu
+dokumentieren. Personenrollen bleiben nach Zeitraum und Identität prüfpflichtig.
+
+Bundesanzeiger-Trefferlinks können sitzungsgebunden sein; für reproduzierbare Recherche
+Fundstelle und Originaldokument sichern. Im Unternehmensregister sind hinterlegte
+Jahresabschlussunterlagen und Beglaubigungen kostenpflichtig, obwohl die Recherche und
+Registerinformationen kostenlos sind. Freie Einsicht bedeutet keine pauschale
+Erlaubnis zum Aufbau eines vollständigen Parallelregisters.
+
+Quellen: [Bundesanzeiger Suche](https://www.bundesanzeiger.de/pub/de/howto-search),
+[Unternehmensregister Kosten](https://www.unternehmensregister.de/de/so-gehts/kosten),
+[Bundestag Open Data](https://www.bundestag.de/services/opendata),
+[Wissenschaftliche Dienste](https://www.bundestag.de/dokumente/analysen).

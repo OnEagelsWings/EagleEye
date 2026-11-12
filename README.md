@@ -1,8 +1,8 @@
 ## Aktueller Integrationsstand – öffentliche Quellen und Personenrecherche
 
 Fall öffnen → **Geführte Recherche → Öffentliche Quellen und Personenrecherche**.
-42 Quellen sind nach Thema, Person, Unternehmen, Benutzername, Webadresse und Ort erschlossen.
-20 Katalogeinträge verwenden ausführbare Adapter; 22 zeigen ausdrücklich einen manuellen,
+55 Quellen sind nach Thema, Person, Unternehmen, Benutzername, Webadresse und Ort erschlossen.
+20 Katalogeinträge verwenden ausführbare Adapter; 35 zeigen ausdrücklich einen manuellen,
 Download- oder noch einzurichtenden Zugang. Suchpakete, konkrete Suchfreigaben, einmalige
 Providerläufe und die Übergabe als ungeprüfter Fallhinweis verwenden die vorhandene Fallakte.
 Neue Personenadapter: **GND/lobid** und **Abgeordnetenwatch**. Keine automatische

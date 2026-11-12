@@ -5,7 +5,7 @@ Catalog browsing and preparing a package never issue network requests.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import unicodedata
@@ -16,7 +16,8 @@ from eagleeye.infrastructure.providers.contracts import ProviderRunRequest
 from eagleeye.infrastructure.providers.policy import validate_public_scope
 
 KINDS = {"topic": "Thema", "person": "Person", "company": "Unternehmen",
-         "username": "Benutzername", "url": "Webadresse", "place": "Ort"}
+         "username": "Benutzername", "url": "Webadresse", "place": "Ort",
+         "federal": "Bund, Bundestag und öffentliche Register"}
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,25 @@ SOURCES = (
     Source("data_europa", "data.europa.eu", ("topic", "place", "company"), "Europäische Datenkataloge; Lizenz und Qualität beim Herausgeber prüfen.", "https://data.europa.eu/", access="manual"),
     Source("zeitungsportal", "Deutsches Zeitungsportal", ("topic", "person", "company", "place"), "Historische Presse mit Volltextsuche und dauerhaften Quellenverweisen.", "https://www.deutsche-digitale-bibliothek.de/newspaper", access="manual"),
 )
+FEDERAL_SOURCES = (
+    Source("bundesanzeiger", "Bundesanzeiger", ("company", "person", "topic", "federal"), "Amtliche Bekanntmachungen, Unternehmensnachrichten und veröffentlichte Finanzberichte; Inhaltsvolltextsuche bei Rechnungslegungsunterlagen eingeschränkt.", "https://www.bundesanzeiger.de/", access="manual", terms="Recherche kostenlos ohne Registrierung; sitzungsgebundene Trefferlinks durch Fundstelle, Datum und Originaldokument ergänzen."),
+    Source("unternehmensregister", "Unternehmensregister", ("company", "person", "topic", "federal"), "Registerinformationen, Unternehmensveröffentlichungen und Rechnungslegung; veröffentlichte und hinterlegte Unterlagen unterscheiden.", "https://www.unternehmensregister.de/", access="manual", terms="Recherche und Registerinformationen kostenlos; hinterlegte Jahresabschlüsse und Beglaubigungen kostenpflichtig. Kein automatischer Kauf."),
+    Source("bundestag_opendata", "Bundestag – Open Data", ("person", "topic", "federal"), "Abgeordneten-Stammdaten seit 1949, Drucksachen, Plenarprotokolle und namentliche Abstimmungen.", "https://www.bundestag.de/services/opendata", access="download", terms="Maschinenlesbare öffentliche Downloads; keine automatische Gleichsetzung historischer und aktueller Mandate."),
+    Source("wissenschaftliche_dienste", "Bundestag – Wissenschaftliche Dienste", ("topic", "federal"), "Veröffentlichte Ausarbeitungen, Sachstände und Dokumentationen mit Literatur- und Quellenhinweisen.", "https://www.bundestag.de/dokumente/analysen", access="manual", terms="Öffentlich bereitgestellte Arbeiten; Veröffentlichungsstand und Hinweise der jeweiligen Arbeit beachten."),
+    Source("bundesrat", "Bundesrat – Dokumente", ("topic", "person", "federal"), "Öffentliche Drucksachen, Plenarprotokolle und parlamentarische Vorlagen.", "https://www.bundesrat.de/DE/dokumente/dokumente-node.html", access="manual"),
+    Source("govdata", "GovData – Datenportal für Deutschland", ("topic", "company", "place", "federal"), "Zentraler Katalog öffentlicher Verwaltungsdatensätze von Bund, Ländern und Kommunen; verweist auf die Originalanbieter.", "https://www.govdata.de/", access="manual", terms="Lizenz, Kostenfreiheit und technische Abrufmöglichkeit beim jeweiligen Datensatz prüfen."),
+    Source("bundesgesetzblatt", "Bundesgesetzblatt / recht.bund.de", ("topic", "federal"), "Amtliche Verkündung von Bundesgesetzen und Verordnungen; Fundstellen und Fassungsdaten.", "https://www.recht.bund.de/", access="manual"),
+    Source("gesetze_im_internet", "Gesetze im Internet", ("topic", "federal"), "Konsolidiertes geltendes Bundesrecht; keine automatische historische Rechtsstandsprüfung.", "https://www.gesetze-im-internet.de/", access="download", terms="Deutsche Normtexte frei nutzbar; amtliche Verkündungsfassung im Bundesgesetzblatt gegenprüfen."),
+    Source("rechtsprechung_bund", "Rechtsprechung im Internet", ("topic", "company", "federal"), "Ausgewählte veröffentlichte, anonymisierte Bundesgerichtsentscheidungen mit Aktenzeichen und Datum; kein allgemeines Strafregister.", "https://www.rechtsprechung-im-internet.de/", access="download", terms="Öffentlich bereitgestellte Entscheidungen; Anonymisierung respektieren, keine Deanonymisierung."),
+    Source("verwaltungsvorschriften", "Verwaltungsvorschriften im Internet", ("topic", "federal"), "Öffentlich bereitgestellte Verwaltungsvorschriften des Bundes.", "https://www.verwaltungsvorschriften-im-internet.de/", access="manual"),
+    Source("bundeshaushalt", "Bundeshaushalt digital", ("topic", "company", "federal"), "Haushaltstitel, Einnahmen, Ausgaben und Datendownloads; Planansatz ist kein Nachweis einer tatsächlichen Zahlung.", "https://www.bundeshaushalt.de/", access="download"),
+    Source("foerderdatenbank", "Förderdatenbank des Bundes", ("topic", "company", "place", "federal"), "Förderprogramme und Förderorganisationen von Bund, Ländern und EU; keine vollständige Empfängerliste.", "https://www.foerderdatenbank.de/", access="manual"),
+    Source("bundesarchiv", "Bundesarchiv – invenio", ("topic", "person", "company", "federal"), "Öffentlich recherchierbare Archivbeschreibungen und verfügbare Digitalisate.", "https://www.bundesarchiv.de/im-archiv-recherchieren/archivgut-recherchieren/recherchesysteme/invenio/", access="manual", terms="Öffentliche Findmittel bedeuten nicht freien Zugriff auf jede Akte; Schutzfristen und Nutzungsbedingungen beachten."),
+)
+# Registerportal der Länder und kooperative Angebote gehören fachlich in diese
+# Recherchegruppe, ohne sie fälschlich als Bundesbehörden zu bezeichnen.
+SOURCES = tuple(replace(s, kinds=s.kinds + ("federal",)) if s.key in
+                {"handelsregister", "dip", "lobbyregister"} else s for s in SOURCES) + FEDERAL_SOURCES
 BY_KEY = {source.key: source for source in SOURCES}
 
 

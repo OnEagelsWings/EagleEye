@@ -58,6 +58,7 @@ def attach_public_sources501(app, build):
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         caps = set(ctx.team_governance_359.effective_capabilities(user, case_id))
+        can_prepare = "research.run" in caps and any(row["ready"] for row in rows)
         options = "".join('<option value="' + key + '"' + (' selected' if kind == key else '') +
                           '>' + escape(label) + '</option>' for key, label in sources.KINDS.items())
         body = ('<p>Öffentliche Quellen nach Thema, Person, Unternehmen, Benutzername, Webadresse oder Ort auswählen. '
@@ -68,7 +69,7 @@ def attach_public_sources501(app, build):
                 '<label>Rechercheart<select name="kind">' + options + '</select></label>'
                 '<label>Suchbegriff<input name="term" maxlength="190" value="' + escape(term, quote=True) +
                 '"></label><button>Passende Quellen anzeigen</button></form>')
-        if "research.run" in caps:
+        if can_prepare:
             body += (_form(PATH + "/prepare", request, case_id, kind=kind) +
                      '<h2>Suchpaket vorbereiten</h2><label>Konkrete Suchanfrage'
                      '<input name="term" minlength="3" maxlength="190" required value="' + escape(term, quote=True) + '"></label>'
@@ -90,7 +91,7 @@ def attach_public_sources501(app, build):
                              '"> In das Suchpaket aufnehmen</label><p>')
             body += ('</p><a href="' + escape(row["url"], quote=True) + '" target="_blank" '
                      'rel="noopener noreferrer">Quelle öffnen</a></section>')
-        if "research.run" in caps:
+        if can_prepare:
             body += '<p>Bis zu acht Quellen je Paket.</p><button>Suchpaket als Entwurf anlegen</button></form>'
         if plan_id:
             try:

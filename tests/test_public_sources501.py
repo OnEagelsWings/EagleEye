@@ -92,6 +92,14 @@ def test_current_ui_catalog_and_preparation_do_not_fetch(workspace, monkeypatch)
     assert "source\" value=\"orcid" not in r.text  # Not falsely selectable as a live adapter.
     data = client.get("/api/research/public-sources", params={"case_id": cid, "kind": "person"}).json()
     assert not data["network_executed"]
+    federal = client.get("/api/research/public-sources", params={"case_id": cid, "kind": "federal"}).json()
+    entries = {x["id"]: x for x in federal["sources"]}
+    assert {"bundesanzeiger", "unternehmensregister", "handelsregister", "dip", "bundestag_opendata", "govdata"} <= set(entries)
+    assert not entries["bundesanzeiger"]["adapter_available"]
+    assert "kostenpflichtig" in entries["unternehmensregister"]["terms"]
+    federal_page = client.get("/workbench/public-sources", params={"case_id": cid, "kind": "federal"})
+    assert federal_page.status_code == 200 and "Bundesanzeiger" in federal_page.text
+    assert "Suchpaket als Entwurf anlegen" not in federal_page.text
     assert next(x for x in data["sources"] if x["id"] == "gnd")["adapter_available"]
     assert not next(x for x in data["sources"] if x["id"] == "orcid")["adapter_available"]
     r = client.post("/workbench/public-sources/prepare", data={"case_id": cid, "csrf": csrf,
