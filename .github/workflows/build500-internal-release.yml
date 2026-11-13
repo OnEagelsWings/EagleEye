@@ -12,6 +12,7 @@ on:
       - 'tests/test_build499_transfer.py'
       - 'tests/test_build500_release.py'
       - 'tests/test_build500_bootstrap_recovery.py'
+      - 'tests/test_build500_installer_logging.py'
       - 'tests/test_build490_package_contract.py'
       - 'tests/test_build490_server_selection.py'
       - 'INSTALL_EAGLEEYE_500.py'
@@ -47,6 +48,7 @@ jobs:
           tests/test_build499_transfer.py
           tests/test_build500_release.py
           tests/test_build500_bootstrap_recovery.py
+          tests/test_build500_installer_logging.py
           tests/test_build490_package_contract.py
           tests/test_build490_server_selection.py
           tests/test_build490_real_server_start.py
@@ -70,6 +72,7 @@ jobs:
           tests/test_build499_transfer.py
           tests/test_build500_release.py
           tests/test_build500_bootstrap_recovery.py
+          tests/test_build500_installer_logging.py
           tests/test_build490_package_contract.py
           tests/test_build490_server_selection.py
           tests/test_build490_real_server_start.py
