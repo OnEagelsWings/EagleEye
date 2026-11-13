@@ -138,6 +138,8 @@ und wartet auf diese Entscheidung.
 Bis dahin wird 3.4 für Dokumente und Befunde umgesetzt und Stufe 4 vorgezogen. Empfängerstufen:
 „intern“, „Mandant“, „Behörde/Gericht“.
 
+**3.4 umgesetzt 13.11.2026** für Befunde und Dokumente (Eigenschaften folgen mit 3.3).
+
 Reihenfolge ist zwingend: erst eine Datenbank, dann Typen, dann Eigenschaften, dann Markierungen.
 
 | Schritt | Maßnahme | Behebt | Größe |

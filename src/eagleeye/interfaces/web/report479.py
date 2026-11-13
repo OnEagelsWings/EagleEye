@@ -70,11 +70,12 @@ def literal(value):
     # Imported Markdown/HTML and remote image syntax must remain inert.
     return '\n'.join('    '+line for line in str(value).splitlines()) or '    (leer)'
 
-def report_body(app,user,case,notes):
+def report_body(app,user,case,notes,header=None,extra_fields=None):
     states=source_states(app,user,str(case['case_id']),notes)
     lines=['# EagleEye – Quellengebundener Arbeitsbericht','',
         '**KEIN freigegebenes Ermittlungsdossier oder bestätigter Tatsachenbericht.**',
         'Zitate beweisen keine Interpretation. Eigenprüfung und Prüfung durch ein zweites Konto ersetzen keine offizielle Freigabe.','']
+    lines.extend(header or [])
     for label,key in [('Fall','title'),('Auftrag/Zweck','purpose'),('Rechtsgrundlage','legal_basis')]:
         lines.extend([label+':','',literal(case.get(key) or 'im Fall prüfen'),''])
     lines.extend(['Vollständig enthaltene Arbeitsbefunde: '+str(len(notes)),''])
@@ -90,6 +91,7 @@ def report_body(app,user,case,notes):
                 ('Anker-Snapshot',row['anchor_hash']),('Herkunfts-URL (unbestätigte Metadaten)',row['source_url']),
                 ('Quellenintegrität beim Export',states[row['finding_id']]),
                 *(web_fields(str(case['case_id']),row['document_id']) if web_fields else []),
+                *(extra_fields(row) if extra_fields else []),
                 ('Prüfstatus',row['review_state']),('Prüfbegründung',row['review_reason']),
                 ('Prüfendes Konto',row['reviewed_by']),('Verfasst von',row['created_by']),
                 ('Verfasst am',row['created_at']),('Befund-Hash',row['record_hash'])]
@@ -131,6 +133,8 @@ def attach_report(app,build):
             original='/documents458?'+urlencode({'case_id':case_id,'document_id':row['document_id'],'anchor_id':row['anchor_id']})
             web=getattr(app.state,'report_web_summary',None)
             web_line=web(case_id,row['document_id']) if web else ''
+            card_extra=getattr(app.state,'report_card_extra',None)
+            web_line+=card_extra(request,user,case_id,row) if card_extra else ''
 
             cards.append('<section class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(row['interpretation'])+
                 '</p><p>Quellenstand: '+escape(state)+' · Status: '+escape(row['review_state'])+
@@ -141,9 +145,12 @@ def attach_report(app,build):
         for value,label in [(offset-50,'Neuere Arbeitsbefunde'),(offset+50,'Ältere Arbeitsbefunde')]:
             if 0<=value<total:nav+='<a href="'+escape('/workbench/report?'+urlencode({'case_id':case_id,'offset':value}),quote=True)+'">'+label+'</a> '
         link='/workbench/report.md?'+urlencode({'case_id':case_id})
+        levels=getattr(app.state,'report_levels_block',None)
+        download=(levels(request,user,case,case_id) if levels else
+            '<p><a href="'+escape(link,quote=True)+'">Arbeitsbericht als Markdown herunterladen →</a></p>')
         body=('<p>Fall '+escape(str(case.get('title') or ''))+' · '+str(total)+' Arbeitsbefunde insgesamt. Bis zu 50 je Seite.</p>'
             '<p>Eigenprüfung und Prüfung durch ein zweites Konto sind getrennt sichtbar. Keine automatische Tatsachenaufwertung.</p>'
-            '<p><a href="'+escape(link,quote=True)+'">Arbeitsbericht als Markdown herunterladen →</a></p>'
+            +download
             +(''.join(cards) or '<p>Bitte zuerst quellengebundene Arbeitsbefunde speichern.</p>')+'<p>'+nav+'</p>')
         return HTMLResponse(page('Prüfen und Arbeitsbericht erstellen',case_id,body,build),headers={'Cache-Control':'no-store'})
 
@@ -187,16 +194,22 @@ def attach_report(app,build):
         return RedirectResponse('/workbench/report?'+urlencode({'case_id':case_id}),status_code=303)
 
     @app.get('/workbench/report.md')
-    def download_report(request:Request,case_id:str=''):
+    def download_report(request:Request,case_id:str='',level:str='intern'):
         user,case=case_access(app,request,case_id)
+        selector=getattr(app.state,'report_selector',None)  # later builds: recipient levels
+        if level!='intern' and not selector:raise HTTPException(422,'Unbekannte Empfängerstufe.')
         with notes_db(app) as db:
             count=db.one('SELECT COUNT(*) AS n FROM operational_findings_478 WHERE case_id=?',(case_id,))['n']
             if count>1000:raise HTTPException(413,'Mehr als 1000 Befunde: vollständiger Einzelbericht zu groß. Keine Notizen wurden abgeschnitten.')
-            md=report_body(app,user,case,notes_for_case(app,case_id))
+            notes=notes_for_case(app,case_id)
+            header=extra=None
+            if selector:notes,header,extra=selector(user,case,notes,level)
+            md=report_body(app,user,case,notes,header=header,extra_fields=extra)
         if len(md.encode())>20*1024*1024:raise HTTPException(413,'Vollständiger Arbeitsbericht überschreitet 20 MiB.')
         safe_id=''.join(ch for ch in case_id if ch.isalnum() or ch in '-_')[:60] or 'fall'
+        suffix='' if level=='intern' else '_'+''.join(ch for ch in level if ch.isalnum())[:20]
         return Response(md,media_type='text/markdown; charset=utf-8',
-            headers={'Content-Disposition':'attachment; filename="EagleEye_'+safe_id+'_Arbeitsbericht.md"',
+            headers={'Content-Disposition':'attachment; filename="EagleEye_'+safe_id+'_Arbeitsbericht'+suffix+'.md"',
                 'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
 
     @app.get('/workbench/recovery',response_class=HTMLResponse)

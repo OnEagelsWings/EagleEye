@@ -117,9 +117,28 @@ Nebenbefunde, mit behoben:
 * Die Herkunftsprüfung aus 456 war nur als JSON-Schnittstelle erreichbar; Quellfamilien sind jetzt ein
   bedienbarer Weg dorthin.
 
+## Schutzklassen und Empfängerstufen (Schritt 3.4)
+
+* Jeder neue Befund bekommt beim Anlegen eine Schutzklasse: „offen“, „intern“ (Vorbelegung) oder
+  „besonders schutzwürdig (Art. 9/10 DSGVO)“. Quelldokumente haben ebenfalls eine Klasse (Vorbelegung
+  „offen“, weil EagleEye öffentliche Quellen speichert). Wirksam ist die strengere von beiden.
+* Ändern geht an jeder Karte unter „Prüfen und Arbeitsbericht erstellen“, nur mit Begründung; die
+  Historie bleibt erhalten. Ältere Befunde ohne Klasse gelten als „intern“. Eine manipulierte
+  Markierung gilt ebenfalls als „intern“ und wird angezeigt.
+* Der Arbeitsbericht ist in drei Stufen herunterladbar:
+
+| Stufe | Enthält |
+|---|---|
+| intern | alle Befunde (wie bisher) |
+| Mandant | nur geprüfte Befunde (Eigen- oder Zweitprüfung) mit wirksamer Klasse „offen“ |
+| Behörde/Gericht | nur von einem zweiten Konto geprüfte Befunde mit unveränderter Quelle und unveränderter WARC-Datei; „offen“ und „besonders schutzwürdig“, nie „intern“ |
+
+* Jeder Bericht nennt Stufe, Anzahl und die Gründe aller Auslassungen; jeder Export wird protokolliert.
+* Tests: `tests/test_build492_markings.py` (5 Szenarien), Chromium-Check der Berichtsseite.
+
 ## Prüfen
 
 ```bash
-python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
+python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
 python -m pytest -q tests/test_build492_browser.py   # benötigt Playwright + Chromium
 ```

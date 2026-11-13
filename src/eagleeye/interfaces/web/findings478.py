@@ -160,6 +160,8 @@ def attach_findings(app,build):
         form+='<form method="post"><input type="hidden" name="case_id" value="'+escape(case_id,quote=True)+'"><input type="hidden" name="csrf" value="'+token+'">'
         form+='<label>Originalfundstelle<select name="anchor_ref" required>'+(''.join(choices) or '<option value="">Zuerst ein lesbares Dokument importieren</option>')+'</select></label>'
         form+='<label>Einordnung<select name="kind">'+''.join('<option value="'+k+'">'+v+'</option>' for k,v in KINDS.items())+'</select></label>'
+        extra_field=getattr(app.state,'finding_form_extra',None)  # later builds: protection class
+        if extra_field:form+=extra_field()
         form+='<label>Kurzbezeichnung<input name="title" required minlength="4" maxlength="180"></label><label>Eigene Beobachtung, Unsicherheit oder Gegenbeleg<textarea name="interpretation" required minlength="10" maxlength="2400" rows="5"></textarea></label><button>Mit Quelle als Arbeitsbefund speichern</button></form></section>'
         if 'research.run' not in ctx.team_governance_359.effective_capabilities(user,case_id):
             form='<p>Du kannst die Arbeitsbefunde lesen. Zum Anlegen ist eine Rechercheberechtigung in diesem Fall erforderlich.</p>'
@@ -188,6 +190,8 @@ def attach_findings(app,build):
             source_url=doc['source_url'],created_by=user['username'],created_at=datetime.now(timezone.utc).isoformat(),
             review_state='unreviewed',review_reason='',reviewed_by='',kind=kind,anchor_hash=anchor['record_hash'],legacy_imported=0)
         row['record_hash']=finding_hash(row);columns=BASE_COLUMNS+('record_hash',)
+        created_hook=getattr(app.state,'finding_created_hook',None)
+        if created_hook:created_hook.validate(form)
         with notes_db(app) as db:
             ctx.document_intelligence_458._identity(user,case_id,'research.run',case_id)
             current,_,current_anchor=get_anchor(ctx,user,case_id,doc_id,anchor_id)
@@ -195,4 +199,5 @@ def attach_findings(app,build):
             db.execute(INSERT_FINDING_SQL,tuple(row[k] for k in columns))
             ctx.audit.log('human_finding_created_478','finding',row['finding_id'],case_id,
                 {'actor':user['username'],'document_id':doc_id,'anchor_hash':row['anchor_hash'],'claims_created':0})
+            if created_hook:created_hook(user,case_id,row,form)
         return RedirectResponse('/workbench/findings?'+urlencode({'case_id':case_id,'document_id':doc_id}),status_code=303)

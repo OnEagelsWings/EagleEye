@@ -20,6 +20,7 @@ from test_build471_local_ai import workspace  # noqa: F401  (fixture)
 from test_build492_intel import ARTICLE, FakeTransport, _pdf_with_table_and_scan
 from test_build492_hardening import _pdf, _scan_pdf
 from test_build492_convergence import _evidence_case, _lead
+from test_build492_markings import ADMIN, add_finding, login
 
 PAGES = ["/workbench", "/workbench/intel", "/workbench/intel/web", "/workbench/intel/documents", "/workbench/leads483",
          "/workbench/report",
@@ -49,6 +50,8 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
                                                raw=_scan_pdf(3), title="Gescannter Bericht")
     _evidence_case(workspace)  # syndicated copies as accepted evidence in one claim: family review form
     _lead(workspace, url="https://news.example/x")
+    login(workspace, ADMIN)
+    add_finding(workspace, "Befund mit Schutzklasse für den Browsercheck", "offen")
     monkeypatch.setattr(webcapture, "PinnedTransport", FakeTransport)
     ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="bericht.pdf",
                                                raw=_pdf_with_table_and_scan(), title="Jahresbericht 2025")
