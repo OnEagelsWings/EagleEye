@@ -5,7 +5,7 @@ Umlaut-Schreibweisen, Initialen, vertauschte Reihenfolge, Tippfehler in langen N
 Griechisch, Arabisch und Hebräisch. Jeder Vorschlag trägt eine deutsche Begründung, damit die prüfende Person
 sieht, *warum* er entstand. Es wird nie automatisch zusammengeführt.
 
-Gemessen am unabhängigen Prüfsatz ``tests/data/entity_pairs_holdout.json`` (27 Paare): Präzision 0,93 / Trefferquote 0,93.
+Gemessen am unabhängigen Prüfsatz ``tests/benchmarks/entity_pairs_holdout.json`` (27 Paare): Präzision 0,93 / Trefferquote 0,93.
 """
 from __future__ import annotations
 

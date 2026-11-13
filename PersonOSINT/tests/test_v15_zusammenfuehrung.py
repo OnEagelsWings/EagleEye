@@ -20,7 +20,7 @@ from conftest import add_user, build_app, setup_admin
 from personosint import documents, lineage, namematch, network, pivot, webarchive
 from personosint.sources import HttpResponse, SourceError
 
-DATA = Path(__file__).parent / "data"
+DATA = Path(__file__).parent / "benchmarks"   # nicht „data“: dieser Ordnername ist im Repository von der Versionierung ausgeschlossen
 BODY = ("Die Nordhafen Projekt GmbH hat nach Recherchen dieser Redaktion im Jahr 2019 mehrere Grundstücke am alten Hafenbecken erworben. "
         "Geschäftsführer Max Mustermann bestätigte auf Anfrage, dass die Gesellschaft dafür ein Darlehen der Seeblick Holding erhalten hat. "
         "Die Stadtverwaltung prüft derzeit, ob bei der Vergabe der Flächen alle Vorschriften eingehalten wurden. "
