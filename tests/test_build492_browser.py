@@ -18,8 +18,11 @@ from eagleeye.application.intel492 import webcapture
 from eagleeye.interfaces.web.app492 import create_workspace_app492
 from test_build471_local_ai import workspace  # noqa: F401  (fixture)
 from test_build492_intel import ARTICLE, FakeTransport, _pdf_with_table_and_scan
+from test_build492_hardening import _pdf, _scan_pdf
+from test_build492_convergence import _evidence_case, _lead
 
-PAGES = ["/workbench", "/workbench/intel", "/workbench/intel/web", "/workbench/intel/documents",
+PAGES = ["/workbench", "/workbench/intel", "/workbench/intel/web", "/workbench/intel/documents", "/workbench/leads483",
+         "/workbench/report",
          "/workbench/intel/lineage", "/workbench/intel/network", "/workbench/entities488"]
 SHOTS = os.environ.get("EAGLEEYE_SCREENSHOT_DIR", "")
 
@@ -31,7 +34,21 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
     app, client, user, case_id, *_ = workspace
     ctx = app.state.context
     FakeTransport.calls, FakeTransport.responses = [], {
-        "https://news.example/x": (200, [("Content-Type", "text/html; charset=utf-8")], ARTICLE)}
+        "https://news.example/x": (200, [("Content-Type", "text/html; charset=utf-8")], ARTICLE),
+        "https://short.example/r": (302, [("Location", "https://register.example/a.pdf")], b""),
+        "https://register.example/a.pdf": (200, [("Content-Type", "application/pdf")], _pdf())}
+    # Slow, observable text recognition: three scanned pages, a short pause per page.
+    from eagleeye.application.intel492 import docstructure
+
+    def slow_ocr(image):
+        time.sleep(0.7)
+        return [{"text": "Gescannter Text einer Seite", "confidence": 90.0, "box": [300, 300, 900, 360]}]
+    monkeypatch.setattr(docstructure, "ocr_available", lambda: (True, "fake-ocr"))
+    monkeypatch.setattr(docstructure, "tesseract_page", slow_ocr)
+    ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="scan.pdf",
+                                               raw=_scan_pdf(3), title="Gescannter Bericht")
+    _evidence_case(workspace)  # syndicated copies as accepted evidence in one claim: family review form
+    _lead(workspace, url="https://news.example/x")
     monkeypatch.setattr(webcapture, "PinnedTransport", FakeTransport)
     ctx.document_intelligence_458.import_bytes(identity=user, case_id=case_id, filename="bericht.pdf",
                                                raw=_pdf_with_table_and_scan(), title="Jahresbericht 2025")
@@ -87,6 +104,33 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
                 assert page.get_by_text("✓ unverändert").count() == 1
                 assert FakeTransport.calls == ["https://news.example/x"]
 
+                # Redirect to another server: shown, confirmed by click, PDF captured.
+                page.get_by_label("Öffentliche Adresse (Webseite oder PDF)").fill("https://short.example/r")
+                page.locator('form[action="/workbench/intel/web"] input[name="opsec"]').first.check()
+                page.get_by_role("button", name="Seite jetzt sichern").click()
+                page.wait_for_load_state()
+                alert = page.locator("section[role=alert]")
+                assert "Die Seite leitet weiter" in alert.inner_text() and "register.example/a.pdf" in alert.inner_text()
+                assert FakeTransport.calls[-1] == "https://short.example/r"
+                alert.locator('input[name="opsec"]').check()
+                alert.get_by_role("button", name="Weiterleitungsziel sichern").click()
+                page.wait_for_url("**done=pdf**")
+                assert page.get_by_role("status").inner_text().startswith("PDF gesichert")
+                assert page.locator("span.pill", has_text="PDF").count() == 1
+
+                # Text recognition runs in the background; the page updates itself.
+                page.goto(base + "/workbench/intel/documents?" + urlencode({"case_id": case_id}))
+                row = page.locator("tr", has_text="Gescannter Bericht")
+                row.get_by_role("button", name="Fundstellen ergänzen").click()
+                page.wait_for_url("**done=queued**")
+                assert page.get_by_role("status").inner_text().startswith("Auftrag gestartet")
+                row = page.locator("tr", has_text="Gescannter Bericht")
+                assert row.locator("progress").count() == 1 and row.get_by_role("button", name="Abbrechen").count() == 1
+                page.wait_for_function("() => /Seite [12] von 3/.test(document.body.innerText)", timeout=15000)
+                page.wait_for_function("() => document.body.innerText.includes('3 OCR-Absätze')", timeout=20000)
+                assert page.locator("progress").count() == 0, "finished jobs leave no progress bar"
+                assert page.locator("tr", has_text="Gescannter Bericht").get_by_text("bereits ergänzt").count() == 1
+
                 for width in (1280, 390):
                     page.set_viewport_size({"width": width, "height": 900})
                     for path in PAGES:
@@ -96,7 +140,7 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
                         overflow = page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth")
                         assert overflow <= 1, f"{path} scrolls horizontally by {overflow}px at {width}px"
                         unlabeled = page.evaluate("""() => [...document.querySelectorAll('main input:not([type=hidden]), main select, main textarea')]
-                            .filter(el => !el.closest('label') && !el.getAttribute('aria-label')).length""")
+                            .filter(el => !el.closest('label') && !el.getAttribute('aria-label') && !(el.id && document.querySelector('label[for="' + el.id + '"]'))).length""")
                         assert unlabeled == 0, path
                         if SHOTS:
                             Path(SHOTS).mkdir(parents=True, exist_ok=True)

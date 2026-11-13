@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from html import escape
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
@@ -18,16 +19,19 @@ from starlette.concurrency import run_in_threadpool
 
 from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye.application.build488.reviews import reviews_for_case
-from eagleeye.application.intel492 import captures, docstructure, entitymatch, lineage, network, webcapture
+from eagleeye.application.intel492 import captures, docstructure, enrichjobs, entitymatch, lineage, network, webcapture
+from eagleeye.application.intel492 import lineage_review
+from eagleeye.application.intel492.throttle import Throttle
 from .app364 import CSRF_COOKIE
 from .findings478 import bounded_form, verify_post
 from .operations476 import case_access, page
+from .research483 import listed as listed_leads
 
 EXTRA_CSS = ('<style>.ok{color:#9af3de}.bad{color:#ffb4a8}.muted{color:#c2d3e3;font-size:.92rem}'
              '.pill{display:inline-block;border:1px solid #647b93;border-radius:999px;padding:.1rem .6rem;margin:.1rem .2rem .1rem 0;font-size:.85rem}'
              '.stat{font-size:1.6rem;font-weight:700;display:block}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}'
              '.row form{margin:0}label.check{display:flex;gap:.5rem;align-items:flex-start}label.check input{width:auto;margin:.35rem 0 0}'
-             'details summary{cursor:pointer}'
+             'details summary{cursor:pointer}progress{width:100%;max-width:14rem;height:1rem;vertical-align:middle}'
              '@media (max-width:640px){table.stack thead{position:absolute;left:-9999px}'
              'table.stack tr{display:block;border:1px solid #647b93;border-radius:10px;padding:.4rem .8rem;margin:.6rem 0}'
              'table.stack td{display:block;border:0;padding:.25rem 0;word-break:normal;overflow-wrap:anywhere}'
@@ -52,6 +56,19 @@ def _stack_tables(html: str) -> str:
 
 KIND_DE = {"person": "Person", "organization": "Organisation", "company": "Unternehmen", "place": "Ort",
            "event": "Ereignis", "document": "Dokument"}
+
+
+def _when(value: str) -> str:
+    """ISO date or timestamp -> '12.11.2026' or '12.11.2026 13:01'; anything else unchanged."""
+    match = re.match(r"(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?", str(value or ""))
+    if not match:
+        return str(value or "")
+    y, m, d, hh, mm = match.groups()
+    return f"{d}.{m}.{y}" + (f" {hh}:{mm}" if hh else "")
+
+
+def _sim(value) -> str:
+    return "–" if value is None else f"{float(value):.2f}".replace(".", ",")
 
 
 def _count(n: int, one: str, many: str) -> str:
@@ -89,8 +106,50 @@ def attach_intel492(app, build: str, base_dir) -> None:
     ctx = app.state.context
     captures.initialize(ctx)
     docstructure.initialize(ctx)
-    ctx.entity_candidate_matcher = entitymatch.suggest_case_pairs_492
+    lineage.initialize(ctx)
+    ctx.entity_candidate_matcher = entitymatch.CandidateCache()
     app.state.intel492 = True
+    ctx.document_web_provenance = lambda case_id, document_id: captures.provenance_for_document(ctx, case_id, document_id)
+
+    def report_web_fields(case_id, document_id):
+        provenance = captures.provenance_for_document(ctx, case_id, document_id)
+        return captures.report_fields(provenance) if provenance else []
+
+    def report_web_summary(case_id, document_id):
+        provenance = captures.provenance_for_document(ctx, case_id, document_id)
+        if not provenance:
+            return ""
+        state = ('<span class="ok">✓ WARC unverändert</span>' if provenance["integrity_verified"]
+                 else '<span class="bad">✗ WARC verändert – nicht verwenden</span>')
+        kind = "Archivfassung" if provenance["kind"] == "archive" else "Web-Beleg"
+        return ('<p>' + kind + ', abgerufen ' + escape(provenance["captured_at"][:16].replace("T", " ")) + ' UTC · ' + state +
+                ' · <a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=provenance["capture_id"]) + '">WARC</a></p>')
+
+    def lead_actions(request, user, case_id, leads):
+        found = captures.captures_by_lead(ctx, case_id, leads)
+        allowed = _can_run(ctx, user, case_id)
+        just_saved = request.query_params.get("captured", "")
+        out = {}
+        for lead in leads:
+            rows = found.get(lead["lead_id"], [])
+            html = ""
+            if rows:
+                last = rows[0]
+                html += ('<p role="status">✓ Als Web-Beleg gesichert am ' + escape(last["captured_at"][:16].replace("T", " ")) + ' UTC'
+                         + (' (eben gesichert)' if lead["lead_id"] == just_saved else '') + ' · <a href="' +
+                         _link("/documents458", case_id=case_id, document_id=last["document_id"]) + '">Dokument öffnen</a> · <a href="' +
+                         _link("/workbench/findings", case_id=case_id, document_id=last["document_id"]) + '">Befund notieren</a>'
+                         + (' · ' + str(len(rows)) + ' Sicherungen' if len(rows) > 1 else '') + '</p>')
+            if allowed:
+                html += ('<p><a href="' + _link("/workbench/intel/web", case_id=case_id, lead=lead["lead_id"]) + '">'
+                         + ('Erneut als Web-Beleg sichern' if rows else 'Als Web-Beleg sichern') + ' →</a></p>')
+            out[lead["lead_id"]] = html
+        return out
+
+    app.state.lead_actions = lead_actions
+    app.state.report_web_fields = report_web_fields
+    app.state.report_web_summary = report_web_summary
+    app.state.intel492_throttle = Throttle()
 
     def render(title, case_id, body, status=200):
         return HTMLResponse(page(title, case_id, EXTRA_CSS + _stack_tables(body), build), status_code=status,
@@ -104,7 +163,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
     def hub(request: Request, case_id: str = ""):
         user, case = case_access(app, request, case_id)
         docs = ctx.document_intelligence_458.documents(identity=user, case_id=case_id)
-        caps = captures.captures_for_case(ctx, case_id)
+        cap_count = captures.capture_count(ctx, case_id)
         pdfs = [d for d in docs if d["media_type"] == "application/pdf"]
         enriched = sum(1 for d in pdfs if docstructure.enrichment_for(ctx, d["document_id"]))
         ocr_ok, engine = docstructure.ocr_available()
@@ -118,9 +177,9 @@ def attach_intel492(app, build: str, base_dir) -> None:
         body = ('<p>Werkzeuge, um Quellen beweisfest zu sichern und den Fall auszuwerten. Alle Ergebnisse sind '
                 '<strong>Prüfmaterial</strong> – sie bestätigen keine Tatsachen und führen nichts automatisch zusammen.</p>'
                 '<div class="grid">'
-                + card("Webseite als Beleg sichern", _count(len(caps), "Web-Beleg", "Web-Belege"),
-                       "Eine öffentliche Seite oder eine archivierte Fassung als WARC-Original sichern; "
-                       "der Haupttext wird als prüfbares Dokument mit Textankern angelegt.", "/workbench/intel/web", "Seite sichern")
+                + card("Webseite als Beleg sichern", _count(cap_count, "Web-Beleg", "Web-Belege"),
+                       "Eine öffentliche Seite, ein PDF oder eine archivierte Fassung als WARC-Original sichern; "
+                       "der Inhalt wird als prüfbares Dokument mit Fundstellen angelegt.", "/workbench/intel/web", "Seite sichern")
                 + card("Struktur & Texterkennung", f"{enriched} / {len(pdfs)} PDFs ergänzt",
                        "Tabellen, Überschriften und – bei Scans – OCR-Text als zusätzliche Fundstellen anlegen. "
                        + ("Texterkennung verfügbar." if ocr_ok else "Texterkennung nicht installiert."),
@@ -177,11 +236,25 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return render("Sichern & Auswerten", case_id, body)
 
     # ------------------------------------------------------------- web capture
-    def web_page(request, user, case_id, *, url="", message="", error="", redirect=None, snapshots=None, status=200):
+    def lead_for(case_id, lead_id):
+        """The research lead (Build 483) in this case, integrity-checked, or 422."""
+        if not lead_id:
+            return None
+        lead = next((x for x in listed_leads(ctx, case_id) if x["lead_id"] == lead_id), None)
+        if lead is None:
+            raise HTTPException(422, "Der Recherchefund gehört nicht zu diesem Fall.")
+        return lead
+
+    def web_page(request, user, case_id, *, url="", message="", error="", redirect=None, snapshots=None, status=200, lead=None):
         rows = captures.captures_for_case(ctx, case_id)
         allowed = _can_run(ctx, user, case_id)
         token = _csrf(request)
+        lead_input = ('<input type="hidden" name="lead_id" value="' + escape(lead["lead_id"], quote=True) + '">') if lead else ""
         notice = ""
+        if lead:
+            notice += ('<p class="card">Aus dem Recherchefund <strong>' + escape(lead["title"]) + '</strong>. '
+                       'Die Adresse ist übernommen; abgerufen wird erst nach deiner Bestätigung. '
+                       '<a href="' + _link("/workbench/leads483", case_id=case_id) + '">Zurück zu den Recherchefunden</a></p>')
         if message:
             notice += '<p class="card ok" role="status">' + escape(message) + '</p>'
         if error:
@@ -190,21 +263,34 @@ def attach_intel492(app, build: str, base_dir) -> None:
                  '<span>Mir ist bewusst, dass der Zielserver bzw. das Internet Archive diesen Abruf und meine '
                  'IP-Adresse sieht. Die Adresse enthält keine vertraulichen Angaben.</span></label>')
         if redirect:
-            notice += ('<section class="card warn"><h2>Die Seite leitet weiter</h2><p>HTTP ' + str(redirect["status"]) +
-                       ' nach: <code>' + escape(redirect["location"] or "unbekannt") + '</code></p>'
-                       '<p>Weiterleitungen werden nicht automatisch verfolgt. Prüfe das Ziel und sichere es bei Bedarf bewusst.</p>'
-                       + ('<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
-                          '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="url" value="' +
-                          escape(redirect["location"], quote=True) + '">' + opsec + '<button>Weiterleitungsziel sichern</button></form>'
-                          if allowed and redirect["location"].startswith(("http://", "https://")) else "") + '</section>')
+            via = [v for v in redirect.get("via", []) if v][: webcapture.MAX_CONFIRMED_HOPS + 1]
+            target = redirect.get("location") or ""
+            box = ('<section class="card warn" role="alert"><h2>Die Seite leitet weiter</h2>'
+                   '<p>Von <code>' + escape(redirect.get("from") or url) + '</code><br>nach <code>' +
+                   escape(target or "unbekannt") + '</code> (HTTP ' + str(redirect["status"]) + ')</p>')
+            if not redirect.get("followable"):
+                box += '<p>' + escape(redirect.get("problem") or "Dieses Ziel wird nicht automatisch gesichert. Prüfe die Adresse und gib sie bei Bedarf direkt ein.") + '</p>'
+            elif len(via) > webcapture.MAX_CONFIRMED_HOPS:
+                box += ('<p>Die Weiterleitungskette ist länger als ' + str(webcapture.MAX_CONFIRMED_HOPS) +
+                        ' bestätigte Schritte. Prüfe das Ziel und gib die endgültige Adresse direkt ein.</p>')
+            elif allowed:
+                box += ('<p>Weiterleitungen auf denselben Server verfolgt EagleEye selbst. Dieses Ziel liegt auf einem '
+                        'anderen Server. Prüfe es und bestätige den Abruf, wenn du diesen Server kontaktieren willst.</p>'
+                        '<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
+                        '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="url" value="' + escape(target, quote=True) + '">' +
+                        "".join('<input type="hidden" name="via" value="' + escape(v, quote=True) + '">' for v in via) + lead_input +
+                        opsec + '<button>Weiterleitungsziel sichern</button></form>')
+            notice += box + '</section>'
         if allowed:
             forms = ('<section class="card"><h2>Live-Seite sichern</h2>'
                      '<form method="post" action="/workbench/intel/web"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
-                     '<input type="hidden" name="csrf" value="' + token + '">'
-                     '<label>Öffentliche Adresse<input name="url" type="url" required maxlength="2000" placeholder="https://…" value="' + escape(url, quote=True) + '"></label>'
+                     '<input type="hidden" name="csrf" value="' + token + '">' + lead_input +
+                     '<label>Öffentliche Adresse (Webseite oder PDF)<input name="url" type="url" required maxlength="2000" placeholder="https://…" value="' + escape(url, quote=True) + '"></label>'
                      + opsec + '<button>Seite jetzt sichern</button></form>'
                      '<p class="muted">Gespeichert werden: die unveränderte Serverantwort als WARC-Datei (Archivstandard), deren SHA-256 und der '
-                     'erkannte Haupttext als Dokument mit Fundstellen. Keine Weiterleitungen, keine internen Adressen, max. 3 MB.</p></section>'
+                     'Inhalt als Dokument mit Fundstellen – bei Webseiten der erkannte Haupttext, bei PDFs das PDF selbst. '
+                     'Weiterleitungen auf denselben Server werden verfolgt und mitgesichert, andere erst nach deiner Bestätigung. '
+                     'Keine internen Adressen. Webseiten bis 3 MB, PDFs bis 12 MB.</p></section>'
                      '<section class="card"><h2>Archivierte Fassungen (Internet Archive)</h2>'
                      '<form method="post" action="/workbench/intel/web/wayback"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
                      '<input type="hidden" name="csrf" value="' + token + '">'
@@ -232,23 +318,41 @@ def attach_intel492(app, build: str, base_dir) -> None:
         for row in rows:
             integrity = '<span class="ok">✓ unverändert</span>' if row["integrity_ok"] else '<span class="bad">✗ Integrität verletzt</span>'
             table += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=row["document_id"]) + '">' +
-                      escape(row["page_title"] or row["url"]) + '</a><br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
+                      escape(row["page_title"] or row["url"]) + '</a>' + (' <span class="pill">PDF</span>' if row["content_type"] == "application/pdf" else '') +
+                      '<br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
                       '<td>' + ("Archiv" if row["kind"] == "archive" else "Live") + '<br><span class="muted">' + escape(row["captured_at"][:16].replace("T", " ")) + ' UTC</span></td>'
                       '<td>' + escape(row["page_published"] or "–") + '</td><td>' + integrity + '</td>'
                       '<td><a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=row["capture_id"]) + '">WARC</a> · '
                       '<a href="' + _link("/workbench/findings", case_id=case_id, document_id=row["document_id"]) + '">Befund notieren</a></td></tr>')
         listing = ('<section class="card"><h2>Gesicherte Web-Belege (' + str(len(rows)) + ')</h2>'
-                   + ('<table><thead><tr><th>Seite</th><th>Art / erfasst</th><th>Veröffentlicht laut Seite</th><th>Original</th><th>Weiter</th></tr></thead><tbody>'
+                   + ('<table><thead><tr><th>Seite</th><th>Art / erfasst</th><th>Datum laut Quelle</th><th>Original</th><th>Weiter</th></tr></thead><tbody>'
                       + table + '</tbody></table>' if rows else '<p>Noch keine Web-Belege gesichert.</p>') + '</section>')
         body = back(case_id) + notice + snap_html + forms + listing
         return render("Webseite als Beleg sichern", case_id, body, status)
 
     @app.get("/workbench/intel/web", response_class=HTMLResponse)
-    def web_view(request: Request, case_id: str = "", done: str = "", url: str = ""):
+    def web_view(request: Request, case_id: str = "", done: str = "", lead: str = "", url: str = ""):
+        # Two entry points are supported: a lead id (bound to the stored research lead, preferred)
+        # and a plain url prefill (older links from the leads list). GET never fetches a target.
         user, _ = case_access(app, request, case_id)
+        source = lead_for(case_id, lead)
         message = {"live": "Seite gesichert. Bitte Haupttext und Fundstellen im Dokument prüfen.",
+                   "pdf": "PDF gesichert. Die Fundstellen stammen direkt aus dem PDF; Tabellen und gescannte Seiten "
+                          "lassen sich unter „Struktur & Texterkennung“ ergänzen.",
                    "archive": "Archivierte Fassung gesichert. Bitte Haupttext und Fundstellen prüfen."}.get(done, "")
-        return web_page(request, user, case_id, url=url[:2000], message=message)
+        return web_page(request, user, case_id, message=message, url=source["url"] if source else url[:2000], lead=source)
+
+    def throttled(request, user, case_id, url, host):
+        """Return an error page when the per-user or per-server limit is reached, else None."""
+        limiter = app.state.intel492_throttle
+        wait, scope = limiter.check(str(user.get("user_id") or user["username"]), host)
+        if not wait:
+            return None
+        limit = limiter.per_host if scope == "host" else limiter.per_user
+        text = ("Abruflimit erreicht: höchstens " + str(limit) + " Abrufe pro Minute" +
+                (" je Zielserver" if scope == "host" else "") + ". Bitte in " + str(wait) + " Sekunden erneut versuchen.")
+        ctx.audit.log("web_capture_throttled_492", "web_capture", "", case_id, {"actor": user["username"], "scope": scope})
+        return web_page(request, user, case_id, url=url, error=text, status=429)
 
     @app.post("/workbench/intel/web/wayback", response_class=HTMLResponse)
     async def wayback_list(request: Request):
@@ -259,6 +363,9 @@ def attach_intel492(app, build: str, base_dir) -> None:
         archive_url = str(form.get("archive_url") or "").strip()
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=archive_url, error="Bitte die Übermittlung an web.archive.org bestätigen.", status=422)
+        blocked = throttled(request, user, case_id, archive_url, webcapture.WAYBACK_HOST)
+        if blocked is not None:
+            return blocked
         try:
             snaps = await run_in_threadpool(webcapture.wayback_snapshots, archive_url)
         except webcapture.CaptureError as exc:
@@ -267,29 +374,53 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return web_page(request, user, case_id, url=archive_url, snapshots=snaps)
 
     async def _capture_post(request: Request, kind: str):
-        form = await bounded_form(request, max_bytes=8192)
+        form = await bounded_form(request, max_bytes=16384)
         case_id = str(form.get("case_id") or "")
         user, _ = case_access(app, request, case_id, "research.run")
         verify_post(app, request, user, form.get("csrf", ""))
         url = str(form.get("url") or "").strip()
+        via = [str(v) for v in form.getlist("via")][: webcapture.MAX_CONFIRMED_HOPS]
+        lead = lead_for(case_id, str(form.get("lead_id") or "")) if kind == "live" else None
         if form.get("opsec") != "yes":
-            return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422)
+            return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422, lead=lead)
+        result = None
         try:
+            host = webcapture.WAYBACK_HOST if kind == "archive" else (urlsplit(webcapture.normalize_public_url(url)).hostname or "")
             archive_url = webcapture.wayback_raw_url(str(form.get("timestamp") or ""), url) if kind == "archive" else ""
-            result = await run_in_threadpool(webcapture.capture, url, archive_url=archive_url,
-                                             kind="Archivfassung" if kind == "archive" else "Live-Seite")
+            blocked = throttled(request, user, case_id, url, host)
+            if blocked is not None:
+                return blocked
+            result = await run_in_threadpool(lambda: webcapture.capture(
+                url, archive_url=archive_url, kind="Archivfassung" if kind == "archive" else "Live-Seite", via=via))
             if result.get("redirect"):
-                return web_page(request, user, case_id, url=url, redirect=result)
+                return web_page(request, user, case_id, url=url, redirect=result, lead=lead)
 
             def store():
                 with ctx.audit.actor_scope(user["username"]):
-                    return captures.store_capture(ctx, identity=user, case_id=case_id, result=result, kind=kind)
+                    row = captures.store_capture(ctx, identity=user, case_id=case_id, result=result, kind=kind)
+                    if lead:
+                        captures.link_lead(ctx, case_id=case_id, capture_id=row["capture_id"], lead_id=lead["lead_id"],
+                                           created_at=row["captured_at"])
+                    return row
             await run_in_threadpool(store)
         except webcapture.CaptureError as exc:
-            return web_page(request, user, case_id, url=url, error=str(exc), status=422)
-        except (ValueError, PermissionError) as exc:
-            return web_page(request, user, case_id, url=url, error="Speichern nicht möglich: " + str(exc)[:200], status=422)
-        return RedirectResponse("/workbench/intel/web?" + urlencode({"case_id": case_id, "done": kind}), status_code=303)
+            return web_page(request, user, case_id, url=url, error=str(exc), status=422, lead=lead)
+        except Exception as exc:
+            # A broken PDF fails inside the PDF parser with library-specific errors; no
+            # parser details are shown to the user. Everything else must stay visible as a bug.
+            if result and result.get("content_type") == "application/pdf":
+                text = ("Das PDF konnte nicht übernommen werden. Mögliche Gründe: verschlüsselt, beschädigt, "
+                        "ohne Seiten oder mehr als 160 Seiten.")
+            elif isinstance(exc, (ValueError, PermissionError)):
+                text = "Speichern nicht möglich: " + str(exc)[:200]
+            else:
+                raise
+            return web_page(request, user, case_id, url=url, error=text, status=422, lead=lead)
+        done = "pdf" if result.get("content_type") == "application/pdf" and kind == "live" else kind
+        target = {"case_id": case_id, "done": done}
+        if lead:
+            return RedirectResponse("/workbench/leads483?" + urlencode({"case_id": case_id, "captured": lead["lead_id"]}), status_code=303)
+        return RedirectResponse("/workbench/intel/web?" + urlencode(target), status_code=303)
 
     @app.post("/workbench/intel/web")
     async def web_capture(request: Request):
@@ -315,6 +446,82 @@ def attach_intel492(app, build: str, base_dir) -> None:
                                  "Cache-Control": "no-store"})
 
     # ------------------------------------------------------- documents / OCR
+    worker_lock = threading.Lock()
+
+    def worker_loop():
+        try:
+            while True:
+                if enrichjobs.process_next(ctx) is None:
+                    with worker_lock:  # decide under the lock, so a job queued right now is not missed
+                        if not ctx.db.one("SELECT 1 AS x FROM phase15_jobs WHERE job_type=? AND status='queued' LIMIT 1",
+                                          (enrichjobs.JOB_TYPE,)):
+                            app.state.intel492_worker = None
+                            return
+        except Exception:  # database closed during shutdown: the job is re-queued on next start
+            with worker_lock:
+                app.state.intel492_worker = None
+
+    def kick_worker():
+        if not app.state.intel492_autostart:
+            return
+        with worker_lock:
+            thread = app.state.intel492_worker
+            if thread is None or not thread.is_alive():
+                thread = threading.Thread(target=worker_loop, name="intel492-enrich", daemon=True)
+                app.state.intel492_worker = thread
+                thread.start()
+
+    app.state.intel492_autostart = True
+    app.state.intel492_worker = None
+    app.state.intel492_kick = kick_worker
+    if enrichjobs.recover_interrupted(ctx) or ctx.db.one(
+            "SELECT 1 AS x FROM phase15_jobs WHERE job_type=? AND status='queued' LIMIT 1", (enrichjobs.JOB_TYPE,)):
+        kick_worker()
+
+    @app.get("/workbench/intel/progress.js")
+    def progress_script():
+        # Same-origin asset: the inherited CSP blocks inline scripts.
+        script = """(function () {
+  "use strict";
+  var root = document.querySelector("[data-jobs-url]");
+  if (!root) return;
+  var failures = 0;
+  function tick() {
+    fetch(root.getAttribute("data-jobs-url"), {credentials: "same-origin", headers: {"Accept": "application/json"}})
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(function (data) {
+        failures = 0;
+        var active = {};
+        data.jobs.forEach(function (job) { active[job.job_id] = job; });
+        var finished = false;
+        document.querySelectorAll("[data-job]").forEach(function (el) {
+          var job = active[el.getAttribute("data-job")];
+          if (!job) { finished = true; return; }
+          var bar = el.querySelector("progress");
+          var text = el.querySelector(".job-text");
+          if (job.status === "running" && job.total > 0) {
+            bar.max = job.total; bar.value = job.done;
+            text.textContent = "Seite " + job.done + " von " + job.total;
+          } else {
+            bar.removeAttribute("value");
+            text.textContent = job.status === "running" ? "wird vorbereitet" : "wartet auf Verarbeitung";
+          }
+        });
+        if (finished) { window.location.reload(); } else { window.setTimeout(tick, 2000); }
+      })
+      .catch(function () { failures += 1; if (failures < 5) window.setTimeout(tick, 4000); });
+  }
+  window.setTimeout(tick, 1500);
+})();"""
+        return Response(script, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+    @app.get("/workbench/intel/jobs.json")
+    def jobs_status(request: Request, case_id: str = ""):
+        case_access(app, request, case_id)
+        active = [{k: job[k] for k in ("job_id", "document_id", "status", "done", "total")}
+                  for job in enrichjobs.jobs_for_case(ctx, case_id).values() if job["status"] in enrichjobs.ACTIVE]
+        return Response(json.dumps({"jobs": active}), media_type="application/json", headers={"Cache-Control": "no-store"})
+
     @app.get("/workbench/intel/documents", response_class=HTMLResponse)
     def documents_view(request: Request, case_id: str = "", done: str = ""):
         user, _ = case_access(app, request, case_id)
@@ -322,36 +529,81 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 if d["media_type"] == "application/pdf"]
         ocr_ok, engine = docstructure.ocr_available()
         allowed = _can_run(ctx, user, case_id)
+        jobs = enrichjobs.jobs_for_case(ctx, case_id)
+        token = _csrf(request)
         info = ('<p class="card">' + ('<span class="ok">✓ Texterkennung verfügbar</span> (' + escape(engine) + ')'
                 if ocr_ok else '<span class="bad">Texterkennung (Tesseract) ist auf diesem Rechner nicht installiert.</span> '
                 'Tabellen und Überschriften werden trotzdem erkannt. Für gescannte Seiten Tesseract installieren '
-                '(Windows: Installer der UB Mannheim, Sprachpaket Deutsch) und EagleEye neu starten.') + '</p>')
-        if done:
-            info = '<p class="card ok" role="status">Fundstellen ergänzt. Bitte die Extraktion im Dokument prüfen.</p>' + info
-        rows = ""
+                '(Windows: Installer der UB Mannheim, Sprachpaket Deutsch) und EagleEye neu starten. '
+                'Die Texterkennung lässt sich danach für bereits ergänzte Dokumente nachholen.') + '</p>')
+        notice = {"queued": "Auftrag gestartet. Du kannst weiterarbeiten; der Stand wird hier angezeigt.",
+                  "cancelled": "Auftrag abgebrochen. Es wurden keine Fundstellen geschrieben."}.get(done, "")
+        if notice:
+            info = '<p class="card ok" role="status">' + notice + '</p>' + info
+
+        def form(path, label, **fields):
+            return ('<form method="post" action="' + path + '"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
+                    '"><input type="hidden" name="csrf" value="' + token + '">' +
+                    "".join('<input type="hidden" name="' + k + '" value="' + escape(v, quote=True) + '">' for k, v in fields.items()) +
+                    '<button>' + label + '</button></form>')
+
+        rows, any_active = "", False
         for d in docs:
             enr = docstructure.enrichment_for(ctx, d["document_id"])
+            job = jobs.get(d["document_id"])
+            mode = docstructure.pending_work(d, enr, ocr_ok)
             if enr:
-                state = (f'{enr["tables"]} Tabellen · {enr["headings"]} Überschriften · {enr["ocr_paragraphs"]} OCR-Absätze'
-                         + (f' (Ø Erkennungssicherheit {enr["ocr_mean_confidence"]} %)' if enr["ocr_mean_confidence"] is not None else ""))
-                action = '<span class="muted">bereits ergänzt</span>'
+                state = (_count(enr["tables"], "Tabelle", "Tabellen") + ' · ' + _count(enr["headings"], "Überschrift", "Überschriften") +
+                         ' · ' + _count(enr["ocr_paragraphs"], "OCR-Absatz", "OCR-Absätze") +
+                         (' (Ø Erkennungssicherheit ' + f'{enr["ocr_mean_confidence"]:.1f}'.replace('.', ',') + ' %)' if enr["ocr_mean_confidence"] is not None else ""))
+                if not enr["ocr_engine"] and d["ocr_required"]:
+                    state += ' · gescannte Seiten noch ohne Texterkennung'
             else:
-                state = "OCR erforderlich" if d["ocr_required"] else "nur Fließtext-Anker"
+                state = "enthält gescannte Seiten ohne Text" if d["ocr_required"] else "nur Fließtext-Fundstellen"
+            state = escape(state)
+            if job and job["status"] in enrichjobs.ACTIVE:
+                any_active = True
+                running = job["status"] == "running" and job["total"] > 0
+                state = ('<span data-job="' + escape(job["job_id"], quote=True) + '"><progress aria-label="Fortschritt" ' +
+                         ('max="' + str(job["total"]) + '" value="' + str(job["done"]) + '"' if running else '') + '></progress> '
+                         '<span class="job-text">' + (f'Seite {job["done"]} von {job["total"]}' if running else
+                                                      ("wird vorbereitet" if job["status"] == "running" else "wartet auf Verarbeitung")) + '</span></span>')
+                action = form("/workbench/intel/documents/cancel", "Abbrechen", job_id=job["job_id"]) if allowed else ''
+            else:
+                if job and mode and job["status"] in ("dead_letter", "failed"):
+                    state += '<br><span class="bad">Letzter Versuch fehlgeschlagen: ' + escape(job["error"] or "unbekannter Fehler") + '</span>'
+                elif job and mode and job["status"] == "cancelled":
+                    state += '<br><span class="muted">Letzter Lauf wurde abgebrochen.</span>'
                 if not allowed:
                     action = '<span class="muted">Rechercheberechtigung nötig</span>'
                 elif d["state"] != "review_required":
                     action = '<span class="muted">bereits geprüft – nicht mehr ergänzbar</span>'
+                elif mode == "full":
+                    action = form("/workbench/intel/documents", "Fundstellen ergänzen", document_id=d["document_id"])
+                elif mode == "ocr":
+                    action = form("/workbench/intel/documents", "Texterkennung nachholen", document_id=d["document_id"])
                 else:
-                    action = ('<form method="post" action="/workbench/intel/documents"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
-                              '"><input type="hidden" name="csrf" value="' + _csrf(request) + '"><input type="hidden" name="document_id" value="' +
-                              escape(d["document_id"], quote=True) + '"><button>Fundstellen ergänzen</button></form>')
+                    action = '<span class="muted">bereits ergänzt</span>'
             rows += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=d["document_id"]) + '">' + escape(d["title"]) +
-                     '</a><br><span class="muted">' + str(d["page_count"]) + ' Seiten</span></td><td>' + escape(state) + '</td><td>' + action + '</td></tr>')
+                     '</a><br><span class="muted">' + _count(d["page_count"], "Seite", "Seiten") + '</span></td><td>' + state + '</td><td>' + action + '</td></tr>')
+        live = ('<p class="muted"><a href="' + _link("/workbench/intel/documents", case_id=case_id) + '">Stand aktualisieren</a></p>'
+                '<script src="/workbench/intel/progress.js" defer></script>') if any_active else ''
+        table = ('<div data-jobs-url="' + _link("/workbench/intel/jobs.json", case_id=case_id) + '">'
+                 '<table><thead><tr><th>PDF</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/documents458", case_id=case_id) + '">PDF importieren →</a></p>')
         body = (back(case_id) + '<p>Ergänzt Fundstellen für Tabellen, Überschriften und gescannte Seiten. Bestehende Fundstellen und das '
-                'Original bleiben unverändert. Möglich, solange die Extraktion noch nicht geprüft wurde.</p>' + info +
-                ('<table><thead><tr><th>PDF</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>' + rows + '</tbody></table>'
-                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/documents458", case_id=case_id) + '">PDF importieren →</a></p>'))
+                'Original bleiben unverändert. Möglich, solange die Extraktion noch nicht geprüft wurde. Die Verarbeitung läuft im '
+                'Hintergrund; bei langen Scans dauert die Texterkennung einige Minuten.</p>' + info + table + live)
         return render("Struktur & Texterkennung", case_id, body)
+
+    def _document_in_case(document_id, case_id):
+        try:
+            doc = ctx.document_intelligence_458._document(document_id)
+        except KeyError:
+            raise HTTPException(404, "Dokument nicht gefunden.") from None
+        if doc["case_id"] != case_id:
+            raise HTTPException(403, "Dokument gehört nicht zu diesem Fall.")
+        return doc
 
     @app.post("/workbench/intel/documents")
     async def documents_enrich(request: Request):
@@ -360,64 +612,111 @@ def attach_intel492(app, build: str, base_dir) -> None:
         user, _ = case_access(app, request, case_id, "research.run")
         verify_post(app, request, user, form.get("csrf", ""))
         document_id = str(form.get("document_id") or "")
+        _document_in_case(document_id, case_id)
         try:
-            doc = ctx.document_intelligence_458._document(document_id)
-        except KeyError:
-            raise HTTPException(404, "Dokument nicht gefunden.") from None
-        if doc["case_id"] != case_id:
-            raise HTTPException(403, "Dokument gehört nicht zu diesem Fall.")
-        ocr_ok, engine = docstructure.ocr_available()
-
-        def work():
             with ctx.audit.actor_scope(user["username"]):
-                return docstructure.enrich_document(ctx, identity=user, document_id=document_id,
-                                                    ocr_engine=docstructure.tesseract_page if ocr_ok else None,
-                                                    engine_name=engine)
-        try:
-            await run_in_threadpool(work)
+                enrichjobs.enqueue(ctx, identity=user, document_id=document_id)
         except (ValueError, PermissionError) as exc:
             raise HTTPException(422, str(exc)) from None
-        return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "1"}), status_code=303)
+        kick_worker()
+        return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "queued"}), status_code=303)
+
+    @app.post("/workbench/intel/documents/cancel")
+    async def documents_cancel(request: Request):
+        form = await bounded_form(request, max_bytes=4096)
+        case_id = str(form.get("case_id") or "")
+        user, _ = case_access(app, request, case_id, "research.run")
+        verify_post(app, request, user, form.get("csrf", ""))
+        try:
+            enrichjobs.cancel(ctx, case_id=case_id, job_id=str(form.get("job_id") or ""), actor=user["username"])
+        except KeyError:
+            raise HTTPException(404, "Auftrag nicht gefunden.") from None
+        return RedirectResponse("/workbench/intel/documents?" + urlencode({"case_id": case_id, "done": "cancelled"}), status_code=303)
 
     # ---------------------------------------------------------------- lineage
+    def case_families(user, case_id, level):
+        service = ctx.document_intelligence_458
+        docs = service.documents(identity=user, case_id=case_id)[:500]
+        cap_by_doc = {c["document_id"]: c for c in captures.captures_for_case(ctx, case_id, limit=500, verify=False)}
+        sketches = lineage.case_sketches(ctx, identity=user, documents=docs)  # stored per document
+        prepared = [{"document_id": d["document_id"], "title": d["title"], "source_url": d["source_url"],
+                     "first_seen": _first_seen(d, cap_by_doc.get(d["document_id"])),
+                     "word_count": sketches[d["document_id"]][0], "signature": sketches[d["document_id"]][1]}
+                    for d in docs]
+        return lineage.families(prepared, level=level)
+
     @app.get("/workbench/intel/lineage", response_class=HTMLResponse)
-    def lineage_view(request: Request, case_id: str = "", level: str = Query("normal")):
+    def lineage_view(request: Request, case_id: str = "", level: str = Query("normal"), done: str = ""):
         user, _ = case_access(app, request, case_id)
         if level not in lineage.LEVELS:
             level = "normal"
-        service = ctx.document_intelligence_458
-        docs = service.documents(identity=user, case_id=case_id)[:500]
-        cap_by_doc = {c["document_id"]: c for c in captures.captures_for_case(ctx, case_id, limit=500)}
-        prepared = []
-        for d in docs:
-            anchors = service.anchors(identity=user, document_id=d["document_id"])["anchors"]
-            prepared.append({"document_id": d["document_id"], "title": d["title"], "source_url": d["source_url"],
-                             "first_seen": _first_seen(d, cap_by_doc.get(d["document_id"])),
-                             "text": lineage.document_text(anchors)})
-        result = lineage.source_families(prepared, level=level)
+        result = case_families(user, case_id, level)
+        may_review = "source.review" in ctx.team_governance_359.effective_capabilities(user, case_id)
+        token = _csrf(request)
         levels = "".join('<a class="pill" href="' + _link("/workbench/intel/lineage", case_id=case_id, level=k) + '"' +
                          (' aria-current="true"><strong>' + escape(k) + '</strong>' if k == level else '>' + escape(k)) +
                          '</a>' for k in lineage.LEVELS)
         summary = ('<div class="grid"><section class="card"><span class="stat">' + str(result["compared"]) + '</span>Dokumente verglichen</section>'
                    '<section class="card"><span class="stat">' + str(result["independent_origins"]) + '</span>unabhängige Ursprünge</section>'
                    '<section class="card"><span class="stat">' + str(result["duplicate_documents"]) + '</span>Übernahmen / Spiegelungen</section></div>')
+        evidence_labels = {"unreviewed": "Evidence ungeprüft", "accepted": "Evidence angenommen", "rejected": "Evidence verworfen",
+                           "context_only": "Evidence nur Kontext"}
         cards = ""
         for fam in result["families"]:
             if fam["size"] < 2:
                 continue
-            members = "".join('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
-                              '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
-                              escape(m["first_seen"] or "Zeit unbekannt") + '</span></li>' for m in fam["members"])
+            states = {s["document_id"]: s for s in lineage_review.member_states(ctx, user, case_id, fam["members"])}
+            status = lineage_review.family_status(list(states.values()))
+            items = ""
+            for m in fam["members"]:
+                st = states[m["document_id"]]
+                if not st["evidence_id"]:
+                    claim_state = "noch keine Evidence"
+                elif not st["lineage_reviewed"]:
+                    claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · Herkunft nicht geprüft"
+                elif st["group"].startswith(lineage_review.GROUP_PREFIX):
+                    claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · gemeinsamer Ursprung bestätigt"
+                else:
+                    claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · eigene Ursprungsgruppe geprüft"
+                items += ('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
+                          '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
+                          escape(_when(m["first_seen"]) or "Zeit unbekannt") + ' · ' + escape(claim_state) + '</span></li>')
+            if status == "one_origin":
+                verdict = '<p class="ok">✓ In Claims zählen diese Belege als <strong>ein</strong> Ursprung.</p>'
+            elif status == "split":
+                verdict = ('<p class="bad" role="alert">Diese fast gleichen Texte sind in der Herkunftsprüfung verschiedenen Ursprüngen '
+                           'zugeordnet. In Claims würden sie als mehrere unabhängige Quellen zählen. Bitte prüfen.</p>')
+            elif status == "too_few":
+                verdict = ('<p class="muted">Für die Zählung in Claims zuerst mindestens zwei dieser Dokumente nach der Extraktionsprüfung über '
+                           '<a href="' + _link("/workbench/bridge481", case_id=case_id) + '">Quelle → Evidence</a> übernehmen.</p>')
+            else:
+                verdict = '<p class="muted">Herkunft der zugehörigen Evidence ist noch nicht (vollständig) geprüft.</p>'
+            form = ""
+            with_evidence = [m["document_id"] for m in fam["members"] if states[m["document_id"]]["evidence_id"]]
+            if status in ("open", "split") and len(with_evidence) >= 2:
+                if may_review:
+                    form = ('<form method="post" action="/workbench/intel/lineage/confirm"><input type="hidden" name="case_id" value="' + escape(case_id, quote=True) +
+                            '"><input type="hidden" name="csrf" value="' + token + '"><input type="hidden" name="level" value="' + escape(level, quote=True) + '">' +
+                            "".join('<input type="hidden" name="document_id" value="' + escape(d, quote=True) + '">' for d in with_evidence) +
+                            '<label>Begründung für den gemeinsamen Ursprung<textarea name="rationale" required minlength="12" maxlength="3000" rows="3" '
+                            'placeholder="z. B. gleicher Agenturtext, nur Ortsmarke und Wochentag geändert"></textarea></label>'
+                            '<label class="check"><input type="checkbox" name="confirm" value="yes" required><span>Ich habe die Texte verglichen. '
+                            'Das bestätigt nur die gemeinsame Herkunft, nicht den Inhalt.</span></label>'
+                            '<button>Als gemeinsamen Ursprung bestätigen</button></form>')
+                else:
+                    form = '<p class="muted">Die Bestätigung eines gemeinsamen Ursprungs ist Aufgabe einer Person mit Quellenprüfungsrecht.</p>'
             cards += ('<section class="card"><h2>' + str(fam["size"]) + ' Dokumente mit weitgehend gleichem Text</h2>'
-                      '<p>Ähnlichkeit ' + escape(str(fam["min_similarity"])) + '–' + escape(str(fam["max_similarity"])) +
+                      '<p>Ähnlichkeit ' + _sim(fam["min_similarity"]) + '–' + _sim(fam["max_similarity"]) +
                       ' · ' + str(len(fam["hosts"])) + ' Websites. Frühester Beleg im Fall: <strong>' + escape(fam["earliest"]["title"]) +
-                      '</strong> – das ist ein Hinweis, kein Nachweis des Ursprungs.</p><ol>' + members + '</ol></section>')
+                      '</strong> – das ist ein Hinweis, kein Nachweis des Ursprungs.</p><ol>' + items + '</ol>' + verdict + form + '</section>')
         singles = sum(1 for f in result["families"] if f["size"] == 1)
         skipped = ""
         if result["skipped"]:
             skipped = ('<details class="card"><summary>' + str(len(result["skipped"])) + ' Dokumente mit zu wenig Text nicht verglichen</summary><ul>' +
                        "".join('<li>' + escape(s["title"]) + '</li>' for s in result["skipped"]) + '</ul></details>')
-        body = (back(case_id) + '<p>Zählt, wie viele <strong>voneinander unabhängige Ursprünge</strong> hinter den Belegen stehen. '
+        notice = ('<p class="card ok" role="status">Gemeinsamer Ursprung bestätigt. Die zugehörigen Claims zählen diese Belege jetzt als einen Ursprung.</p>'
+                  if done == "confirmed" else "")
+        body = (back(case_id) + notice + '<p>Zählt, wie viele <strong>voneinander unabhängige Ursprünge</strong> hinter den Belegen stehen. '
                 'Übernommene Agenturmeldungen oder gespiegelte Seiten sind keine unabhängige Bestätigung.</p>'
                 '<p class="row">Vergleich: ' + levels + '<span class="muted">streng = nahezu identisch, locker = auch stark bearbeitete Übernahmen</span></p>'
                 + summary + (cards or ('<p class="card">Keine übernommenen oder gespiegelten Texte gefunden.</p>' if result["compared"] >= 2 else
@@ -425,6 +724,32 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 + str(lineage.MIN_WORDS) + ' Wörtern Text benötigt.</p>')) +
                 ('<p class="muted">' + _count(singles, "Dokument steht", "Dokumente stehen") + ' für sich.</p>' if singles and result["compared"] >= 2 else "") + skipped)
         return render("Quellenunabhängigkeit", case_id, body)
+
+    @app.post("/workbench/intel/lineage/confirm")
+    async def lineage_confirm(request: Request):
+        form = await bounded_form(request, max_bytes=16384)
+        case_id = str(form.get("case_id") or "")
+        user, _ = case_access(app, request, case_id, "source.review")
+        verify_post(app, request, user, form.get("csrf", ""))
+        if form.get("confirm") != "yes":
+            raise HTTPException(422, "Bitte bestätige den Vergleich der Texte.")
+        level = str(form.get("level") or "normal")
+        if level not in lineage.LEVELS:
+            raise HTTPException(422, "Unbekannte Vergleichsstufe.")
+        posted = [str(v) for v in form.getlist("document_id")][:50]
+        result = case_families(user, case_id, level)
+        family = next((f for f in result["families"] if set(posted) <= {m["document_id"] for m in f["members"]} and f["size"] >= 2), None)
+        if family is None:
+            raise HTTPException(409, "Die Quellfamilie hat sich seit dem Öffnen der Seite verändert. Bitte neu laden und erneut prüfen.")
+        try:
+            with ctx.audit.actor_scope(user["username"]):
+                lineage_review.confirm_family(ctx, identity=user, case_id=case_id, family=family,
+                                              document_ids=posted, rationale=str(form.get("rationale") or ""))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        except PermissionError as exc:
+            raise HTTPException(409, "Bestätigung nicht möglich: " + str(exc)[:200]) from None
+        return RedirectResponse("/workbench/intel/lineage?" + urlencode({"case_id": case_id, "level": level, "done": "confirmed"}), status_code=303)
 
     # ---------------------------------------------------------------- network
     @app.get("/workbench/intel/network", response_class=HTMLResponse)

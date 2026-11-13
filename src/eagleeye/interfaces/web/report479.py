@@ -78,6 +78,7 @@ def report_body(app,user,case,notes):
     for label,key in [('Fall','title'),('Auftrag/Zweck','purpose'),('Rechtsgrundlage','legal_basis')]:
         lines.extend([label+':','',literal(case.get(key) or 'im Fall prüfen'),''])
     lines.extend(['Vollständig enthaltene Arbeitsbefunde: '+str(len(notes)),''])
+    web_fields=getattr(app.state,'report_web_fields',None)  # later builds: web-capture provenance
     with notes_db(app) as db:
         for index,row in enumerate(notes,1):
             history=review_history(db,row)
@@ -88,6 +89,7 @@ def report_body(app,user,case,notes):
                 ('Dokument SHA-256 bei Aufnahme',row['document_sha256']),
                 ('Anker-Snapshot',row['anchor_hash']),('Herkunfts-URL (unbestätigte Metadaten)',row['source_url']),
                 ('Quellenintegrität beim Export',states[row['finding_id']]),
+                *(web_fields(str(case['case_id']),row['document_id']) if web_fields else []),
                 ('Prüfstatus',row['review_state']),('Prüfbegründung',row['review_reason']),
                 ('Prüfendes Konto',row['reviewed_by']),('Verfasst von',row['created_by']),
                 ('Verfasst am',row['created_at']),('Befund-Hash',row['record_hash'])]
@@ -127,9 +129,12 @@ def attach_report(app,build):
                     '<button>Prüfentscheidung speichern</button></form>')
             history=''.join('<li>'+escape(h['reviewed_at']+' · '+h['reviewed_by']+' · '+h['decision'])+'<p>'+escape(h['reason'])+'</p></li>' for h in histories[row['finding_id']])
             original='/documents458?'+urlencode({'case_id':case_id,'document_id':row['document_id'],'anchor_id':row['anchor_id']})
+            web=getattr(app.state,'report_web_summary',None)
+            web_line=web(case_id,row['document_id']) if web else ''
+
             cards.append('<section class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(row['interpretation'])+
                 '</p><p>Quellenstand: '+escape(state)+' · Status: '+escape(row['review_state'])+
-                '</p><blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape(original,quote=True)+
+                '</p>'+web_line+'<blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape(original,quote=True)+
                 '">Originalfundstelle öffnen</a><p>Prüfendes Konto: '+escape(row['reviewed_by'])+' · '+escape(row['review_reason'])+
                 '</p><details><summary>Prüfhistorie</summary><ol>'+history+'</ol></details>'+form+'</section>')
         nav=''

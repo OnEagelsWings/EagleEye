@@ -35,9 +35,15 @@ def warc_root(ctx) -> Path:
     return root
 
 
+LEAD_TABLE = """CREATE TABLE IF NOT EXISTS web_capture_lead_492(
+    capture_id TEXT PRIMARY KEY, lead_id TEXT NOT NULL, case_id TEXT NOT NULL, created_at TEXT NOT NULL)"""
+
+
 def initialize(ctx) -> None:
     ctx.db.conn.execute(TABLE)
     ctx.db.conn.execute("CREATE INDEX IF NOT EXISTS web_capture_492_case ON web_capture_492(case_id,captured_at)")
+    ctx.db.conn.execute(LEAD_TABLE)
+    ctx.db.conn.execute("CREATE INDEX IF NOT EXISTS web_capture_lead_492_lead ON web_capture_lead_492(case_id,lead_id)")
     ctx.db.conn.commit()
 
 
@@ -57,8 +63,8 @@ def store_capture(ctx, *, identity: dict, case_id: str, result: dict, kind: str)
     temp.replace(target)
     try:
         imported = ctx.document_intelligence_458.import_bytes(
-            identity=identity, case_id=case_id, filename=capture_id + ".txt", raw=result["document"],
-            title=("Web: " if kind == "live" else "Archiv: ") + result["title"],
+            identity=identity, case_id=case_id, filename=capture_id + result.get("document_suffix", ".txt"),
+            raw=result["document"], title=("Web: " if kind == "live" else "Archiv: ") + result["title"],
             source_url=result["url"])
         meta = result["metadata"]
         row = {"capture_id": capture_id, "case_id": case_id, "document_id": imported["document_id"],
@@ -82,12 +88,18 @@ def store_capture(ctx, *, identity: dict, case_id: str, result: dict, kind: str)
     return row
 
 
-def captures_for_case(ctx, case_id: str, limit: int = 200) -> list[dict]:
+def captures_for_case(ctx, case_id: str, limit: int = 200, *, verify: bool = True) -> list[dict]:
+    """verify=False skips reading the WARC files (for views that only need metadata)."""
     rows = [dict(r) for r in ctx.db.all(
         "SELECT * FROM web_capture_492 WHERE case_id=? ORDER BY captured_at DESC LIMIT ?", (case_id, limit))]
-    for row in rows:
-        row["integrity_ok"] = verify_capture(ctx, row)
+    if verify:
+        for row in rows:
+            row["integrity_ok"] = verify_capture(ctx, row)
     return rows
+
+
+def capture_count(ctx, case_id: str) -> int:
+    return int(ctx.db.one("SELECT COUNT(*) AS n FROM web_capture_492 WHERE case_id=?", (case_id,))["n"])
 
 
 def capture_row(ctx, capture_id: str) -> dict:
@@ -115,3 +127,79 @@ def verify_capture(ctx, row: dict) -> bool:
         return status == row["http_status"] and hashlib.sha256(payload).hexdigest() == row["body_sha256"]
     except (OSError, CaptureError, ValueError, KeyError):
         return False
+
+
+def provenance_for_document(ctx, case_id: str, document_id: str) -> dict | None:
+    """Web-capture provenance of a Build-458 document, or None if it was not captured.
+
+    The WARC file is verified on every call; callers decide how to treat a failed check.
+    """
+    row = ctx.db.one("SELECT * FROM web_capture_492 WHERE document_id=?", (str(document_id),))
+    if not row:
+        return None
+    row = dict(row)
+    if row["case_id"] != str(case_id):
+        raise ValueError("Web-Beleg gehört nicht zu diesem Fall.")
+    return {
+        "capture_id": row["capture_id"], "kind": row["kind"], "url": row["url"],
+        "archive_url": row["archive_url"], "captured_at": row["captured_at"],
+        "http_status": row["http_status"], "server_ip": row["ip_address"],
+        "content_type": row["content_type"], "response_sha256": row["body_sha256"],
+        "warc_sha256": row["warc_sha256"], "warc_bytes": row["warc_bytes"],
+        "page_title": row["page_title"], "page_author": row["page_author"],
+        "page_published": row["page_published"], "extractor": row["extractor"],
+        "captured_by": row["created_by"], "capture_record_hash": row["record_hash"],
+        "network_fetch_at_capture": True,
+        "integrity_verified": verify_capture(ctx, row),
+    }
+
+
+def report_fields(provenance: dict) -> list[tuple[str, str]]:
+    """German label/value pairs for reports. Truth of the content is never implied."""
+    fields = [("Web-Beleg", ("Archivfassung (Internet Archive)" if provenance["kind"] == "archive" else "Live-Abruf")
+                            + " durch EagleEye, gesichert als WARC-Datei"),
+              ("Erfasste Adresse", provenance["url"])]
+    if provenance["archive_url"]:
+        fields.append(("Archivquelle", provenance["archive_url"]))
+    fields += [
+        ("Abrufzeit (UTC)", provenance["captured_at"]),
+        ("HTTP-Status / Server-IP", f"{provenance['http_status']} / {provenance['server_ip']}"),
+        ("SHA-256 der Originalantwort", provenance["response_sha256"]),
+        ("SHA-256 der WARC-Datei", provenance["warc_sha256"]),
+        ("WARC-Integrität beim Export", "unverändert (Datensatz, Datei und Wiedergabe geprüft)"
+         if provenance["integrity_verified"] else "VERLETZT – Beleg nicht verwenden, Original prüfen"),
+        ("Weiterleitungen", "im Dokumentkopf und in der WARC-Datei verzeichnet"),
+    ]
+    return fields
+
+
+def link_lead(ctx, *, case_id: str, capture_id: str, lead_id: str, created_at: str) -> None:
+    """Remember which research lead (Build 483) a capture was started from."""
+    ctx.db.execute("INSERT OR IGNORE INTO web_capture_lead_492(capture_id,lead_id,case_id,created_at) VALUES(?,?,?,?)",
+                   (capture_id, lead_id, case_id, created_at))
+
+
+def captures_by_lead(ctx, case_id: str, leads: list[dict]) -> dict[str, list[dict]]:
+    """Captures per lead: explicit links plus captures of the same (normalized) address."""
+    from .webcapture import CaptureError, normalize_public_url
+
+    rows = captures_for_case(ctx, case_id, limit=500, verify=False)
+    by_id = {r["capture_id"]: r for r in rows}
+    by_url: dict[str, list[dict]] = {}
+    for r in rows:
+        by_url.setdefault(r["url"], []).append(r)
+    linked: dict[str, list[dict]] = {}
+    for link in ctx.db.all("SELECT * FROM web_capture_lead_492 WHERE case_id=?", (case_id,)):
+        if link["capture_id"] in by_id:
+            linked.setdefault(link["lead_id"], []).append(by_id[link["capture_id"]])
+    out = {}
+    for lead in leads:
+        found = {r["capture_id"]: r for r in linked.get(lead["lead_id"], [])}
+        try:
+            for r in by_url.get(normalize_public_url(lead["url"]), []):
+                found.setdefault(r["capture_id"], r)
+        except CaptureError:
+            pass
+        if found:
+            out[lead["lead_id"]] = sorted(found.values(), key=lambda r: r["captured_at"], reverse=True)
+    return out

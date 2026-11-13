@@ -1,7 +1,8 @@
 # Plan nach Build 492 – Härten, Zusammenführen, Vertiefen
 
-Stand 10. Nov. 2026. Grundlage: Selbstprüfung des Build-492-Codes, Messungen in der Entwicklungsumgebung
-und Abgleich mit `ROADMAP_481_500_AI_RESEARCH_ORCHESTRATION.md` (Leitentscheidung „Ein Stamm“).
+Stand 10. Nov. 2026. Grundlage: Selbstprüfung des Build-492-Codes, Messungen in der Entwicklungsumgebung,
+Abgleich mit `ROADMAP_481_500_AI_RESEARCH_ORCHESTRATION.md` (Leitentscheidung „Ein Stamm“) und die vier
+übertragbaren Punkte aus [PALANTIR_GOTHAM_ARCHITEKTURANALYSE.md](PALANTIR_GOTHAM_ARCHITEKTURANALYSE.md).
 Jeder Befund ist gekennzeichnet: **[gemessen]** = Laufzeit/Größe hier gemessen (synthetische Daten, ein Lauf),
 **[Code]** = am Quelltext nachvollzogen.
 
@@ -11,6 +12,11 @@ Build 492 funktioniert, ist aber an vier Stellen noch nicht belastbar: Es läuft
 Kontrollmechanismen statt durch sie, es **skaliert** bei großen Fällen nicht, einzelne Abläufe haben
 **Sackgassen**, und die Qualität ist **an echten Daten nicht gemessen**. Deshalb zuerst härten und
 zusammenführen, parallel messen, erst danach neue Fähigkeiten.
+
+Die Gotham-Analyse ergänzt eine fünfte Schwäche, die älter ist als Build 492: Das **Datenmodell der
+Entitäten ist zu dünn**. Eine Entität ist nur ein Name mit Notizfeld. Das begrenzt Abgleich, Auswertung
+und Bericht stärker als jede fehlende Einzelfunktion. Deshalb bekommt das Datenmodell eine eigene Stufe,
+vor dem Umbau der Oberfläche und vor neuen Fähigkeiten.
 
 ## 1. Befunde
 
@@ -66,11 +72,30 @@ zusammenführen, parallel messen, erst danach neue Fähigkeiten.
 | M2 | Prüfsätze sind klein: 27 Namenspaare, je ein Testfall für Quellfamilien, OCR und Haupttext. |
 | M3 | Build 492 nutzt PyMuPDF stärker als vorher (Tabellenerkennung). Die offene AGPL-Frage wird dadurch gewichtiger. |
 
+### 1.6 Datenmodell (aus der Gotham-Analyse)
+
+| # | Befund | Folge | Beleg |
+|---|---|---|---|
+| G1 | Eine Entität besteht aus Art, Bezeichnung und einem freien Notizfeld. Geburtsdatum, Anschrift, Registernummer haben keinen eigenen Platz, keine Fundstelle und keinen Gültigkeitszeitraum. | Der Abgleich kann nur Namen vergleichen. Widersprüchliche Angaben sind nicht sichtbar. Der FollowTheMoney-Export enthält praktisch nur Namen. | [Code] `entity_registry461` (Tabelle `entity461`) |
+| G2 | Sechs fest einprogrammierte Entitätsarten. Beziehungsarten sind Freitext bis 128 Zeichen. | „Geschäftsführer“, „GF“ und „managing director“ sind drei verschiedene Beziehungen. Auswertungen nach Beziehungsart sind unzuverlässig. | [Code] `KINDS`, `create_relation` |
+| G3 | Rechte gelten je Fall und Rolle. Einzelne Dokumente, Befunde und Entitäten tragen keine Schutzmarkierung. Arbeitsbericht und Vier-Augen-Export kennen keine Empfängerstufe. | Ein Bericht für den Mandanten lässt sich nicht automatisch von internen Arbeitsnotizen und besonders schutzwürdigen Daten trennen. | [Code] `report479`, `human_review449`: keine Schwärzung, keine Empfängerangabe |
+| G4 | Das Entitätenregister ist eine eigene SQLite-Datei. Acht Stellen im Code öffnen sie jeweils per zusammengesetztem Dateipfad. Dokumente, Fundstellen und Prüfentscheidungen liegen in der Hauptdatenbank. | Keine Transaktion kann Entität, Fundstelle und Prüfung gemeinsam absichern. Verweise zwischen den Dateien werden nicht geprüft. | [Code] `app462`–`app466`, `app470`, `entities488`, `intel492` |
+
+Bereits vorhanden und deshalb wiederzuverwenden statt neu zu bauen:
+
+* **Schutzklassen:** Ältere Module führen eine Schutzklasse je Dokumentkandidat (`sensitivity_class`, u. a.
+  `ordinary_public`, `special_category`, `high_impact_sensitive`) und eine rechtliche Einstufung je Claim. [Code] `build273`, `build277`, `build251`
+* **Entitäten-Bindungen mit Herkunft:** Modul 437 bindet Quellobjekte mit Zuverlässigkeit und
+  Herkunftsangaben an Entitäten. Es ist im Anwendungskontext registriert, wird im aktuellen geführten Ablauf
+  aber nicht benutzt. [Code] `entity_resolution437`, `app_context`
+* **Übernahme mit Erhalt des Originals:** Build 478 hat ältere Notizen in die Hauptdatenbank übernommen, die
+  Ursprungsdatei behalten und Übernommenes zur erneuten Prüfung markiert. Das ist die Vorlage für G4. [Code] `findings478`
+
 ## 2. Plan
 
 Größen: **S** = klein, **M** = mittel, **L** = groß. Zuordnung zu Roadmap-Builds in Klammern.
 
-### Stufe 1 – Härten (zuerst)
+### Stufe 1 – Härten (zuerst) – **umgesetzt 11.11.2026**, Nachweise in [BUILD_492_NOTES.md](../BUILD_492_NOTES.md#härtung-stufe-1-aus-docsplan_nach_492md)
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|
@@ -89,7 +114,14 @@ Größen: **S** = klein, **M** = mittel, **L** = groß. Zuordnung zu Roadmap-Bui
 
 Ziel: 1000 Entitäten unter 2 s; 500 Dokumente unter 1 s nach dem ersten Aufruf; kein Seitenaufruf über 5 s.
 
-### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494)
+Erreicht: 1000 Entitäten 0,4 s; 500 Dokumente 0,03 s nach dem ersten Aufruf (1,2 s einmalig); Texterkennung läuft im Hintergrund. Gemessen in der Entwicklungsumgebung, nicht auf dem Windows-Laptop.
+
+### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494) – **S2, S3, S4 umgesetzt 12.11.2026; S1 offen**
+
+Befund bei der Umsetzung von S1: Das Freigabemodell aus 491 (genehmigte Suchabsicht und Suchanfrage) wird
+in der Dienstschicht erzwungen, ist aber in der Oberfläche nirgends bedienbar; Absichten und Anfragen werden
+nur in Tests angelegt. S1 ist damit eine Produktentscheidung (Pflicht-Freigabe vor Web-Abrufen, wer freigibt)
+und wartet auf diese Entscheidung.
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|
@@ -98,7 +130,37 @@ Ziel: 1000 Entitäten unter 2 s; 500 Dokumente unter 1 s nach dem ersten Aufruf;
 | Web-Beleg-Herkunft (WARC-Hash, Abrufzeit, IP, Archivquelle) in Arbeitsbericht und Dossier | S3 | S |
 | „Als Beleg sichern“ direkt am Recherchefund | S4 | S |
 
-### Stufe 3 – Oberfläche gesund halten (Roadmap 494)
+### Stufe 3 – Datenmodell stärken (Roadmap 492, 494, 496)
+
+Reihenfolge ist zwingend: erst eine Datenbank, dann Typen, dann Eigenschaften, dann Markierungen.
+
+| Schritt | Maßnahme | Behebt | Größe |
+|---|---|---|---|
+| 3.1 | **Eine Datenbank.** Entitäten und Beziehungen in die Hauptdatenbank überführen. Ein einziger Zugriffspunkt ersetzt die acht Pfadkonstruktionen. Übernahme nach dem Muster von Build 478: Ursprungsdatei bleibt erhalten, Übernahme wird protokolliert, Wiederholung ist gefahrlos. | G4 | M |
+| 3.2 | **Typenregister.** Entitätsarten, Eigenschaftsarten und Beziehungsarten als Daten, mit deutscher Bezeichnung, erlaubten Endpunkten und Zuordnung zu FollowTheMoney. Vorbelegt mit den sechs heutigen Arten. Vorhandene Freitext-Beziehungen bleiben gültig und werden als „noch nicht zugeordnet“ geführt. | G2, U6 | M |
+| 3.3 | **Eigenschaften als belegte Aussagen.** Je Eigenschaft: Art, Wert, normalisierter Wert, Fundstelle, Gültigkeitszeitraum, Prüfstatus, Hash. Anlegen direkt aus der Dokumentansicht („aus dieser Fundstelle übernehmen“). Abweichende Werte derselben Art stehen nebeneinander, keiner überschreibt den anderen. Erwähnungen in Quellen laufen über die vorhandenen Bindungen aus 437. | G1 | L |
+| 3.4 | **Schutzmarkierung und Empfängerstufe.** Markierung je Dokument, Befund und Eigenschaft mit dem vorhandenen Schutzklassen-Vokabular; beim Anlegen Pflicht, mit sinnvoller Vorbelegung. Arbeitsbericht und Export bekommen eine Empfängerstufe und lassen alles darüber weg – sichtbar ausgewiesen, nicht stillschweigend. | G3 | M |
+
+Was danach unmittelbar besser wird:
+
+* Der Entitätenabgleich kann Geburtsdatum, Registernummer oder Anschrift als starke Hinweise werten, statt
+  nur Namen zu vergleichen.
+* Der FollowTheMoney-Export enthält echte Eigenschaften und einheitliche Beziehungsarten.
+* Die Netzwerkanalyse kann nach Beziehungsart filtern.
+
+Abnahme:
+
+| Schritt | Kriterium |
+|---|---|
+| 3.1 | Anzahl und Inhalt von Entitäten und Beziehungen vor und nach der Übernahme identisch (Hash über den Export). Ein erzwungener Fehler beim Speichern einer Prüfentscheidung macht auch die zugehörige Entitätsänderung rückgängig. Sicherung und Wiederherstellung bestehen. |
+| 3.2 | Jede Entität hat eine registrierte Art. Im Referenzfall sind mindestens 90 % der Beziehungen einer registrierten Art zugeordnet. |
+| 3.3 | Keine Eigenschaft ohne Fundstelle (technisch erzwungen). Auf einem erweiterten Prüfsatz mit Zusatzangaben steigt die Präzision des Abgleichs bei gleicher Trefferquote. |
+| 3.4 | Ein Export für die Stufe „Mandant“ enthält nachweislich kein als intern oder besonders schutzwürdig markiertes Element; der Bericht nennt, wie viele Elemente ausgelassen wurden. |
+
+Risiko: 3.1 ist eine Datenübernahme auf dem Arbeitsrechner. Sie braucht vorher eine Sicherung, einen
+Probelauf auf einer Kopie und einen Rückweg. Erst nach bestandener Wiederherstellungsprüfung ausliefern.
+
+### Stufe 4 – Oberfläche gesund halten (Roadmap 494)
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|
@@ -107,7 +169,10 @@ Ziel: 1000 Entitäten unter 2 s; 500 Dokumente unter 1 s nach dem ersten Aufruf;
 | Verständliche Fehlerseiten für Browser-Aufrufe, mit Rückweg | U2 | S |
 | Navigation auf sechs Hauptmenüs verdichten; Übersicht 492 darin aufgehen lassen | U3 | M |
 | Arbeitsablauf mit Zustand je Schritt und einem „nächster sinnvoller Schritt“ | U4 | M |
-| Einheitliche deutsche Bezeichnungen | U6 | S |
+| Einheitliche deutsche Bezeichnungen (kommen aus dem Typenregister, Schritt 3.2) | U6 | S |
+| Entitätsseite mit Eigenschaften, Fundstellen und „Umfeld anzeigen“ (alle verknüpften Dokumente, Fundstellen, Entitäten) | G1 | M |
+| Fallübersicht von oben: filtern und zählen nach Art, Quelle, Zeitraum, Prüfstatus, Schutzklasse | – | M |
+| Seiten über Vorlagen mit automatischem Escaping statt verketteter Zeichenketten, beginnend bei neuen Seiten | – | M, schrittweise |
 
 Abnahme wie in 492: Chromium bei 1280 px und 390 px, kein horizontales Scrollen, keine Konsolenfehler,
 alle Felder beschriftet, jeder Weg per Klick erreichbar. Neu: kein Seitenende ohne Rückweg.
@@ -120,18 +185,21 @@ alle Felder beschriftet, jeder Weg per Klick erreichbar. Neu: kein Seitenende oh
 | Prüfsätze: 200 Namenspaare, 50 Webseiten mit markiertem Haupttext, 20 Scans mit Solltext, Agenturtext-Korpus mit Übernahmen | M2 | M (Daten braucht Zuarbeit) |
 | Live-Abnahme gegen eine freigegebene Liste öffentlicher Seiten und das Internet Archive | M1 | S, braucht Netzfreigabe oder Lauf auf dem Laptop |
 
-### Stufe 4 – Vertiefen (nach Stufe 1–3)
+### Stufe 5 – Vertiefen (nach Stufe 1–4)
 
 Nach Nutzen geordnet:
 
 1. **Beweiswert erhöhen:** Zeitstempel einer unabhängigen Stelle auf den WARC-Hash (RFC 3161; die Stelle sieht nur den Hash). Seitenbild der gerenderten Seite als zusätzlicher Beleg (Playwright ist bereits optionale Abhängigkeit), damit auch JavaScript-Seiten sicherbar werden.
 2. **Beobachten statt einmal sichern:** erneute Sicherung mit Vergleich zur letzten Fassung. Deckt den Grundfall von changedetection.io ohne eigenen Dienst.
-3. **Entitäten aus Dokumenten vorschlagen**, mit Fundstelle, als Prüfmaterial. Verbindet Dokument- und Graphseite; heute werden Entitäten von Hand angelegt.
-4. **Abgleich mit Kontext:** gemeinsame Verbindungen und gemeinsames Vorkommen im selben Dokument als Zusatzhinweis neben dem Namen.
+3. **Entitäten und Eigenschaften aus Dokumenten vorschlagen**, mit Fundstelle, als Prüfmaterial. Verbindet Dokument- und Graphseite; heute werden Entitäten von Hand angelegt. Setzt Schritt 3.3 voraus.
+4. **Abgleich mit Kontext:** gemeinsame Verbindungen und gemeinsames Vorkommen im selben Dokument als Zusatzhinweis neben Namen und Eigenschaften.
 5. **Netzwerk im Graph statt daneben:** Gruppen und Brücken im interaktiven Graph (464) einfärben, Zeitscheiben über die Gültigkeitsdaten, Klick bis zur Fundstelle.
 6. **Übernommene Passagen** innerhalb längerer Texte markieren, nicht nur ganze Dokumente.
 7. **Texterkennung:** Sprachwahl (u. a. Hebräisch, Russisch, Arabisch), gemischte Seiten, Tabellen ohne Linien.
-8. **Restliche Werkzeuge der Auswahl** (OpenSanctions, libpostal, auto-archiver, subfinder, Maigret) – erst mit OPSEC-Runbook und Lizenzentscheidung.
+8. **Ereignisse mit Zeit und Ort** als eigener Datensatz, verknüpft mit Entität und Fundstelle; daraus Zeitleiste und einfache Karte.
+9. **Suchanfrage als Baum:** einmal als Und/Oder/Nicht formulieren, je Quelle übersetzen.
+10. **Fallpakete für Teamarbeit:** Fälle mit Hashes in eine zweite Installation einspielen, mit Konfliktanzeige statt Überschreiben.
+11. **Restliche Werkzeuge der Auswahl** (OpenSanctions, libpostal, auto-archiver, subfinder, Maigret) – erst mit OPSEC-Runbook und Lizenzentscheidung. OpenSanctions und libpostal profitieren direkt von Schritt 3.3.
 
 ## 3. Offene Entscheidungen
 
@@ -140,4 +208,6 @@ Nach Nutzen geordnet:
 | Bleibt EagleEye rein privat, oder soll es weitergegeben bzw. für Kunden betrieben werden? | Bestimmt, ob PyMuPDF (AGPL) ersetzt werden muss und ob OpenSanctions-Daten (nur nicht-kommerziell frei) nutzbar sind. |
 | Live-Tests: Netzfreigabe für die Entwicklungsumgebung oder Abnahmeskript auf dem Laptop? | Ohne eines von beiden bleibt M1 offen. |
 | Entitätenvorschläge über spaCy-Modelle oder über das vorhandene lokale Ollama? | spaCy ist schneller und reproduzierbar, braucht aber Modell-Downloads; Ollama ist schon da, aber langsamer und schwankender. |
+| Welche Empfängerstufen und Schutzklassen brauchst du in der Praxis? Vorschlag: Empfänger „intern“, „Mandant“, „Behörde/Gericht“; Schutzklassen aus dem vorhandenen Vokabular. | Bestimmt Schritt 3.4 und den Aufbau von Bericht und Dossier. |
+| Datenübernahme (Schritt 3.1) vor oder nach dem Zusammenführen des Stapels 479–491 in `main`? | Eine Übernahme auf einem noch nicht gemergten Stand muss später erneut abgesichert werden. Empfehlung: erst zusammenführen. |
 | Pull Request für Build 492 jetzt öffnen? | Erst dann laufen die Windows-Prüfungen. Zusätzlich hängt alles an dem noch nicht gemergten Stapel 479–491. |

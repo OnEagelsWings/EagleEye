@@ -1,0 +1,9 @@
+# Nur HTTP-Tunnel (CONNECT) für den App-Container; kein SOCKS, kein Relay, kein Exit
+SocksPort 0
+HTTPTunnelPort 0.0.0.0:9080
+ExitRelay 0
+ORPort 0
+DataDirectory /var/lib/tor
+Log notice stdout
+# Für jede Zieladresse eigener Pfad (erschwert Korrelation zwischen Quellen)
+IsolateDestAddr 1

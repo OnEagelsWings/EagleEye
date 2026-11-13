@@ -65,6 +65,11 @@ def transfer(ctx,user,case_id,candidate_id,document_id,rationale,*,base_dir):
                 raise TransferError("Transfer already staged with different source")
             if prev["state"]=="completed":return prev
             if prev["state"]!="staged":raise TransferError("Unexpected transfer state")
+            # Retry after an interrupted transfer: the rationale recorded when the
+            # transfer was staged is authoritative. Using a re-typed text here would
+            # make the idempotent graph upsert fail ("entry differs") and leave the
+            # transfer permanently stuck, or let journal and graph notes diverge.
+            rationale=prev["rationale"]
         else:
             row=dict(candidate_id=candidate_id,case_id=case_id,entity_id=entity_id,
                      document_id=document_id,source_sha256=source_hash,
