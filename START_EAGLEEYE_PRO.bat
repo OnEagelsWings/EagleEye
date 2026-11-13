@@ -22,7 +22,7 @@ if errorlevel 1 (
 
 rem The bootstrap stores settings and cases outside the program directory.
 rem Do not override EAGLEEYE_SETTINGS_DIR or EAGLEEYE_DATA_DIR here.
-rem Default: %%LOCALAPPDATA%%\EagleEye-490\workspace (or user-selected folder).
+rem Default: %%LOCALAPPDATA%%\EagleEye-500\workspace (or user-selected folder).
 %PYTHON% INSTALL_EAGLEEYE_500.py
 if errorlevel 1 goto :failed
 
