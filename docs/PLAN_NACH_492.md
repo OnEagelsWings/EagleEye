@@ -134,6 +134,10 @@ und wartet auf diese Entscheidung.
 
 ### Stufe 3 – Datenmodell stärken (Roadmap 492, 494, 496)
 
+**Entscheidungen 13.11.2026:** 3.1–3.3 erst, wenn der Stapel 479–491 in `main` ist (er bewegt sich noch).
+Bis dahin wird 3.4 für Dokumente und Befunde umgesetzt und Stufe 4 vorgezogen. Empfängerstufen:
+„intern“, „Mandant“, „Behörde/Gericht“.
+
 Reihenfolge ist zwingend: erst eine Datenbank, dann Typen, dann Eigenschaften, dann Markierungen.
 
 | Schritt | Maßnahme | Behebt | Größe |
