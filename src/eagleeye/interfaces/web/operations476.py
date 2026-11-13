@@ -117,11 +117,15 @@ def attach_workbench(app, workspace_build):
         # duplicated step six once advanced tools and sources were appended.
         step_index = 0
         intel = bool(getattr(app.state, "intel492", False))
+        status_hook = getattr(app.state, "workflow_status", None)  # later builds: state per step
+        statuses, next_step = status_hook(user, case_id) if status_hook else ({}, "")
         def step(n,title,desc,path):
             nonlocal step_index
             step_index += 1
+            state = statuses.get(path)
+            state_html = ('<p class="'+('warn' if state[1] else 'muted')+'"><strong>Stand:</strong> '+escape(state[0])+'</p>') if state else ''
             return ('<section class="card"><h2>'+str(step_index)+'. '+escape(title)+'</h2>'
-                '<p>'+escape(desc)+'</p><a href="'+escape(path+"?"+urlencode({"case_id":case_id}),quote=True)
+                '<p>'+escape(desc)+'</p>'+state_html+'<a href="'+escape(path+"?"+urlencode({"case_id":case_id}),quote=True)
                 +'">Jetzt öffnen →</a></section>')
         steps = [
             step(1,"Auftrag & Leitfragen","Rechercheziel, Rechtsgrundlage, Untersuchungsgrenzen festlegen.","/workflow461"),
@@ -232,6 +236,7 @@ def attach_workbench(app, workspace_build):
                 for heading,cards in phases
             )
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
+        body += next_step
         body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
         body += grouped if stage>=482 else '<div class="grid">'+"".join(steps)+'</div>'
         return HTMLResponse(page("Dein Ermittlungs- und Rechercheablauf",case_id,body,workspace_build),

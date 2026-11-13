@@ -168,7 +168,7 @@ Abnahme:
 Risiko: 3.1 ist eine Datenübernahme auf dem Arbeitsrechner. Sie braucht vorher eine Sicherung, einen
 Probelauf auf einer Kopie und einen Rückweg. Erst nach bestandener Wiederherstellungsprüfung ausliefern.
 
-### Stufe 4 – Oberfläche gesund halten (Roadmap 494)
+### Stufe 4 – Oberfläche gesund halten (Roadmap 494) – **vorgezogen: U1, U2, U4, U6 umgesetzt 13.11.2026; U3 und U5 offen**
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|

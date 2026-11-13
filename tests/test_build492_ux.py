@@ -171,3 +171,35 @@ def test_document_view_permissions_integrity_and_class(workspace):
     service = ctx.document_intelligence_458
     (service.root / service._document(doc_id)["stored_relpath"]).write_bytes(b"changed")
     assert client.get("/workbench/document", params={"case_id": case_id, "document_id": doc_id}).status_code == 409
+
+
+# -------------------------------------------------- guided workflow with state (U4)
+@ws
+def test_workflow_shows_state_per_step_and_follows_progress(workspace):
+    app, client, user, case_id, doc_id, *_ = workspace
+    ctx = app.state.context
+    csrf_session(workspace)
+
+    def flow():
+        return client.get("/workbench", params={"case_id": case_id}).text
+
+    first = flow()
+    assert "Nächster sinnvoller Schritt: Extraktion prüfen" in first
+    assert "1 Dokument · 1 warten auf Extraktionsprüfung" in first
+    assert "/workbench/document?case_id=" in first and "document_id=" + doc_id in first
+    assert "<strong>Stand:</strong> 0 Web-Belege gesichert" in first
+    service = ctx.document_intelligence_458
+    original = service._document(doc_id)
+    service.review_extraction(identity=user, document_id=doc_id, expected_document_hash=original["record_hash"],
+                              decision="approve", note="Beide Absätze mit dem Original verglichen.",
+                              confirmation="REVIEW DOCUMENT EXTRACTION 458")
+    second = flow()
+    assert "Nächster sinnvoller Schritt: Als Evidence übernehmen" in second
+    assert "1 freigegebenes Dokument noch nicht als Evidence" in second and "alle Extraktionen geprüft" in second
+    assert client.post("/workbench/bridge481", data={"csrf": csrf_session(workspace), "case_id": case_id, "document_id": doc_id,
+                       "rationale": RATIONALE, "confirm": "yes"}, follow_redirects=False).status_code == 303
+    from test_build492_markings import add_finding
+    add_finding(workspace, "Gründungsjahr laut Quelle", "offen")
+    third = flow()
+    assert "Nächster sinnvoller Schritt: Befunde prüfen" in third and "1 Befund wartet auf Prüfung" in third
+    assert "1 Dokument als Evidence übernommen" in third and "1 Befund · 1 noch nicht geprüft" in third

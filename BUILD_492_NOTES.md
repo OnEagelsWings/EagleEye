@@ -150,6 +150,13 @@ Nebenbefunde, mit behoben:
 * Die neue Ansicht nutzt die Standard-Richtlinie `Referrer-Policy: same-origin`. Unter `no-referrer`
   (Build 489 für `/documents458`) sendet Chromium bei Formularen `Origin: null`, und der Formularschutz
   lehnt sie zu Recht ab. Auch `same-origin` gibt Fall-URLs nicht an fremde Seiten weiter.
+* **Deutsche Statusbezeichnungen (U6)** auf Befund- und Berichtsseite statt Rohcodes; der Markdown-Bericht
+  zeigt „Bezeichnung (Code)“.
+* **Arbeitsablauf mit Zustand (U4):** Jeder Schritt zeigt seinen Stand (z. B. „3 Dokumente · 1 wartet auf
+  Extraktionsprüfung“), offene Arbeit ist hervorgehoben. Oben steht der nächste sinnvolle Schritt
+  (Quelle sichern → Extraktion prüfen → Evidence übernehmen → Befunde prüfen).
+* Noch offen aus Stufe 4: Navigation verdichten (U3; der Ablauf hat 23 Schritte und ist auf dem Handy sehr
+  lang) und Fundstellen im Seitenbild markieren (U5).
 
 ## Prüfen
 

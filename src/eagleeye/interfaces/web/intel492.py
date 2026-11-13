@@ -231,6 +231,55 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 '<p class="muted">Mandant: nur geprüfte Befunde mit Schutzklasse „offen“. Behörde/Gericht: nur von einem zweiten Konto '
                 'geprüfte Befunde mit unveränderter Quelle, ohne „intern“. Auslassungen stehen im Bericht.</p></section>')
 
+    def workflow_status(user, case_id):
+        """Short state per guided-workflow step plus the next sensible step (cheap counts only)."""
+        docs = ctx.document_intelligence_458.documents(identity=user, case_id=case_id)
+        waiting = [d for d in docs if d["state"] == "review_required"]
+        approved = [d for d in docs if d["state"] == "extraction_approved"]
+        promoted = {r["document_id"] for r in ctx.db.all(
+            "SELECT document_id FROM document_evidence_bridge_481 WHERE case_id=?", (case_id,))} if ctx.db.one(
+            "SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='document_evidence_bridge_481'") else set()
+        not_promoted = [d for d in approved if d["document_id"] not in promoted]
+        pdf_open = [d for d in waiting if d["media_type"] == "application/pdf" and not docstructure.enrichment_for(ctx, d["document_id"])]
+        findings = {r["review_state"]: r["n"] for r in ctx.db.all(
+            "SELECT review_state, COUNT(*) AS n FROM operational_findings_478 WHERE case_id=? GROUP BY review_state", (case_id,))}
+        total_findings = sum(findings.values())
+        unreviewed = findings.get("unreviewed", 0) + findings.get("needs_rework", 0)
+        leads = ctx.db.one("SELECT COUNT(*) AS n FROM research_leads_483 WHERE case_id=?", (case_id,))["n"] if ctx.db.one(
+            "SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='research_leads_483'") else 0
+        captured_leads = ctx.db.one("SELECT COUNT(DISTINCT lead_id) AS n FROM web_capture_lead_492 WHERE case_id=?", (case_id,))["n"]
+        captures_n = captures.capture_count(ctx, case_id)
+        status = {
+            "/documents458": (_count(len(docs), "Dokument", "Dokumente") + (f" · {len(waiting)} warten auf Extraktionsprüfung" if waiting else " · alle Extraktionen geprüft" if docs else ""), bool(waiting)),
+            "/workbench/bridge481": ((_count(len(not_promoted), "freigegebenes Dokument", "freigegebene Dokumente") + " noch nicht als Evidence" if not_promoted else
+                                      _count(len(promoted), "Dokument", "Dokumente") + " als Evidence übernommen"), bool(not_promoted)),
+            "/workbench/intel/web": (_count(captures_n, "Web-Beleg", "Web-Belege") + " gesichert", False),
+            "/workbench/intel/documents": ((_count(len(pdf_open), "PDF", "PDFs") + " ohne ergänzte Fundstellen") if pdf_open else "keine offenen PDFs", bool(pdf_open)),
+            "/workbench/leads483": (_count(leads, "Suchhinweis", "Suchhinweise") + (f" · {captured_leads} als Web-Beleg gesichert" if leads else ""), False),
+            "/workbench/findings": (_count(total_findings, "Befund", "Befunde") + (f" · {unreviewed} noch nicht geprüft" if unreviewed else ""), False),
+            "/workbench/report": ((_count(unreviewed, "Befund wartet", "Befunde warten") + " auf Prüfung" if unreviewed else
+                                   ("alle Befunde geprüft" if total_findings else "noch keine Befunde")), bool(unreviewed)),
+        }
+        nxt = None
+        if not docs and not captures_n:
+            nxt = ("Erste Quelle sichern", "Eine öffentliche Seite oder ein Dokument als Beleg aufnehmen.", "/workbench/intel/web")
+        elif waiting:
+            target = waiting[0]
+            nxt = ("Extraktion prüfen", f"„{target['title'][:80]}“ und " + _count(len(waiting) - 1, "weiteres Dokument warten", "weitere warten") + " auf die Prüfung der Textübernahme."
+                   if len(waiting) > 1 else f"„{target['title'][:80]}“ wartet auf die Prüfung der Textübernahme.",
+                   "/workbench/document?" + urlencode({"case_id": case_id, "document_id": target["document_id"]}))
+        elif not_promoted:
+            nxt = ("Als Evidence übernehmen", _count(len(not_promoted), "geprüftes Dokument kann", "geprüfte Dokumente können") + " in die Evidence-Kette.", "/workbench/bridge481")
+        elif unreviewed:
+            nxt = ("Befunde prüfen", _count(unreviewed, "Befund ist", "Befunde sind") + " noch nicht geprüft.", "/workbench/report")
+        next_html = ""
+        if nxt:
+            href = nxt[2] if "?" in nxt[2] else nxt[2] + "?" + urlencode({"case_id": case_id})
+            next_html = ('<section class="card warn" aria-label="Nächster Schritt"><h2>Nächster sinnvoller Schritt: ' + escape(nxt[0]) +
+                         '</h2><p>' + escape(nxt[1]) + '</p><a href="' + escape(href, quote=True) + '">Jetzt erledigen →</a></section>')
+        return status, next_html
+
+    app.state.workflow_status = workflow_status
     app.state.finding_form_extra = finding_form_extra
     app.state.finding_created_hook = FindingCreated()
     app.state.report_card_extra = report_card_extra
