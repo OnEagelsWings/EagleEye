@@ -8,7 +8,7 @@ from fastapi import HTTPException,Request,Query
 from fastapi.responses import HTMLResponse,RedirectResponse,Response
 from .operations476 import case_access,page
 from .app364 import CSRF_COOKIE
-from .findings478 import (notes_db,notes_for_case,verify_post,bounded_form,
+from .findings478 import (notes_db,notes_for_case,verify_post,bounded_form,REVIEW_LABELS,SOURCE_LABELS,
     checked_note,finding_hash,KINDS,get_anchor)
 
 REVIEW_COLUMNS=('review_id','case_id','finding_id','reviewed_by','reviewed_at',
@@ -89,10 +89,10 @@ def report_body(app,user,case,notes,header=None,extra_fields=None):
                 ('Dokument-ID',row['document_id']),('Anker-ID',row['anchor_id']),
                 ('Dokument SHA-256 bei Aufnahme',row['document_sha256']),
                 ('Anker-Snapshot',row['anchor_hash']),('Herkunfts-URL (unbestätigte Metadaten)',row['source_url']),
-                ('Quellenintegrität beim Export',states[row['finding_id']]),
+                ('Quellenintegrität beim Export',SOURCE_LABELS.get(states[row['finding_id']],'')+' ('+states[row['finding_id']]+')'),
                 *(web_fields(str(case['case_id']),row['document_id']) if web_fields else []),
                 *(extra_fields(row) if extra_fields else []),
-                ('Prüfstatus',row['review_state']),('Prüfbegründung',row['review_reason']),
+                ('Prüfstatus',REVIEW_LABELS.get(row['review_state'],'')+' ('+row['review_state']+')'),('Prüfbegründung',row['review_reason']),
                 ('Prüfendes Konto',row['reviewed_by']),('Verfasst von',row['created_by']),
                 ('Verfasst am',row['created_at']),('Befund-Hash',row['record_hash'])]
             for label,value in fields:lines.extend([label+':','',literal(value),''])
@@ -137,9 +137,9 @@ def attach_report(app,build):
             web_line+=card_extra(request,user,case_id,row) if card_extra else ''
 
             cards.append('<section class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(row['interpretation'])+
-                '</p><p>Quellenstand: '+escape(state)+' · Status: '+escape(row['review_state'])+
+                '</p><p>Quellenstand: '+escape(SOURCE_LABELS.get(state,state))+' · Status: '+escape(REVIEW_LABELS.get(row['review_state'],row['review_state']))+
                 '</p>'+web_line+'<blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape(original,quote=True)+
-                '">Originalfundstelle öffnen</a><p>Prüfendes Konto: '+escape(row['reviewed_by'])+' · '+escape(row['review_reason'])+
+                '">Originalfundstelle öffnen</a><p>'+('Geprüft von '+escape(row['reviewed_by'])+(': '+escape(row['review_reason']) if row['review_reason'] else '') if row['reviewed_by'] else 'Noch nicht geprüft.')+
                 '</p><details><summary>Prüfhistorie</summary><ol>'+history+'</ol></details>'+form+'</section>')
         nav=''
         for value,label in [(offset-50,'Neuere Arbeitsbefunde'),(offset+50,'Ältere Arbeitsbefunde')]:
