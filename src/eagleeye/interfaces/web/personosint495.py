@@ -126,7 +126,10 @@ def attach_personosint495(app, build: str) -> None:
                 )
         # Show the *real* governed adapters already present in EagleEye, rather
         # than presenting manual Claude-source links as if they were automated.
-        relevant_types = {"public_code_profile", "scholarly_identity", "scholarly_metadata",
+        if getattr(app.state, "public_sources501", False):
+            source_url = "/workbench/public-sources?" + urlencode({"case_id": case_id, "kind": {"person": "person", "unternehmen": "company", "benutzername": "username"}[kind], "term": term})
+            body += '<p><a href="' + escape(source_url, quote=True) + '">Gemeinsame Quellen- und Personenrecherche öffnen</a></p>'
+        relevant_types = {"public_office", "public_code_profile", "scholarly_identity", "scholarly_metadata",
                           "corporate_registry", "authority_identity", "social_profile"}
         governed = [p for p in provider_catalog if p.get("provider_type") in relevant_types]
         body += ("<h2>Bestehende kontrollierte EagleEye-Provider (" + str(len(governed)) + ")</h2>"

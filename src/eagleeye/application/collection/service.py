@@ -285,7 +285,7 @@ class ProviderCollection120Service:
                     raise ProviderTransportError(f"provider returned HTTP {response.status_code}")
                 items = list(adapter.normalize(response, request))[: request.max_results - len(normalized)]
                 normalized.extend(items)
-                if mode == "live" and record_replay:
+                if mode == "live" and record_replay and definition.supports_replay:
                     fixture_ids.append(self._record_fixture(provider_key, response, run_id))
                 if len(normalized) >= request.max_results:
                     break

@@ -128,13 +128,13 @@ def test_import_rejects_bad_csrf_cross_case_and_local_urls(workspace):
 def test_launchers_keep_case_data_outside_upgradeable_install_folder():
     for name in ("START_EAGLEEYE_PRO.bat", "START_EAGLEEYE_PRO.sh"):
         text = (ROOT / name).read_text(encoding="utf-8")
-        assert "INSTALL_EAGLEEYE_490.py" in text
-        assert ".eagleeye-runtime-490" in text
+        assert "INSTALL_EAGLEEYE_500.py" in text
+        assert ".eagleeye-runtime-500" in text
         assert ".eagleeye-data-490" not in text
         assert ".eagleeye-config-490" not in text
     for name in ("EAGLEEYE_START_DIAGNOSE.bat", "EAGLEEYE_DATENORDNER_WAEHLEN.bat",
                  "EAGLEEYE_SICHERUNG.bat", "EAGLEEYE_WIEDERHERSTELLEN.bat"):
-        assert ".eagleeye-runtime-490\\Scripts\\python.exe" in (ROOT / name).read_text(encoding="utf-8")
+        assert ".eagleeye-runtime-500\\Scripts\\python.exe" in (ROOT / name).read_text(encoding="utf-8")
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert ".eagleeye-runtime-*/" in ignore
     assert ".eagleeye-config-*/" in ignore

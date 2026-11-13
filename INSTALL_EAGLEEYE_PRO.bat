@@ -3,9 +3,9 @@ setlocal
 cd /d "%~dp0"
 where py >nul 2>nul
 if %errorlevel%==0 (
-    set "PYTHON=py -3"
+    set "PYTHON=py -3.12"
 ) else (
     set "PYTHON=python"
 )
-%PYTHON% INSTALL_EAGLEEYE_481.py %*
+%PYTHON% INSTALL_EAGLEEYE_500.py %*
 exit /b %errorlevel%
