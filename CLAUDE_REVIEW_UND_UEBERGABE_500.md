@@ -16,7 +16,9 @@ ohne Textkonflikt zusammenführen.
 | Volle Regression (`tools/run_checkpoint_regression480.py`) auf `2cc6d1d`, Linux, Python 3.13 | **1896 bestanden**, 3 übersprungen, 118 bewusst ausgeschlossen, 11 min |
 | Gezielte Tests Build 492 + 493–500 auf dem **zusammengeführten** Stand | 113 bestanden |
 | Volle Regression auf dem **zusammengeführten** Stand (Build 500 + gehärtetes 492 + Fix zu Befund 3), Linux, Python 3.13 | **1951 bestanden**, 3 übersprungen, 118 bewusst ausgeschlossen, 12 min |
-| PersonOSINT 1.5 | 96 Tests bestanden (76 auf SQLite, 20 zusätzlich auf PostgreSQL), Browser-Abnahme der neuen Oberfläche ohne Fehler |
+| Volle Regression nach Übernahme von Build 501 (öffentliche Quellen) und der 492-Konvergenz (`db5d6d1`) | **1976 bestanden**, 3 übersprungen, 118 ausgeschlossen |
+| PersonOSINT 1.6 | 107 Tests bestanden (SQLite und PostgreSQL), Browser-Abnahme der neuen Oberfläche ohne Fehler |
+| Quellen live | Aus der Entwicklungsumgebung sind nur GitHub, GitLab und Docker Hub erreichbar; diese antworten im erwarteten Format. Alle anderen Quellen beider Seiten sind live nicht bestätigt. |
 | Abhängigkeiten von Build 500 (`pip-audit` auf der installierten Umgebung) | **57 bekannte Lücken** in 3 Paketen, siehe Befund 2 |
 
 ## 2. Befunde zu Build 493–500
@@ -78,6 +80,21 @@ Sie arbeiten auf einfachen Listen und Wörterbüchern und kennen weder die Perso
 | danach | Entscheidung Einzelplatz oder Teambetrieb (Rollen, 2FA, PostgreSQL, Docker gibt es in PersonOSINT bereits). | – |
 
 Regel für alle Schritte: nichts doppelt speichern, nichts automatisch bestätigen, jede Außenabfrage freigabepflichtig.
+
+### Nachtrag 13. Nov.: Build 501 und PersonOSINT 1.6 arbeiten am selben Thema
+
+Mit `public_sources501` (ChatGPT) gibt es Schritt 501 im Hauptprogramm bereits für sechs Adapter – genau der vorgeschlagene Weg über
+`ProviderCollection120`. PersonOSINT 1.6 hat parallel 13 Quellen ergänzt (`PersonOSINT/personosint/connectors2.py`). **Doppelt vorhanden:**
+GND/lobid, abgeordnetenwatch, Crossref. **Nur in PersonOSINT:** französisches Firmenregister (Leitungspersonen), ICIJ online, INTERPOL Red
+Notices, FBI Wanted, GDELT-Presse, Wikipedia, DBLP, Keybase, Codeberg, Docker Hub sowie die älteren (GLEIF, Companies House,
+OpenCorporates, crt.sh, RDAP, OpenSanctions, Mastodon, Bluesky …). **Nur im Hauptprogramm:** HDX, OpenAlex-Veröffentlichungen, Common Crawl
+und der kuratierte Katalog der Bundes-/Registerzugänge.
+
+Vorschlag zur Arbeitsteilung: Die Antwort-Auswertung (aus JSON werden Treffer und Aussagen) bleibt in `PersonOSINT/personosint/` als
+Bibliothek; `public_sources501` ruft diese Funktionen mit dem eigenen, freigabepflichtigen Transport auf. Jede PersonOSINT-Quelle ist eine
+reine Funktion `runner(quelle, art, wert, http)` und nimmt jeden Transport mit einer `get(url, headers)`-Methode – ein Adapter auf
+`ProviderCollection120` ist damit je Quelle wenige Zeilen. Die Ein-Klick-Prüfung („Alle Quellen prüfen“) sollte es auf beiden Seiten geben:
+Beide Linien konnten ihre Quellen bisher nicht live bestätigen.
 
 ## 5. Bitte an die ChatGPT-Linie
 
