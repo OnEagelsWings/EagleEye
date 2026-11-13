@@ -246,15 +246,36 @@ def _verify_wheelhouse(root: Path) -> None:
 def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: bool = False) -> None:
     if not quiet:
         print(f"[EagleEye {BUILD}] Installing package {PACKAGE_VERSION} into the local runtime...")
-    command = [str(runtime_python), "-m", "pip", "install",
-               "--disable-pip-version-check", "--upgrade"]
+    # Windows Defender, disk space, or long-path failures can terminate an
+    # offline install after pip prints "Installing collected packages". Keep
+    # pip's rolling on-disk log even when the console closes unexpectedly.
+    # Local, sealed wheels need neither a download cache nor eager .pyc builds.
+    log_path = root / RUNTIME_DIR / "install-pip-500.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    if log_path.is_symlink():
+        raise RuntimeError("Linked installer log path is forbidden")
+    if not quiet:
+        print(f"[EagleEye {BUILD}] Installationsprotokoll: {log_path}", flush=True)
+    command = [str(runtime_python), "-m", "pip", "--log", str(log_path),
+               "install", "--disable-pip-version-check", "--no-cache-dir",
+               "--no-compile", "--upgrade"]
     if offline or (root / "wheelhouse").exists():
         _verify_wheelhouse(root)
         command += ["--no-index", "--find-links", str(root / "wheelhouse"),
                     PACKAGE + "==" + PACKAGE_VERSION]
     else:
         command.append(str(root))
-    subprocess.run(command, cwd=str(root), check=True)
+    try:
+        subprocess.run(command, cwd=str(root), check=True)
+    except subprocess.CalledProcessError:
+        print(
+            "[EagleEye 500] Paketinstallation fehlgeschlagen. "
+            f"Bitte die letzten Zeilen aus {log_path} pruefen. "
+            "Keine Passwoerter oder Sitzungstokens teilen.",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise
 
 
 def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
