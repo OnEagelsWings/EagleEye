@@ -32,8 +32,8 @@ echo Installations-Rueckgabecode: %RESULT% >> "%LOG%"
 echo.
 echo Installation beendet mit Rueckgabecode %RESULT%.
 echo Protokoll: "%LOG%"
-echo Die letzten Meldungen aus dem Protokoll:
-powershell -NoProfile -NonInteractive -Command "Get-Content -LiteralPath $args[0] -Tail 35" "%LOG%"
+echo Die Installationsdiagnose wird im Editor geoeffnet:
+start "" notepad.exe "%LOG%"
 echo.
 echo Bitte die letzten Zeilen aus dem Protokoll weitergeben.
 echo Passwoerter, Tokens und persoenliche Pfade vor dem Teilen pruefen.
