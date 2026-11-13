@@ -137,7 +137,7 @@ def attach_report(app,build):
             web_line+=card_extra(request,user,case_id,row) if card_extra else ''
 
             cards.append('<section class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(row['interpretation'])+
-                '</p><p>Quellenstand: '+escape(SOURCE_LABELS.get(state,state))+' · Status: '+escape(REVIEW_LABELS.get(row['review_state'],row['review_state']))+
+                '</p><p>Quellenstand: '+escape(SOURCE_LABELS.get(state,state))+' · Status: '+escape(REVIEW_LABELS.get(row['review_state'],row['review_state']))+' <small>('+escape(row['review_state'])+')</small>'+
                 '</p>'+web_line+'<blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape(original,quote=True)+
                 '">Originalfundstelle öffnen</a><p>'+('Geprüft von '+escape(row['reviewed_by'])+(': '+escape(row['review_reason']) if row['review_reason'] else '') if row['reviewed_by'] else 'Noch nicht geprüft.')+
                 '</p><details><summary>Prüfhistorie</summary><ol>'+history+'</ol></details>'+form+'</section>')
