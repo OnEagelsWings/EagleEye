@@ -79,3 +79,24 @@ def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
     assert "--no-index" in commands[0]
     assert "--find-links" in commands[0]
     assert "eagleeye-personosint-pro==500.0.0" in commands[0]
+
+
+def test_build500_default_workspace_isolated_from_previous_release(tmp_path, monkeypatch):
+    from eagleeye.bootstrap import desktop476, paths
+    monkeypatch.delenv("EAGLEEYE_SETTINGS_DIR", raising=False)
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "profile"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "profile"))
+    previous = tmp_path / "profile" / "EagleEye-490"
+    previous.mkdir(parents=True)
+    saved = previous / "workspace.json"
+    saved.write_text(json.dumps({"workspace_directory": str(previous / "workspace")}), encoding="utf-8")
+    before = saved.read_bytes()
+    install = tmp_path / "program"
+    install.mkdir()
+    expected = tmp_path / "profile" / "EagleEye-500" / "workspace"
+    assert desktop476.resolve_workspace(install) == expected
+    assert paths.default_runtime_root() == expected
+    assert desktop476.resolve_workspace(install) == expected
+    assert saved.read_bytes() == before
+    assert not (previous / "workspace").exists()
