@@ -83,6 +83,16 @@ class RuntimePaths:
             workspace = runtime_root.resolve()
             if not chosen.is_relative_to(workspace) or chosen == workspace:
                 raise ValueError("Internal release database must stay inside its workspace")
+            # Reject aliases between the workspace and explicit database.
+            # Even in-workspace aliases can silently merge separate case stores.
+            raw_candidate = Path(db_path).absolute()
+            raw_workspace = runtime_root.absolute()
+            if raw_candidate.is_relative_to(raw_workspace):
+                cursor = raw_workspace
+                for component in raw_candidate.relative_to(raw_workspace).parts:
+                    cursor = cursor / component
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release database path cannot traverse symbolic links")
             installation = Path(install_dir).resolve()
             if chosen.is_relative_to(installation):
                 raise ValueError("Internal release database must be separate from installation")
@@ -140,8 +150,13 @@ class RuntimePaths:
             for directory in values.values():
                 # Even an in-workspace alias can merge distinct module stores,
                 # compromising evidence provenance and backup isolation.
-                if directory.is_symlink():
-                    raise ValueError("Internal release module directories cannot be symbolic links")
+                # Check intermediate components too: a nested in-workspace
+                # alias can merge two independent stores without escaping root.
+                cursor = workspace
+                for component in directory.relative_to(runtime_root).parts:
+                    cursor = cursor / component
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release module directories cannot traverse symbolic links")
                 target = directory.resolve()
                 if not target.is_relative_to(workspace):
                     raise ValueError("Internal release module directories must stay inside the workspace")

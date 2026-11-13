@@ -155,6 +155,8 @@ class CollectionEngine105Service:
         job = self.repository.get_job(job_id)
         if job["status"] not in {"planned", "failed", "cancelled"}:
             raise ValueError(f"job cannot be started from status {job['status']}")
+        if not self._legal_scope_approved(job["case_id"]):
+            raise PermissionError("approved legal scope is required before starting live collection")
         worker = self.project_root / "EAGLEEYE_COLLECTION_WORKER_105.py"
         if not worker.exists():
             raise FileNotFoundError(worker)
@@ -185,6 +187,10 @@ class CollectionEngine105Service:
         job = self.repository.get_job(job_id)
         if job["status"] == "completed":
             return job
+        if job["status"] == "cancelled":
+            raise PermissionError("cancelled collection job cannot be executed")
+        if not self._legal_scope_approved(job["case_id"]):
+            raise PermissionError("approved legal scope is required before executing live collection")
         policy = CrawlPolicyModel.model_validate(job["policy"])
         job_dir = self.data_dir / job["case_id"] / job_id
         job_dir.mkdir(parents=True, exist_ok=True)

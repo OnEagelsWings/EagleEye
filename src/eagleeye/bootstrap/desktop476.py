@@ -33,7 +33,10 @@ def _local_path(value):
     text=str(value).strip()
     if not text or text.startswith(('\\\\','//')):
         raise ValueError('Bitte einen lokalen Arbeitsordner auswählen.')
-    return Path(text).expanduser().resolve()
+    candidate = Path(text).expanduser().absolute()
+    if _internal_release_build(BUILD) and any(part.is_symlink() for part in (candidate, *candidate.parents)):
+        raise ValueError('Interner Arbeitsordner darf keine symbolischen Verknüpfungen enthalten.')
+    return candidate.resolve()
 
 
 def _atomic_json(path,payload):

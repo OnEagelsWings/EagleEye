@@ -251,6 +251,7 @@ class ProviderCollection120Service:
         attempts = 0
         total_latency = 0
         fixture_ids: list[str] = []
+        pending_replay_responses: list[ProviderTransportResponse] = []
         try:
             for index, http_request in enumerate(http_requests):
                 # A reviewer may revoke or narrow the search while a multi-request
@@ -286,7 +287,9 @@ class ProviderCollection120Service:
                 items = list(adapter.normalize(response, request))[: request.max_results - len(normalized)]
                 normalized.extend(items)
                 if mode == "live" and record_replay:
-                    fixture_ids.append(self._record_fixture(provider_key, response, run_id))
+                    # Defer replay persistence until the final approval check.
+                    # A revoked search must not leave captured response fixtures.
+                    pending_replay_responses.append(response)
                 if len(normalized) >= request.max_results:
                     break
             # Approval can be withdrawn while the final HTTP response is being
@@ -299,6 +302,21 @@ class ProviderCollection120Service:
                     search_intent_id=search_intent_id,
                     search_query_id=search_query_id,
                     target_id=target_id,
+                )
+            for approved_response in pending_replay_responses:
+                # Revocation may happen while earlier fixtures are written.
+                # Recheck before each further persistence operation.
+                self._validate_search_approval(
+                    case_id=case_id, provider_key=provider_key, query=query,
+                    search_intent_id=search_intent_id,
+                    search_query_id=search_query_id, target_id=target_id,
+                )
+                fixture_ids.append(self._record_fixture(provider_key, approved_response, run_id))
+            if mode == "live":
+                self._validate_search_approval(
+                    case_id=case_id, provider_key=provider_key, query=query,
+                    search_intent_id=search_intent_id,
+                    search_query_id=search_query_id, target_id=target_id,
                 )
             intake_ids, duplicate_count = self._store_intake(run_id, request, normalized)
             result_count = len(intake_ids)
@@ -329,7 +347,10 @@ class ProviderCollection120Service:
                 WHERE run_id=?""",
                 (attempts, error_class, error_text, completed, run_id),
             )
-            self._record_run_failure(definition)
+            # Revoked case approval is not a provider outage. Preserve the failed
+            # run/audit trail, but do not trip the shared provider circuit breaker.
+            if not isinstance(exc, ProviderAuthorizationError):
+                self._record_run_failure(definition)
             self._event(case_id, provider_key, run_id, approved_by, "ProviderRunFailed", {
                 "error_class": error_class, "error": error_text[:1000],
             })
@@ -470,7 +491,9 @@ class ProviderCollection120Service:
             raise ProviderAuthorizationError("search intent and query require approval")
         if str(row["provider"]) != provider_key:
             raise ProviderAuthorizationError("approved query names a different provider")
-        if " ".join(str(row["query_text"]).split()).casefold() != " ".join(query.split()).casefold():
+        # Search operators, whitespace and letter case can change provider semantics.
+        # Require the approved query bytes (apart from outer form whitespace).
+        if str(row["query_text"]).strip() != query.strip():
             raise ProviderAuthorizationError("execution query differs from approved query")
 
     # ---------- controls ----------
