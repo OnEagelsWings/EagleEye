@@ -403,16 +403,16 @@ def _username_presence(src: Source, kind: str, value: str, http: Http) -> list[d
 
 SOURCES: list[Source] = [
     Source("username_presence", "Benutzernamen-Check (13 Plattformen)", "Prüft, auf welchen Plattformen ein Benutzername existiert.",
-           ("username",), USERNAME_HOSTS, "Konto", 1.0, "Online-Präsenz", _username_presence),
+           ("username",), USERNAME_HOSTS, "Konto", 1.0, "Online-Präsenz", _username_presence, test_query=("username", "github")),
     Source("github", "GitHub", "Öffentliche Profile (Benutzername oder vollständiger Name).", ("username", "name"),
            ("api.github.com",), "Konto", 1.0, "Online-Präsenz", _github),
-    Source("gitlab", "GitLab", "Öffentliche Profile nach Benutzername.", ("username",), ("gitlab.com",), "Konto", 1.0, "Online-Präsenz", _gitlab),
+    Source("gitlab", "GitLab", "Öffentliche Profile nach Benutzername.", ("username",), ("gitlab.com",), "Konto", 1.0, "Online-Präsenz", _gitlab, test_query=("username", "gitlab-bot")),
     Source("bluesky", "Bluesky", "Öffentliche Personensuche im Bluesky-Netzwerk.", ("name", "username"),
            ("public.api.bsky.app",), "Konto", 0.9, "Online-Präsenz", _bluesky),
     Source("mastodon", "Mastodon (mastodon.social)", "Kontensuche im Fediverse.", ("name", "username"),
            ("mastodon.social",), "Konto", 0.9, "Online-Präsenz", _mastodon),
     Source("gravatar", "Gravatar", "Öffentliches Profil hinter einer E-Mail-Adresse.", ("email",),
-           ("api.gravatar.com",), "Konto", 1.0, "Online-Präsenz", _gravatar),
+           ("api.gravatar.com",), "Konto", 1.0, "Online-Präsenz", _gravatar, test_query=("email", "test@example.com")),
     Source("wikidata", "Wikidata", "Personen des öffentlichen Lebens.", ("name",), ("www.wikidata.org",),
            "Öffentliche Person", 0.8, "Register & Wissen", _wikidata),
     Source("openalex", "OpenAlex", "Autorinnen/Autoren wissenschaftlicher Arbeiten mit Institution.", ("name",),
@@ -421,9 +421,9 @@ SOURCES: list[Source] = [
     Source("interpol_yellow", "INTERPOL – Vermisste (Yellow Notices)", "Öffentliche internationale Vermisstenausschreibungen.",
            ("name",), ("ws-public.interpol.int",), "Vermisstenregister", 1.1, "Vermisstenfälle", _interpol_yellow),
     Source("wayback", "Internet Archive (Wayback)", "Historische Kopien von Webseiten/Profil-URLs.", ("url",),
-           ("web.archive.org",), "Archiv", 1.0, "Register & Wissen", _wayback),
+           ("web.archive.org",), "Archiv", 1.0, "Register & Wissen", _wayback, test_query=("url", "https://example.com")),
     Source("nominatim", "OpenStreetMap Nominatim", "Ortsauflösung (Koordinaten) für Orte und Adressen.", ("location",),
-           ("nominatim.openstreetmap.org",), "Ort", 0.6, "Orte", _nominatim),
+           ("nominatim.openstreetmap.org",), "Ort", 0.6, "Orte", _nominatim, test_query=("location", "Berlin")),
 ]
 SOURCE_MAP = {s.key: s for s in SOURCES}
 

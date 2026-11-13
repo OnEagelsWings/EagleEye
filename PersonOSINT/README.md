@@ -1,4 +1,4 @@
-# EagleEye PersonOSINT 1.5
+# EagleEye PersonOSINT 1.6
 
 **Investigativrecherche · Personensuche · Vermisstenrecherche · Verbindungsanalyse · Word-Dossiers**
 
@@ -25,6 +25,11 @@
 > Bestätigung), begründeter **Namensabgleich über Schriften**, Netzwerkanalyse mit Export für Gephi, FollowTheMoney und
 > Obsidian, **Folgesuchen** mit Freigabe und Herkunftskette, Korrelationsregeln – und die **Übergabe an die EagleEye-Fallakte**
 > (Build 493–500). Siehe [docs/ZUSAMMENFUEHRUNG.md](docs/ZUSAMMENFUEHRUNG.md).
+>
+> **Neu in 1.6 – mehr Quellen, Prüfung, Serverbetrieb:** 13 weitere frei zugängliche Quellen (GND, abgeordnetenwatch, Wikipedia,
+> französisches Firmenregister, ICIJ online, INTERPOL-Fahndung, FBI, Presse über GDELT, Crossref, DBLP, Keybase, Codeberg, Docker Hub) –
+> jetzt 35 Quellen. **„Alle Quellen prüfen“** zeigt mit einem Klick, welche Quellen auf diesem Rechner wirklich antworten
+> (`QUELLEN_PRUEFEN.bat`). **Serverbetrieb unter Windows** mit `START_PERSONOSINT_SERVER.bat`. Übersicht: [docs/QUELLEN.md](docs/QUELLEN.md).
 
 EagleEye PersonOSINT ist eine lokale OSINT-Plattform, die auf den Grundsätzen von EagleEye Build 380 aufbaut
 (nur öffentliche Quellen, menschliche Prüfung, Zweckbindung, Protokollierung). Sie wurde als schlankes,

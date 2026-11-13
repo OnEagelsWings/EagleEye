@@ -1799,11 +1799,19 @@
       const d = await api("GET", "/api/admin/sources");
       const groups = {};
       d.sources.filter((x) => !x.local).forEach((x) => (groups[x.group] = groups[x.group] || []).push(x));
-      el.innerHTML = `<div class="card"><div class="card-head"><h2>Online-Quellen</h2><span class="right small muted">Schlüssel werden verschlüsselt gespeichert und nie angezeigt.</span></div>
+      const HL = { ok: ["b-green", "✓ liefert Treffer"], leer: ["b-blue", "○ erreichbar, kein Treffer"], fehler: ["b-red", "✗ Fehler"], nicht_pruefbar: ["b-grey", "– nicht prüfbar"] };
+      const healthBadge = (h) => h ? `<span class="badge ${HL[h.state][0]}" title="${esc(`Testabfrage ${h.query} · geprüft ${fmtTs(h.checked_at)}${h.message ? " · " + h.message : ""}`)}">${HL[h.state][1]}${h.state === "ok" ? " (" + h.count + ")" : ""}</span>`
+        : '<span class="badge b-grey" title="Auf dieser Installation noch nie geprüft">noch nicht geprüft</span>';
+      const checked = d.sources.filter((x) => x.health), okN = checked.filter((x) => x.health.state === "ok").length, errN = checked.filter((x) => x.health.state === "fehler").length;
+      el.innerHTML = `<div class="card"><div class="card-head"><h2>🩺 Quellen-Prüfung</h2><div class="right"><button class="btn btn-primary" id="src-check">Alle Quellen prüfen</button>
+          <a class="btn" href="/api/admin/sources/report.md">⬇ Prüfbericht</a></div></div>
+        <p class="small muted">Ruft jede Quelle einmal mit einer unkritischen Testabfrage über den Standard-Netzausgang auf und zeigt, welche Quellen <b>auf diesem Rechner wirklich antworten</b>. Dauert 1–3 Minuten; es wird nichts in Fälle geschrieben.</p>
+        <div id="src-check-res" class="small">${checked.length ? `Letzte Prüfung: <b>${okN}</b> von ${d.sources.length} Quellen liefern Treffer${errN ? `, <b style="color:var(--red)">${errN} mit Fehler</b>` : ""}.` : "Noch keine Prüfung auf dieser Installation – bis dahin ist offen, welche Quellen antworten."}</div></div>
+      <div class="card"><div class="card-head"><h2>Online-Quellen (${d.sources.filter((x) => !x.local).length})</h2><span class="right small muted">Schlüssel werden verschlüsselt gespeichert und nie angezeigt.</span></div>
         ${Object.entries(groups).map(([g, list]) => `<h4 class="src-head">${esc(g)}</h4><table class="tbl"><tr><th>Quelle</th><th>Exposition</th><th>Verlässlichkeit</th><th>Lizenz / Kosten</th><th>Schlüssel</th><th></th></tr>
           ${list.map((x) => `<tr><td><b>${esc(x.label)}</b><br><span class="small muted">${esc(x.description)}</span>
             <br><span class="small" title="Womit kann diese Quelle suchen – und welche neuen Kennungen können ihre Treffer liefern (Grundlage der Folgesuchen)?"><span class="muted">verarbeitet:</span> ${x.kind_labels.map(esc).join(", ")}${x.produces_labels.length ? ` · <span class="muted">liefert:</span> ${x.produces_labels.map(esc).join(", ")}` : ""}</span>${x.docs ? `<br><a class="small" href="${esc(x.docs)}" target="_blank" rel="noopener noreferrer">Dokumentation ↗</a>` : ""}</td>
-            <td>${expoBadge(x.exposure)}</td><td>${relBadge(x.reliability)}</td><td class="small">${esc(x.license)}<br><span class="muted">${esc(x.cost)}</span></td>
+            <td>${expoBadge(x.exposure)}<br>${healthBadge(x.health)}</td><td>${relBadge(x.reliability)}</td><td class="small">${esc(x.license)}<br><span class="muted">${esc(x.cost)}</span></td>
             <td>${x.requires_key ? (x.key_set ? '<span class="badge b-green">hinterlegt</span>' : x.key_optional ? '<span class="badge b-amber">optional</span>' : '<span class="badge b-red">fehlt</span>') : '<span class="muted small">nicht nötig</span>'}</td>
             <td class="nowrap">${x.requires_key ? `<button class="btn btn-sm" data-key="${esc(x.key)}">Schlüssel …</button> ` : ""}<button class="btn btn-sm" data-test="${esc(x.key)}">Testen</button></td></tr>
             <tr class="hidden" id="st-${esc(x.key)}"><td colspan="6"></td></tr>`).join("")}</table>`).join("")}</div>
@@ -1824,6 +1832,14 @@
         <table class="tbl"><tr><th>Regel</th><th>aktiv</th><th>Schweregrad</th></tr>${Object.entries(rules).map(([k, r]) => `<tr><td>${esc(r.label)}</td>
           <td><input type="checkbox" data-rf-on="${k}" ${r.enabled ? "checked" : ""} style="width:auto"></td>
           <td><select data-rf-sev="${k}" style="width:auto">${["hoch", "mittel", "niedrig"].map((x) => opt(x, x, r.severity)).join("")}</select></td></tr>`).join("")}</table></div>`);
+      $("#src-check").onclick = async (ev) => {
+        const b = ev.currentTarget; b.disabled = true; b.innerHTML = '<span class="spinner"></span> prüfe … (1–3 Minuten)';
+        try {
+          const r = await api("POST", "/api/admin/sources/check", {});
+          toast(`Prüfung fertig: ${r.summary.ok} liefern Treffer, ${r.summary.leer} ohne Treffer, ${r.summary.fehler} Fehler, ${r.summary.nicht_pruefbar} nicht prüfbar`, r.summary.fehler ? "err" : "ok");
+        } catch (err) { toast(err.message, "err"); }
+        renderAdmin("sources");
+      };
       const [cr, comp] = await Promise.all([api("GET", "/api/admin/correlation-rules"), api("GET", "/api/components")]);
       const crCard = (data) => `<div class="card-head"><h2>🔗 Korrelationsregeln</h2></div>
         <p class="small muted">Regeln finden Überschneidungen zwischen Aussagen (Reiter „Fakten & Bewertung“). Sie erzeugen nur <b>Prüfhinweise</b>. Eigene Regeln werden als Beschreibung angelegt – ohne Programmierung.</p>

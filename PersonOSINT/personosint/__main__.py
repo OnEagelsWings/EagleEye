@@ -19,12 +19,36 @@ import webbrowser
 from pathlib import Path
 
 
+def _lan_addresses() -> list[str]:
+    """Rechnername und Adressen dieses Rechners im eigenen Netz (für den Serverbetrieb)."""
+    import socket
+
+    names = {socket.gethostname().casefold()}
+    try:
+        names.add(socket.getfqdn().casefold())
+        for info in socket.getaddrinfo(socket.gethostname(), None):
+            names.add(info[4][0].split("%", 1)[0])
+    except OSError:
+        pass
+    try:  # die Adresse, über die dieser Rechner nach außen spricht – ohne dass dabei ein Paket gesendet wird
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.0.2.1", 9))
+            names.add(probe.getsockname()[0])
+    except OSError:
+        pass
+    return sorted(n for n in names if n and n not in {"localhost", "127.0.0.1", "::1"} and not n.startswith("127."))
+
+
 def _settings(args):
     from .config import Settings
 
     s = Settings()
     if getattr(args, "data", None):
         s.data_dir = Path(args.data)
+    if getattr(args, "server", False):
+        # Serverbetrieb im eigenen Netz: von anderen Rechnern erreichbar, Zwei-Faktor-Anmeldung immer Pflicht
+        s.require_2fa = True
+        s.allowed_hosts = list(dict.fromkeys(list(s.allowed_hosts) + _lan_addresses()))
     return s
 
 
@@ -61,10 +85,21 @@ def cmd_serve(args) -> None:
 
     from .api import create_app
 
+    if getattr(args, "server", False) and args.host in ("127.0.0.1", "localhost"):
+        args.host = "0.0.0.0"  # noqa: S104 - ausdrücklich gewählter Serverbetrieb
     app = create_app(settings=_settings(args))
     shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
     url = f"http://{shown}:{args.port}/"
     print(f"EagleEye PersonOSINT läuft unter {url}  (Daten: {app.state.settings.data_dir}, Datenbank: {app.state.platform.db.dialect})")
+    if getattr(args, "server", False):
+        others = [a for a in _lan_addresses() if not a.startswith("fe80")]
+        print("SERVERBETRIEB – von anderen Rechnern im eigenen Netz erreichbar unter:")
+        for a in others:
+            print(f"    http://{'[' + a + ']' if ':' in a else a}:{args.port}/")
+        print("  · Zwei-Faktor-Anmeldung ist Pflicht. Jede Person braucht ein eigenes Konto (Verwaltung → Benutzer).")
+        print("  · Die Verbindung ist im eigenen Netz unverschlüsselt (http). Für Zugriff von außerhalb oder über WLAN mit Fremden")
+        print("    bitte den HTTPS-Betrieb nutzen (README → Teambetrieb mit Docker) – nicht einfach den Port im Router freigeben.")
+        print("  · Windows fragt beim ersten Start nach der Firewall-Freigabe: nur „Private Netzwerke“ erlauben.")
     print("Beenden mit Strg+C")
     if not args.no_browser:
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
@@ -139,6 +174,22 @@ def cmd_restore(args) -> None:
     print(f"Wiederhergestellt: {res['tables']} · Fotos: {res['photos']}")
 
 
+def cmd_check_sources(args) -> None:
+    """Prüft alle Quellen mit ihrer Testabfrage und zeigt, welche auf diesem Rechner wirklich antworten."""
+    _, _, _, _, p = _open(args)
+    print("Prüfe alle Quellen über den Standard-Netzausgang … (dauert je nach Verbindung 1–3 Minuten)")
+    res = p.check_sources()
+    mark = {"ok": "✓", "leer": "○", "fehler": "✗", "nicht_pruefbar": "–"}
+    for r in res["results"]:
+        detail = f"{r['count']} Treffer" if r["state"] in ("ok", "leer") else r["message"]
+        print(f"  {mark[r['state']]} {r['label'][:52]:<52} {detail}")
+    sm = res["summary"]
+    print(f"Ergebnis: {sm['ok']} liefern Treffer · {sm['leer']} erreichbar ohne Treffer · {sm['fehler']} Fehler · {sm['nicht_pruefbar']} nicht prüfbar (Schlüssel/Daten fehlen)")
+    if args.out:
+        Path(args.out).write_text(p.source_report(), encoding="utf-8")
+        print(f"Prüfbericht gespeichert: {args.out}")
+
+
 def cmd_import_refdata(args) -> None:
     from .refdata import DATASETS, RefDataError
 
@@ -172,6 +223,8 @@ def main(argv: list[str] | None = None) -> None:
         target.add_argument("--host", default=os.environ.get("EAGLEEYE_HOST", "127.0.0.1"))
         target.add_argument("--port", type=int, default=int(os.environ.get("EAGLEEYE_PORT", "8380")))
         target.add_argument("--no-browser", action="store_true")
+        target.add_argument("--server", action="store_true",
+                            help="Serverbetrieb: im eigenen Netz erreichbar (Zwei-Faktor-Pflicht, Rechnername/Adressen werden automatisch zugelassen)")
     cu = sub.add_parser("create-user", help="Benutzer anlegen")
     cu.add_argument("--username", required=True)
     cu.add_argument("--name", default="")
@@ -190,13 +243,15 @@ def main(argv: list[str] | None = None) -> None:
     rs.add_argument("--force", action="store_true", help="vorhandene Daten überschreiben")
     rs.add_argument("--source-key", default="", help="Schlüsseldatei der Quellinstallation (bei Sicherung ohne Passphrase)")
     sub.add_parser("verify-audit")
+    cs = sub.add_parser("check-sources", help="alle Quellen mit ihrer Testabfrage prüfen (Internetverbindung nötig)")
+    cs.add_argument("--out", default="", help="Prüfbericht als Markdown-Datei speichern")
     ir = sub.add_parser("import-refdata", help="lokale Referenzdaten importieren (opensanctions | icij | eigene_liste)")
     ir.add_argument("name")
     ir.add_argument("file")
     args = parser.parse_args(argv)
     {None: cmd_serve, "serve": cmd_serve, "create-user": cmd_create_user, "reset-2fa": cmd_user_admin, "unlock": cmd_user_admin,
      "reset-password": cmd_user_admin, "backup": cmd_backup, "verify-backup": cmd_verify_backup, "restore": cmd_restore,
-     "verify-audit": cmd_verify_audit, "import-refdata": cmd_import_refdata}[args.command](args)
+     "verify-audit": cmd_verify_audit, "import-refdata": cmd_import_refdata, "check-sources": cmd_check_sources}[args.command](args)
 
 
 if __name__ == "__main__":

@@ -356,6 +356,15 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def admin_sources(_: dict = Depends(admin_ok)) -> dict:
         return {"sources": p.available_sources(), "datasets": p.refdata.status()}
 
+    @app.post("/api/admin/sources/check")
+    def admin_check_sources(payload: dict = Body(default={}), _: dict = Depends(admin_ok)) -> dict:
+        """Alle (oder ausgewählte) Quellen mit ihrer Testabfrage prüfen – zeigt, welche Quellen auf dieser Installation wirklich antworten."""
+        return p.check_sources(payload.get("keys") or None)
+
+    @app.get("/api/admin/sources/report.md")
+    def admin_source_report(_: dict = Depends(admin_ok)) -> Response:
+        return _download(p.source_report().encode("utf-8"), "Quellen-Pruefbericht.md", "text/markdown")
+
     @app.put("/api/admin/sources/{key}/key")
     def admin_set_key(key: str, payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
         p.set_api_key(key, (payload.get("key") or "").strip() or None)

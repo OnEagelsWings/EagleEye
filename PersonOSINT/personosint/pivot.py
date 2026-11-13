@@ -31,6 +31,9 @@ PRODUCES: dict[str, tuple[str, ...]] = {
     "companies_house": ("employer", "location"), "opencorporates": ("employer",), "gleif": ("employer", "location"),
     "crtsh": ("domain",), "rdap": ("domain", "employer"), "opensanctions": ("alias",),
     "lokal_opensanctions": ("alias",), "lokal_icij": ("employer", "location"), "lokal_eigene_liste": ("alias",),
+    "lobid_gnd": ("alias", "employer", "location"), "abgeordnetenwatch": ("employer",), "wikipedia": (), "fr_entreprises": ("employer", "location"),
+    "icij_online": (), "interpol_red": (), "fbi_wanted": ("alias",), "gdelt_news": ("url",), "crossref": ("employer",), "dblp": ("employer",),
+    "keybase": ("username", "url"), "codeberg": ("username", "url"), "dockerhub": ("username", "employer", "location"),
 }
 KIND_LABEL = {"name": "Name", "alias": "Alias", "email": "E-Mail", "phone": "Telefon", "username": "Benutzername", "url": "Webadresse",
               "location": "Ort/Adresse", "employer": "Arbeitgeber/Firma", "domain": "Domain"}

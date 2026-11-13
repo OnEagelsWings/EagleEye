@@ -43,6 +43,10 @@ SOURCE_EXPOSURE = {
     "rdap": "passiv", "opensanctions": "passiv",
     "lokal_opensanctions": "lokal", "lokal_icij": "lokal", "lokal_eigene_liste": "lokal",
     "github": "plattform", "gitlab": "plattform", "bluesky": "plattform", "mastodon": "plattform", "username_presence": "plattform",
+    # Version 1.6: Register, Normdaten, Presse und Fahndungslisten fragen Dritte ab (passiv); Konto-Plattformen sehen den Benutzernamen
+    "lobid_gnd": "passiv", "abgeordnetenwatch": "passiv", "wikipedia": "passiv", "fr_entreprises": "passiv", "icij_online": "passiv",
+    "interpol_red": "passiv", "fbi_wanted": "passiv", "gdelt_news": "passiv", "crossref": "passiv", "dblp": "passiv",
+    "keybase": "plattform", "codeberg": "plattform", "dockerhub": "plattform",
 }
 
 #: Exposition manueller Recherchelinks (nach Gruppe bzw. Schlüsselwort im Linktext)

@@ -1,4 +1,4 @@
-# EagleEye PersonOSINT 1.5 – Laufzeit
+# EagleEye PersonOSINT 1.6 – Laufzeit
 fastapi>=0.115,<1
 uvicorn>=0.34,<1
 python-docx>=1.1,<2

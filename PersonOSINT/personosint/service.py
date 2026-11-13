@@ -22,6 +22,7 @@ from . import opsec as ops
 from .opsec import DIRECT, EXPOSURE, LEVELS, SOURCE_EXPOSURE, EgressProfile, OpsecBlocked
 from . import analysis
 from .connectors import ONLINE_SOURCES
+from .connectors2 import MORE_SOURCES
 from .facts import GRAPH_TYPES, PREDICATES, norm_key, predicate_label
 from .refdata import DATASETS, RefData
 from .sources import SOURCES, Http, RecordingHttp, Source, SourceError, geocode, research_links
@@ -275,7 +276,7 @@ class Platform:
                                 test_query=("name", "Vladimir Putin")))
         from .pivot import apply_manifest
 
-        return apply_manifest(list(SOURCES) + list(ONLINE_SOURCES) + local)
+        return apply_manifest(list(SOURCES) + list(ONLINE_SOURCES) + list(MORE_SOURCES) + local)
 
     def source_map(self) -> dict[str, Source]:
         return {s.key: s for s in self.all_sources()}
@@ -325,6 +326,52 @@ class Platform:
         self.log(None, "Quelle getestet", f"{src.label}: {len(res)} Treffer für Testabfrage")
         return {"ok": True, "count": len(res), "claims": sum(len(r.get("claims") or []) for r in res), "seconds": round(time.time() - started, 1),
                 "sample": [r.get("title", "") for r in res[:3]]}
+
+    # ------------------------------------------------------------------ Quellen-Prüfung (welche Quellen antworten wirklich?)
+    def source_health(self) -> dict[str, dict[str, Any]]:
+        """Ergebnis der letzten Prüfung je Quelle auf DIESER Installation ({} = noch nie geprüft)."""
+        try:
+            data = json.loads(self._setting("source_health", "{}") or "{}")
+        except ValueError:
+            data = {}
+        return data if isinstance(data, dict) else {}
+
+    def check_sources(self, keys: list[str] | None = None) -> dict[str, Any]:
+        """Prüft Quellen nacheinander mit ihrer Testabfrage über den Standard-Netzausgang und merkt sich das Ergebnis.
+
+        Lokale Referenzdaten und Quellen ohne hinterlegten Pflicht-Schlüssel werden als „nicht prüfbar“ geführt,
+        nicht als Fehler. Es wird nichts in Fälle geschrieben."""
+        health = self.source_health()
+        results = []
+        for src in self.all_sources():
+            if keys and src.key not in keys:
+                continue
+            res = self.test_source(src.key)
+            state = "ok" if res.get("ok") and res.get("count") else "leer" if res.get("ok") else "nicht_pruefbar" if self.source_unavailable(src) else "fehler"
+            entry = {"state": state, "count": int(res.get("count") or 0), "claims": int(res.get("claims") or 0), "seconds": res.get("seconds"),
+                     "message": str(res.get("message") or "")[:300], "checked_at": now_iso(), "query": f"{src.test_query[0]}: {src.test_query[1]}"}
+            health[src.key] = entry
+            results.append({"key": src.key, "label": src.label, "group": src.group, **entry})
+        self._set_setting("source_health", json.dumps(health, ensure_ascii=False))
+        summary = {s: sum(1 for r in results if r["state"] == s) for s in ("ok", "leer", "fehler", "nicht_pruefbar")}
+        self.log(None, "Quellen geprüft", f"{len(results)} Quellen: {summary['ok']} liefern Treffer, {summary['leer']} ohne Treffer, "
+                                          f"{summary['fehler']} Fehler, {summary['nicht_pruefbar']} nicht prüfbar")
+        return {"checked_at": now_iso(), "summary": summary, "results": results}
+
+    def source_report(self) -> str:
+        """Prüfbericht als Markdown-Tabelle (für Abnahme und Pilotprotokoll)."""
+        health = self.source_health()
+        label = {"ok": "✓ liefert Treffer", "leer": "○ erreichbar, kein Treffer zur Testabfrage", "fehler": "✗ Fehler", "nicht_pruefbar": "– nicht prüfbar"}
+        lines = ["# Quellen-Prüfbericht EagleEye PersonOSINT", "", f"Erstellt: {now_iso()} · Version {__import__('personosint').__version__}", "",
+                 "| Quelle | Bereich | Ergebnis | Treffer | Aussagen | Dauer (s) | Geprüft am | Hinweis |", "|---|---|---|---|---|---|---|---|"]
+        for s in self.all_sources():
+            h = health.get(s.key)
+            if not h:
+                lines.append(f"| {s.label} | {s.group} | noch nicht geprüft | | | | | |")
+                continue
+            lines.append(f"| {s.label} | {s.group} | {label.get(h['state'], h['state'])} | {h['count']} | {h['claims']} | {h.get('seconds') or ''} | "
+                         f"{h['checked_at'][:16].replace('T', ' ')} | {h['message'].replace('|', '/')} |")
+        return "\n".join(lines) + "\n"
 
     # ------------------------------------------------------------------ OPSEC: Netzausgang je Fall (fail closed)
     def case_profile(self, case: dict[str, Any]) -> EgressProfile:
@@ -981,13 +1028,15 @@ class Platform:
     # ------------------------------------------------------------------ Suche
     def available_sources(self) -> list[dict[str, Any]]:
         keys = self.api_keys()
+        health = self.source_health()
         return [{"key": s.key, "label": s.label, "description": s.description, "kinds": list(s.kinds),
                  "kind_labels": [IDENTIFIER_KINDS.get(k, k) for k in s.kinds], "group": s.group, "local": s.local,
                  "exposure": "lokal" if s.local else SOURCE_EXPOSURE.get(s.key, "plattform"),
                  "requires_key": s.requires_key, "key_optional": s.key_optional, "key_set": bool(keys.get(s.key)),
                  "unavailable": self.source_unavailable(s, keys), "license": s.license, "cost": s.cost,
                  "reliability": s.reliability, "docs": s.docs, "key_help": s.key_help,
-                 "produces": list(s.produces), "produces_labels": [IDENTIFIER_KINDS.get(k, k) for k in s.produces]} for s in self.all_sources()]
+                 "produces": list(s.produces), "produces_labels": [IDENTIFIER_KINDS.get(k, k) for k in s.produces],
+                 "health": health.get(s.key)} for s in self.all_sources()]
 
     def plan_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None,
                     only: tuple[str, str] | None = None) -> list[tuple[str, str, str]]:
