@@ -116,12 +116,14 @@ Ziel: 1000 Entitäten unter 2 s; 500 Dokumente unter 1 s nach dem ersten Aufruf;
 
 Erreicht: 1000 Entitäten 0,4 s; 500 Dokumente 0,03 s nach dem ersten Aufruf (1,2 s einmalig); Texterkennung läuft im Hintergrund. Gemessen in der Entwicklungsumgebung, nicht auf dem Windows-Laptop.
 
-### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494) – **S2, S3, S4 umgesetzt 12.11.2026; S1 offen**
+### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494) – **S2, S3, S4 umgesetzt 12.11.2026; S1 entfällt (Entscheidung 13.11.2026)**
 
 Befund bei der Umsetzung von S1: Das Freigabemodell aus 491 (genehmigte Suchabsicht und Suchanfrage) wird
 in der Dienstschicht erzwungen, ist aber in der Oberfläche nirgends bedienbar; Absichten und Anfragen werden
 nur in Tests angelegt. S1 ist damit eine Produktentscheidung (Pflicht-Freigabe vor Web-Abrufen, wer freigibt)
 und wartet auf diese Entscheidung.
+
+**Entscheidung 13.11.2026:** Web-Abrufe bleiben ohne vorherige Freigabe; es gilt weiter die OPSEC-Bestätigung je Abruf mit Abruflimit und Protokoll. S1 entfällt.
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|

@@ -109,7 +109,7 @@ Texterkennung an echten 160-Seiten-Scans auf dem Windows-Laptop.
 | S3 Herkunft im Arbeitsbericht | Markdown-Export und Prüfseite zeigen Web-Herkunft und den WARC-Zustand zum Exportzeitpunkt. | `test_working_report_shows_web_capture_provenance` |
 | S4 Recherchefund → Web-Beleg | Jeder Recherchefund bietet „Als Web-Beleg sichern“; die Adresse wird übernommen, abgerufen wird erst nach Bestätigung. Der Bezug bleibt über bestätigte Weiterleitungen erhalten. Der Fund zeigt danach, wann er gesichert wurde. | 5 Tests, u. a. fremde Funde vor jedem Netzkontakt abgelehnt |
 | S2 Quellfamilien → Claims | Die Seite „Quellenunabhängigkeit“ zeigt je Familie den Evidence- und Herkunftsstand und warnt, wenn fast gleiche Texte verschiedenen Ursprüngen zugeordnet sind. Wer Quellen prüfen darf, bestätigt den gemeinsamen Ursprung mit Begründung; das schreibt die reguläre Herkunftsprüfung aus 456. | Ende-zu-Ende: Claim mit 3 übernommenen Texten + 1 eigenem zählt vorher 4, nachher 2 unabhängige Ursprünge |
-| S1 Freigabemodell | **offen – Entscheidung nötig** (siehe Plan) | – |
+| S1 Freigabemodell | **entfällt** – Entscheidung 13.11.2026: weiter OPSEC-Bestätigung je Abruf, keine vorherige Freigabe | – |
 
 Nebenbefunde, mit behoben:
 * Im Formular der Recherchefunde (483) waren Beschriftungen und Felder nicht verknüpft; Screenreader und
