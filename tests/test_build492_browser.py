@@ -134,10 +134,36 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
                 assert page.locator("progress").count() == 0, "finished jobs leave no progress bar"
                 assert page.locator("tr", has_text="Gescannter Bericht").get_by_text("bereits ergänzt").count() == 1
 
+                # Extraction review on the new document view: the form must pass the origin check in Chromium.
+                doc_url = base + "/workbench/document?" + urlencode({"case_id": case_id, "document_id": workspace[4]})
+                page.goto(doc_url)
+                page.get_by_label("Extraktion freigeben").check()
+                page.get_by_label("Begründung (was wurde wie verglichen?)").fill("Beide Absätze mit dem Original verglichen.")
+                page.get_by_label("Ich habe die Fundstellen mit dem Original verglichen.").check()
+                page.get_by_role("button", name="Prüfung speichern").click()
+                page.wait_for_url("**done=reviewed**")
+                assert page.get_by_role("status").inner_text().startswith("Extraktionsprüfung gespeichert")
+                assert page.get_by_role("link", name="Als Evidence übernehmen").count() == 1
+                # The old address still works and keeps the jump mark.
+                anchor = ctx.document_intelligence_458.anchors(identity=user, document_id=workspace[4])["anchors"][1]["anchor_id"]
+                page.goto(base + "/documents458?" + urlencode({"case_id": case_id, "document_id": workspace[4], "anchor_id": anchor}) + "#anchor-" + anchor)
+                assert "/workbench/document?" in page.url and page.url.endswith("#anchor-" + anchor)
+                assert page.evaluate("() => document.querySelector(':target') !== null")
+                # A browser error is a readable page, not raw JSON.
+                page.goto(base + "/workbench/intel/web?" + urlencode({"case_id": case_id, "lead": "unknown"}))
+                assert page.locator("h1").inner_text() == "Bitte Eingaben prüfen" and "Fehlercode 422" in page.content()
+                problems[:] = [p for p in problems if "422" not in p]  # the deliberate error above
+
                 for width in (1280, 390):
                     page.set_viewport_size({"width": width, "height": 900})
-                    for path in PAGES:
-                        response = page.goto(base + path + "?" + urlencode({"case_id": case_id}))
+                    for path in PAGES + ["/workbench/document", "/workbench/document#detail"]:
+                        params = {"case_id": case_id}
+                        if path.endswith("#detail"):
+                            path, params = "/workbench/document", {"case_id": case_id, "document_id": workspace[4]}
+                            path_name = "/workbench/document_detail"
+                        else:
+                            path_name = path
+                        response = page.goto(base + path + "?" + urlencode(params))
                         assert response.status == 200, path
                         assert page.locator("h1").count() == 1, path
                         overflow = page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth")
@@ -147,7 +173,7 @@ def test_build492_pages_render_cleanly_and_capture_form_works(workspace, monkeyp
                         assert unlabeled == 0, path
                         if SHOTS:
                             Path(SHOTS).mkdir(parents=True, exist_ok=True)
-                            name = path.strip("/").replace("/", "_") + f"_{width}.png"
+                            name = path_name.strip("/").replace("/", "_") + f"_{width}.png"
                             page.screenshot(path=str(Path(SHOTS) / name), full_page=True)
                 assert not [p for p in problems if "Content Security Policy" in p or "Refused" in p], problems
                 # /favicon.ico is absent since earlier builds (generic console 404 without a page response).

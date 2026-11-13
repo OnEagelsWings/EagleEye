@@ -136,9 +136,24 @@ Nebenbefunde, mit behoben:
 * Jeder Bericht nennt Stufe, Anzahl und die Gründe aller Auslassungen; jeder Export wird protokolliert.
 * Tests: `tests/test_build492_markings.py` (5 Szenarien), Chromium-Check der Berichtsseite.
 
+## Oberfläche (Stufe 4, vorgezogen)
+
+* **Verständliche Fehlerseiten (U2):** Fordert ein Browser eine Seite an, erscheint bei Fehlern eine Seite
+  im gemeinsamen Layout mit Erklärung, Fehlercode und Rückweg (vorherige Seite derselben Herkunft,
+  Arbeitsablauf, Hauptansicht). API-Aufrufe, `fetch()` und Skripte bekommen weiterhin JSON.
+* **Dokumentansicht (U1)** unter `/workbench/document`, `/documents458` leitet dorthin um (Sprungmarken
+  bleiben erhalten). Neu: gemeinsames Layout, Fakten (Quelle, SHA-256, Extraktionsstand, Schutzklasse,
+  Web-Herkunft), nächste Schritte, Filter nach Fundstellenart, Suche mit Hervorhebung.
+* **Extraktionsprüfung in der Oberfläche:** Bisher ließ sich die Extraktion nur über die JSON-Schnittstelle
+  freigeben; „Quelle → Evidence“ verwies auf eine Seite ohne Prüfformular. Jetzt: Freigeben oder Verwerfen
+  mit Begründung und Bestätigung, nur mit Quellenprüfungsrecht, gegen veraltete Stände geschützt.
+* Die neue Ansicht nutzt die Standard-Richtlinie `Referrer-Policy: same-origin`. Unter `no-referrer`
+  (Build 489 für `/documents458`) sendet Chromium bei Formularen `Origin: null`, und der Formularschutz
+  lehnt sie zu Recht ab. Auch `same-origin` gibt Fall-URLs nicht an fremde Seiten weiter.
+
 ## Prüfen
 
 ```bash
-python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
+python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build492_ux.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
 python -m pytest -q tests/test_build492_browser.py   # benötigt Playwright + Chromium
 ```

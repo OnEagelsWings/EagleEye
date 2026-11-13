@@ -140,7 +140,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 last = rows[0]
                 html += ('<p role="status">✓ Als Web-Beleg gesichert am ' + escape(last["captured_at"][:16].replace("T", " ")) + ' UTC'
                          + (' (eben gesichert)' if lead["lead_id"] == just_saved else '') + ' · <a href="' +
-                         _link("/documents458", case_id=case_id, document_id=last["document_id"]) + '">Dokument öffnen</a> · <a href="' +
+                         _link("/workbench/document", case_id=case_id, document_id=last["document_id"]) + '">Dokument öffnen</a> · <a href="' +
                          _link("/workbench/findings", case_id=case_id, document_id=last["document_id"]) + '">Befund notieren</a>'
                          + (' · ' + str(len(rows)) + ' Sicherungen' if len(rows) > 1 else '') + '</p>')
             if allowed:
@@ -394,7 +394,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
         table = ""
         for row in rows:
             integrity = '<span class="ok">✓ unverändert</span>' if row["integrity_ok"] else '<span class="bad">✗ Integrität verletzt</span>'
-            table += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=row["document_id"]) + '">' +
+            table += ('<tr><td><a href="' + _link("/workbench/document", case_id=case_id, document_id=row["document_id"]) + '">' +
                       escape(row["page_title"] or row["url"]) + '</a>' + (' <span class="pill">PDF</span>' if row["content_type"] == "application/pdf" else '') +
                       '<br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
                       '<td>' + ("Archiv" if row["kind"] == "archive" else "Live") + '<br><span class="muted">' + escape(row["captured_at"][:16].replace("T", " ")) + ' UTC</span></td>'
@@ -659,13 +659,13 @@ def attach_intel492(app, build: str, base_dir) -> None:
                     action = form("/workbench/intel/documents", "Texterkennung nachholen", document_id=d["document_id"])
                 else:
                     action = '<span class="muted">bereits ergänzt</span>'
-            rows += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=d["document_id"]) + '">' + escape(d["title"]) +
+            rows += ('<tr><td><a href="' + _link("/workbench/document", case_id=case_id, document_id=d["document_id"]) + '">' + escape(d["title"]) +
                      '</a><br><span class="muted">' + _count(d["page_count"], "Seite", "Seiten") + '</span></td><td>' + state + '</td><td>' + action + '</td></tr>')
         live = ('<p class="muted"><a href="' + _link("/workbench/intel/documents", case_id=case_id) + '">Stand aktualisieren</a></p>'
                 '<script src="/workbench/intel/progress.js" defer></script>') if any_active else ''
         table = ('<div data-jobs-url="' + _link("/workbench/intel/jobs.json", case_id=case_id) + '">'
                  '<table><thead><tr><th>PDF</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/documents458", case_id=case_id) + '">PDF importieren →</a></p>')
+                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/workbench/document", case_id=case_id) + '">PDF importieren →</a></p>')
         body = (back(case_id) + '<p>Ergänzt Fundstellen für Tabellen, Überschriften und gescannte Seiten. Bestehende Fundstellen und das '
                 'Original bleiben unverändert. Möglich, solange die Extraktion noch nicht geprüft wurde. Die Verarbeitung läuft im '
                 'Hintergrund; bei langen Scans dauert die Texterkennung einige Minuten.</p>' + info + table + live)
@@ -753,7 +753,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                     claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · gemeinsamer Ursprung bestätigt"
                 else:
                     claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · eigene Ursprungsgruppe geprüft"
-                items += ('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
+                items += ('<li><a href="' + _link("/workbench/document", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
                           '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
                           escape(_when(m["first_seen"]) or "Zeit unbekannt") + ' · ' + escape(claim_state) + '</span></li>')
             if status == "one_origin":
