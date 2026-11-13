@@ -79,3 +79,90 @@ def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
     assert "--no-index" in commands[0]
     assert "--find-links" in commands[0]
     assert "eagleeye-personosint-pro==500.0.0" in commands[0]
+
+
+def test_build500_default_workspace_isolated_from_previous_release(tmp_path, monkeypatch):
+    from eagleeye.bootstrap import desktop476, paths
+    monkeypatch.delenv("EAGLEEYE_SETTINGS_DIR", raising=False)
+    monkeypatch.delenv("EAGLEEYE_DATA_DIR", raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "profile"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "profile"))
+    previous = tmp_path / "profile" / "EagleEye-490"
+    previous.mkdir(parents=True)
+    saved = previous / "workspace.json"
+    saved.write_text(json.dumps({"workspace_directory": str(previous / "workspace")}), encoding="utf-8")
+    before = saved.read_bytes()
+    install = tmp_path / "program"
+    install.mkdir()
+    expected = tmp_path / "profile" / "EagleEye-500" / "workspace"
+    assert desktop476.resolve_workspace(install) == expected
+    assert paths.default_runtime_root() == expected
+    assert desktop476.resolve_workspace(install) == expected
+    assert saved.read_bytes() == before
+    assert not (previous / "workspace").exists()
+
+
+def test_build500_offline_restore_preserves_data_and_revokes_login(tmp_path):
+    """Exercise the current app, real SQLite backup and fresh restore directory."""
+    import hashlib
+    import sqlite3
+    from contextlib import closing
+    from fastapi.testclient import TestClient
+    from eagleeye.bootstrap.recovery479 import create_backup, restore_backup
+
+    source = tmp_path / "Arbeitsbereich-Übung"
+    source.mkdir()
+    app = create_workspace_app500(base_dir=source)
+    password = "a-Long-Test-Password2026!"
+    try:
+        with TestClient(app) as client:
+            launch = (source / "data/security_364/local_session_token").read_text().strip()
+            assert client.get("/security/start", params={"token": launch}).status_code == 200
+            assert client.post("/security/bootstrap", data={
+                "username": "pilotadmin", "display_name": "Pilot Admin",
+                "password": password}).status_code == 200
+            assert client.post("/security/login", data={
+                "username": "pilotadmin", "password": password},
+                follow_redirects=False).status_code == 303
+            token = client.cookies.get("ee_auth_session")
+            assert token
+    finally:
+        app.state.context.close()
+
+    db = source / "data/eagleeye.db"
+    with closing(sqlite3.connect(db)) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM phase15_team_sessions WHERE revoked=0").fetchone()[0] > 0
+        connection.execute("CREATE TABLE build500_restore_marker (value TEXT NOT NULL)")
+        connection.execute("INSERT INTO build500_restore_marker VALUES (?)", ("Übung",))
+        connection.commit()
+    original = source / "data" / "restore-test-original.txt"
+    original.write_bytes(b"Build 500 original evidence fixture")
+    digest = hashlib.sha256(original.read_bytes()).hexdigest()
+    archive = tmp_path / "backup.zip"
+    backup = create_backup(source, archive)
+    assert backup["build"] == "500.0"
+    assert backup["sha256"] == hashlib.sha256(archive.read_bytes()).hexdigest()
+    target = tmp_path / "Wiederherstellung"
+    receipt = restore_backup(archive, target)
+    assert receipt["sessions_revoked"] > 0
+    assert receipt["existing_workspace_overwritten"] is False
+    assert not (target / "data/security_364/local_session_token").exists()
+    assert hashlib.sha256((target / "data/restore-test-original.txt").read_bytes()).hexdigest() == digest
+    with closing(sqlite3.connect(target / "data/eagleeye.db")) as connection:
+        assert connection.execute("SELECT value FROM build500_restore_marker").fetchone() == ("Übung",)
+        assert connection.execute("SELECT COUNT(*) FROM phase15_team_sessions WHERE revoked=0").fetchone() == (0,)
+    with closing(sqlite3.connect(db)) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM phase15_team_sessions WHERE revoked=0").fetchone()[0] > 0
+    restored = create_workspace_app500(base_dir=target)
+    try:
+        with TestClient(restored) as client:
+            client.cookies.set("ee_auth_session", token)
+            assert client.get("/", follow_redirects=False).status_code in (302, 303, 401, 403)
+            client.cookies.clear()
+            launch = (target / "data/security_364/local_session_token").read_text().strip()
+            assert client.get("/security/start", params={"token": launch}).status_code == 200
+            assert client.post("/security/login", data={
+                "username": "pilotadmin", "password": password},
+                follow_redirects=False).status_code == 303
+    finally:
+        restored.state.context.close()

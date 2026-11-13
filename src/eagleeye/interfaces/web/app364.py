@@ -164,20 +164,46 @@ def create_workspace_app364(*, base_dir: str | Path | None = None) -> FastAPI:
     def launch_authorized(request: Request) -> bool:
         return secrets.compare_digest(request.cookies.get("ee_launch_364",""),launch_cookie)
 
+    def bootstrap_launch_expired() -> HTMLResponse:
+        # The launch cookie is deliberately short-lived. A stale bootstrap tab
+        # must not bypass it; give a usable recovery instruction instead of an
+        # unexplained JSON error (observed on the Build-500 Windows pilot).
+        response = shell(
+            "<div class='card'><h1>EagleEye-Ersteinrichtung</h1>"
+            "<p>Die lokale Startfreigabe ist abgelaufen oder dieser Tab wurde "
+            "ohne den EagleEye-Launcher geöffnet.</p>"
+            "<p>Bitte <b>START_EAGLEEYE_PRO.bat</b> im entpackten Build-500-Ordner "
+            "erneut starten. Vorhandene Benutzer und Daten bleiben erhalten. "
+            "Falls das Administratorkonto schon angelegt wurde, im danach "
+            "geöffneten Fenster anmelden statt erneut ein Konto anzulegen.</p>"
+            "</div>",
+            "EagleEye Startfreigabe abgelaufen",
+        )
+        response.status_code = 403
+        return response
+
     @app.get("/security/bootstrap")
     def security_bootstrap(request: Request):
         if remote_enabled:
             raise HTTPException(status_code=403,detail="Bootstrap must be completed in local mode before remote-team mode")
-        if not launch_authorized(request) or not team_identity.bootstrap_required():
-            raise HTTPException(status_code=403,detail="Bootstrap unavailable")
+        if not launch_authorized(request):
+            return bootstrap_launch_expired()
+        if not team_identity.bootstrap_required():
+            # The first POST may already have created the administrator. A
+            # duplicated/stale bootstrap request must go to login, not fail.
+            return RedirectResponse("/security/login",status_code=303)
         return shell("<div class='card'><h1>EagleEye Build 364 · Erstkonfiguration</h1><form method='post' action='/security/bootstrap'><label>Benutzername</label><input name='username' required><label>Anzeigename</label><input name='display_name' required><label>Passwort (mind. 15 Zeichen)</label><input type='password' name='password' required><button>Systemadministrator anlegen</button></form></div>","EagleEye Bootstrap")
 
     @app.post("/security/bootstrap")
     def security_bootstrap_post(request: Request,username: str=Form(...),display_name: str=Form(...),password: str=Form(...)):
         if remote_enabled:
             raise HTTPException(status_code=403,detail="Bootstrap must be completed in local mode before remote-team mode")
-        if not launch_authorized(request) or not team_identity.bootstrap_required():
-            raise HTTPException(status_code=403,detail="Bootstrap unavailable")
+        if not launch_authorized(request):
+            return bootstrap_launch_expired()
+        if not team_identity.bootstrap_required():
+            # The first POST may already have created the administrator. A
+            # duplicated/stale bootstrap request must go to login, not fail.
+            return RedirectResponse("/security/login",status_code=303)
         try:team_identity.create_initial_admin(username=username,display_name=display_name,password=password)
         except Exception as exc:raise HTTPException(status_code=400,detail=str(exc))
         return RedirectResponse("/security/login",status_code=303)
