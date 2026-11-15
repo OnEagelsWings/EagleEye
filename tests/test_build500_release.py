@@ -76,6 +76,7 @@ def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
     installer._install(tmp_path, tmp_path / "python", quiet=True)
     assert verified == [tmp_path]
     assert len(commands) == 1
+    assert "--force-reinstall" in commands[0]
     assert "--no-index" in commands[0]
     assert "--find-links" in commands[0]
     assert "eagleeye-personosint-pro==500.0.0" in commands[0]
@@ -193,3 +194,17 @@ def test_release_pack_rejects_dirty_tracked_source(tmp_path, staged):
     with pytest.raises(ValueError, match="clean tracked source"):
         pack.build(tmp_path, out)
     assert not out.exists()
+
+
+def test_build500_receipt_fingerprint_changes_with_wheel_manifest(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    folder = tmp_path / "wheelhouse"
+    folder.mkdir()
+    manifest = folder / "MANIFEST-SHA256.json"
+    manifest.write_text('{"fixture.whl":"' + "a" * 64 + '"}', encoding="utf-8")
+    before = installer._source_fingerprint(tmp_path)
+    manifest.write_text('{"fixture.whl":"' + "b" * 64 + '"}', encoding="utf-8")
+    assert installer._source_fingerprint(tmp_path) != before
