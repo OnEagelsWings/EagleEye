@@ -20,6 +20,10 @@ def _write(z:ZipFile,name:str,data:bytes):
 
 def build(root:Path,out:Path):
     root=root.resolve(strict=True)
+    # The manifest must identify the exact tracked source used for the ZIP.
+    # Untracked wheelhouse/runtime files are expected; tracked edits are not.
+    if subprocess.check_output(["git","-C",str(root),"status","--porcelain","--untracked-files=no"]).strip():
+        raise ValueError("Release requires a clean tracked source tree")
     names=subprocess.check_output(["git","-C",str(root),"ls-files","-z"]).split(b"\x00")
     files={}
     for raw in names:
