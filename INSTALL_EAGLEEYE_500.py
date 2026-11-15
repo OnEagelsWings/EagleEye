@@ -37,6 +37,7 @@ def _source_fingerprint(root: Path) -> str:
     roots = [
         root / "INSTALL_EAGLEEYE_500.py",
         root / "pyproject.toml",
+        root / "wheelhouse" / "MANIFEST-SHA256.json",
         root / "EAGLEEYE_PRO_458_0.py",
         root / "RELEASE_MANIFEST_BUILD_458_0.json",
         root / "src" / "eagleeye",
@@ -258,7 +259,7 @@ def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: 
         print(f"[EagleEye {BUILD}] Installationsprotokoll: {log_path}", flush=True)
     command = [str(runtime_python), "-m", "pip", "--log", str(log_path),
                "install", "--disable-pip-version-check", "--no-cache-dir",
-               "--no-compile", "--upgrade"]
+               "--no-compile", "--upgrade", "--force-reinstall"]
     if offline or (root / "wheelhouse").exists():
         _verify_wheelhouse(root)
         command += ["--no-index", "--find-links", str(root / "wheelhouse"),
