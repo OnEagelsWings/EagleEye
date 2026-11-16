@@ -30,6 +30,9 @@ class ProviderCapability:
 
 
 CAPABILITIES: List[ProviderCapability] = [
+    ProviderCapability("firecrawl_search", "Firecrawl search", "public_research", "api_optional", True, True, "https://api.firecrawl.dev/v2/search", ["public-institutional", "api-key", "human-review"], "medium", "Explicit bounded institutional research; use RealProviderConnectorService."),
+    ProviderCapability("firecrawl_scrape", "Firecrawl scrape", "public_research", "api_optional", True, True, "https://api.firecrawl.dev/v2/scrape", ["public-institutional", "api-key", "human-review"], "medium", "Explicit bounded institutional research; use RealProviderConnectorService."),
+    ProviderCapability("firecrawl_crawl", "Firecrawl crawl", "public_research", "api_optional", True, True, "https://api.firecrawl.dev/v2/crawl", ["public-institutional", "api-key", "human-review"], "medium", "Explicit bounded institutional research; use RealProviderConnectorService."),
     ProviderCapability("bing_web", "Search: Bing", "search_engine", "manual_url", False, True, "https://www.bing.com/search?q={query}", ["public-web", "manual-review", "no-bypass"], "medium", "Öffnet eine öffentliche Such-URL; keine automatisierte Umgehung."),
     ProviderCapability("duckduckgo_web", "Search: DuckDuckGo", "search_engine", "manual_url", False, True, "https://duckduckgo.com/?q={query}", ["public-web", "manual-review", "no-bypass"], "medium", "Öffnet eine öffentliche Such-URL."),
     ProviderCapability("brave_web", "Search: Brave", "search_engine", "manual_url", False, True, "https://search.brave.com/search?q={query}", ["public-web", "manual-review", "no-bypass"], "medium", "Öffnet eine öffentliche Such-URL."),
