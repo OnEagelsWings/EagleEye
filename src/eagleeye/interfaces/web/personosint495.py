@@ -12,6 +12,8 @@ from urllib.parse import urlencode, quote
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from .app364 import CSRF_COOKIE
+from .findings478 import bounded_form, verify_post
 from .operations476 import case_access, page
 
 SOURCES = {
@@ -80,6 +82,22 @@ def attach_personosint495(app, build: str) -> None:
     @app.get("/workbench/personosint495", response_class=HTMLResponse)
     def person_workbench(request: Request, case_id: str = "", kind: str = "person", term: str = ""):
         _user, _case = case_access(app, request, case_id)
+        return render(request, case_id, kind, term)
+
+    # The form posts the search term so that names of target persons stay out of the
+    # address bar, the browser history and bookmarks (GET with ?term= keeps working).
+    @app.post("/workbench/personosint495", response_class=HTMLResponse)
+    async def person_workbench_post(request: Request):
+        form = await bounded_form(request, max_bytes=4096)
+        case_id = str(form.get("case_id") or "")
+        user, _case = case_access(app, request, case_id)
+        verify_post(app, request, user, form.get("csrf", ""))
+        kind = str(form.get("kind") or "person")
+        if kind not in SOURCES:
+            raise HTTPException(422, "Unbekannter Recherchetyp.")
+        return render(request, case_id, kind, str(form.get("term") or ""))
+
+    def render(request, case_id, kind, term):
         # Existing canonical public-provider registry: read-only catalogue, no network call.
         # Manual discovery must remain usable if an optional provider registry fails.
         # Do not expose provider exception details in the rendered case workspace.
@@ -102,8 +120,9 @@ def attach_personosint495(app, build: str) -> None:
             "Unternehmensquellen. PersonOSINT-Recherche, EagleEye-Webbelege, "
             "Entitätenprüfung und Graph bleiben Teil derselben Fallakte.</p>"
             '<section class="card"><h2>Öffentliche Quellen gezielt öffnen</h2>'
-            '<form method="get" action="/workbench/personosint495">'
+            '<form method="post" action="/workbench/personosint495">'
             '<input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '">'
+            '<input type="hidden" name="csrf" value="' + escape(request.cookies.get(CSRF_COOKIE, ""), quote=True) + '">'
             '<label for="po-kind">Recherchetyp</label><select name="kind" id="po-kind">' + opts + '</select>'
             '<label for="po-term">Suchbegriff</label>'
             '<input type="search" id="po-term" name="term" maxlength="120" value="' +
@@ -127,7 +146,7 @@ def attach_personosint495(app, build: str) -> None:
         # Show the *real* governed adapters already present in EagleEye, rather
         # than presenting manual Claude-source links as if they were automated.
         if getattr(app.state, "public_sources501", False):
-            source_url = "/workbench/public-sources?" + urlencode({"case_id": case_id, "kind": {"person": "person", "unternehmen": "company", "benutzername": "username"}[kind], "term": term})
+            source_url = "/workbench/public-sources?" + urlencode({"case_id": case_id, "kind": {"person": "person", "unternehmen": "company", "benutzername": "username"}[kind]})
             body += '<p><a href="' + escape(source_url, quote=True) + '">Gemeinsame Quellen- und Personenrecherche öffnen</a></p>'
         relevant_types = {"public_office", "public_code_profile", "scholarly_identity", "scholarly_metadata",
                           "corporate_registry", "authority_identity", "social_profile"}
