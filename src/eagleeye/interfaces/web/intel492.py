@@ -284,6 +284,9 @@ def attach_intel492(app, build: str, base_dir) -> None:
     app.state.finding_created_hook = FindingCreated()
     app.state.report_card_extra = report_card_extra
     app.state.report_selector = report_selector
+    # Same selection without logging an export (office module: preview and client PDF).
+    app.state.report_selection = lambda user, case_id, notes, level: markings.select(
+        ctx, case_id, notes, level, report_source_states(app, user, case_id, notes), web_integrity(case_id, notes))
     app.state.report_levels_block = report_levels_block
 
     @app.post("/workbench/intel/markings")

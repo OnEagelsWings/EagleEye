@@ -359,10 +359,14 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
     body += ('<div class="actions">'
              + (f'<a class="button" href="{_href("/workbench", case_id=case_id)}">Zur Recherche</a>' if row["status"] in buero.ACTIVE_STATUSES else "")
              + f'<a class="button secondary" href="{_href("/workbench/report", case_id=case_id)}">Arbeitsbericht</a>'
-             + (f'<a class="button secondary" href="{_href("/buero/bericht.pdf", case_id=case_id)}">Mandantenbericht (PDF)</a>'
+             + (f'<a class="button secondary" href="{_href("/buero/bericht.pdf", case_id=case_id)}">'
+                f'Bericht für {escape(buero.RECIPIENT_LEVELS.get(row["recipient_level"], "Mandant"))} (PDF)</a>'
                 if getattr(app.state, "buero_report_pdf", False) else "")
              + f'<a class="button secondary" href="{_href("/buero/leistungsnachweis.pdf", case_id=case_id)}">Leistungsnachweis (PDF)</a>'
              + f'<a href="{_href("/buero/leistungsnachweis.csv", case_id=case_id)}">als CSV</a></div>')
+    preview = getattr(app.state, "buero_report_preview", None)
+    if preview:
+        body += preview(user, case_id, row["recipient_level"])
 
     if row["status"] in {"anfrage", "angehalten"}:
         body += _screening_form(request, row, vals("pruefung")) if manage else (
@@ -606,6 +610,8 @@ def attach_buero(app, build: str) -> None:
     ctx = app.state.context
     buero.initialize(ctx)
     app.state.buero = True
+    from .buero_report import attach_report_pdf
+    attach_report_pdf(app, build)
 
     def render(title: str, body: str, status: int = 200, case_id: str = "") -> HTMLResponse:
         return HTMLResponse(page(title, case_id, CSS + body, build), status_code=status, headers={"Cache-Control": "no-store"})
