@@ -472,6 +472,8 @@ def create_mandate(ctx, user: dict, form: dict) -> dict:
 def attach_mandate(ctx, user: dict, case_id: str, form: dict) -> dict:
     """Give an existing case (created before the office module) its mandate data."""
     _authorize(ctx, user, case_id, "case.manage")
+    if not case_exists(ctx, case_id):
+        raise BueroError("Fall nicht gefunden.")
     if ctx.db.one("SELECT 1 FROM buero_mandates WHERE case_id=?", (case_id,)):
         raise BueroError("Dieser Fall hat bereits Auftragsdaten.")
     office = settings(ctx)
@@ -522,6 +524,10 @@ def update_mandate(ctx, user: dict, case_id: str, form: dict) -> dict:
         _audit(ctx, "buero_mandate_updated", "buero_mandate", case_id, case_id,
                {"fields": sorted(values), "client_changed": client_id != current["client_id"]})
     return mandate(ctx, user, case_id)
+
+
+def case_exists(ctx, case_id: str) -> bool:
+    return ctx.db.one("SELECT 1 FROM cases WHERE case_id=?", (str(case_id),)) is not None
 
 
 def _mandate_row(ctx, case_id: str) -> dict:
@@ -636,10 +642,16 @@ def screen(ctx, user: dict, case_id: str, form: dict) -> dict:
     if (result["warnings"] or decision == "ablehnen" or current["status"] == "angehalten") and len(reason) < MIN_REASON:
         raise BueroError(f"Bitte die Entscheidung schriftlich begründen (mindestens {MIN_REASON} Zeichen).")
     target = ("in_arbeit" if current["status"] == "angehalten" else "angenommen") if decision == "annehmen" else "abgelehnt"
+    closed_on, retention = "", ""
+    if target == "abgelehnt":  # the rejection is documented, then deleted like any closed file
+        day = date.today()
+        closed_on = day.isoformat()
+        retention = _add_months(day, int(settings(ctx)["aufbewahrung_monate"])).isoformat()
     stamp = _now()
     with ctx.db.transaction(immediate=True):
-        changed = ctx.db.execute("UPDATE buero_mandates SET status=?, version=version+1, updated_at=? "
-                                 "WHERE case_id=? AND version=?", (target, stamp, case_id, current["version"])).rowcount
+        changed = ctx.db.execute("UPDATE buero_mandates SET status=?, closed_on=?, retention_until=?, version=version+1, "
+                                 "updated_at=? WHERE case_id=? AND version=?",
+                                 (target, closed_on, retention, stamp, case_id, current["version"])).rowcount
         if changed != 1:
             raise StaleError("Der Auftrag wurde inzwischen geändert. Bitte die Seite neu laden.")
         screening_id = _id("screen")

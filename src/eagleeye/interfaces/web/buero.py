@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from eagleeye.application.buero import service as buero
+from eagleeye.application.buero import deletion, service as buero
 from .app364 import CSRF_COOKIE
 from .app448 import COOKIE
 from .app449 import _drop
@@ -54,6 +54,7 @@ DONE = {
     "time": "Zeit gebucht.", "expense": "Auslage gebucht.", "voided": "Eintrag storniert.",
     "deadline": "Wiedervorlage angelegt.", "deadline_done": "Wiedervorlage erledigt.",
     "updated": "Auftragsdaten gespeichert.", "client": "Mandant gespeichert.", "settings": "Einstellungen gespeichert.",
+    "deleted": "Fallakte endgültig gelöscht. Details stehen im Löschprotokoll unten.",
 }
 
 
@@ -200,7 +201,9 @@ def _overview(app, request, user, *, show_all: bool) -> str:
                          f'Budget zu {_share(row["totals"]["budget_share"])} ausgeschöpft</li>')
     for row in view["retention_due"]:
         attention.append(f'<li><a href="{_href("/buero/auftrag", case_id=row["case_id"])}">{escape(row["aktenzeichen"])}</a> '
-                         f'Aufbewahrungsfrist abgelaufen ({_when(row["retention_until"])}) – Löschung prüfen</li>')
+                         f'Aufbewahrungsfrist abgelaufen ({_when(row["retention_until"])}) – '
+                         + (f'<a href="{_href("/buero/loeschen", case_id=row["case_id"])}">Löschung vorbereiten</a></li>'
+                            if buero._is_admin(user) else 'Büroleitung informieren</li>'))
     if attention:
         body += '<section class="card warn" aria-label="Braucht Aufmerksamkeit"><h2>Braucht Aufmerksamkeit</h2><ul class="attention">' \
                 + "".join(attention) + '</ul></section>'
@@ -486,6 +489,14 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
                  + _field("Was ist zu tun?", "title", v.get("title", ""), required=True, attrs='maxlength="200"')
                  + '</div><button type="submit">Wiedervorlage anlegen</button></form>') if book else "") + '</section>')
 
+    if row["status"] in {"abgeschlossen", "abgelehnt"} and row["retention_until"]:
+        is_due = deletion.due(row)
+        body += ('<section class="card' + (' warn' if is_due else '') + '" aria-label="Aufbewahrung"><h2>Aufbewahrung und Löschung</h2>'
+                 f'<p>Aufbewahren bis {_when(row["retention_until"])}'
+                 + (' – <strong>Frist abgelaufen.</strong>' if is_due else '.') + '</p>'
+                 + (f'<a class="button{"" if is_due else " secondary"}" href="{_href("/buero/loeschen", case_id=case_id)}">'
+                    'Löschung vorbereiten</a>' if buero._is_admin(user) else '<p class="muted">Löschen kann die Büroleitung.</p>')
+                 + '</section>')
     if manage:
         edit = values if failed == "bearbeiten" else {
             "kind": row["kind"], "legal_basis_key": row["legal_basis_key"], "received_on": row["received_on"],
@@ -533,7 +544,8 @@ def _settings_body(request, office: dict, error: str = "", values: dict | None =
                      attrs='inputmode="numeric" maxlength="3"')
             + '</div><p class="muted">Vorgabe 36 Monate. Bitte an das eigene Löschkonzept anpassen; Rechnungen und '
               'Buchungsbelege gehören in die Buchhaltung und unterliegen eigenen Fristen.</p></fieldset>'
-            + '<button class="primary" type="submit">Einstellungen speichern</button></form>')
+            + '<button class="primary" type="submit">Einstellungen speichern</button></form>'
+            + '<p><a href="/buero/loeschprotokoll">Löschprotokoll ansehen</a></p>')
 
 
 # ---------------------------------------------------------------- PDF statement
@@ -609,6 +621,7 @@ def statement_pdf(sheet: dict) -> bytes:
 def attach_buero(app, build: str) -> None:
     ctx = app.state.context
     buero.initialize(ctx)
+    deletion.initialize(ctx)
     app.state.buero = True
     from .buero_report import attach_report_pdf
     attach_report_pdf(app, build)
@@ -730,6 +743,8 @@ def attach_buero(app, build: str) -> None:
     @app.get("/buero/auftrag/ergaenzen", response_class=HTMLResponse)
     def attach_form(request: Request, case_id: str = ""):
         user = _user(app, request)
+        if not buero.case_exists(ctx, case_id):
+            raise HTTPException(404, "Diesen Fall gibt es nicht (mehr).")
         if not buero.may_manage(ctx, user, case_id) or not buero.may_use_clients(user):
             raise HTTPException(403, "Auftragsdaten ergänzt die Fallleitung.")
         if buero.mandate_state(ctx, case_id):
@@ -759,6 +774,8 @@ def attach_buero(app, build: str) -> None:
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
         if row is None:
+            if not buero.case_exists(ctx, case_id):
+                raise HTTPException(404, "Diesen Fall gibt es nicht (mehr).")
             return RedirectResponse("/buero/auftrag/ergaenzen?" + urlencode({"case_id": case_id}), status_code=303)
         return render(f'Auftrag {row["aktenzeichen"]}', _akte(app, request, user, case_id), case_id=case_id)
 
@@ -931,3 +948,82 @@ def attach_buero(app, build: str) -> None:
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
         return RedirectResponse("/buero/einstellungen?done=settings", status_code=303)
+
+    # ------------------------------------------------ final deletion after the retention period
+    def deletion_body(request, user, case_id, error="", values=None) -> str:
+        info = deletion.plan(ctx, user, case_id)
+        row = info["mandate"]
+        v = values or {}
+        kept = "".join(f"<li>{escape(deletion.residual_label(k))}: {n}</li>" for k, n in sorted(info["kept"].items()))
+        biggest = sorted(info["rows"].items(), key=lambda kv: -kv[1])[:8]
+        return (_error(error)
+                + f'<p>{_pill(row["status"])} <strong>{escape(row["aktenzeichen"])}</strong> · aufbewahren bis '
+                f'{_when(row["retention_until"]) or "–"}' + ('' if info["due"] else ' · <span class="overdue">Frist läuft noch</span>') + '</p>'
+                + '<section class="card"><h2>Was gelöscht wird</h2>'
+                f'<p>{info["row_total"]} Datensätze in {len(info["rows"])} Bereichen, {info["documents"]} Dokumente, '
+                f'{info["files"]} Dateien – darunter Zeiten, Auslagen, Prüfung und Verlauf der Auftragsakte.</p>'
+                + '<details><summary>Größte Bereiche</summary><ul>'
+                + "".join(f"<li>{escape(name)}: {n}</li>" for name, n in biggest) + '</ul></details>'
+                + ('<p>Bleibt erhalten (fallübergreifend verkettete Protokolle, ein Entfernen bräche deren Prüfkette):</p>'
+                   f'<ul>{kept}</ul>' if kept else '')
+                + '<p class="muted">Der Mandant selbst bleibt in der Mandantenliste. Frühere Sicherungen enthalten den Fall, '
+                  'bis sie turnusgemäß ersetzt werden. Für die Buchhaltung vorher den '
+                  f'<a href="{_href("/buero/leistungsnachweis.pdf", case_id=case_id)}">Leistungsnachweis</a> ablegen.</p></section>'
+                + f'<form method="post" action="/buero/loeschen" class="card"><h2>Endgültig löschen</h2>'
+                f'<input type="hidden" name="csrf" value="{_csrf(request)}">' + _hidden(case_id=case_id)
+                + ('' if info["due"] else _area(f"Begründung für die Löschung vor Fristablauf (z. B. Löschverlangen), mindestens "
+                                                f"{buero.MIN_REASON} Zeichen", "reason", v.get("reason", ""), required=True, rows=2, maxlength=600))
+                + _field(f'Zur Bestätigung das Aktenzeichen abtippen: {row["aktenzeichen"]}', "confirm", "", required=True,
+                         attrs='autocomplete="off" maxlength="40"')
+                + _check("Ich habe geprüft, dass keine gesetzliche Aufbewahrungspflicht und kein laufendes Verfahren entgegensteht.",
+                         "checked", False)
+                + '<button class="primary" type="submit">Fallakte endgültig löschen</button></form>')
+
+    @app.get("/buero/loeschen", response_class=HTMLResponse)
+    def deletion_page(request: Request, case_id: str = ""):
+        user = _user(app, request)
+        try:
+            return render("Fallakte löschen", deletion_body(request, user, case_id), case_id=case_id)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except buero.BueroError as exc:
+            raise HTTPException(409, str(exc)) from None
+
+    @app.post("/buero/loeschen")
+    async def deletion_post(request: Request):
+        form = await _form(request)
+        user = _user(app, request)
+        verify_post(app, request, user, form.get("csrf", ""))
+        case_id = form.get("case_id", "")
+        try:
+            deletion.delete_case(ctx, user, case_id, form)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except buero.BueroError as exc:
+            try:
+                return render("Fallakte löschen", deletion_body(request, user, case_id, str(exc), form), 422, case_id)
+            except buero.BueroError:
+                raise HTTPException(409, str(exc)) from None
+        return RedirectResponse("/buero/loeschprotokoll?done=deleted", status_code=303)
+
+    @app.get("/buero/loeschprotokoll", response_class=HTMLResponse)
+    def deletion_log(request: Request):
+        user = _user(app, request)
+        try:
+            rows = deletion.deletions(ctx, user)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        body = _status_line(request)
+        if not rows:
+            return render("Löschprotokoll", body + "<p>Noch keine Löschungen.</p>")
+        table = ('<table><thead><tr><th>Aktenzeichen</th><th>Gelöscht am</th><th>Von</th><th>Frist</th><th>Umfang</th>'
+                 '<th>Restfundstellen</th></tr></thead><tbody>')
+        for r in rows:
+            rest = "; ".join(f"{escape(deletion.residual_label(k))}: {n}" for k, n in sorted(r["residual"].items())) or "keine"
+            table += (f'<tr><td>{escape(r["aktenzeichen"])}</td><td class="date">{_when(r["deleted_at"])}</td>'
+                      f'<td>{escape(r["deleted_by"])}</td><td class="date">{_when(r["retention_until"])}'
+                      + (f'<br><small>vorzeitig: {escape(r["early_reason"])}</small>' if r["early_reason"] else "") + '</td>'
+                      f'<td>{r["rows_deleted"]} Datensätze, {r["files_deleted"]} Dateien</td><td>{rest}</td></tr>')
+        return render("Löschprotokoll", body + '<p class="muted">Das Protokoll enthält keine Inhalte der gelöschten Akte, nur '
+                      'Aktenzeichen, Daten und Umfang. Restfundstellen sind Einträge in fallübergreifend verketteten '
+                      'Protokollen (nur Kennungen).</p>' + _stack_tables(table + '</tbody></table>'))
