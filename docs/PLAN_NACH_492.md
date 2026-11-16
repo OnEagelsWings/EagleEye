@@ -193,6 +193,22 @@ alle Felder beschriftet, jeder Weg per Klick erreichbar. Neu: kein Seitenende oh
 | Prüfsätze: 200 Namenspaare, 50 Webseiten mit markiertem Haupttext, 20 Scans mit Solltext, Agenturtext-Korpus mit Übernahmen | M2 | M (Daten braucht Zuarbeit) |
 | Live-Abnahme gegen eine freigegebene Liste öffentlicher Seiten und das Internet Archive | M1 | S, braucht Netzfreigabe oder Lauf auf dem Laptop |
 
+### Stufe B – Büro und Betrieb – **umgesetzt 16.11.2026** (Auftrag: „volle Nutzung für den kleinen OSINT-/Detektei-/Intelligence-Betrieb“)
+
+Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in diesen Branch zusammengeführt (`6c9c5e5`).
+
+| Baustein | Stand |
+|---|---|
+| Mandanten, Aufträge mit Aktenzeichen, Büro als Startseite | umgesetzt |
+| Auftragsprüfung (PersonOSINT-Richtlinie) mit Sperre der Web-Abrufe bis zur Annahme, Warnsignal im laufenden Auftrag | umgesetzt |
+| Zeiterfassung, Auslagen, Storno, Budgetwarnung, Umsatzsteuer/§ 19 UStG, Leistungsnachweis PDF/CSV, Monatszeiten CSV | umgesetzt |
+| Wiedervorlagen, Abgabefristen, „Braucht Aufmerksamkeit“ | umgesetzt |
+| Mandantenbericht als PDF nach Empfängerstufe (Schritt 504 des Prüfberichts: Fußnoten, Quellenverzeichnis) | umgesetzt |
+| Aufbewahrungsfrist, endgültige Löschung mit Vorschau, byteweiser Prüfung und Löschprotokoll | umgesetzt |
+| Teamverwaltung (Benutzer anlegen, Aufträgen zuordnen/entziehen) | umgesetzt |
+| Befund 9 des Prüfberichts (Suchbegriff in der Adresszeile) | behoben |
+| Offen: verschlüsselte Sicherung aus der App, Benutzer deaktivieren/Passwort zurücksetzen in der Oberfläche, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag), Navigation bündeln (U3) | offen |
+
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 
 Nach Nutzen geordnet:
