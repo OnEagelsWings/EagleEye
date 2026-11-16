@@ -11,7 +11,7 @@ import uvicorn
 from eagleeye.interfaces.web.server import create_workspace_app
 
 PW = "Build471!Password_88"
-PAGES = ["/buero", "/buero/auftrag/neu", "/buero/mandanten", "/buero/einstellungen", "/buero/loeschprotokoll"]
+PAGES = ["/buero", "/buero/auftrag/neu", "/buero/mandanten", "/buero/einstellungen", "/buero/loeschprotokoll", "/buero/team"]
 
 
 def test_office_pages_in_chromium(tmp_path):

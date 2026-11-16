@@ -163,3 +163,47 @@ def test_navigation_home_and_permissions(workspace):
                                               "duration": "1", "activity": "recherche"})
     assert denied.status_code == 403
     assert client.get("/buero/mandanten").status_code == 403
+
+
+@ws
+def test_team_page_and_mandate_assignment(workspace):
+    app, client, user, legacy_case, *_ = workspace
+    ctx = app.state.context
+    csrf_session(workspace)
+    token = client.cookies.get(CSRF_COOKIE)
+    assert "Benutzer anlegen" in client.get("/buero/team").text
+    new_user = {"csrf": token, "username": "anna.ermittlerin", "display_name": "Anna Beispiel", "global_role": "investigator",
+                "password": "Herbstlaub!Fenster_2026"}
+    weak = client.post("/buero/team/benutzer", data={**new_user, "password": "kurz"})
+    assert weak.status_code == 422 and "mindestens" in weak.text and 'value="anna.ermittlerin"' in weak.text
+    assert client.post("/buero/team/benutzer", data=new_user, follow_redirects=False).status_code == 303
+    duplicate = client.post("/buero/team/benutzer", data=new_user)
+    assert duplicate.status_code == 422
+    assert "Anna Beispiel" in client.get("/buero/team").text
+
+    created = _new(client)
+    case_id = created.headers["location"].split("case_id=")[1].split("&")[0]
+    other = _new(client, title="Anderer Auftrag")
+    other_id = other.headers["location"].split("case_id=")[1].split("&")[0]
+    akte = client.get("/buero/auftrag", params={"case_id": case_id}).text
+    assert "Team dieses Auftrags" in akte and 'name="username"' in akte
+    assigned = client.post("/buero/auftrag/team", data={"csrf": token, "case_id": case_id, "username": "anna.ermittlerin",
+                                                        "case_role": "investigator"}, follow_redirects=False)
+    assert assigned.status_code == 303
+
+    csrf_session(workspace, "anna.ermittlerin", "Herbstlaub!Fenster_2026")
+    overview = client.get("/buero").text
+    assert "Lieferantenprüfung Beispiel GmbH" in overview and "Anderer Auftrag" not in overview
+    assert client.get("/buero/auftrag", params={"case_id": other_id}).status_code == 403
+    assert client.get("/buero/team").status_code == 403
+
+    csrf_session(workspace)
+    token = client.cookies.get(CSRF_COOKIE)
+    short = client.post("/buero/auftrag/team/entziehen", data={"csrf": token, "case_id": case_id, "username": "anna.ermittlerin",
+                                                                "case_role": "investigator", "reason": "kurz"})
+    assert short.status_code == 422
+    assert client.post("/buero/auftrag/team/entziehen", data={"csrf": token, "case_id": case_id, "username": "anna.ermittlerin",
+                                                               "case_role": "investigator", "reason": "Auftrag an Kollegin übergeben"},
+                       follow_redirects=False).status_code == 303
+    csrf_session(workspace, "anna.ermittlerin", "Herbstlaub!Fenster_2026")
+    assert "Lieferantenprüfung Beispiel GmbH" not in client.get("/buero").text

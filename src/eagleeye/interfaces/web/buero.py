@@ -46,6 +46,13 @@ CSS = EXTRA_CSS + (
     'ul.attention{padding-left:1.2rem}ul.attention li{margin:.3rem 0}main th{word-break:normal;overflow-wrap:normal;hyphens:manual}'
     'td.num,td.date{white-space:nowrap;word-break:normal}.pill{white-space:nowrap}</style>')
 
+GLOBAL_ROLES = {"investigator": "Ermittler/in – legt Aufträge an, sieht nur zugeordnete Aufträge",
+                "reviewer": "Prüfer/in – prüft Befunde zugeordneter Aufträge",
+                "read_only": "nur lesen – sieht zugeordnete Aufträge",
+                "system_administrator": "Büroleitung – alle Rechte, alle Aufträge"}
+CASE_ROLES = {"case_lead": "Fallleitung", "investigator": "Ermittler/in", "analyst": "Analyst/in",
+              "reviewer": "Prüfer/in (Vier-Augen)", "report_author": "Berichtsautor/in", "read_only": "nur lesen"}
+
 DONE = {
     "created": "Auftrag angelegt. Als Nächstes: die Auftragsprüfung unten ausfüllen.",
     "attached": "Auftragsdaten ergänzt. Als Nächstes: die Auftragsprüfung unten ausfüllen.",
@@ -55,6 +62,8 @@ DONE = {
     "deadline": "Wiedervorlage angelegt.", "deadline_done": "Wiedervorlage erledigt.",
     "updated": "Auftragsdaten gespeichert.", "client": "Mandant gespeichert.", "settings": "Einstellungen gespeichert.",
     "deleted": "Fallakte endgültig gelöscht. Details stehen im Löschprotokoll unten.",
+    "user": "Benutzer angelegt. Bitte das Startpasswort persönlich übergeben.",
+    "member": "Mitarbeiter/in dem Auftrag zugeordnet.", "member_removed": "Zuordnung entzogen.",
 }
 
 
@@ -181,7 +190,8 @@ def _overview(app, request, user, *, show_all: bool) -> str:
              '</div>')
     body += ('<div class="actions"><a class="button" href="/buero/auftrag/neu">Neuen Auftrag anlegen</a>'
              + ('<a class="button secondary" href="/buero/mandanten">Mandanten</a>' if buero.may_use_clients(user) else "")
-             + ('<a class="button secondary" href="/buero/einstellungen">Einstellungen</a>' if buero._is_admin(user) else "")
+             + ('<a class="button secondary" href="/buero/team">Team</a>'
+                '<a class="button secondary" href="/buero/einstellungen">Einstellungen</a>' if buero._is_admin(user) else "")
              + '</div>')
 
     attention = []
@@ -488,6 +498,34 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
                  + _field("Datum", "due_on", v.get("due_on", ""), type="date", required=True)
                  + _field("Was ist zu tun?", "title", v.get("title", ""), required=True, attrs='maxlength="200"')
                  + '</div><button type="submit">Wiedervorlage anlegen</button></form>') if book else "") + '</section>')
+
+    members = [m for m in ctx.team_identity_359.list_case_memberships(case_id) if m["active"]]
+    v = vals("team")
+    lis = ""
+    for m in members:
+        remove = ""
+        if manage and m["username"] != user["username"]:
+            remove = ('<details><summary>entziehen</summary><form method="post" action="/buero/auftrag/team/entziehen">'
+                      + _hidden(case_id=case_id, username=m["username"], case_role=m["case_role"]) + csrf
+                      + '<label>Grund<input name="reason" required minlength="8" maxlength="300"></label>'
+                      '<button type="submit">Zuordnung entziehen</button></form></details>')
+        lis += (f'<li>{escape(m["display_name"] or m["username"])} ({escape(m["username"])}) – '
+                f'{escape(CASE_ROLES.get(m["case_role"], m["case_role"]))}{remove}</li>')
+    assignable = ""
+    if manage:
+        users = {u["username"]: (u["display_name"] or u["username"]) for u in ctx.team_identity_359.list_users()
+                 if u["active"] and u["global_role"] != "system_administrator"}
+        if users:
+            assignable = ('<form method="post" action="/buero/auftrag/team">' + _hidden(case_id=case_id) + csrf + '<div class="two">'
+                          + _select("Mitarbeiter/in", "username", users, v.get("username", ""))
+                          + _select("Rolle in diesem Auftrag", "case_role", CASE_ROLES, v.get("case_role", "investigator"))
+                          + '</div><button type="submit">Zuordnen</button></form>')
+        else:
+            assignable = ('<p class="muted">Weitere Benutzer legt die Büroleitung unter '
+                          '<a href="/buero/team">Team</a> an.</p>' if buero._is_admin(user) else "")
+    body += ('<details class="card"' + (" open" if failed == "team" else "") + '><summary>Team dieses Auftrags ('
+             + str(len(members)) + ')</summary><p class="muted">Die Büroleitung sieht alle Aufträge. Andere sehen nur Aufträge, '
+             'denen sie zugeordnet sind.</p>' + (f'<ul>{lis}</ul>' if lis else '') + assignable + '</details>')
 
     if row["status"] in {"abgeschlossen", "abgelehnt"} and row["retention_until"]:
         is_due = deletion.due(row)
@@ -812,6 +850,26 @@ def attach_buero(app, build: str) -> None:
     akte_post("/buero/frist", "frist", lambda u, c, f: buero.add_deadline(ctx, u, c, f), "deadline")
     akte_post("/buero/frist/erledigt", "frist_erledigt", lambda u, c, f: buero.complete_deadline(ctx, u, c, f), "deadline_done")
 
+    def _assign(user, case_id, form):
+        if form.get("case_role") not in CASE_ROLES:
+            raise buero.BueroError("Bitte eine Rolle auswählen.")
+        buero._mandate_row(ctx, case_id)
+        try:
+            ctx.team_governance_359.assign_case_role(identity=user, case_id=case_id, username=form.get("username", ""),
+                                                     case_role=form["case_role"], notes="Büro: Zuordnung zum Auftrag")
+        except (ValueError, KeyError) as exc:
+            raise buero.BueroError(str(exc).strip("'")) from None
+
+    def _revoke(user, case_id, form):
+        try:
+            ctx.team_governance_359.revoke_case_role(identity=user, case_id=case_id, username=form.get("username", ""),
+                                                     case_role=form.get("case_role", ""), reason=form.get("reason", ""))
+        except (ValueError, KeyError) as exc:
+            raise buero.BueroError(str(exc).strip("'")) from None
+
+    akte_post("/buero/auftrag/team", "team", _assign, "member")
+    akte_post("/buero/auftrag/team/entziehen", "team", _revoke, "member_removed")
+
     # ------------------------------------------------ statements
     @app.get("/buero/leistungsnachweis.csv")
     def statement_csv(request: Request, case_id: str = ""):
@@ -1027,3 +1085,54 @@ def attach_buero(app, build: str) -> None:
         return render("Löschprotokoll", body + '<p class="muted">Das Protokoll enthält keine Inhalte der gelöschten Akte, nur '
                       'Aktenzeichen, Daten und Umfang. Restfundstellen sind Einträge in fallübergreifend verketteten '
                       'Protokollen (nur Kennungen).</p>' + _stack_tables(table + '</tbody></table>'))
+
+    # ------------------------------------------------ team (office management)
+    def team_body(request, error="", values=None) -> str:
+        v = values or {}
+        rows = ctx.team_identity_359.list_users()
+        table = ('<table><thead><tr><th>Name</th><th>Anmeldename</th><th>Rolle im Büro</th><th>Aufträge</th></tr></thead><tbody>')
+        memberships = ctx.team_identity_359.list_case_memberships()
+        for u in rows:
+            count = len({m["case_id"] for m in memberships if m["username"] == u["username"] and m["active"]})
+            table += (f'<tr><td>{escape(u["display_name"])}</td><td>{escape(u["username"])}'
+                      + ('' if u["active"] else ' (deaktiviert)') + f'</td><td>{escape(GLOBAL_ROLES.get(u["global_role"], u["global_role"]).split(" – ")[0])}</td>'
+                      f'<td class="num">{"alle" if u["global_role"] == "system_administrator" else count}</td></tr>')
+        return (_status_line(request) + _error(error) + _stack_tables(table + '</tbody></table>')
+                + f'<form method="post" action="/buero/team/benutzer" class="card"><h2>Benutzer anlegen</h2>'
+                f'<input type="hidden" name="csrf" value="{_csrf(request)}"><div class="two">'
+                + _field("Anmeldename (3–32 Zeichen: a–z, 0–9, Punkt, Bindestrich)", "username", v.get("username", ""), required=True,
+                         attrs='maxlength="32" autocomplete="off"')
+                + _field("Anzeigename", "display_name", v.get("display_name", ""), required=True, attrs='maxlength="120"')
+                + '</div>' + _select("Rolle im Büro", "global_role", GLOBAL_ROLES, v.get("global_role", "investigator"))
+                + _field("Startpasswort (mindestens 12 Zeichen, nicht der Name)", "password", "", type="password", required=True,
+                         attrs='autocomplete="new-password" maxlength="256"')
+                + '<p class="muted">Nach dem Anlegen den Benutzer in der Auftragsakte dem jeweiligen Auftrag zuordnen. '
+                  'Die Büroleitung sieht alle Aufträge.</p><button class="primary" type="submit">Benutzer anlegen</button></form>')
+
+    @app.get("/buero/team", response_class=HTMLResponse)
+    def team_page(request: Request):
+        user = _user(app, request)
+        if not buero._is_admin(user):
+            raise HTTPException(403, "Benutzer verwaltet die Büroleitung (Administration).")
+        return render("Team", team_body(request))
+
+    @app.post("/buero/team/benutzer")
+    async def team_create(request: Request):
+        form = await _form(request)
+        user = _user(app, request)
+        verify_post(app, request, user, form.get("csrf", ""))
+        if form.get("global_role") not in GLOBAL_ROLES:
+            return render("Team", team_body(request, "Bitte eine Rolle auswählen.", form), 422)
+        try:
+            ctx.team_governance_359.create_user(identity=user, username=form.get("username", ""),
+                                               display_name=form.get("display_name", ""), global_role=form["global_role"],
+                                               password=form.get("password", ""))
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except ValueError as exc:
+            return render("Team", team_body(request, str(exc), {**form, "password": ""}), 422)
+        except Exception as exc:  # duplicate user name (database constraint)
+            if "UNIQUE" in str(exc).upper():
+                return render("Team", team_body(request, "Diesen Anmeldenamen gibt es schon.", {**form, "password": ""}), 422)
+            raise
+        return RedirectResponse("/buero/team?done=user", status_code=303)
