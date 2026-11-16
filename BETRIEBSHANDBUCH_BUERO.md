@@ -67,7 +67,9 @@ Schützt Zielpersonen vor Missbrauch der Ergebnisse und dich vor einer Mitverant
 - Checkliste Identitätsprüfung (Ausweis eingesehen – keine Kopie ohne Rechtsgrundlage,
   Vollmacht, Anspruchsunterlagen, Zweck, Ergebnisempfänger).
 
-Bis zur Annahme sperrt EagleEye jeden Web-Abruf für diesen Fall. Taucht später ein
+Bis zur Annahme – und wieder nach Abschluss, Ablehnung oder Anhalten – sperrt EagleEye für
+diesen Fall Web-Sicherungen und Live-Abfragen über die Quellen-Adapter. Suchlinks, die du
+selbst im Browser öffnest, kann die App nicht sperren. Taucht später ein
 Warnsignal auf (z. B. Hinweis auf ein Frauenhaus): **Auftragsakte → Warnsignal melden**.
 Der Auftrag ruht, bis die Prüfung wiederholt ist.
 

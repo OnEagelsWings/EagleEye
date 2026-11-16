@@ -64,6 +64,11 @@ def run_step(ctx, user, case_id, plan_id, step_id, *, query, purpose, mode,
     if not step or step["kind"] != "provider_proposal" or step["state"] != "proposed":
         raise ExecutionError("Only an unchanged proposed provider step can run")
     if mode not in MODES: raise ExecutionError("Only replay or explicitly approved live mode")
+    # Office module (optional): live network access only while the mandate is accepted and
+    # open. Checked before the step is reserved, so a refusal does not consume the step.
+    gate = getattr(ctx, "research_gate", None)
+    refusal = gate(case_id) if gate is not None and mode == "live" else ""
+    if refusal: raise ExecutionError(refusal)
     if confirmation != APPROVAL_PHRASE: raise ExecutionError("Explicit execution approval required")
     query = plan496._safe_text(query,field="query",minimum=2,maximum=230)
     purpose = plan496._safe_text(purpose,field="purpose",minimum=15,maximum=450)

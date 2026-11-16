@@ -687,6 +687,20 @@ def attach_buero(app, build: str) -> None:
                   "abgeschlossen": "der Auftrag ist abgeschlossen"}.get(state, "der Auftrag ist nicht freigegeben")
         return f"Kein Abruf: {reason}. Bitte in der Büroverwaltung (Auftragsakte) klären."
     app.state.research_gate = research_gate
+    ctx.research_gate = research_gate  # service level: execution497 checks before reserving a step
+
+    # Second line of defence for any other caller of live provider runs.
+    providers = getattr(ctx, "provider_collection_120", None)
+    if providers is not None and not getattr(providers, "_buero_gated", False):
+        live_execute = providers.execute
+
+        def gated_execute(*, case_id, mode="replay", **kwargs):
+            refusal = research_gate(case_id) if mode == "live" else ""
+            if refusal:
+                raise PermissionError(refusal)
+            return live_execute(case_id=case_id, mode=mode, **kwargs)
+        providers.execute = gated_execute
+        providers._buero_gated = True
 
     previous_status = getattr(app.state, "workflow_status", None)
 
