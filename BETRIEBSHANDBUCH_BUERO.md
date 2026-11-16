@@ -41,6 +41,10 @@ anlegen. Rollen im Büro:
 Wer welchen Auftrag sieht, legst du in der **Auftragsakte → Team dieses Auftrags** fest
 (Fallleitung, Ermittler/in, Analyst/in, Prüfer/in, Berichtsautor/in, nur lesen).
 
+Konten: Jede Person ändert ihr Passwort unter **Büro → Mein Konto**. Die Büroleitung kann
+unter **Team** ein Passwort zurücksetzen (die Person muss beim nächsten Anmelden ein eigenes
+wählen) und Konten sperren – gesperrte Konten werden sofort abgemeldet.
+
 ## 3. Ein Auftrag von Anfang bis Ende
 
 ### 3.1 Auftrag anlegen

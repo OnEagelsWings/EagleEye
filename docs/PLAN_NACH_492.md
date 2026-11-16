@@ -205,9 +205,9 @@ Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in 
 | Wiedervorlagen, Abgabefristen, „Braucht Aufmerksamkeit“ | umgesetzt |
 | Mandantenbericht als PDF nach Empfängerstufe (Schritt 504 des Prüfberichts: Fußnoten, Quellenverzeichnis) | umgesetzt |
 | Aufbewahrungsfrist, endgültige Löschung mit Vorschau, byteweiser Prüfung und Löschprotokoll | umgesetzt |
-| Teamverwaltung (Benutzer anlegen, Aufträgen zuordnen/entziehen) | umgesetzt |
+| Teamverwaltung (Benutzer anlegen, Aufträgen zuordnen/entziehen), eigenes Passwort ändern, Zurücksetzen mit Pflichtwechsel, Konten sperren | umgesetzt |
 | Befund 9 des Prüfberichts (Suchbegriff in der Adresszeile) | behoben |
-| Offen: verschlüsselte Sicherung aus der App, Benutzer deaktivieren/Passwort zurücksetzen in der Oberfläche, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag), Navigation bündeln (U3) | offen |
+| Offen: verschlüsselte Sicherung aus der App, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag), Navigation bündeln (U3) | offen |
 
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 

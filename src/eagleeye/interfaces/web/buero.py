@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from eagleeye.application.buero import deletion, service as buero
+from eagleeye.application.buero import accounts, deletion, service as buero
 from .app364 import CSRF_COOKIE
 from .app448 import COOKIE
 from .app449 import _drop
@@ -64,6 +64,9 @@ DONE = {
     "deleted": "Fallakte endgültig gelöscht. Details stehen im Löschprotokoll unten.",
     "user": "Benutzer angelegt. Bitte das Startpasswort persönlich übergeben.",
     "member": "Mitarbeiter/in dem Auftrag zugeordnet.", "member_removed": "Zuordnung entzogen.",
+    "password": "Passwort geändert. Andere Anmeldungen dieses Kontos sind beendet.",
+    "reset": "Passwort zurückgesetzt. Beim nächsten Anmelden muss ein eigenes gewählt werden.",
+    "locked": "Konto gesperrt, alle Anmeldungen beendet.", "unlocked": "Konto entsperrt.",
 }
 
 
@@ -190,6 +193,7 @@ def _overview(app, request, user, *, show_all: bool) -> str:
              '</div>')
     body += ('<div class="actions"><a class="button" href="/buero/auftrag/neu">Neuen Auftrag anlegen</a>'
              + ('<a class="button secondary" href="/buero/mandanten">Mandanten</a>' if buero.may_use_clients(user) else "")
+             + '<a class="button secondary" href="/buero/konto">Mein Konto</a>'
              + ('<a class="button secondary" href="/buero/team">Team</a>'
                 '<a class="button secondary" href="/buero/einstellungen">Einstellungen</a>' if buero._is_admin(user) else "")
              + '</div>')
@@ -1090,13 +1094,16 @@ def attach_buero(app, build: str) -> None:
     def team_body(request, error="", values=None) -> str:
         v = values or {}
         rows = ctx.team_identity_359.list_users()
-        table = ('<table><thead><tr><th>Name</th><th>Anmeldename</th><th>Rolle im Büro</th><th>Aufträge</th></tr></thead><tbody>')
+        table = ('<table><thead><tr><th>Name</th><th>Anmeldename</th><th>Rolle im Büro</th><th>Aufträge</th><th>Konto</th></tr></thead><tbody>')
+        me = _user(app, request)["username"]
+        csrf = f'<input type="hidden" name="csrf" value="{_csrf(request)}">'
         memberships = ctx.team_identity_359.list_case_memberships()
         for u in rows:
             count = len({m["case_id"] for m in memberships if m["username"] == u["username"] and m["active"]})
             table += (f'<tr><td>{escape(u["display_name"])}</td><td>{escape(u["username"])}'
                       + ('' if u["active"] else ' (deaktiviert)') + f'</td><td>{escape(GLOBAL_ROLES.get(u["global_role"], u["global_role"]).split(" – ")[0])}</td>'
-                      f'<td class="num">{"alle" if u["global_role"] == "system_administrator" else count}</td></tr>')
+                      f'<td class="num">{"alle" if u["global_role"] == "system_administrator" else count}</td>'
+                      f'<td>{account_actions(u, me, csrf)}</td></tr>')
         return (_status_line(request) + _error(error) + _stack_tables(table + '</tbody></table>')
                 + f'<form method="post" action="/buero/team/benutzer" class="card"><h2>Benutzer anlegen</h2>'
                 f'<input type="hidden" name="csrf" value="{_csrf(request)}"><div class="two">'
@@ -1108,6 +1115,82 @@ def attach_buero(app, build: str) -> None:
                          attrs='autocomplete="new-password" maxlength="256"')
                 + '<p class="muted">Nach dem Anlegen den Benutzer in der Auftragsakte dem jeweiligen Auftrag zuordnen. '
                   'Die Büroleitung sieht alle Aufträge.</p><button class="primary" type="submit">Benutzer anlegen</button></form>')
+
+    def account_actions(u, me, csrf) -> str:
+        if u["username"] == me:
+            return '<a href="/buero/konto">Mein Konto</a>'
+        toggle = ('<form method="post" action="/buero/team/sperren">' + _hidden(username=u["username"], active="0" if u["active"] else "1")
+                  + csrf + f'<button type="submit">{"Sperren" if u["active"] else "Entsperren"}</button></form>')
+        reset = ('<details><summary>Passwort zurücksetzen</summary><form method="post" action="/buero/team/passwort">'
+                 + _hidden(username=u["username"]) + csrf
+                 + _field("Neues Startpasswort", "password", "", type="password", required=True, attrs='autocomplete="new-password" maxlength="256"')
+                 + '<button type="submit">Zurücksetzen</button></form></details>')
+        return toggle + reset
+
+    def team_action(path, action, done):
+        @app.post(path)
+        async def handler(request: Request):
+            form = await _form(request)
+            user = _user(app, request)
+            verify_post(app, request, user, form.get("csrf", ""))
+            try:
+                action(ctx, user, form)
+            except PermissionError as exc:
+                raise HTTPException(403, str(exc)) from None
+            except buero.BueroError as exc:
+                return render("Team", team_body(request, str(exc)), 422)
+            return RedirectResponse("/buero/team?done=" + (done(form) if callable(done) else done), status_code=303)
+        handler.__name__ = "team_" + path.rsplit("/", 1)[-1]
+
+    team_action("/buero/team/passwort", accounts.reset_password, "reset")
+    team_action("/buero/team/sperren", accounts.set_active, lambda f: "unlocked" if f.get("active") == "1" else "locked")
+
+    # ------------------------------------------------ own account
+    def account_body(request, user, error="") -> str:
+        forced = accounts.must_change(ctx, user)
+        return (_status_line(request) + _error(error)
+                + ('<p class="warn">Dein Passwort wurde von der Büroleitung gesetzt. Bitte jetzt ein eigenes wählen, '
+                   'bevor du weiterarbeitest.</p>' if forced else '')
+                + f'<p>{escape(user["display_name"])} ({escape(user["username"])}) · '
+                f'{escape(GLOBAL_ROLES.get(user["global_role"], user["global_role"]).split(" – ")[0])}</p>'
+                + f'<form method="post" action="/buero/konto" class="card"><h2>Passwort ändern</h2>'
+                f'<input type="hidden" name="csrf" value="{_csrf(request)}">'
+                + _field("Bisheriges Passwort", "current", "", type="password", required=True, attrs='autocomplete="current-password" maxlength="256"')
+                + _field("Neues Passwort (mindestens 12 Zeichen, nicht der Name)", "new", "", type="password", required=True,
+                         attrs='autocomplete="new-password" maxlength="256"')
+                + _field("Neues Passwort wiederholen", "repeat", "", type="password", required=True,
+                         attrs='autocomplete="new-password" maxlength="256"')
+                + '<button class="primary" type="submit">Passwort ändern</button></form>')
+
+    @app.get("/buero/konto", response_class=HTMLResponse)
+    def account_page(request: Request):
+        user = _user(app, request)
+        return render("Mein Konto", account_body(request, user))
+
+    @app.post("/buero/konto")
+    async def account_save(request: Request):
+        form = await _form(request)
+        user = _user(app, request)
+        verify_post(app, request, user, form.get("csrf", ""))
+        try:
+            accounts.change_own_password(ctx, user, form)
+        except buero.BueroError as exc:
+            return render("Mein Konto", account_body(request, user, str(exc)), 422)
+        return RedirectResponse("/buero/konto?done=password", status_code=303)
+
+    # A password set by the office management must be replaced before any other page opens.
+    @app.middleware("http")
+    async def require_own_password(request: Request, call_next):
+        path = request.url.path
+        if (request.method == "GET" and request.cookies.get(COOKIE)
+                and "text/html" in request.headers.get("accept", "")
+                and not path.startswith(("/buero/konto", "/security/", "/assets/", "/health", "/static/"))):
+            from starlette.concurrency import run_in_threadpool
+            current = await run_in_threadpool(lambda: ctx.team_identity_359.validate_session(
+                request.cookies.get(COOKIE, ""), client_fingerprint=_fingerprint(request), touch=False))
+            if accounts.must_change(ctx, current):
+                return RedirectResponse("/buero/konto", status_code=303)
+        return await call_next(request)
 
     @app.get("/buero/team", response_class=HTMLResponse)
     def team_page(request: Request):

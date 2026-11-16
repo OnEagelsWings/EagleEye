@@ -207,3 +207,57 @@ def test_team_page_and_mandate_assignment(workspace):
                        follow_redirects=False).status_code == 303
     csrf_session(workspace, "anna.ermittlerin", "Herbstlaub!Fenster_2026")
     assert "Lieferantenprüfung Beispiel GmbH" not in client.get("/buero").text
+
+
+@ws
+def test_accounts_change_reset_and_lock(workspace):
+    import hashlib
+    app, client, user, *_ = workspace
+    ident = app.state.context.team_identity_359
+    fp = hashlib.sha256(b"testclient||testclient").hexdigest()
+    csrf_session(workspace)
+    token = client.cookies.get(CSRF_COOKIE)
+    client.post("/buero/team/benutzer", data={"csrf": token, "username": "anna", "display_name": "Anna Beispiel",
+                                              "global_role": "investigator", "password": "Herbstlaub!Fenster_2026"})
+    # Own password: current password required, both new entries equal, rules apply.
+    csrf_session(workspace, "anna", "Herbstlaub!Fenster_2026")
+    token = client.cookies.get(CSRF_COOKIE)
+    assert client.post("/buero/konto", data={"csrf": token, "current": "falsch", "new": "Winterwald#Lampe_77",
+                                             "repeat": "Winterwald#Lampe_77"}).status_code == 422
+    assert "stimmen nicht" in client.post("/buero/konto", data={"csrf": token, "current": "Herbstlaub!Fenster_2026",
+                                                                "new": "Winterwald#Lampe_77", "repeat": "anders"}).text
+    assert client.post("/buero/konto", data={"csrf": token, "current": "Herbstlaub!Fenster_2026", "new": "Winterwald#Lampe_77",
+                                             "repeat": "Winterwald#Lampe_77"}, follow_redirects=False).status_code == 303
+    assert client.get("/buero").status_code == 200, "the session in use stays valid"
+    assert ident.authenticate(username="anna", password="Herbstlaub!Fenster_2026", client_fingerprint=fp) is None
+    assert ident.authenticate(username="anna", password="Winterwald#Lampe_77", client_fingerprint=fp) is not None
+
+    # Reset by the office management: anna must choose a new password before anything else opens.
+    anna_cookies = dict(client.cookies)
+    csrf_session(workspace)
+    token = client.cookies.get(CSRF_COOKIE)
+    assert client.post("/buero/team/passwort", data={"csrf": token, "username": "anna", "password": "Sommerregen?Tasse_31"},
+                       follow_redirects=False).status_code == 303
+    assert client.post("/buero/team/passwort", data={"csrf": token, "username": "qa471", "password": "Sommerregen?Tasse_31"}).status_code == 422
+    client.cookies.clear()
+    client.cookies.update(anna_cookies)
+    assert client.get("/buero").status_code == 401, "the reset ends anna's sessions"
+    csrf_session(workspace, "anna", "Sommerregen?Tasse_31")
+    forced = client.get("/buero", headers={"accept": "text/html"}, follow_redirects=False)
+    assert forced.status_code == 303 and forced.headers["location"] == "/buero/konto"
+    assert "bitte jetzt ein eigenes" in client.get("/buero/konto").text.lower()
+    token = client.cookies.get(CSRF_COOKIE)
+    client.post("/buero/konto", data={"csrf": token, "current": "Sommerregen?Tasse_31", "new": "Morgenrot&Kanne_58",
+                                      "repeat": "Morgenrot&Kanne_58"})
+    assert client.get("/buero", headers={"accept": "text/html"}, follow_redirects=False).status_code == 200
+
+    # Locking ends access; one cannot lock oneself.
+    csrf_session(workspace)
+    token = client.cookies.get(CSRF_COOKIE)
+    assert client.post("/buero/team/sperren", data={"csrf": token, "username": "anna", "active": "0"},
+                       follow_redirects=False).headers["location"] == "/buero/team?done=locked"
+    assert ident.authenticate(username="anna", password="Morgenrot&Kanne_58", client_fingerprint=fp) is None
+    assert "(deaktiviert)" in client.get("/buero/team").text
+    assert client.post("/buero/team/sperren", data={"csrf": token, "username": "qa471", "active": "0"}).status_code == 422
+    client.post("/buero/team/sperren", data={"csrf": token, "username": "anna", "active": "1"})
+    assert ident.authenticate(username="anna", password="Morgenrot&Kanne_58", client_fingerprint=fp) is not None
