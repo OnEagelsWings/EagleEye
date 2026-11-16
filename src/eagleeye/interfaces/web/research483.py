@@ -142,6 +142,14 @@ def attach_research483(app,build):
             '<textarea id="lead483-note" required name="note" maxlength="1600" rows="3"></textarea>'
             '<button type="submit">Als ungeprüften Suchhinweis speichern</button></form></section>'
         )
+        def capture_link(lead):
+            # Link only to the *existing* controlled capture form; GET never fetches a target.
+            if not getattr(app.state, "intel492", False):
+                return ""
+            params = urlencode({"case_id": case_id, "url": lead["url"]})
+            return ('<p><a href="' + escape("/workbench/intel/web?" + params, quote=True) +
+                    '">Als WARC-Webbeleg sichern (Freigabe erforderlich)</a></p>')
+
         entries="".join(
             '<section class="card"><h3>'+escape(x["title"])+'</h3>'
             '<p><strong>Ungeprüfter Suchhinweis – keine Evidence</strong></p>'
@@ -149,7 +157,8 @@ def attach_research483(app,build):
             escape(x["url"],quote=True)+'">Originaladresse im Browser prüfen</a></p>'
             '<p>'+escape(x["analyst_note"])+'</p>'
             '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p>'+
-            actions.get(x["lead_id"],"")+'</section>'
+            # Prefer the lead-bound capture action (Build 492 S4); fall back to the plain link.
+            (actions.get(x["lead_id"]) or capture_link(x))+'</section>'
             for x in rows
         )
         # Provider adapters write only unreviewed intake candidates. Surface them

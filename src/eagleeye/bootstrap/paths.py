@@ -18,6 +18,12 @@ def _internal_release_build(build: str | None = None) -> bool:
 
 
 def default_runtime_root() -> Path:
+    if str(BUILD).split(".", 1)[0] == "500":
+        if os.name == "nt":
+            parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
+            return parent / "EagleEye-500" / "workspace"
+        parent = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home()/".config")))
+        return parent / "EagleEye-500" / "workspace"
     if os.name == "nt":
         parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
         return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"

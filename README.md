@@ -1,3 +1,26 @@
+## Gemeinsamer Stand: EagleEye Build 500 (Kandidat) + Build 492 gehärtet + PersonOSINT 1.5
+
+Dieser Branch führt die drei Arbeitslinien zusammen. Prüfbericht zu Build 493–500 und Vorschlag für die weitere
+Zusammenführung: [CLAUDE_REVIEW_UND_UEBERGABE_500.md](CLAUDE_REVIEW_UND_UEBERGABE_500.md).
+
+## EagleEye PersonOSINT 1.5 – Personen- und Investigativrecherche mit Top-Dossier
+
+Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
+Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem
+Netzwerkgraphen, Zeitleiste/Karte und **Word-Dossiers** (.docx) inkl. Vermissten-Suchplakat.
+Ausbauplan: [`PersonOSINT/ROADMAP_UNTERNEHMEN.md`](PersonOSINT/ROADMAP_UNTERNEHMEN.md).
+Start: `PersonOSINT/START_PERSONOSINT.bat` (Windows) bzw. `PersonOSINT/start_personosint.sh` (Linux/macOS).
+
+## Aktueller Integrationsstand – öffentliche Quellen und Personenrecherche
+
+Fall öffnen → **Geführte Recherche → Öffentliche Quellen und Personenrecherche**.
+55 Quellen sind nach Thema, Person, Unternehmen, Benutzername, Webadresse und Ort erschlossen.
+20 Katalogeinträge verwenden ausführbare Adapter; 35 zeigen ausdrücklich einen manuellen,
+Download- oder noch einzurichtenden Zugang. Suchpakete, konkrete Suchfreigaben, einmalige
+Providerläufe und die Übergabe als ungeprüfter Fallhinweis verwenden die vorhandene Fallakte.
+Neue Personenadapter: **GND/lobid** und **Abgeordnetenwatch**. Keine automatische
+Identitätsbestätigung oder Graphverknüpfung. [Umfang, Quellen und geprüfter Stand](docs/FREE_PUBLIC_SOURCES_PERSONS.md).
+
 ## EagleEye Build 492 – Quellen beweisfest sichern und auswerten
 
 **Geführte Recherche** enthält vier neue Schritte: **Webseite als Beleg sichern** (WARC-Original + prüfbarer Haupttext, auch aus dem Internet Archive), **Struktur & Texterkennung** (Tabellen, Überschriften, OCR für Scans), **Quellenunabhängigkeit** („N Dokumente / M unabhängige Ursprünge“) und **Netzwerkanalyse** (Gruppen, Brückenpersonen, GEXF/FollowTheMoney-Export). Die Entity-Prüfung nutzt einen stärkeren, begründeten Abgleich. Alles bleibt Prüfmaterial – keine automatische Bestätigung. Installierte Paketnummer bleibt 490.0. Details, Messwerte und Grenzen: [BUILD_492_NOTES.md](BUILD_492_NOTES.md).

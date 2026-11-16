@@ -979,7 +979,7 @@ class GdeltDocPublicAdapter(ProviderAdapter):
         provider_type="news_archive",
         allowed_hosts=("api.gdeltproject.org",),
         rate_limit_per_minute=10,
-        min_interval_seconds=1.0,
+        min_interval_seconds=5.1,
         terms_profile="Official GDELT DOC API; article results are media candidates and source independence must be assessed.",
         metadata={"build": "149.0", "input_types": ["name", "organisation", "keyword", "location"], "official_api": True},
     )
@@ -1158,6 +1158,8 @@ class ViafAutoSuggestPublicAdapter(ProviderAdapter):
 
 
 def default_adapters() -> tuple[ProviderAdapter, ...]:
+    from .public_sources501 import additional_adapters
+
     return (
         RdapPublicAdapter(),
         GithubPublicProfileAdapter(),
@@ -1189,4 +1191,4 @@ def default_adapters() -> tuple[ProviderAdapter, ...]:
         RipeStatWhoisPublicAdapter(),
         DnbSruPublicAdapter(),
         ViafAutoSuggestPublicAdapter(),
-    )
+    ) + additional_adapters()

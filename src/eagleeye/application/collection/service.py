@@ -286,7 +286,7 @@ class ProviderCollection120Service:
                     raise ProviderTransportError(f"provider returned HTTP {response.status_code}")
                 items = list(adapter.normalize(response, request))[: request.max_results - len(normalized)]
                 normalized.extend(items)
-                if mode == "live" and record_replay:
+                if mode == "live" and record_replay and definition.supports_replay:
                     # Defer replay persistence until the final approval check.
                     # A revoked search must not leave captured response fixtures.
                     pending_replay_responses.append(response)

@@ -118,7 +118,7 @@ def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
     settings = desktop476.settings_directory()
-    assert settings.name == "EagleEye-490"
+    assert settings.name == "EagleEye-500"
     old = settings.parent / "EagleEye"
     old.mkdir(parents=True)
     old_workspace = tmp_path / "legacy398"

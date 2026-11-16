@@ -12,6 +12,10 @@ build/
 dist/
 .venv/
 .eagleeye-runtime/
+# Never commit versioned runtimes or local investigation workspaces
+.eagleeye-runtime-*/
+.eagleeye-config-*/
+.eagleeye-data-*/
 venv/
 
 # Runtime / local state
