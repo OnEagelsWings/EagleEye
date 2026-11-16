@@ -34,6 +34,13 @@ def case_access(app, request, case_id, capability="case.read"):
     return user, case
 
 
+def _stage(build) -> int:
+    try:
+        return int(str(build).split(".")[0])
+    except ValueError:
+        return 0
+
+
 def page(title, case_id, body, build):
     link = lambda p: escape(p+"?"+urlencode({"case_id":case_id}),quote=True)
     return ('<!doctype html><html lang="de"><head><meta charset="utf-8">'
@@ -49,7 +56,8 @@ def page(title, case_id, body, build):
        'td,th{padding:.6rem;text-align:left;border-bottom:1px solid #647b93;word-break:break-word}'
        'h1{font-size:1.7rem}h2{font-size:1.15rem}a:focus,button:focus{outline:3px solid #f9e099}'
        '</style></head><body><header><strong>EagleEye – Build '+escape(str(build))+'</strong>'
-       '<nav><a href="'+link('/')+'">Hauptansicht</a><a href="/new-case">Neuen Fall anlegen</a>'
+       '<nav>'+('<a href="/buero">Büro</a>' if _stage(build) >= 492 else '')+'<a href="'+link('/')+'">Hauptansicht</a>'
+       +('<a href="/buero/auftrag/neu">Neuer Auftrag</a>' if _stage(build) >= 492 else '<a href="/new-case">Neuen Fall anlegen</a>')+
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'

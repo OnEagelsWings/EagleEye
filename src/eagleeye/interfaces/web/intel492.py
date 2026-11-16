@@ -528,6 +528,10 @@ def attach_intel492(app, build: str, base_dir) -> None:
         archive_url = str(form.get("archive_url") or "").strip()
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=archive_url, error="Bitte die Übermittlung an web.archive.org bestätigen.", status=422)
+        gate = getattr(app.state, "research_gate", None)
+        refusal = gate(case_id) if gate else ""
+        if refusal:
+            return web_page(request, user, case_id, url=archive_url, error=refusal, status=409)
         blocked = throttled(request, user, case_id, archive_url, webcapture.WAYBACK_HOST)
         if blocked is not None:
             return blocked
@@ -548,6 +552,10 @@ def attach_intel492(app, build: str, base_dir) -> None:
         lead = lead_for(case_id, str(form.get("lead_id") or "")) if kind == "live" else None
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422, lead=lead)
+        gate = getattr(app.state, "research_gate", None)  # office module: mandate must be accepted
+        refusal = gate(case_id) if gate else ""
+        if refusal:
+            return web_page(request, user, case_id, url=url, error=refusal, status=409, lead=lead)
         result = None
         try:
             host = webcapture.WAYBACK_HOST if kind == "archive" else (urlsplit(webcapture.normalize_public_url(url)).hostname or "")
