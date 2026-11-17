@@ -75,5 +75,34 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(list(Path(directory).iterdir()), [])
             self.assertEqual(publish_record(target, b"synthetic"), "staged")
 
+class SQLiteInboundTests(unittest.TestCase):
+    def test_stage_into_database_and_replay(self):
+        from bridge import stage
+        from staging_db import StagingDB
+        ident = "00000000-0000-4000-8000-000000000001"
+        raw = json.dumps(dict(schema=1, id=ident, kind="research_result",
+                              classification="public-topic", topic="Synthetic",
+                              summary="Test only", sources=[], synthetic=True)).encode()
+        commit = "a" * 40
+        path = "exchange/inbox/" + ident + ".json"
+        def fake_git(root, *args):
+            return {"fetch": b"", "rev-parse": commit.encode(),
+                    "ls-tree": (path + "\\0").encode(),
+                    "cat-file": str(len(raw)).encode(), "show": raw}[args[0]]
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = root / "staging.sqlite"
+            legacy = root / "legacy"
+            with patch("bridge.git", side_effect=fake_git):
+                stage(root, legacy, database=database)
+                stage(root, legacy, database=database)
+            self.assertEqual(StagingDB(database).read(ident), raw)
+            self.assertFalse(legacy.exists())
+            import sqlite3
+            from contextlib import closing
+            with closing(sqlite3.connect(database)) as db:
+                self.assertEqual(db.execute("SELECT status FROM audit ORDER BY seq").fetchall(),
+                                 [("staged",), ("duplicate",)])
+
 if __name__ == "__main__":
     unittest.main()
