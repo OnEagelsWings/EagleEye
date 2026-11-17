@@ -95,11 +95,18 @@ def publish_record(target, raw):
         os.unlink(name)
 
 
-def stage(root,local):
+def stage(root,local, *, database=None):
+    """Stage into SQLite when explicitly selected; never import evidence."""
+    if database is not None:
+        from staging_db import StagingDB
+        store = StagingDB(database)
+    else:
+        store = None
     git(root,"fetch","--no-tags",REMOTE,BRANCH)
     commit=git(root,"rev-parse","FETCH_HEAD").decode().strip()
     paths=git(root,"ls-tree","-r","--name-only","-z",commit,"exchange/inbox").decode().split("\0")
-    local.mkdir(parents=True,exist_ok=True)
+    if store is None:
+        local.mkdir(parents=True,exist_ok=True)
     for path in paths:
         if not re.fullmatch(r"exchange/inbox/[0-9a-f-]{36}\.json",path):
             continue
@@ -111,9 +118,12 @@ def stage(root,local):
             if pathlib.PurePosixPath(path).stem!=d["id"]: raise ValueError("filename mismatch")
             target=local/(d["id"]+".json")
             digest=hashlib.sha256(raw).hexdigest()
-            status=publish_record(target,raw)
-            with (local/"audit.jsonl").open("a",encoding="utf-8") as f:
-                f.write(json.dumps({"id":d["id"],"commit":commit,"sha256":digest,"status":status})+"\n")
+            if store is not None:
+                status = store.stage(raw, commit)
+            else:
+                status=publish_record(target,raw)
+                with (local/"audit.jsonl").open("a",encoding="utf-8") as f:
+                    f.write(json.dumps({"id":d["id"],"commit":commit,"sha256":digest,"status":status})+"\n")
             print(d["id"],status)
         except (ValueError,TypeError,UnicodeError) as e:
             print("Rejected",path,type(e).__name__)
@@ -122,8 +132,9 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument("git_directory",type=pathlib.Path)
     p.add_argument("local_inbox",type=pathlib.Path)
+    p.add_argument("--database", type=pathlib.Path, help="Opt-in SQLite staging; does not migrate legacy files")
     a=p.parse_args()
-    stage(a.git_directory,a.local_inbox)
+    stage(a.git_directory,a.local_inbox,database=a.database)
 
 if __name__=="__main__":
     main()
