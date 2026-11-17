@@ -29,6 +29,16 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(self.encode().replace(b'"synthetic": true', b'"synthetic": NaN'))
 
+    def test_lone_surrogate(self):
+        self.record["summary"] = chr(0xd800)
+        with self.assertRaises(ValueError):
+            validate(self.encode())
+
+    def test_non_bytes(self):
+        for raw in (None, 1, "text", bytearray(b"{}")):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                validate(raw)
+
     def test_private(self):
         self.record["classification"] = "private"
         with self.assertRaises(ValueError):
