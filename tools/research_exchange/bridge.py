@@ -12,17 +12,34 @@ BRANCH = "research-exchange"
 ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 MAX = 256_000
 
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = value
+    return result
+
+def reject_constant(value):
+    raise ValueError("nonfinite JSON constant")
+
 def validate(raw):
     if len(raw) > MAX:
         raise ValueError("oversize")
-    d = json.loads(raw)
+    if not isinstance(raw, bytes):
+        raise ValueError("expected UTF-8 bytes")
+    try:
+        d = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object,
+                       parse_constant=reject_constant)
+    except (UnicodeError, RecursionError) as exc:
+        raise ValueError("invalid JSON encoding or depth") from exc
     if not isinstance(d, dict) or set(d) - {"schema","id","kind","classification","topic","summary","sources","synthetic"}:
         raise ValueError("unexpected fields")
     if type(d.get("schema")) is not int or d["schema"] != 1 or d.get("classification") != "public-topic":
         raise ValueError("classification/schema")
     if not isinstance(d.get("id"), str) or not ID.fullmatch(d["id"]):
         raise ValueError("id")
-    if d.get("kind") not in ("research_result","research_request"):
+    if not isinstance(d.get("kind"), str) or d.get("kind") not in ("research_result","research_request"):
         raise ValueError("kind")
     for k in ("topic","summary"):
         if not isinstance(d.get(k),str) or not d[k].strip() or len(d[k]) > 20000:
@@ -33,7 +50,9 @@ def validate(raw):
         if not isinstance(s,dict) or set(s) != {"title","url"} or not all(isinstance(v,str) and 0<len(v)<=2048 for v in s.values()):
             raise ValueError("source")
         u=urlsplit(s["url"])
-        if u.scheme != "https" or not u.hostname or u.username or u.password:
+        if (u.scheme != "https" or not u.hostname or u.username or u.password
+                or any(c.isspace() or ord(c) < 32 for c in s["url"])
+                or "\\" in s["url"]):
             raise ValueError("source URL")
     if "synthetic" in d and type(d["synthetic"]) is not bool:
         raise ValueError("synthetic")
