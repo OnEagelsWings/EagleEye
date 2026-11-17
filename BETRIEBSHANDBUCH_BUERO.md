@@ -115,7 +115,13 @@ In der Auftragsakte:
 - Nach Fristablauf erscheint der Auftrag im Büro unter „Löschung prüfen“.
 - **Löschung vorbereiten** (nur Büroleitung) zeigt, was gelöscht wird. Bestätigung durch
   Abtippen des Aktenzeichens. Vor Fristablauf nur mit Begründung (z. B. Löschverlangen).
-- Gelöscht werden alle Inhalte des Falls in allen Datenbanken und Dokumentdateien; freie
+- Vorher werden alle Datenbanken nur gelesen. Ist eine nicht lesbar, wird **nichts** gelöscht und
+  die Vorschau nennt die Datei.
+- Bricht die Löschung ab (z. B. Datei gesperrt), ist der Löschauftrag vermerkt: Das Büro meldet
+  „Löschung unvollständig“, im **Löschprotokoll → Löschung fortsetzen** wird sie zu Ende geführt.
+- Dateien, die den Fall nur im Inhalt erwähnen (z. B. gemeinsame Übersichten), werden nicht
+  gelöscht, sondern in Vorschau und Löschprotokoll zur Prüfung aufgeführt.
+- Gelöscht werden alle Inhalte des Falls in allen Datenbanken, Dokument- und Berichtsdateien; freie
   Datenbankseiten werden überschrieben. Bestehen bleiben: der Mandant in der
   Mandantenliste, das Löschprotokoll (nur Aktenzeichen, Daten, Umfang) und Einträge in
   zwei fallübergreifend verketteten Protokollen (nur Kennungen) – das Löschprotokoll

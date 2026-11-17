@@ -174,13 +174,21 @@ def attach_research483(app,build):
                 "FROM provider_intake_120 WHERE case_id=? AND candidate_only=1 "
                 "ORDER BY created_at DESC LIMIT 50", (case_id,)
             )
+        def candidate_link(url):
+            # Provider intake also accepts http:// or explicit ports; one such
+            # candidate must not take down the whole page. Unsafe ones stay unlinked.
+            try:
+                safe = validate_public_lead_url(url)
+            except HTTPException as exc:
+                return ('<p class="muted">Fundadresse nicht verlinkt ('+escape(str(exc.detail))+'): <code>'+
+                        escape(str(url or "")[:300])+'</code></p>')
+            return ('<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
+                    escape(safe,quote=True)+'">Öffentliche Fundadresse manuell prüfen</a></p>')
         candidate_cards = "".join(
             '<section class="card"><h3>'+escape(str(item["title"]))+'</h3>'
             '<p><strong>Provider-Hinweis – keine geprüfte Evidence</strong> · '+
-            escape(str(item["provider_key"]))+' · '+escape(str(item["review_status"]))+'</p>'
-            '<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
-            escape(validate_public_lead_url(item["url"]),quote=True)+
-            '">Öffentliche Fundadresse manuell prüfen</a></p>'
+            escape(str(item["provider_key"]))+' · '+escape(str(item["review_status"]))+'</p>'+
+            candidate_link(item["url"])+
             '<p>Erfasst: '+escape(str(item["created_at"]))+'</p></section>'
             for item in provider_candidates
         )

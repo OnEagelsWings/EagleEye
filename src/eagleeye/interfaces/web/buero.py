@@ -20,7 +20,7 @@ from html import escape
 from urllib.parse import urlencode
 
 from fastapi import HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from eagleeye.application.buero import accounts, deletion, service as buero
 from .app364 import CSRF_COOKIE
@@ -218,6 +218,10 @@ def _overview(app, request, user, *, show_all: bool) -> str:
                          f'Aufbewahrungsfrist abgelaufen ({_when(row["retention_until"])}) – '
                          + (f'<a href="{_href("/buero/loeschen", case_id=row["case_id"])}">Löschung vorbereiten</a></li>'
                             if buero._is_admin(user) else 'Büroleitung informieren</li>'))
+    if buero._is_admin(user):
+        for job in deletion.open_jobs(app.state.context):
+            attention.append(f'<li>{escape(job["aktenzeichen"])} <span class="overdue">Löschung unvollständig</span> – '
+                             '<a href="/buero/loeschprotokoll">im Löschprotokoll fortsetzen</a></li>')
     if attention:
         body += '<section class="card warn" aria-label="Braucht Aufmerksamkeit"><h2>Braucht Aufmerksamkeit</h2><ul class="attention">' \
                 + "".join(attention) + '</ul></section>'
@@ -1042,10 +1046,14 @@ def attach_buero(app, build: str) -> None:
                 + "".join(f"<li>{escape(name)}: {n}</li>" for name, n in biggest) + '</ul></details>'
                 + ('<p>Bleibt erhalten (fallübergreifend verkettete Protokolle, ein Entfernen bräche deren Prüfkette):</p>'
                    f'<ul>{kept}</ul>' if kept else '')
+                + ('<p>Diese Dateien erwähnen den Fall im Inhalt, gehören aber nicht eindeutig zu ihm. Sie werden <strong>nicht</strong> '
+                   'gelöscht – bitte selbst prüfen:</p><ul>' + "".join(f"<li><code>{escape(m)}</code></li>" for m in info["mentions"][:30])
+                   + '</ul>' if info["mentions"] else '')
                 + '<p class="muted">Der Mandant selbst bleibt in der Mandantenliste. Frühere Sicherungen enthalten den Fall, '
                   'bis sie turnusgemäß ersetzt werden. Für die Buchhaltung vorher den '
                   f'<a href="{_href("/buero/leistungsnachweis.pdf", case_id=case_id)}">Leistungsnachweis</a> ablegen.</p></section>'
-                + f'<form method="post" action="/buero/loeschen" class="card"><h2>Endgültig löschen</h2>'
+                + (_error(deletion._unreadable_message(info["unreadable"])) if info["unreadable"] else
+                   f'<form method="post" action="/buero/loeschen" class="card"><h2>Endgültig löschen</h2>'
                 f'<input type="hidden" name="csrf" value="{_csrf(request)}">' + _hidden(case_id=case_id)
                 + ('' if info["due"] else _area(f"Begründung für die Löschung vor Fristablauf (z. B. Löschverlangen), mindestens "
                                                 f"{buero.MIN_REASON} Zeichen", "reason", v.get("reason", ""), required=True, rows=2, maxlength=600))
@@ -1053,7 +1061,7 @@ def attach_buero(app, build: str) -> None:
                          attrs='autocomplete="off" maxlength="40"')
                 + _check("Ich habe geprüft, dass keine gesetzliche Aufbewahrungspflicht und kein laufendes Verfahren entgegensteht.",
                          "checked", False)
-                + '<button class="primary" type="submit">Fallakte endgültig löschen</button></form>')
+                + '<button class="primary" type="submit">Fallakte endgültig löschen</button></form>'))
 
     @app.get("/buero/loeschen", response_class=HTMLResponse)
     def deletion_page(request: Request, case_id: str = ""):
@@ -1075,6 +1083,8 @@ def attach_buero(app, build: str) -> None:
             deletion.delete_case(ctx, user, case_id, form)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
+        except deletion.IncompleteDeletion as exc:
+            return deletion_log_page(request, user, str(exc), 409)
         except buero.BueroError as exc:
             try:
                 return render("Fallakte löschen", deletion_body(request, user, case_id, str(exc), form), 422, case_id)
@@ -1082,27 +1092,50 @@ def attach_buero(app, build: str) -> None:
                 raise HTTPException(409, str(exc)) from None
         return RedirectResponse("/buero/loeschprotokoll?done=deleted", status_code=303)
 
-    @app.get("/buero/loeschprotokoll", response_class=HTMLResponse)
-    def deletion_log(request: Request):
-        user = _user(app, request)
-        try:
-            rows = deletion.deletions(ctx, user)
-        except PermissionError as exc:
-            raise HTTPException(403, str(exc)) from None
-        body = _status_line(request)
+    def deletion_log_page(request, user, error="", status=200):
+        rows = deletion.deletions(ctx, user)
+        body = _status_line(request) + _error(error)
         if not rows:
-            return render("Löschprotokoll", body + "<p>Noch keine Löschungen.</p>")
-        table = ('<table><thead><tr><th>Aktenzeichen</th><th>Gelöscht am</th><th>Von</th><th>Frist</th><th>Umfang</th>'
-                 '<th>Restfundstellen</th></tr></thead><tbody>')
+            return render("Löschprotokoll", body + "<p>Noch keine Löschungen.</p>", status)
+        csrf = f'<input type="hidden" name="csrf" value="{_csrf(request)}">'
+        table = ('<table><thead><tr><th>Aktenzeichen</th><th>Stand</th><th>Gelöscht am</th><th>Von</th><th>Frist</th>'
+                 '<th>Umfang</th><th>Restfundstellen</th></tr></thead><tbody>')
         for r in rows:
             rest = "; ".join(f"{escape(deletion.residual_label(k))}: {n}" for k, n in sorted(r["residual"].items())) or "keine"
-            table += (f'<tr><td>{escape(r["aktenzeichen"])}</td><td class="date">{_when(r["deleted_at"])}</td>'
+            state = escape(deletion.STATUS_LABELS.get(r["status"], r["status"]))
+            if r["status"] != "abgeschlossen":
+                state = (f'<span class="overdue">{state}</span>' + (f'<br><small>{escape(r["error"])}</small>' if r["error"] else "")
+                         + '<form method="post" action="/buero/loeschen/fortsetzen">' + _hidden(deletion_id=r["deletion_id"]) + csrf
+                         + '<button class="primary" type="submit">Löschung fortsetzen</button></form>')
+            table += (f'<tr><td>{escape(r["aktenzeichen"])}</td><td>{state}</td><td class="date">{_when(r["deleted_at"])}</td>'
                       f'<td>{escape(r["deleted_by"])}</td><td class="date">{_when(r["retention_until"])}'
                       + (f'<br><small>vorzeitig: {escape(r["early_reason"])}</small>' if r["early_reason"] else "") + '</td>'
                       f'<td>{r["rows_deleted"]} Datensätze, {r["files_deleted"]} Dateien</td><td>{rest}</td></tr>')
         return render("Löschprotokoll", body + '<p class="muted">Das Protokoll enthält keine Inhalte der gelöschten Akte, nur '
                       'Aktenzeichen, Daten und Umfang. Restfundstellen sind Einträge in fallübergreifend verketteten '
-                      'Protokollen (nur Kennungen).</p>' + _stack_tables(table + '</tbody></table>'))
+                      'Protokollen (nur Kennungen) und Dateien, die den Fall noch erwähnen.</p>'
+                      + _stack_tables(table + '</tbody></table>'), status)
+
+    @app.get("/buero/loeschprotokoll", response_class=HTMLResponse)
+    def deletion_log(request: Request):
+        user = _user(app, request)
+        try:
+            return deletion_log_page(request, user)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+
+    @app.post("/buero/loeschen/fortsetzen")
+    async def deletion_resume(request: Request):
+        form = await _form(request)
+        user = _user(app, request)
+        verify_post(app, request, user, form.get("csrf", ""))
+        try:
+            deletion.resume(ctx, user, form.get("deletion_id", ""))
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except buero.BueroError as exc:
+            return deletion_log_page(request, user, str(exc), 409)
+        return RedirectResponse("/buero/loeschprotokoll?done=deleted", status_code=303)
 
     # ------------------------------------------------ team (office management)
     def team_body(request, error="", values=None) -> str:
@@ -1192,18 +1225,25 @@ def attach_buero(app, build: str) -> None:
             return render("Mein Konto", account_body(request, user, str(exc)), 422)
         return RedirectResponse("/buero/konto?done=password", status_code=303)
 
-    # A password set by the office management must be replaced before any other page opens.
+    # A password set by the office management must be replaced before the account may do
+    # anything else: every request with a session is checked (pages, forms and API calls).
+    # Only the password change itself, login/logout and static files stay reachable.
+    exempt_exact = {"/buero/konto", "/security/logout", "/security/login", "/security/start", "/security/bootstrap",
+                    "/health", "/favicon.ico"}
+    exempt_prefix = ("/assets/", "/static/")
+
     @app.middleware("http")
     async def require_own_password(request: Request, call_next):
         path = request.url.path
-        if (request.method == "GET" and request.cookies.get(COOKIE)
-                and "text/html" in request.headers.get("accept", "")
-                and not path.startswith(("/buero/konto", "/security/", "/assets/", "/health", "/static/"))):
+        if request.cookies.get(COOKIE) and path not in exempt_exact and not path.startswith(exempt_prefix):
             from starlette.concurrency import run_in_threadpool
             current = await run_in_threadpool(lambda: ctx.team_identity_359.validate_session(
                 request.cookies.get(COOKIE, ""), client_fingerprint=_fingerprint(request), touch=False))
             if accounts.must_change(ctx, current):
-                return RedirectResponse("/buero/konto", status_code=303)
+                if "text/html" in request.headers.get("accept", ""):
+                    return RedirectResponse("/buero/konto", status_code=303)
+                return JSONResponse({"detail": "Bitte zuerst unter „Mein Konto“ ein eigenes Passwort festlegen."},
+                                    status_code=403)
         return await call_next(request)
 
     @app.get("/buero/team", response_class=HTMLResponse)
