@@ -26,15 +26,20 @@ def reject_constant(value):
     raise ValueError("nonfinite JSON constant")
 
 def validate(raw):
-    if len(raw) > MAX:
-        raise ValueError("oversize")
     if not isinstance(raw, bytes):
         raise ValueError("expected UTF-8 bytes")
+    if len(raw) > MAX:
+        raise ValueError("oversize")
     try:
         d = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object,
                        parse_constant=reject_constant)
     except (UnicodeError, RecursionError) as exc:
         raise ValueError("invalid JSON encoding or depth") from exc
+    # JSON escapes can introduce lone surrogates even in valid UTF-8 input.
+    try:
+        json.dumps(d, ensure_ascii=False).encode("utf-8")
+    except (UnicodeError, RecursionError) as exc:
+        raise ValueError("invalid Unicode or depth") from exc
     if not isinstance(d, dict) or set(d) - {"schema","id","kind","classification","topic","summary","sources","synthetic"}:
         raise ValueError("unexpected fields")
     if type(d.get("schema")) is not int or d["schema"] != 1 or d.get("classification") != "public-topic":
