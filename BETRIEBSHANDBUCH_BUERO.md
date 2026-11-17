@@ -79,7 +79,15 @@ selbst im Browser öffnest, kann die App nicht sperren. Taucht später ein
 Warnsignal auf (z. B. Hinweis auf ein Frauenhaus): **Auftragsakte → Warnsignal melden**.
 Der Auftrag ruht, bis die Prüfung wiederholt ist.
 
-### 3.3 Recherchieren
+### 3.3 Arbeitsliste der Auftragsart
+Jede Auftragsart (Due Diligence, Hintergrundprüfung, Wirtschaftsermittlung, Personen- oder
+Anschriftenermittlung, Vermisstensuche, Online-Recherche) bringt eine feste Arbeitsliste mit, die
+in der Auftragsakte steht. Jeder Punkt hat einen Link zum passenden Werkzeug und wird als
+**erledigt** oder **entfällt** (mit kurzer Begründung) markiert. Das Büro zeigt den Fortschritt
+(z. B. „4/11“). Im Mandantenbericht erscheint die Liste als **Prüfumfang**: geprüft, nicht geprüft
+oder entfällt mit Grund – so ist für den Mandanten nachvollziehbar, was geprüft wurde und was nicht.
+
+### 3.4 Recherchieren
 **Auftragsakte → Zur Recherche** öffnet den geführten Arbeitsablauf dieses Falls:
 
 1. Webseiten und PDFs als Beleg sichern (WARC mit SHA-256, Haupttext, frühere Fassungen
@@ -95,7 +103,7 @@ Der Auftrag ruht, bis die Prüfung wiederholt ist.
 Suchbegriffe (Namen) werden in Formularen übertragen, nicht in der Adresszeile – sie
 landen nicht im Browserverlauf.
 
-### 3.4 Zeit, Auslagen, Wiedervorlagen
+### 3.5 Zeit, Auslagen, Wiedervorlagen
 In der Auftragsakte:
 
 - **Zeit buchen**: Datum, Dauer (`1,5` oder `1:30`), Tätigkeit, Beschreibung, abrechenbar ja/nein.
@@ -104,7 +112,7 @@ In der Auftragsakte:
 - **Wiedervorlagen** mit Datum. Fällige und überfällige erscheinen im Büro unter „Braucht Aufmerksamkeit“.
 - Ab 80 % des Budgets warnt das Büro.
 
-### 3.5 Bericht und Leistungsnachweis
+### 3.6 Bericht und Leistungsnachweis
 - **Bericht für Mandant (PDF)**: Briefkopf, Empfänger, Aktenzeichen, Auftrag, Ergebnisse
   mit nummerierten Quellenangaben, Methodik und Grenzen, Quellenverzeichnis mit Abrufzeit
   und SHA-256. Enthalten sind nur Befunde, die für die Empfängerstufe freigegeben sind:
@@ -116,7 +124,7 @@ In der Auftragsakte:
   **keine Rechnung**; die Rechnung schreibt eure Buchhaltungssoftware.
 - **Büro → Zeiten für die Buchhaltung**: alle Zeiten eines Monats als CSV (für Excel).
 
-### 3.6 Abschließen und löschen
+### 3.7 Abschließen und löschen
 - **Stand ändern → Abgeschlossen**: ab heute läuft die Aufbewahrungsfrist.
 - Nach Fristablauf erscheint der Auftrag im Büro unter „Löschung prüfen“.
 - **Löschung vorbereiten** (nur Büroleitung) zeigt, was gelöscht wird. Bestätigung durch

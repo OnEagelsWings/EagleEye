@@ -207,7 +207,10 @@ Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in 
 | Aufbewahrungsfrist, endgültige Löschung mit Vorschau, byteweiser Prüfung und Löschprotokoll | umgesetzt |
 | Teamverwaltung (Benutzer anlegen, Aufträgen zuordnen/entziehen), eigenes Passwort ändern, Zurücksetzen mit Pflichtwechsel, Konten sperren | umgesetzt |
 | Befund 9 des Prüfberichts (Suchbegriff in der Adresszeile) | behoben |
-| Offen: verschlüsselte Sicherung aus der App, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag), Navigation bündeln (U3) | offen |
+| Review PR #96 (17.11.): Löschung wiederaufnehmbar, `reports/` einbezogen, Pflicht-Passwortwechsel serverseitig, Suchhinweise robust | umgesetzt |
+| Einheitliche Seitenleiste für die Windows-Desktopanwendung (U3) | umgesetzt |
+| Vorlagen je Auftragsart: Arbeitsliste in der Akte, Prüfumfang im Mandantenbericht | umgesetzt |
+| Offen: verschlüsselte Sicherung aus der App, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag) | offen |
 
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 

@@ -17,7 +17,7 @@ from pathlib import Path
 from fastapi import HTTPException, Request
 from fastapi.responses import Response
 
-from eagleeye.application.buero import service as buero
+from eagleeye.application.buero import checklists, service as buero
 from eagleeye.application.intel492 import captures, markings
 from .findings478 import KINDS, REVIEW_LABELS, notes_for_case
 from .intel492 import _when
@@ -44,6 +44,9 @@ def _fonts() -> tuple[str, str]:
             try:
                 pdfmetrics.registerFont(TTFont("EEReport", regular))
                 pdfmetrics.registerFont(TTFont("EEReport-Bold", bold))
+                # <b>/<i> inside paragraphs need the family mapping.
+                pdfmetrics.registerFontFamily("EEReport", normal="EEReport", bold="EEReport-Bold",
+                                              italic="EEReport", boldItalic="EEReport-Bold")
                 return "EEReport", "EEReport-Bold"
             except Exception:  # damaged or unsupported font file: fall back
                 continue
@@ -67,6 +70,7 @@ def report_material(app, user, case_id: str, level: str) -> dict:
     documents = {d["document_id"]: d for d in ctx.document_intelligence_458.documents(identity=user, case_id=case_id)}
     marks = markings.current(ctx, case_id)
     return {"mandate": row, "office": buero.settings(ctx), "findings": kept, "omitted": omitted, "total": len(notes),
+            "scope": checklists.checklist(ctx, user, case_id),
             "documents": documents, "marks": marks, "level": level}
 
 
@@ -145,14 +149,25 @@ def report_pdf(app, user, case_id: str, level: str, material: dict | None = None
         ("FONTNAME", (0, 0), (0, -1), bold), ("FONTNAME", (1, 0), (1, -1), regular), ("FONTSIZE", (0, 0), (-1, -1), 9.5), ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#bbbbbb"))])))
 
+    story.append(Paragraph("2. Prüfumfang", h2))
+    story.append(Paragraph("Arbeitsliste für „" + esc(buero.MANDATE_KINDS.get(row["kind"], row["kind"])) + "“ – was geprüft wurde, "
+                           "was nicht und was nicht einschlägig war:", body))
+    scope_rows = [[Paragraph("<b>Prüfschritt</b>", small), Paragraph("<b>Stand</b>", small)]]
+    for item in material["scope"]:
+        state = checklists.REPORT_STATES[item["state"]] + (": " + item["note"] if item["note"] else "")
+        scope_rows.append([Paragraph(esc(item["title"]), small), Paragraph(esc(state), small)])
+    story.append(Table(scope_rows, colWidths=[118 * mm, 52 * mm], repeatRows=1, style=TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), regular), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#bbbbbb"))])))
+
     sources, numbers = _sources(ctx, case_id, material)
-    story.append(Paragraph("2. Ergebnisse", h2))
+    story.append(Paragraph("3. Ergebnisse", h2))
     if not material["findings"]:
         story.append(Paragraph("Für diese Empfängerstufe liegen noch keine freigegebenen Ergebnisse vor.", body))
     for index, finding in enumerate(material["findings"], 1):
         cls = markings.effective(material["marks"], finding)
         flag = " <font color='#a33'>(besonders schutzwürdige Angabe)</font>" if cls == "besonders_schutzwuerdig" else ""
-        block = [Paragraph(f'2.{index} {esc(finding["title"])}<super>[{numbers[finding["finding_id"]]}]</super>{flag}', h3),
+        block = [Paragraph(f'3.{index} {esc(finding["title"])}<super>[{numbers[finding["finding_id"]]}]</super>{flag}', h3),
                  Paragraph(f'<i>{esc(KINDS.get(finding["kind"], "Arbeitsnotiz"))}</i>', small),
                  Paragraph(esc(finding["interpretation"]), body)]
         if finding.get("source_excerpt"):
@@ -162,7 +177,7 @@ def report_pdf(app, user, case_id: str, level: str, material: dict | None = None
         block.append(Spacer(1, 2 * mm))
         story.append(KeepTogether(block))
 
-    story.append(Paragraph("3. Methodik und Grenzen", h2))
+    story.append(Paragraph("4. Methodik und Grenzen", h2))
     method = ["Ausgewertet wurden öffentlich zugängliche Quellen und vom Auftraggeber übergebene Unterlagen. "
               "Jede Aussage ist mit ihrer Fundstelle verknüpft."]
     if level == "intern":
@@ -177,7 +192,7 @@ def report_pdf(app, user, case_id: str, level: str, material: dict | None = None
                   f"Erkenntnisstand am {today} wieder.")
     story.append(Paragraph(" ".join(method), body))
 
-    story.append(Paragraph("4. Quellenverzeichnis", h2))
+    story.append(Paragraph("5. Quellenverzeichnis", h2))
     for number, source in enumerate(sources, 1):
         web = source["web"]
         detail = [esc(source["title"])]

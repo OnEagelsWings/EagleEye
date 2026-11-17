@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from eagleeye.application.buero import accounts, deletion, service as buero
+from eagleeye.application.buero import accounts, checklists, deletion, service as buero
 from .app364 import CSRF_COOKIE
 from .app448 import COOKIE
 from .app449 import _drop
@@ -43,6 +43,7 @@ CSS = EXTRA_CSS + (
     'label.check{margin:.2rem 0 .6rem}fieldset.q{border:0;border-top:1px solid #647b93;border-radius:0;padding:.7rem 0 .2rem;'
     'margin:0}.q legend{float:left;width:100%;padding:0;font-weight:500}.q .row{clear:both;padding-top:.4rem}'
     '.q .row label{display:inline-flex;gap:.35rem;align-items:center;margin:0 1.2rem .4rem 0}.q .row input{width:auto;margin:0}'
+    '#arbeitsliste td button{padding:.3rem .7rem;font-size:.9rem}#arbeitsliste td form{margin:.1rem 0}'
     'ul.attention{padding-left:1.2rem}ul.attention li{margin:.3rem 0}main th{word-break:normal;overflow-wrap:normal;hyphens:manual}'
     'td.num,td.date{white-space:nowrap;word-break:normal}.pill{white-space:nowrap}</style>')
 
@@ -67,6 +68,7 @@ DONE = {
     "password": "Passwort geändert. Andere Anmeldungen dieses Kontos sind beendet.",
     "reset": "Passwort zurückgesetzt. Beim nächsten Anmelden muss ein eigenes gewählt werden.",
     "locked": "Konto gesperrt, alle Anmeldungen beendet.", "unlocked": "Konto entsperrt.",
+    "checklist": "Arbeitsliste aktualisiert.",
 }
 
 
@@ -229,13 +231,15 @@ def _overview(app, request, user, *, show_all: bool) -> str:
               f'<a href="/buero?alle=1">Auch {closed} abgeschlossene oder abgelehnte zeigen</a>')
     if rows:
         table = ('<table><thead><tr><th>Aktenzeichen</th><th>Mandant</th><th>Auftrag</th><th>Stand</th><th>Abgabe</th>'
-                 '<th>Aufwand</th><th>Netto</th><th>Budget</th></tr></thead><tbody>')
+                 '<th>Arbeitsliste</th><th>Aufwand</th><th>Netto</th><th>Budget</th></tr></thead><tbody>')
+        done = checklists.progress(app.state.context, rows)
         for row in rows:
             money = row["totals"]
             due = (f'<span class="{row["due_state"]}">{_when(row["due_on"])}</span>' if row["due_on"] else "–")
             table += (f'<tr><td class="date"><a href="{_href("/buero/auftrag", case_id=row["case_id"])}">{escape(row["aktenzeichen"])}</a></td>'
                       f'<td>{escape(row["client_name"])}</td><td>{escape(row["title"])}</td><td>{_pill(row["status"])}</td>'
-                      f'<td class="date">{due}</td><td class="num">{buero.hours(money["minutes"])}</td>'
+                      f'<td class="date">{due}</td><td class="num">{done[row["case_id"]][0]}/{done[row["case_id"]][1]}</td>'
+                      f'<td class="num">{buero.hours(money["minutes"])}</td>'
                       f'<td class="num">{buero.euro(money["net_cents"])}</td><td class="num">{_share(money["budget_share"])}</td></tr>')
         body += '<section aria-label="Aufträge"><h2>Aufträge</h2>' + (f'<p>{toggle}</p>' if toggle else '') + _stack_tables(table + '</tbody></table>') + '</section>'
     else:
@@ -351,6 +355,43 @@ def _screening_result(screening: dict) -> str:
             + '<p>Identitätsprüfung: ' + (escape(", ".join(ticks)) if ticks else "keine Punkte abgehakt") + '</p></details>')
 
 
+def _worklist(app, request, user, row: dict, book: bool, csrf: str, values: dict) -> str:
+    if row["status"] == "abgelehnt":
+        return ""
+    case_id = row["case_id"]
+    items = checklists.checklist(app.state.context, user, case_id)
+    editable = book and row["status"] not in {"abgeschlossen", "anfrage"}
+    finished = sum(1 for i in items if i["state"] != "offen")
+    table = '<table><thead><tr><th>Punkt</th><th>Werkzeug</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>'
+    for item in items:
+        tool = (f'<a href="{_href(item["tool"], case_id=case_id)}">öffnen</a>' if item["tool"] else "–")
+        state = checklists.STATES[item["state"]] + (f': {escape(item["note"])}' if item["note"] else "")
+        if item["updated_by"] and item["state"] != "offen":
+            state += f'<br><small class="muted">{escape(item["updated_by"])}, {_when(item["updated_at"])}</small>'
+        action = ""
+        if editable:
+            form = lambda st, label: ('<form method="post" action="/buero/arbeitsliste" style="display:inline">'
+                                      + _hidden(case_id=case_id, item_key=item["key"], state=st) + csrf
+                                      + f'<button type="submit">{label}</button></form>')
+            if item["state"] == "offen":
+                action = (form("erledigt", "erledigt")
+                          + '<details><summary>entfällt …</summary><form method="post" action="/buero/arbeitsliste">'
+                          + _hidden(case_id=case_id, item_key=item["key"], state="entfaellt") + csrf
+                          + _field("Warum entfällt der Punkt?", "note", values.get("note", "") if values.get("item_key") == item["key"] else "",
+                                   required=True, attrs='minlength="5" maxlength="300"')
+                          + '<button type="submit">entfällt</button></form></details>')
+            else:
+                action = form("offen", "wieder öffnen")
+        table += (f'<tr><td><strong>{escape(item["title"])}</strong>'
+                  + (f'<br><small class="muted">{escape(item["hint"])}</small>' if item["hint"] else "")
+                  + f'</td><td>{tool}</td><td class="{"ok" if item["state"] == "erledigt" else ""}">{state}</td><td>{action}</td></tr>')
+    return ('<section class="card" aria-label="Arbeitsliste" id="arbeitsliste"><h2>Arbeitsliste: '
+            + escape(buero.MANDATE_KINDS.get(row["kind"], row["kind"])) + f' <small class="muted">({finished} von {len(items)} erledigt)</small></h2>'
+            + ('<p class="muted">Die Arbeitsliste wird nach der Auftragsprüfung bearbeitet.</p>' if row["status"] == "anfrage" else "")
+            + '<p class="muted">Der Stand erscheint im Mandantenbericht als Prüfumfang: geprüft, nicht geprüft oder entfällt mit Grund.</p>'
+            + _stack_tables(table + '</tbody></table>') + '</section>')
+
+
 def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = "", values: dict | None = None) -> str:
     ctx = app.state.context
     row = buero.mandate(ctx, user, case_id)
@@ -411,6 +452,8 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
                  '<form method="post" action="/buero/auftrag/anhalten">' + _hidden(case_id=case_id) + csrf
                  + _area("Was ist aufgefallen?", "note", vals("anhalten").get("note", ""), required=True, rows=2, maxlength=600)
                  + '<button type="submit">Auftrag anhalten</button></form></details>')
+
+    body += _worklist(app, request, user, row, book, csrf, vals("arbeitsliste"))
 
     # money summary
     share = money["budget_share"]
@@ -665,6 +708,7 @@ def attach_buero(app, build: str) -> None:
     ctx = app.state.context
     buero.initialize(ctx)
     deletion.initialize(ctx)
+    checklists.initialize(ctx)
     app.state.buero = True
     from .buero_report import attach_report_pdf
     attach_report_pdf(app, build)
@@ -879,7 +923,7 @@ def attach_buero(app, build: str) -> None:
                 return akte_response(request, user, case_id, error=str(exc), failed=form_name, values=form)
             except PermissionError as exc:
                 raise HTTPException(403, str(exc)) from None
-            anchor = {"zeit": "#zeit", "auslage": "#auslage"}.get(form_name, "")
+            anchor = {"zeit": "#zeit", "auslage": "#auslage", "arbeitsliste": "#arbeitsliste"}.get(form_name, "")
             return RedirectResponse("/buero/auftrag?" + urlencode({"case_id": case_id, "done": done}) + anchor, status_code=303)
         handler.__name__ = "buero_" + form_name
         return handler
@@ -896,6 +940,7 @@ def attach_buero(app, build: str) -> None:
     akte_post("/buero/storno", "storno", lambda u, c, f: buero.void_entry(ctx, u, c, f), "voided")
     akte_post("/buero/frist", "frist", lambda u, c, f: buero.add_deadline(ctx, u, c, f), "deadline")
     akte_post("/buero/frist/erledigt", "frist_erledigt", lambda u, c, f: buero.complete_deadline(ctx, u, c, f), "deadline_done")
+    akte_post("/buero/arbeitsliste", "arbeitsliste", lambda u, c, f: checklists.set_item(ctx, u, c, f), "checklist")
 
     def _assign(user, case_id, form):
         if form.get("case_role") not in CASE_ROLES:
