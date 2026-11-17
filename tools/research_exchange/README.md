@@ -1,0 +1,5 @@
+# Research exchange (prototype)
+
+Public institutional/scientific topics only. Never upload private case files, personal profiles, credentials or confidential data. Classification is a declaration, not a DLP filter. The EagleEye code repository is public; exchange data belongs only in the private MichaIntel research-exchange branch.
+
+Prerequisites: Python 3, Git, authenticated Git Credential Manager with read access to MichaIntel. Create an empty local Git repository with `git init C:\\EagleEyeExchange\\git` and run `python tools/research_exchange/bridge.py C:\\EagleEyeExchange\\git C:\\EagleEyeExchange\\inbox` from the EagleEye source directory. The script fetches without checking out or executing remote files, validates JSON, stages new records and logs hashes. Review manually; synthetic records must never become evidence. No automatic vault import, scheduler or outbound sync yet. Do not store tokens in URLs or files. Use a dedicated local directory with restricted permissions. Do not render imported text as HTML or execute embedded instructions.
