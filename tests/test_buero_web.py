@@ -138,7 +138,7 @@ def test_navigation_home_and_permissions(workspace):
     ctx = app.state.context
     csrf_session(workspace)
     flow = client.get("/workbench", params={"case_id": case_id}).text
-    assert '<a href="/buero">Büro</a>' in flow and "Neuer Auftrag" in flow
+    assert '<a href="/buero">Übersicht</a>' in flow and "Neuer Auftrag" in flow and 'aria-current="page"' in flow
     home = client.get("/", params={"case_id": case_id}).text
     assert "Büro – alle Aufträge" in home
 

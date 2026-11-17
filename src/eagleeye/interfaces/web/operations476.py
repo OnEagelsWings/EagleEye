@@ -1,6 +1,7 @@
 """Operational research workbench: visible tasks, real case state, no automatic truth promotion."""
 from __future__ import annotations
 import hashlib
+from contextvars import ContextVar
 from html import escape
 from urllib.parse import urlencode
 from fastapi import HTTPException, Request
@@ -31,7 +32,19 @@ def case_access(app, request, case_id, capability="case.read"):
             session_id=user.get('session_id',''),case_id=case_id,capability=capability,
             allowed=False,reason='not_an_operational_visible_case',object_type='operational_case',object_id=case_id)
         raise HTTPException(403,"Kein Zugriff auf diesen Fall")
+    remember_page_state(app, request, user)
     return user, case
+
+
+# Request-local facts the shared page layout needs (signed-in user, current path, CSRF
+# token for the sign-out button). Set where the request is authorized; read by page().
+_PAGE_STATE: ContextVar[dict | None] = ContextVar("eagleeye_page_state", default=None)
+
+
+def remember_page_state(app, request, user) -> None:
+    from .app364 import CSRF_COOKIE
+    _PAGE_STATE.set({"ctx": app.state.context, "user": user, "path": request.url.path,
+                     "csrf": request.cookies.get(CSRF_COOKIE, "")})
 
 
 def _stage(build) -> int:
@@ -41,7 +54,108 @@ def _stage(build) -> int:
         return 0
 
 
+DESKTOP_CSS = (
+    ':root{--bg:#102238;--side:#0b1a2c;--card:#1c3451;--line:#647b93;--text:#f4faff;--muted:#c2d3e3;--accent:#9af3de}'
+    '*{box-sizing:border-box}body{font:15px/1.55 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0;'
+    'display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}'
+    '.skip{position:absolute;left:-9999px}.skip:focus{left:1rem;top:1rem;background:#fff;color:#000;padding:.4rem;z-index:9}'
+    'aside.side{background:var(--side);border-right:1px solid #24405f;position:sticky;top:0;height:100vh;overflow-y:auto;'
+    'padding:1rem .8rem 2rem}aside .brand{display:flex;align-items:baseline;gap:.5rem;margin:0 .4rem 1rem}'
+    'aside .brand strong{font-size:1.15rem}aside .brand small{color:var(--muted)}'
+    'aside .case{background:#14304d;border:1px solid #2c4c6d;border-radius:10px;padding:.6rem .7rem;margin:0 0 1rem;font-size:.9rem}'
+    'aside .case b{display:block}aside .case a{font-size:.88rem}aside .case select{width:100%;margin:.4rem 0 .2rem;padding:.3rem;'
+    'font:inherit;font-size:.85rem}aside .case button{padding:.25rem .6rem;font-size:.85rem}'
+    'aside nav p.grp{margin:.9rem .4rem .25rem;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#8fa8c0}'
+    'aside nav a{display:block;padding:.32rem .6rem;border-radius:7px;color:var(--text);text-decoration:none}'
+    'aside nav a:hover{background:#1b3858}aside nav a[aria-current=page]{background:#23486e;color:#fff;font-weight:600;'
+    'box-shadow:inset 3px 0 0 var(--accent)}aside nav .off{display:block;padding:.32rem .6rem;color:#7d93a8}'
+    'aside form.out{margin:1.2rem .4rem 0}aside form.out button{background:none;border:1px solid var(--line);color:var(--muted);'
+    'border-radius:7px;padding:.3rem .7rem;cursor:pointer}'
+    'main{max-width:1200px;width:100%;margin:0 auto;padding:1.4rem 2rem 2rem}a{color:var(--accent)}'
+    '.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}'
+    '.card{overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.2rem;margin:.6rem 0}'
+    '.warn{border-left:5px solid #ffd18a;padding:.8rem;background:#344b61}'
+    'input,textarea,select{box-sizing:border-box;width:100%;padding:.55rem;margin:.3rem 0 1rem;font:inherit}'
+    'button{padding:.6rem .9rem;cursor:pointer;font:inherit}table{width:100%;border-collapse:collapse}'
+    'td,th{padding:.55rem;text-align:left;border-bottom:1px solid var(--line);word-break:break-word}'
+    'h1{font-size:1.6rem;margin:.2rem 0 1rem}h2{font-size:1.12rem}a:focus,button:focus,select:focus,input:focus,textarea:focus'
+    '{outline:3px solid #f9e099;outline-offset:1px}'
+    '@media (max-width:900px){body{display:block}aside.side{position:static;height:auto;border-right:0;border-bottom:1px solid #24405f}'
+    'aside nav{display:flex;flex-wrap:wrap;gap:.1rem .3rem}aside nav p.grp{width:100%;margin:.5rem .3rem 0}main{padding:1rem}}')
+
+# (group, label, path, needs_case, visible(user)) – one place for the whole application menu.
+MENU = [
+    ("Büro", "Übersicht", "/buero", False, None),
+    ("Büro", "Neuer Auftrag", "/buero/auftrag/neu", False, lambda u: u.get("global_role") in {"system_administrator", "investigator"}),
+    ("Büro", "Mandanten", "/buero/mandanten", False, lambda u: u.get("global_role") in {"system_administrator", "investigator"}),
+    ("Büro", "Team", "/buero/team", False, lambda u: u.get("global_role") == "system_administrator"),
+    ("Büro", "Einstellungen", "/buero/einstellungen", False, lambda u: u.get("global_role") == "system_administrator"),
+    ("Auftrag", "Auftragsakte", "/buero/auftrag", True, None),
+    ("Auftrag", "Geführter Ablauf", "/workbench", True, None),
+    ("Recherche", "Quellen & Personen", "/workbench/public-sources", True, None),
+    ("Recherche", "Suchhinweise", "/workbench/leads483", True, None),
+    ("Recherche", "Dork-Suche", "/workbench/dorks482", True, None),
+    ("Recherche", "Ermittlungsplan", "/workbench/plan496", True, None),
+    ("Belege", "Web-Belege", "/workbench/intel/web", True, None),
+    ("Belege", "Dokumente", "/workbench/document", True, None),
+    ("Belege", "Quelle → Evidence", "/workbench/bridge481", True, None),
+    ("Auswertung", "Befunde", "/workbench/findings", True, None),
+    ("Auswertung", "Entity-Prüfung", "/workbench/entities488", True, None),
+    ("Auswertung", "Quellenfamilien", "/workbench/intel/lineage", True, None),
+    ("Auswertung", "Netzwerk", "/workbench/intel/network", True, None),
+    ("Bericht", "Arbeitsbericht & Prüfung", "/workbench/report", True, None),
+    ("Weitere", "Alle Werkzeuge", "/workbench/expert", True, None),
+    ("Weitere", "Klassische Fallübersicht", "/", True, None),
+    ("Weitere", "Mein Konto", "/buero/konto", False, None),
+]
+
+
+def _desktop_page(title, case_id, body, build):
+    state = _PAGE_STATE.get() or {}
+    user = state.get("user") or {}
+    current = state.get("path", "")
+    ctx = state.get("ctx")
+    case_box = ""
+    header = getattr(ctx, "sidebar_case_header", None) if ctx is not None else None
+    if header is not None and user:
+        try:
+            case_box = header(case_id, user)
+        except Exception:  # the menu must never take a page down
+            case_box = ""
+    links, group = [], None
+    for grp, label, path, needs_case, visible in MENU:
+        if visible is not None and not (user and visible(user)):
+            continue
+        if needs_case and not case_id:
+            if grp == "Auftrag" and group != "Auftrag":
+                links.append('<p class="grp">Auftrag</p><span class="off">Im Büro einen Auftrag öffnen, '
+                             'dann erscheinen Recherche, Belege, Auswertung und Bericht.</span>')
+                group = "Auftrag"
+            continue
+        if grp != group:
+            links.append('<p class="grp">' + escape(grp) + '</p>')
+            group = grp
+        href = path + ("?" + urlencode({"case_id": case_id}) if needs_case else "")
+        active = ' aria-current="page"' if current == path else ''
+        links.append('<a href="' + escape(href, quote=True) + '"' + active + '>' + escape(label) + '</a>')
+    logout = ('<form class="out" method="post" action="/security/logout"><input type="hidden" name="csrf" value="'
+              + escape(state.get("csrf", ""), quote=True) + '"><button type="submit">Abmelden'
+              + (' (' + escape(user.get("display_name") or user.get("username") or "") + ')' if user else '')
+              + '</button></form>') if user else ''
+    return ('<!doctype html><html lang="de"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(title) + ' – EagleEye</title>'
+            '<style>' + DESKTOP_CSS + '</style></head><body><a class="skip" href="#inhalt">Zum Inhalt springen</a>'
+            '<aside class="side"><div class="brand"><strong>EagleEye</strong><small>Build ' + escape(str(build)) + '</small></div>'
+            + case_box + '<nav aria-label="Hauptnavigation">' + "".join(links) + '</nav>' + logout + '</aside>'
+            '<main><span id="inhalt" tabindex="-1"></span><h1>' + escape(title) + '</h1>' + body
+            + '<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
+            ' Nur öffentliche oder synthetische, unkritische Quellen verwenden. KI-Entwürfe'
+            ' und Beziehungen sind nicht automatisch bestätigte Tatsachen.</p></main></body></html>')
+
+
 def page(title, case_id, body, build):
+    if _stage(build) >= 492:
+        return _desktop_page(title, case_id, body, build)
     link = lambda p: escape(p+"?"+urlencode({"case_id":case_id}),quote=True)
     return ('<!doctype html><html lang="de"><head><meta charset="utf-8">'
        '<meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escape(title)+'</title>'
@@ -56,8 +170,7 @@ def page(title, case_id, body, build):
        'td,th{padding:.6rem;text-align:left;border-bottom:1px solid #647b93;word-break:break-word}'
        'h1{font-size:1.7rem}h2{font-size:1.15rem}a:focus,button:focus{outline:3px solid #f9e099}'
        '</style></head><body><header><strong>EagleEye – Build '+escape(str(build))+'</strong>'
-       '<nav>'+('<a href="/buero">Büro</a>' if _stage(build) >= 492 else '')+'<a href="'+link('/')+'">Hauptansicht</a>'
-       +('<a href="/buero/auftrag/neu">Neuer Auftrag</a>' if _stage(build) >= 492 else '<a href="/new-case">Neuen Fall anlegen</a>')+
+       '<nav><a href="'+link('/')+'">Hauptansicht</a><a href="/new-case">Neuen Fall anlegen</a>'+
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'

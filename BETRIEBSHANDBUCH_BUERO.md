@@ -15,6 +15,12 @@ ihre Grenzen liegen.
 
 Nach der Anmeldung öffnet sich das **Büro**. Es ist ab jetzt die Startseite.
 
+**Bedienung:** Links steht immer dieselbe Seitenleiste. Oben der aktuell geöffnete Auftrag
+(Aktenzeichen, Titel, Stand) mit einer Auswahl, um zu einem anderen offenen Auftrag zu wechseln.
+Darunter die Bereiche **Büro, Auftrag, Recherche, Belege, Auswertung, Bericht** und
+**Weitere** (alle Werkzeuge, klassische Fallübersicht, Mein Konto) sowie „Abmelden“.
+Mit der Tab-Taste erreichst du zuerst „Zum Inhalt springen“.
+
 ## 2. Einmal einrichten (Büroleitung)
 
 **Büro → Einstellungen**

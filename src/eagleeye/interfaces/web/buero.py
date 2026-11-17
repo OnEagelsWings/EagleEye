@@ -28,7 +28,7 @@ from .app448 import COOKIE
 from .app449 import _drop
 from .findings478 import verify_post
 from .intel492 import EXTRA_CSS, _stack_tables, _when
-from .operations476 import page
+from .operations476 import page, remember_page_state
 
 CSS = EXTRA_CSS + (
     '<style>.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}'
@@ -133,6 +133,7 @@ def _user(app, request: Request) -> dict:
     user = _maybe_user(app, request)
     if not user:
         raise HTTPException(401, "Bitte anmelden.")
+    remember_page_state(app, request, user)
     return user
 
 
@@ -191,12 +192,8 @@ def _overview(app, request, user, *, show_all: bool) -> str:
              + (f' <span class="overdue">({len(overdue)} überfällig)</span>' if overdue else "") + '</section>'
              f'<section class="card"><span class="stat">{buero.hours(view["month_minutes"])}</span>meine Zeit {month_name}</section>'
              '</div>')
-    body += ('<div class="actions"><a class="button" href="/buero/auftrag/neu">Neuen Auftrag anlegen</a>'
-             + ('<a class="button secondary" href="/buero/mandanten">Mandanten</a>' if buero.may_use_clients(user) else "")
-             + '<a class="button secondary" href="/buero/konto">Mein Konto</a>'
-             + ('<a class="button secondary" href="/buero/team">Team</a>'
-                '<a class="button secondary" href="/buero/einstellungen">Einstellungen</a>' if buero._is_admin(user) else "")
-             + '</div>')
+    if buero.may_use_clients(user):
+        body += '<div class="actions"><a class="button" href="/buero/auftrag/neu">Neuen Auftrag anlegen</a></div>'
 
     attention = []
     for row in view["screening_open"]:
@@ -236,7 +233,7 @@ def _overview(app, request, user, *, show_all: bool) -> str:
         for row in rows:
             money = row["totals"]
             due = (f'<span class="{row["due_state"]}">{_when(row["due_on"])}</span>' if row["due_on"] else "–")
-            table += (f'<tr><td><a href="{_href("/buero/auftrag", case_id=row["case_id"])}">{escape(row["aktenzeichen"])}</a></td>'
+            table += (f'<tr><td class="date"><a href="{_href("/buero/auftrag", case_id=row["case_id"])}">{escape(row["aktenzeichen"])}</a></td>'
                       f'<td>{escape(row["client_name"])}</td><td>{escape(row["title"])}</td><td>{_pill(row["status"])}</td>'
                       f'<td class="date">{due}</td><td class="num">{buero.hours(money["minutes"])}</td>'
                       f'<td class="num">{buero.euro(money["net_cents"])}</td><td class="num">{_share(money["budget_share"])}</td></tr>')
@@ -691,6 +688,36 @@ def attach_buero(app, build: str) -> None:
                   "abgeschlossen": "der Auftrag ist abgeschlossen"}.get(state, "der Auftrag ist nicht freigegeben")
         return f"Kein Abruf: {reason}. Bitte in der Büroverwaltung (Auftragsakte) klären."
     app.state.research_gate = research_gate
+
+    def sidebar_case_header(case_id, user):
+        """Case box at the top of the menu: current mandate and a switcher between open mandates."""
+        visible = {str(c["case_id"]) for c in buero.visible_cases(ctx, user)}
+        marks = ",".join("?" for _ in buero.OPEN_STATUSES)
+        open_rows = [r for r in ctx.db.all(
+            "SELECT m.case_id, m.aktenzeichen, c.title FROM buero_mandates m JOIN cases c ON c.case_id=m.case_id "
+            f"WHERE m.status IN ({marks}) ORDER BY m.az_year DESC, m.az_number DESC LIMIT 200", tuple(buero.OPEN_STATUSES))
+            if r["case_id"] in visible]
+        head = '<div class="case">'
+        if case_id:
+            row = ctx.db.one("SELECT c.title, m.aktenzeichen, m.status FROM cases c LEFT JOIN buero_mandates m "
+                             "ON m.case_id=c.case_id WHERE c.case_id=?", (case_id,))
+            if row and row["aktenzeichen"]:
+                head += (f'<b>{escape(row["aktenzeichen"])}</b>{escape(str(row["title"] or ""))}<br>'
+                         f'<small>{escape(buero.STATUSES.get(row["status"], row["status"]))}</small><br>'
+                         f'<a href="{_href("/buero/auftrag", case_id=case_id)}">Auftragsakte</a>')
+            elif row:
+                head += (f'<b>{escape(str(row["title"] or case_id))}</b><small>ohne Auftragsdaten</small><br>'
+                         f'<a href="{_href("/buero/auftrag/ergaenzen", case_id=case_id)}">Auftragsdaten ergänzen</a>')
+        else:
+            head += '<b>Kein Auftrag geöffnet</b>'
+        choices = [r for r in open_rows if r["case_id"] != case_id]
+        if choices:
+            options = "".join(f'<option value="{_e(r["case_id"])}">{escape(r["aktenzeichen"])} – {escape(str(r["title"] or "")[:40])}</option>'
+                              for r in choices)
+            head += ('<form method="get" action="/buero/auftrag"><label>' + ("Anderen Auftrag öffnen" if case_id else "Auftrag öffnen")
+                     + f'<select name="case_id">{options}</select></label><button type="submit">Öffnen</button></form>')
+        return head + '</div>'
+    ctx.sidebar_case_header = sidebar_case_header
     ctx.research_gate = research_gate  # service level: execution497 checks before reserving a step
 
     # Second line of defence for any other caller of live provider runs.
@@ -734,10 +761,8 @@ def attach_buero(app, build: str) -> None:
 
         @app.get("/")
         def home(request: Request, view: str = "overview", case_id: str = ""):
-            if not case_id:
-                user = _maybe_user(app, request)
-                if user and not buero.visible_cases(ctx, user):
-                    return RedirectResponse("/buero", status_code=303)
+            if not case_id and _maybe_user(app, request):
+                return RedirectResponse("/buero", status_code=303)  # the office is the start page
             result = old_home(request, view=view, case_id=case_id)
             if isinstance(result, HTMLResponse):
                 html = result.body.decode("utf-8").replace(

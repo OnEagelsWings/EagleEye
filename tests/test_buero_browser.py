@@ -70,7 +70,10 @@ def test_office_pages_in_chromium(tmp_path):
                 assert page.get_by_text("1:45 Std.").count() >= 1
                 page.get_by_role("link", name="Zur Recherche").click()
                 assert urlparse(page.url).path == "/workbench"
-                assert page.get_by_role("link", name="Büro", exact=True).count() == 1
+                menu = page.get_by_role("navigation", name="Hauptnavigation")
+                assert menu.get_by_role("link", name="Übersicht", exact=True).get_attribute("href") == "/buero"
+                assert menu.get_by_role("link", name="Geführter Ablauf").get_attribute("aria-current") == "page"
+                assert page.locator("aside .case").inner_text().startswith(page.locator("aside .case b").inner_text())
 
                 akte = "/buero/auftrag?" + urlencode({"case_id": case_id})
                 for width in (1280, 390):
