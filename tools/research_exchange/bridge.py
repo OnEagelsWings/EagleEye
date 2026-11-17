@@ -1,5 +1,7 @@
 """Public-topic exchange staging; no automatic evidence import."""
 import argparse
+import os
+import tempfile
 import json
 import pathlib
 import re
@@ -61,6 +63,33 @@ def validate(raw):
 def git(root,*args):
     return subprocess.run(["git","-C",str(root),*args],check=True,capture_output=True,timeout=90).stdout
 
+def publish_record(target, raw):
+    """Publish complete bytes without replacing an existing record.
+
+    Requires a local filesystem supporting hard links (e.g. NTFS).
+    A crash before publication can leave an ignored temporary file.
+    """
+    fd, name = tempfile.mkstemp(prefix=".staging-", dir=target.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(name, target)
+        except FileExistsError:
+            return "duplicate" if target.read_bytes() == raw else "conflict"
+        if os.name == "posix":
+            directory = os.open(target.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        return "staged"
+    finally:
+        os.unlink(name)
+
+
 def stage(root,local):
     git(root,"fetch","--no-tags",REMOTE,BRANCH)
     commit=git(root,"rev-parse","FETCH_HEAD").decode().strip()
@@ -77,11 +106,7 @@ def stage(root,local):
             if pathlib.PurePosixPath(path).stem!=d["id"]: raise ValueError("filename mismatch")
             target=local/(d["id"]+".json")
             digest=hashlib.sha256(raw).hexdigest()
-            try:
-                with target.open("xb") as f: f.write(raw)
-                status="staged"
-            except FileExistsError:
-                status="duplicate" if target.read_bytes()==raw else "conflict"
+            status=publish_record(target,raw)
             with (local/"audit.jsonl").open("a",encoding="utf-8") as f:
                 f.write(json.dumps({"id":d["id"],"commit":commit,"sha256":digest,"status":status})+"\n")
             print(d["id"],status)
