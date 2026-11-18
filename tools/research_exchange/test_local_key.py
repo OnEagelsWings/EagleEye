@@ -68,3 +68,21 @@ class LocalKeyTests(unittest.TestCase):
                 create_key(self.root / "other")
         finally:
             self.root.chmod(0o700)
+
+    def test_fifo_rejected_without_blocking(self):
+        os.mkfifo(self.path, 0o600)
+        with self.assertRaisesRegex(ValueError, "unsafe key file"):
+            read_key(self.path)
+        with self.assertRaises(FileExistsError):
+            create_key(self.path)
+
+    def test_symlink_directory_rejected(self):
+        create_key(self.path)
+        with tempfile.TemporaryDirectory() as other:
+            alias = Path(other) / "alias"
+            alias.symlink_to(self.root, target_is_directory=True)
+            with self.assertRaises(OSError):
+                read_key(alias / "key")
+            with self.assertRaises(OSError):
+                create_key(alias / "new")
+        self.assertFalse((self.root / "new").exists())
