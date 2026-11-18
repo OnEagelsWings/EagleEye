@@ -32,6 +32,8 @@ def publish(raw, receipt, remote=REMOTE, branch=BRANCH, *, key):
             parent = run("rev-parse", "FETCH_HEAD").stdout.decode().strip()
             existing = run("ls-tree", parent, "--", path).stdout
             if existing:
+                if not existing.startswith(b"100644 blob "):
+                    raise ValueError("remote ID conflict: unexpected Git entry type")
                 size = int(run("cat-file", "-s", parent + ":" + path).stdout)
                 if size <= MAX and run("show", parent + ":" + path).stdout == raw:
                     return {"status":"duplicate", "commit":parent}

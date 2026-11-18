@@ -57,3 +57,16 @@ class OutboundTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 publish(changed,approve_signed(changed,key,"outbound","APPROVE PUBLIC RESEARCH"),str(remote),key=key)
             self.assertEqual(git("--git-dir",remote,"show","research-exchange:"+path),raw)
+
+            # Identical bytes in a symlink blob must not count as a published record.
+            git("-C", seed, "fetch", remote, "refs/heads/research-exchange")
+            git("-C", seed, "read-tree", "FETCH_HEAD")
+            blob = git("-C", seed, "rev-parse", "FETCH_HEAD:" + path).decode().strip()
+            git("-C", seed, "update-index", "--cacheinfo", "120000," + blob + "," + path)
+            tree = git("-C", seed, "write-tree").decode().strip()
+            commit = git("-C", seed, "-c", "user.name=Test", "-c", "user.email=test@localhost",
+                         "commit-tree", tree, "-p", "FETCH_HEAD", "-m", "synthetic symlink").decode().strip()
+            git("-C", seed, "push", remote, commit + ":refs/heads/research-exchange")
+            with self.assertRaisesRegex(ValueError, "unexpected Git entry type"):
+                publish(raw, receipt, str(remote), key=key)
+            self.assertEqual(git("--git-dir", remote, "rev-parse", "research-exchange").decode().strip(), commit)
