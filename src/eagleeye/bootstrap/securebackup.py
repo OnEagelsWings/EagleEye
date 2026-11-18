@@ -214,8 +214,31 @@ def _workspace_files(root: Path) -> tuple[list[tuple[str, Path]], set[str]]:
     return [(n, p) for n, p in files if not any(n == db + s for db in sqlite_names for s in SIDE_FILES)], sqlite_names
 
 
-def create(root, folder, password: str, *, progress=None) -> dict:
-    """Write an encrypted backup of the workspace ``root`` into ``folder``; returns file facts."""
+def _missing_documents(snapshots: dict[str, bytes], archived: set[str]) -> list[str]:
+    """Document records in the database snapshot whose stored file is not in the archive."""
+    data = snapshots.get("data/eagleeye.db")
+    if not data:
+        return []
+    readable = bytearray(data)
+    readable[18:20] = b"\x01\x01"  # WAL marker in the header: an in-memory copy reads in rollback mode
+    memory = sqlite3.connect(":memory:")
+    try:
+        memory.deserialize(bytes(readable))
+        if not memory.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='phase20_document_458'").fetchone():
+            return []
+        return [f"data/documents_458/{rel}" for (rel,) in memory.execute("SELECT stored_relpath FROM phase20_document_458")
+                if f"data/documents_458/{rel}" not in archived]
+    finally:
+        memory.close()
+
+
+def create(root, folder, password: str, *, progress=None, attempts: int = 3, _hook=None) -> dict:
+    """Write an encrypted backup of the workspace ``root`` into ``folder``; returns file facts.
+
+    The databases are frozen first and the files collected afterwards: services write a file
+    before they commit the record that points to it, so every record in the snapshot finds its
+    file. A missing document file (e.g. deleted during the backup) triggers a new attempt.
+    """
     check_password(password)
     root = recovery479.local_path(root)
     folder = recovery479.local_path(folder)
@@ -224,55 +247,75 @@ def create(root, folder, password: str, *, progress=None) -> dict:
     if folder == root or root in folder.parents:
         raise BackupError("Sicherungen bitte außerhalb des Arbeitsordners ablegen.")
     folder.mkdir(parents=True, exist_ok=True)
+    for attempt in range(1, attempts + 1):
+        result = _create_once(root, folder, password, progress=progress, hook=_hook)
+        if not result["missing_documents"] or attempt == attempts:
+            return {**result, "attempts": attempt}
+        Path(result["path"]).unlink(missing_ok=True)
+    raise AssertionError("unreachable")
+
+
+def _create_once(root: Path, folder: Path, password: str, *, progress=None, hook=None) -> dict:
     target = folder / ("EagleEye-Sicherung_" + datetime.now().strftime("%Y-%m-%d_%H%M%S") + "_" + secrets.token_hex(2) + SUFFIX)
-    files, sqlite_names = _workspace_files(root)
-    entries, total = [], 0
+    _, sqlite_names = _workspace_files(root)
+    snapshots: dict[str, bytes] = {}
+    total = 0
+    for name in sorted(sqlite_names):
+        data = _sqlite_bytes(root / name)
+        total += len(data)
+        if total > recovery479.MAX_BYTES:
+            raise BackupError("Sicherung überschreitet 2 GiB.")
+        snapshots[name] = data
+    if hook:
+        hook("after_snapshot")
+    files, later_sqlite = _workspace_files(root)
+    files = [(n, p) for n, p in files if n not in sqlite_names and n not in later_sqlite]
+    entries = []
     try:
         with target.open("xb") as raw:
             try:
                 target.chmod(0o600)
             except OSError:
                 pass
-            writer = EncryptingWriter(raw, password, meta={"workspace_files": len(files)})
+            writer = EncryptingWriter(raw, password, meta={"workspace_files": len(files) + len(snapshots)})
             with zipfile.ZipFile(writer, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+                for name, data in snapshots.items():
+                    with archive.open(name, "w", force_zip64=True) as out:
+                        out.write(data)
+                    entries.append({"path": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
                 for index, (name, path) in enumerate(files):
                     if progress:
                         progress(index, len(files), name)
                     digest = hashlib.sha256()
-                    if name in sqlite_names:
-                        data = _sqlite_bytes(path)
-                        size = len(data)
-                        if total + size > recovery479.MAX_BYTES:
-                            raise BackupError("Sicherung überschreitet 2 GiB.")
-                        with archive.open(name, "w", force_zip64=True) as out:
-                            out.write(data)
-                        digest.update(data)
-                        del data
-                    else:
+                    try:
                         before = path.stat()
-                        size = 0
-                        with path.open("rb") as incoming, archive.open(name, "w", force_zip64=True) as out:
-                            for block in iter(lambda: incoming.read(1024 * 1024), b""):
-                                size += len(block)
-                                if total + size > recovery479.MAX_BYTES:
-                                    raise BackupError("Sicherung überschreitet 2 GiB.")
-                                out.write(block)
-                                digest.update(block)
-                        after = path.stat()
-                        if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
-                            raise BackupError(f"Die Datei {name} wurde während der Sicherung geändert – bitte erneut sichern.")
+                    except FileNotFoundError:
+                        continue  # removed after the inventory; nothing in the snapshot can depend on it being new
+                    size = 0
+                    with path.open("rb") as incoming, archive.open(name, "w", force_zip64=True) as out:
+                        for block in iter(lambda: incoming.read(1024 * 1024), b""):
+                            size += len(block)
+                            if total + size > recovery479.MAX_BYTES:
+                                raise BackupError("Sicherung überschreitet 2 GiB.")
+                            out.write(block)
+                            digest.update(block)
+                    after = path.stat()
+                    if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+                        raise BackupError(f"Die Datei {name} wurde während der Sicherung geändert – bitte erneut sichern.")
                     total += size
                     entries.append({"path": name, "bytes": size, "sha256": digest.hexdigest()})
                 manifest = {"format": recovery479.FORMAT, "source_build": BUILD, "created_at": _now(),
                             "scope": ["all regular files inside workspace except runtime, virtualenvs, git metadata, "
-                                      "regenerated receipt and session admission token; SQLite via online backup"],
+                                      "regenerated receipt and session admission token; SQLite via online backup "
+                                      "taken before the file inventory"],
                             "files": entries, "total_bytes": total, "sessions_reactivated_on_restore": False,
                             "encrypted": True}
                 archive.writestr(recovery479.MANIFEST, json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode())
             writer.finish()
+        missing = _missing_documents(snapshots, {e["path"] for e in entries})
         digest = recovery479.sha_file(target)
         return {"path": str(target), "file_name": target.name, "size": target.stat().st_size, "sha256": digest,
-                "files": len(entries), "bytes": total}
+                "files": len(entries), "bytes": total, "missing_documents": missing}
     except BaseException:
         target.unlink(missing_ok=True)
         raise

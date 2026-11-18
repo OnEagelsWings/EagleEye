@@ -87,7 +87,7 @@ def save_settings(ctx, user: dict, form: dict) -> dict:
 def backups(ctx, user: dict) -> list[dict]:
     _require_admin(user)
     out = []
-    for row in ctx.db.all("SELECT * FROM buero_backups ORDER BY created_at DESC LIMIT 200"):
+    for row in ctx.db.all("SELECT * FROM buero_backups ORDER BY created_at DESC, rowid DESC LIMIT 200"):
         row = dict(row)
         row["present"] = not row["removed_at"] and (Path(row["folder"]) / row["file_name"]).is_file()
         out.append(row)
@@ -114,6 +114,9 @@ def run(ctx, user: dict, form: dict) -> dict:
         result = securebackup.create(ctx.base_dir, folder, password)
     except (securebackup.BackupError, ValueError) as exc:
         raise buero.BueroError(str(exc)) from None
+    if result["missing_documents"]:
+        ctx.audit.log("buero_backup_missing_documents", "buero_backup", result["file_name"], None,
+                      {"missing": len(result["missing_documents"])})
     row = {"backup_id": "backup_" + secrets.token_hex(8), "file_name": result["file_name"], "folder": str(folder),
            "size": result["size"], "sha256": result["sha256"], "files": result["files"], "bytes": result["bytes"],
            "created_at": _now(), "created_by": user["username"]}
@@ -123,15 +126,20 @@ def run(ctx, user: dict, form: dict) -> dict:
         ctx.audit.log("buero_backup_created", "buero_backup", row["backup_id"], None,
                       {"files": row["files"], "bytes": row["bytes"], "sha256": row["sha256"]})
     row["removed"] = _rotate(ctx, user, int(values["sicherung_behalten"]))
+    row["missing_documents"] = result["missing_documents"]
     return row
 
 
 def _rotate(ctx, user: dict, keep: int) -> int:
     """Remove EagleEye's own backups beyond the newest ``keep`` (also so deleted cases age out)."""
-    rows = [dict(r) for r in ctx.db.all("SELECT * FROM buero_backups WHERE removed_at='' ORDER BY created_at DESC")]
+    # rowid breaks ties between backups finished within the same second.
+    rows = [dict(r) for r in ctx.db.all("SELECT * FROM buero_backups WHERE removed_at='' ORDER BY created_at DESC, rowid DESC")]
     removed = 0
     for row in rows[keep:]:
-        path = Path(row["folder"]) / row["file_name"]
+        folder = Path(row["folder"])
+        path = folder / row["file_name"]
+        if not folder.is_dir():
+            continue  # drive not connected: try again with the next backup instead of forgetting the file
         if NAME.match(row["file_name"]) and path.is_file():
             try:
                 path.unlink()
@@ -173,7 +181,7 @@ def verify(ctx, user: dict, form: dict) -> dict:
 
 def reminder(ctx, *, today: date | None = None) -> str:
     """'' if a backup is recent enough, otherwise a short German reminder."""
-    last = ctx.db.one("SELECT created_at FROM buero_backups WHERE removed_at='' ORDER BY created_at DESC LIMIT 1")
+    last = ctx.db.one("SELECT created_at FROM buero_backups WHERE removed_at='' ORDER BY created_at DESC, rowid DESC LIMIT 1")
     if not last:
         return "Noch keine verschlüsselte Sicherung angelegt."
     days = int(settings(ctx)["sicherung_intervall_tage"])

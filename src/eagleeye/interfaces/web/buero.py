@@ -71,6 +71,8 @@ DONE = {
     "checklist": "Arbeitsliste aktualisiert.",
     "backup": "Verschlüsselte Sicherung angelegt. Bitte die Datei zusätzlich auf ein externes Laufwerk kopieren.",
     "backup_ok": "Sicherung geprüft: Passwort stimmt, alle Dateien sind vollständig und unverändert.",
+    "backup_warn": "Sicherung angelegt – aber zu einzelnen Dokumenten fehlt schon im Arbeitsordner die Datei "
+                   "(Änderungsprotokoll: buero_backup_missing_documents). Bitte die betroffenen Dokumente prüfen.",
     "backup_settings": "Sicherungseinstellungen gespeichert.",
     "invoice": "Rechnung erstellt. Die abgerechneten Einträge sind jetzt gesperrt.",
     "invoice_storno": "Stornorechnung erstellt. Die Einträge sind wieder offen.",
@@ -1513,12 +1515,14 @@ def attach_buero(app, build: str) -> None:
             user = _user(app, request)
             verify_post(app, request, user, form.get("csrf", ""))
             try:
-                await run_in_threadpool(action, ctx, user, form)
+                result = await run_in_threadpool(action, ctx, user, form)
             except PermissionError as exc:
                 raise HTTPException(403, str(exc)) from None
             except buero.BueroError as exc:
                 keep = {k: v for k, v in form.items() if k not in {"password", "repeat", "csrf"}}
                 return render("Datensicherung", backup_body(request, user, str(exc), keep), 422)
+            if done == "backup" and isinstance(result, dict) and result.get("missing_documents"):
+                return RedirectResponse("/buero/sicherung?done=backup_warn", status_code=303)
             return RedirectResponse("/buero/sicherung?done=" + done, status_code=303)
         handler.__name__ = name
 

@@ -147,3 +147,66 @@ def test_only_office_management_handles_backups(workspace):
     with pytest.raises(PermissionError):
         backups.run(ctx, ctx.team_identity_359.public_user("anna"), {"password": PW, "repeat": PW, "notiert": "on"})
     assert "Datensicherung" not in client.get("/buero").text
+
+
+@ws
+def test_backup_is_consistent_with_imports_and_deletions_during_the_run(workspace, tmp_path_factory):
+    app, client, *_ = workspace
+    ctx, user, case_id = _office_case(workspace)
+    out = tmp_path_factory.mktemp("konsistenz")
+    imported = []
+
+    def concurrent_import(stage):
+        if stage == "after_snapshot" and not imported:
+            imported.append(ctx.document_intelligence_458.import_bytes(
+                identity=user, case_id=case_id, filename="neu.txt", raw=b"Neu importiert waehrend der Sicherung.\n\nZwei.",
+                title="Neu")["document_id"])
+    result = securebackup.create(ctx.base_dir, out, PW, _hook=concurrent_import)
+    assert result["missing_documents"] == [] and result["attempts"] == 1
+    receipt = securebackup.restore(Path(result["path"]), PW, out / "r1")
+    db = sqlite3.connect(out / "r1" / "data" / "eagleeye.db")
+    try:
+        for (rel,) in db.execute("SELECT stored_relpath FROM phase20_document_458"):
+            assert (out / "r1" / "data" / "documents_458" / rel).is_file(), rel
+        assert db.execute("SELECT COUNT(*) FROM phase20_document_458 WHERE document_id=?", (imported[0],)).fetchone()[0] == 0
+    finally:
+        db.close()
+    assert receipt["verified_files"] == result["files"]
+
+    victim = next(Path(ctx.base_dir, "data", "documents_458").glob("*.bin"))
+    calls = []
+
+    def concurrent_delete(stage):
+        calls.append(stage)
+        victim.unlink(missing_ok=True)
+    warned = securebackup.create(ctx.base_dir, out, PW, _hook=concurrent_delete)
+    assert warned["attempts"] == 3 and warned["missing_documents"] == ["data/documents_458/" + victim.name]
+    assert len(list(out.glob("*.eebak"))) == 2, "failed attempts leave no extra files"
+    assert securebackup.is_encrypted(warned["path"])
+
+
+@ws
+def test_rotation_keeps_the_newest_and_waits_for_unplugged_drives(workspace, tmp_path_factory, monkeypatch):
+    app, client, *_ = workspace
+    ctx, user, case_id = _office_case(workspace)
+    drive = tmp_path_factory.mktemp("laufwerk") / "E"
+    other = tmp_path_factory.mktemp("intern") / "Sicherungen"
+    form = {"password": PW, "repeat": PW, "notiert": "on"}
+    backups.save_settings(ctx, user, {"sicherung_ordner": str(drive), "sicherung_behalten": "1", "sicherung_intervall_tage": "7"})
+    monkeypatch.setattr(backups, "_now", lambda: "2026-11-18T10:00:00+00:00")  # same second for every backup
+    first = backups.run(ctx, user, form)
+    second = backups.run(ctx, user, form)
+    kept = [r["backup_id"] for r in backups.backups(ctx, user) if not r["removed_at"]]
+    assert kept == [second["backup_id"]], "the newest backup survives a timestamp tie"
+
+    unplugged = drive.with_name("E_abgezogen")
+    drive.rename(unplugged)
+    backups.save_settings(ctx, user, {"sicherung_ordner": str(other), "sicherung_behalten": "1", "sicherung_intervall_tage": "7"})
+    third = backups.run(ctx, user, form)
+    state = {r["backup_id"]: r["removed_at"] for r in backups.backups(ctx, user)}
+    assert state[second["backup_id"]] == "", "a backup on a disconnected drive is not forgotten"
+    unplugged.rename(drive)
+    backups.run(ctx, user, form)
+    state = {r["backup_id"]: r["removed_at"] for r in backups.backups(ctx, user)}
+    assert state[second["backup_id"]] and not list(drive.glob("*.eebak")), "deleted once the drive is back"
+    assert state[first["backup_id"]] and state[third["backup_id"]]
