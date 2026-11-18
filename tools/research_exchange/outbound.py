@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from bridge import validate, REMOTE, BRANCH, MAX
 from signed_approval import verify_signed
+from local_key import read_key
 
 def publish(raw, receipt, remote=REMOTE, branch=BRANCH, *, key):
     record = validate(raw)
@@ -58,8 +59,7 @@ def main():
         raw = f.read(MAX + 1)
     with args.receipt.open("r", encoding="utf-8") as f:
         receipt = f.read(1024)
-    with args.key_file.open("rb") as f:
-        key = f.read(33)
+    key = read_key(args.key_file)
     result = publish(raw, receipt, key=key)
     result.update(id=validate(raw)["id"], sha256=hashlib.sha256(raw).hexdigest())
     with args.audit.open("a", encoding="utf-8") as f:

@@ -3,11 +3,26 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
+from outbound import main
 from approval import approve
 from signed_approval import approve_signed
 from outbound import publish
 
 class OutboundTests(unittest.TestCase):
+    def test_cli_rejects_unsafe_key_before_publish(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            record, receipt, audit, key = [root / name for name in ("record", "receipt", "audit", "key")]
+            record.write_bytes(b"synthetic")
+            receipt.write_text("synthetic", encoding="utf-8")
+            with patch("sys.argv", ["outbound", str(record), str(receipt), str(audit), "--key-file", str(key)]), patch("outbound.read_key", side_effect=ValueError("unsafe key")) as reader, patch("outbound.publish") as publisher:
+                with self.assertRaisesRegex(ValueError, "unsafe key"):
+                    main()
+                reader.assert_called_once_with(key)
+                publisher.assert_not_called()
+            self.assertFalse(audit.exists())
+
     def test_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
