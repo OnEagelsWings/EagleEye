@@ -1352,6 +1352,14 @@ def attach_buero(app, build: str) -> None:
         return RedirectResponse("/buero/team?done=user", status_code=303)
 
     # ------------------------------------------------ encrypted backup
+    def _local(ts: str) -> str:
+        """UTC timestamp -> local time of this computer, e.g. '18.11.2026 08:05'."""
+        from datetime import datetime
+        try:
+            return datetime.fromisoformat(ts).astimezone().strftime("%d.%m.%Y %H:%M")
+        except ValueError:
+            return _when(ts)
+
     def _size(n: int) -> str:
         return f"{n / 1024 / 1024:.1f} MB".replace(".", ",") if n >= 1024 * 1024 else f"{max(1, n // 1024)} KB"
 
@@ -1363,7 +1371,7 @@ def attach_buero(app, build: str) -> None:
         due = backups.reminder(ctx)
         body = _status_line(request) + _error(error)
         body += (('<p class="warn">' + escape(due) + '</p>') if due else
-                 f'<p class="card ok">Letzte Sicherung: {_when(rows[0]["created_at"])} UTC.</p>' if rows else "")
+                 f'<p class="card ok">Letzte Sicherung: {_local(rows[0]["created_at"])} Uhr.</p>' if rows else "")
         body += ('<form method="post" action="/buero/sicherung" class="card"><h2>Jetzt verschlüsselt sichern</h2>' + csrf
                  + '<p>Gesichert wird der gesamte Arbeitsbestand (alle Aufträge, Belege, Dokumente, Einstellungen) im laufenden '
                    'Betrieb. Die Datei ist mit AES-256 verschlüsselt; der Schlüssel entsteht nur aus deinem Passwort.</p>'
@@ -1385,14 +1393,14 @@ def attach_buero(app, build: str) -> None:
                 elif not r["present"]:
                     action, state = "", "nicht am Ablageort"
                 else:
-                    state = (f'{_when(r["verified_at"])} ({escape(r["verified_by"])})' if r["verified_at"] else "noch nicht geprüft")
-                    action = (f'<a href="{_href("/buero/sicherung/datei", backup_id=r["backup_id"])}">herunterladen</a>'
+                    state = (f'{_local(r["verified_at"])} ({escape(r["verified_by"])})' if r["verified_at"] else "noch nicht geprüft")
+                    action = (f'<a style="white-space:nowrap" href="{_href("/buero/sicherung/datei", backup_id=r["backup_id"])}">herunterladen</a>'
                               '<details><summary>prüfen</summary><form method="post" action="/buero/sicherung/pruefen">'
                               + _hidden(backup_id=r["backup_id"]) + csrf
                               + _field("Passwort der Sicherung", "password", "", type="password", required=True,
                                        attrs='autocomplete="off" maxlength="256"')
                               + '<button type="submit">Prüfen</button></form></details>')
-                table += (f'<tr><td class="date">{_when(r["created_at"])}</td><td><code>{escape(r["file_name"])}</code></td>'
+                table += (f'<tr><td class="date">{_local(r["created_at"])}</td><td><code>{escape(r["file_name"])}</code></td>'
                           f'<td>{r["files"]} Dateien, {_size(r["bytes"])} → {_size(r["size"])}</td><td>{state}</td><td>{action}</td></tr>')
             body += '<section aria-label="Sicherungen"><h2>Sicherungen</h2>' + _stack_tables(table + '</tbody></table>') + '</section>'
         sv = v if v.get("_form") == "settings" else conf
