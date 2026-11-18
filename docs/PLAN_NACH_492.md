@@ -211,7 +211,7 @@ Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in 
 | Einheitliche Seitenleiste für die Windows-Desktopanwendung (U3) | umgesetzt |
 | Vorlagen je Auftragsart: Arbeitsliste in der Akte, Prüfumfang im Mandantenbericht | umgesetzt |
 | Verschlüsselte Sicherung per Knopfdruck (AES-256-GCM, scrypt), Prüfen, Aufbewahren, Erinnerung, Wiederherstellen über die Batchdatei (18.11.) | umgesetzt |
-| Offen: Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag) | offen |
+| Abrechnung je Auftrag: Rechnung mit fortlaufender Nummer und Pflichtangaben (§ 14 UStG), Stornorechnung, Zahlungsstand, Rechnungsausgangsbuch und Positionen als CSV (18.11.) | umgesetzt |
 
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 

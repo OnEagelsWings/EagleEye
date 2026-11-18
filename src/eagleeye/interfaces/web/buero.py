@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from eagleeye.application.buero import accounts, backups, checklists, deletion, service as buero
+from eagleeye.application.buero import accounts, backups, billing, checklists, deletion, service as buero
 from .app364 import CSRF_COOKIE
 from .app448 import COOKIE
 from .app449 import _drop
@@ -72,6 +72,9 @@ DONE = {
     "backup": "Verschlüsselte Sicherung angelegt. Bitte die Datei zusätzlich auf ein externes Laufwerk kopieren.",
     "backup_ok": "Sicherung geprüft: Passwort stimmt, alle Dateien sind vollständig und unverändert.",
     "backup_settings": "Sicherungseinstellungen gespeichert.",
+    "invoice": "Rechnung erstellt. Die abgerechneten Einträge sind jetzt gesperrt.",
+    "invoice_storno": "Stornorechnung erstellt. Die Einträge sind wieder offen.",
+    "invoice_paid": "Zahlungseingang vermerkt.", "invoice_settings": "Rechnungsangaben gespeichert.",
 }
 
 
@@ -220,6 +223,10 @@ def _overview(app, request, user, *, show_all: bool) -> str:
                          f'Aufbewahrungsfrist abgelaufen ({_when(row["retention_until"])}) – '
                          + (f'<a href="{_href("/buero/loeschen", case_id=row["case_id"])}">Löschung vorbereiten</a></li>'
                             if buero._is_admin(user) else 'Büroleitung informieren</li>'))
+    for item in billing.overdue(app.state.context, user):
+        attention.append(f'<li><a href="{_href("/buero/auftrag", case_id=item["case_id"])}">{escape(item["aktenzeichen"] or "")}</a> '
+                         f'Rechnung {escape(item["number"])} <span class="overdue">überfällig seit {_when(item["due_on"])}</span> '
+                         f'({buero.euro(item["gross_cents"])})</li>')
     if buero._is_admin(user):
         due = backups.reminder(app.state.context)
         if due:
@@ -361,6 +368,64 @@ def _screening_result(screening: dict) -> str:
             + '<p>Identitätsprüfung: ' + (escape(", ".join(ticks)) if ticks else "keine Punkte abgehakt") + '</p></details>')
 
 
+def _billing_section(app, request, user, row: dict, manage: bool, csrf: str, values: dict) -> str:
+    ctx = app.state.context
+    case_id = row["case_id"]
+    if row["status"] in {"anfrage", "abgelehnt"}:
+        return ""
+    draft = billing.preview(ctx, user, case_id)
+    issued = billing.invoices(ctx, user, case_id)
+    body = '<section class="card" aria-label="Abrechnung" id="abrechnung"><h2>Abrechnung</h2>'
+    if draft["positions"]:
+        body += (f'<p>Noch nicht abgerechnet: {len(draft["times"])} Zeiteinträge, {len(draft["expenses"])} Auslagen'
+                 + (", Pauschalhonorar" if draft["flat_fee"] else "") + f' – netto <strong>{buero.euro(draft["net_cents"])}</strong>.</p>')
+        table = '<table><thead><tr><th>Leistung</th><th>Menge</th><th>Betrag</th></tr></thead><tbody>'
+        table += "".join(f'<tr><td>{escape(p["text"])}</td><td class="num">{escape(p["quantity"])}</td>'
+                         f'<td class="num">{buero.euro(p["amount_cents"])}</td></tr>' for p in draft["positions"])
+        body += '<details><summary>Positionen der nächsten Rechnung</summary>' + _stack_tables(table + '</tbody></table>') + '</details>'
+        if manage:
+            missing = billing.missing_data(ctx, row)
+            if missing:
+                body += ('<p class="warn">Für eine vollständige Rechnung (§ 14 UStG) fehlt noch: ' + escape("; ".join(missing))
+                         + '. <a href="/buero/rechnungen">Rechnungsangaben</a> · <a href="/buero/einstellungen">Einstellungen</a></p>')
+            else:
+                today = date.today().isoformat()
+                body += ('<form method="post" action="/buero/rechnung">' + _hidden(case_id=case_id) + csrf + '<div class="two">'
+                         + _field("Rechnungsdatum", "issued_on", values.get("issued_on", today), type="date", required=True)
+                         + _field("Leistungen bis einschließlich", "until", values.get("until", today), type="date", required=True)
+                         + '</div>' + _check("Ich habe die Positionen geprüft.", "geprueft", False)
+                         + '<button class="primary" type="submit">Rechnung erstellen</button></form>')
+    else:
+        body += '<p class="muted">Keine offenen abrechenbaren Zeiten oder Auslagen.</p>'
+    if issued:
+        table = '<table><thead><tr><th>Nummer</th><th>Datum</th><th>Betrag</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>'
+        for inv in reversed(issued):
+            if inv["kind"] == "storno":
+                state = "Stornorechnung zu " + escape(inv["refers_to"])
+            elif inv["status"] == "bezahlt":
+                state = f'<span class="ok">bezahlt am {_when(inv["paid_on"])}</span>'
+            elif inv["status"] == "storniert":
+                state = "storniert durch " + escape(inv["cancelled_by_number"])
+            else:
+                late = inv["due_on"] < date.today().isoformat()
+                state = f'gestellt, fällig {_when(inv["due_on"])}' + (' <span class="overdue">überfällig</span>' if late else "")
+            action = ""
+            if manage and inv["kind"] == "rechnung" and inv["status"] == "gestellt":
+                action = ('<form method="post" action="/buero/rechnung/bezahlt">' + _hidden(case_id=case_id, invoice_id=inv["invoice_id"])
+                          + csrf + _field("Zahlungseingang am", "paid_on", date.today().isoformat(), type="date", required=True)
+                          + '<button type="submit">als bezahlt vermerken</button></form>')
+            if manage and inv["kind"] == "rechnung" and inv["status"] != "storniert":
+                action += ('<details><summary>stornieren</summary><form method="post" action="/buero/rechnung/storno">'
+                           + _hidden(case_id=case_id, invoice_id=inv["invoice_id"]) + csrf
+                           + '<label>Grund<input name="reason" required minlength="5" maxlength="300"></label>'
+                           '<button type="submit">Stornorechnung erstellen</button></form></details>')
+            table += (f'<tr><td class="date"><a href="{_href("/buero/rechnung.pdf", invoice_id=inv["invoice_id"])}">{escape(inv["number"])}</a></td>'
+                      f'<td class="date">{_when(inv["issued_on"])}</td><td class="num">{buero.euro(inv["gross_cents"])}</td>'
+                      f'<td>{state}</td><td>{action}</td></tr>')
+        body += '<h3>Rechnungen</h3>' + _stack_tables(table + '</tbody></table>')
+    return body + '</section>'
+
+
 def _worklist(app, request, user, row: dict, book: bool, csrf: str, values: dict) -> str:
     if row["status"] == "abgelehnt":
         return ""
@@ -476,6 +541,9 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
                 if share is not None else "")
              + '</section>')
 
+    body += _billing_section(app, request, user, row, manage, csrf, vals("rechnung"))
+    numbers = {r["invoice_id"]: r["number"] for r in ctx.db.all("SELECT invoice_id, number FROM buero_invoices WHERE case_id=?", (case_id,))}
+
     # time
     entries = buero.time_entries(ctx, user, case_id)
     v = vals("zeit")
@@ -496,6 +564,8 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
             action = ""
             if voided:
                 action = "storniert: " + escape(entry["void_reason"])
+            elif entry.get("invoice_id"):
+                action = "abgerechnet (" + escape(numbers.get(entry["invoice_id"], "")) + ")"
             elif book and (entry["username"] == user["username"] or manage):
                 action = _void_form(case_id, "time", entry["entry_id"], csrf)
             table += (f'<tr{" class=\"voided\"" if voided else ""}><td class="date">{_when(entry["work_date"])}</td><td>{escape(entry["username"])}</td>'
@@ -525,6 +595,8 @@ def _akte(app, request, user, case_id: str, *, error: str = "", failed: str = ""
             action = ""
             if voided:
                 action = "storniert: " + escape(entry["void_reason"])
+            elif entry.get("invoice_id"):
+                action = "abgerechnet (" + escape(numbers.get(entry["invoice_id"], "")) + ")"
             elif book and (entry["username"] == user["username"] or manage):
                 action = _void_form(case_id, "expense", entry["expense_id"], csrf)
             what = buero.EXPENSE_KINDS.get(entry["kind"], entry["kind"]) + (f' ({entry["km"]} km)' if entry["km"] else "")
@@ -716,6 +788,7 @@ def attach_buero(app, build: str) -> None:
     deletion.initialize(ctx)
     checklists.initialize(ctx)
     backups.initialize(ctx)
+    billing.initialize(ctx)
     app.state.buero = True
     from .buero_report import attach_report_pdf
     attach_report_pdf(app, build)
@@ -930,7 +1003,8 @@ def attach_buero(app, build: str) -> None:
                 return akte_response(request, user, case_id, error=str(exc), failed=form_name, values=form)
             except PermissionError as exc:
                 raise HTTPException(403, str(exc)) from None
-            anchor = {"zeit": "#zeit", "auslage": "#auslage", "arbeitsliste": "#arbeitsliste"}.get(form_name, "")
+            anchor = {"zeit": "#zeit", "auslage": "#auslage", "arbeitsliste": "#arbeitsliste", "rechnung": "#abrechnung",
+                      "rechnung_storno": "#abrechnung", "rechnung_bezahlt": "#abrechnung"}.get(form_name, "")
             return RedirectResponse("/buero/auftrag?" + urlencode({"case_id": case_id, "done": done}) + anchor, status_code=303)
         handler.__name__ = "buero_" + form_name
         return handler
@@ -948,6 +1022,9 @@ def attach_buero(app, build: str) -> None:
     akte_post("/buero/frist", "frist", lambda u, c, f: buero.add_deadline(ctx, u, c, f), "deadline")
     akte_post("/buero/frist/erledigt", "frist_erledigt", lambda u, c, f: buero.complete_deadline(ctx, u, c, f), "deadline_done")
     akte_post("/buero/arbeitsliste", "arbeitsliste", lambda u, c, f: checklists.set_item(ctx, u, c, f), "checklist")
+    akte_post("/buero/rechnung", "rechnung", lambda u, c, f: billing.issue(ctx, u, c, f), "invoice")
+    akte_post("/buero/rechnung/storno", "rechnung_storno", lambda u, c, f: billing.cancel(ctx, u, c, f), "invoice_storno")
+    akte_post("/buero/rechnung/bezahlt", "rechnung_bezahlt", lambda u, c, f: billing.mark_paid(ctx, u, c, f), "invoice_paid")
 
     def _assign(user, case_id, form):
         if form.get("case_role") not in CASE_ROLES:
@@ -1462,3 +1539,114 @@ def attach_buero(app, build: str) -> None:
         ctx.audit.log("buero_backup_downloaded", "buero_backup", backup_id, None, {})
         return FileResponse(path, media_type="application/octet-stream", filename=path.name,
                             headers={"Cache-Control": "no-store"})
+
+    # ------------------------------------------------ invoices
+    @app.get("/buero/rechnung.pdf")
+    def invoice_pdf_route(request: Request, invoice_id: str = ""):
+        from .buero_invoice import invoice_pdf
+        user = _user(app, request)
+        try:
+            inv = billing.invoice(ctx, user, invoice_id)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except buero.BueroError as exc:
+            raise HTTPException(404, str(exc)) from None
+        name = ("Stornorechnung_" if inv["kind"] == "storno" else "Rechnung_") + inv["number"] + ".pdf"
+        return Response(invoice_pdf(inv), media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
+
+    def invoices_body(request, user, year: int, error="", values=None) -> str:
+        conf = values or billing.settings(ctx)
+        rows = billing.journal(ctx, user, year)
+        body = _status_line(request) + _error(error)
+        years = sorted({r["year"] for r in ctx.db.all("SELECT DISTINCT year FROM buero_invoices")} | {date.today().year}, reverse=True)
+        body += ('<form method="get" action="/buero/rechnungen" class="row">'
+                 + _select("Jahr", "jahr", {str(y): str(y) for y in years}, str(year))
+                 + '<button type="submit">Anzeigen</button></form>')
+        if rows:
+            net = sum(r["net_cents"] for r in rows)
+            gross = sum(r["gross_cents"] for r in rows)
+            paid = sum(r["gross_cents"] for r in rows if r["status"] == "bezahlt")
+            open_ = sum(r["gross_cents"] for r in rows if r["status"] == "gestellt")
+            body += ('<div class="kpi">'
+                     f'<section class="card"><span class="stat">{buero.euro(net)}</span>netto {year} (nach Stornos)</section>'
+                     f'<section class="card"><span class="stat">{buero.euro(gross)}</span>brutto</section>'
+                     f'<section class="card"><span class="stat">{buero.euro(paid)}</span>bezahlt</section>'
+                     f'<section class="card"><span class="stat">{buero.euro(open_)}</span>offen</section></div>')
+            table = ('<table><thead><tr><th>Nummer</th><th>Datum</th><th>Aktenzeichen</th><th>Mandant</th><th>Netto</th>'
+                     '<th>USt</th><th>Brutto</th><th>Stand</th></tr></thead><tbody>')
+            for r in rows:
+                state = {"gestellt": "offen", "bezahlt": "bezahlt " + _when(r["paid_on"]), "storniert": "storniert",
+                         "storno": "Storno zu " + r["refers_to"]}[r["status"]]
+                table += (f'<tr><td class="date"><a href="{_href("/buero/rechnung.pdf", invoice_id=r["invoice_id"])}">{escape(r["number"])}</a></td>'
+                          f'<td class="date">{_when(r["issued_on"])}</td><td class="date">{escape(r.get("aktenzeichen") or "")}</td>'
+                          f'<td>{escape(r["buyer"]["name"])}</td><td class="num">{buero.euro(r["net_cents"])}</td>'
+                          f'<td class="num">{buero.euro(r["vat_cents"])}</td><td class="num">{buero.euro(r["gross_cents"])}</td>'
+                          f'<td>{escape(state)}</td></tr>')
+            body += ('<h2>Rechnungsausgangsbuch ' + str(year) + '</h2>' + _stack_tables(table + '</tbody></table>')
+                     + f'<p><a href="{_href("/buero/rechnungen.csv", jahr=year)}">Rechnungsausgangsbuch als CSV</a> · '
+                       f'<a href="{_href("/buero/rechnungen.csv", jahr=year, art="positionen")}">Positionen als CSV</a></p>')
+        else:
+            body += f'<p>Für {year} gibt es noch keine Rechnungen.</p>'
+        body += (f'<form method="post" action="/buero/rechnungen" class="card"><h2>Rechnungsangaben</h2>'
+                 f'<input type="hidden" name="csrf" value="{_csrf(request)}">'
+                 '<p class="muted">Pflichtangaben nach § 14 UStG; Name und Anschrift des Büros stehen in den Einstellungen. '
+                 'Die steuerliche Einordnung bitte mit der Steuerberatung abstimmen.</p><div class="two">'
+                 + _field("Steuernummer", "steuernummer", conf.get("steuernummer", ""), attrs='maxlength="40"')
+                 + _field("USt-IdNr. (falls vorhanden)", "ust_idnr", conf.get("ust_idnr", ""), attrs='maxlength="20"')
+                 + _field("IBAN", "iban", conf.get("iban", ""), attrs='maxlength="40" autocomplete="off"')
+                 + _field("BIC", "bic", conf.get("bic", ""), attrs='maxlength="11"')
+                 + _field("Bank", "bank", conf.get("bank", ""), attrs='maxlength="80"')
+                 + _field("Zahlungsziel in Tagen", "zahlungsziel_tage", conf.get("zahlungsziel_tage", "14"), attrs='inputmode="numeric" maxlength="3"')
+                 + _field("Präfix der Rechnungsnummer (z. B. RE → RE-2026-0001)", "re_praefix", conf.get("re_praefix", "RE"), attrs='maxlength="8"')
+                 + '</div><button class="primary" type="submit">Rechnungsangaben speichern</button></form>')
+        return body
+
+    def _year(value: str) -> int:
+        return int(value) if str(value or "").isdigit() and 2000 <= int(value) <= 2100 else date.today().year
+
+    @app.get("/buero/rechnungen", response_class=HTMLResponse)
+    def invoices_page(request: Request, jahr: str = ""):
+        user = _user(app, request)
+        try:
+            return render("Rechnungen", invoices_body(request, user, _year(jahr)))
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+
+    @app.post("/buero/rechnungen")
+    async def invoices_settings(request: Request):
+        form = await _form(request)
+        user = _user(app, request)
+        verify_post(app, request, user, form.get("csrf", ""))
+        try:
+            billing.save_settings(ctx, user, form)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except buero.BueroError as exc:
+            return render("Rechnungen", invoices_body(request, user, date.today().year, str(exc), form), 422)
+        return RedirectResponse("/buero/rechnungen?done=invoice_settings", status_code=303)
+
+    @app.get("/buero/rechnungen.csv")
+    def invoices_csv(request: Request, jahr: str = "", art: str = ""):
+        user = _user(app, request)
+        year = _year(jahr)
+        try:
+            rows = billing.journal(ctx, user, year)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        cents = lambda v: f"{int(v) / 100:.2f}".replace(".", ",")
+        if art == "positionen":
+            out = [["Rechnungsnummer", "Rechnungsdatum", "Aktenzeichen", "Mandant", "Pos.", "Leistung", "Menge", "Betrag netto (EUR)"]]
+            for r in rows:
+                for n, p in enumerate(r["positions"], 1):
+                    out.append([r["number"], r["issued_on"], r.get("aktenzeichen") or "", r["buyer"]["name"], n, p["text"],
+                                p["quantity"], cents(p["amount_cents"])])
+            return _csv(out, f"Rechnungspositionen_{year}.csv")
+        out = [["Rechnungsnummer", "Art", "Bezug", "Rechnungsdatum", "Fällig", "Leistung von", "Leistung bis", "Aktenzeichen",
+                "Mandant", "Netto (EUR)", "USt-Satz", "USt (EUR)", "Brutto (EUR)", "Stand", "Bezahlt am"]]
+        for r in rows:
+            out.append([r["number"], "Stornorechnung" if r["kind"] == "storno" else "Rechnung", r["refers_to"], r["issued_on"],
+                        r["due_on"], r["period_from"], r["period_to"], r.get("aktenzeichen") or "", r["buyer"]["name"],
+                        cents(r["net_cents"]), r["vat_rate"], cents(r["vat_cents"]), cents(r["gross_cents"]),
+                        billing.STATUSES[r["status"]], r["paid_on"]])
+        return _csv(out, f"Rechnungsausgangsbuch_{year}.csv")
