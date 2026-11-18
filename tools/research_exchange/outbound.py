@@ -7,11 +7,11 @@ from pathlib import Path
 import subprocess
 import tempfile
 from bridge import validate, REMOTE, BRANCH, MAX
-from approval import verify
+from signed_approval import verify_signed
 
-def publish(raw, receipt, remote=REMOTE, branch=BRANCH):
+def publish(raw, receipt, remote=REMOTE, branch=BRANCH, *, key):
     record = validate(raw)
-    if not verify(raw, receipt):
+    if not verify_signed(raw, key, "outbound", receipt):
         raise ValueError("approval missing or changed")
     path = "exchange/outbox/" + record["id"] + ".json"
     with tempfile.TemporaryDirectory() as tmp:
@@ -51,12 +51,16 @@ def main():
     parser.add_argument("record", type=Path)
     parser.add_argument("receipt", type=Path)
     parser.add_argument("audit", type=Path)
+    parser.add_argument("--key-file", type=Path, required=True,
+                        help="Local 32-byte key outside all repositories")
     args = parser.parse_args()
     with args.record.open("rb") as f:
         raw = f.read(MAX + 1)
     with args.receipt.open("r", encoding="utf-8") as f:
         receipt = f.read(1024)
-    result = publish(raw, receipt)
+    with args.key_file.open("rb") as f:
+        key = f.read(33)
+    result = publish(raw, receipt, key=key)
     result.update(id=validate(raw)["id"], sha256=hashlib.sha256(raw).hexdigest())
     with args.audit.open("a", encoding="utf-8") as f:
         f.write(json.dumps(result) + "\n")

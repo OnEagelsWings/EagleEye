@@ -1,6 +1,6 @@
 """Local authenticated receipts; keys never belong in exchange records.
 HMAC authenticates possession of a local key, not a human identity.
-This module is not yet wired into outbound publishing.
+Outbound publishing requires a v2 receipt.
 """
 import hashlib
 import hmac

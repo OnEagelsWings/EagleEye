@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from approval import approve
+from signed_approval import approve_signed
 from outbound import publish
 
 class OutboundTests(unittest.TestCase):
@@ -20,14 +21,24 @@ class OutboundTests(unittest.TestCase):
             git("-C",seed,"push",remote,"HEAD:refs/heads/research-exchange")
             record = dict(schema=1,id="00000000-0000-4000-8000-000000000002",kind="research_result",classification="public-topic",topic="Synthetic",summary="Test only",sources=[],synthetic=True)
             raw = json.dumps(record).encode()
-            receipt = approve(raw,"APPROVE PUBLIC RESEARCH")
+            key = b"\x01" * 32  # synthetic test key
+            receipt = approve_signed(raw,key,"outbound","APPROVE PUBLIC RESEARCH")
             with self.assertRaises(ValueError):
-                publish(raw,"invalid",str(remote))
-            self.assertEqual(publish(raw,receipt,str(remote))["status"],"published")
-            self.assertEqual(publish(raw,receipt,str(remote))["status"],"duplicate")
+                publish(raw,"invalid",str(remote),key=key)
+            with self.assertRaises(ValueError):
+                publish(raw,approve(raw,"APPROVE PUBLIC RESEARCH"),str(remote),key=key)
+            with self.assertRaises(ValueError):
+                publish(raw,receipt,str(remote),key=b"\x02"*32)
+            with self.assertRaises(ValueError):
+                publish(raw,approve_signed(raw,key,"inbound","APPROVE PUBLIC RESEARCH"),str(remote),key=key)
+            with self.assertRaises(ValueError):
+                publish(raw+b" ",receipt,str(remote),key=key)
+            self.assertEqual(git("--git-dir",remote,"ls-tree","research-exchange"),b"")
+            self.assertEqual(publish(raw,receipt,str(remote),key=key)["status"],"published")
+            self.assertEqual(publish(raw,receipt,str(remote),key=key)["status"],"duplicate")
             path = "exchange/outbox/" + record["id"] + ".json"
             self.assertEqual(git("--git-dir",remote,"show","research-exchange:"+path),raw)
             changed = raw + b" "
             with self.assertRaises(ValueError):
-                publish(changed,approve(changed,"APPROVE PUBLIC RESEARCH"),str(remote))
+                publish(changed,approve_signed(changed,key,"outbound","APPROVE PUBLIC RESEARCH"),str(remote),key=key)
             self.assertEqual(git("--git-dir",remote,"show","research-exchange:"+path),raw)
