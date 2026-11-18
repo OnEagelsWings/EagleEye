@@ -19,3 +19,15 @@ jobs:
           python-version: '3.11'
       - name: Synthetic local Git regression
         run: python -m unittest discover -s tools/research_exchange -p 'test_*.py' -v
+  windows-dpapi:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Native synthetic DPAPI regression
+        run: python -m unittest discover -s tools/research_exchange -p 'test_windows_dpapi.py' -v
