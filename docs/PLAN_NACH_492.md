@@ -116,12 +116,14 @@ Ziel: 1000 Entitäten unter 2 s; 500 Dokumente unter 1 s nach dem ersten Aufruf;
 
 Erreicht: 1000 Entitäten 0,4 s; 500 Dokumente 0,03 s nach dem ersten Aufruf (1,2 s einmalig); Texterkennung läuft im Hintergrund. Gemessen in der Entwicklungsumgebung, nicht auf dem Windows-Laptop.
 
-### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494) – **S2, S3, S4 umgesetzt 12.11.2026; S1 offen**
+### Stufe 2 – Zusammenführen („Ein Stamm“; Roadmap 491, 492, 494) – **S2, S3, S4 umgesetzt 12.11.2026; S1 entfällt (Entscheidung 13.11.2026)**
 
 Befund bei der Umsetzung von S1: Das Freigabemodell aus 491 (genehmigte Suchabsicht und Suchanfrage) wird
 in der Dienstschicht erzwungen, ist aber in der Oberfläche nirgends bedienbar; Absichten und Anfragen werden
 nur in Tests angelegt. S1 ist damit eine Produktentscheidung (Pflicht-Freigabe vor Web-Abrufen, wer freigibt)
 und wartet auf diese Entscheidung.
+
+**Entscheidung 13.11.2026:** Web-Abrufe bleiben ohne vorherige Freigabe; es gilt weiter die OPSEC-Bestätigung je Abruf mit Abruflimit und Protokoll. S1 entfällt.
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|
@@ -131,6 +133,12 @@ und wartet auf diese Entscheidung.
 | „Als Beleg sichern“ direkt am Recherchefund | S4 | S |
 
 ### Stufe 3 – Datenmodell stärken (Roadmap 492, 494, 496)
+
+**Entscheidungen 13.11.2026:** 3.1–3.3 erst, wenn der Stapel 479–491 in `main` ist (er bewegt sich noch).
+Bis dahin wird 3.4 für Dokumente und Befunde umgesetzt und Stufe 4 vorgezogen. Empfängerstufen:
+„intern“, „Mandant“, „Behörde/Gericht“.
+
+**3.4 umgesetzt 13.11.2026** für Befunde und Dokumente (Eigenschaften folgen mit 3.3).
 
 Reihenfolge ist zwingend: erst eine Datenbank, dann Typen, dann Eigenschaften, dann Markierungen.
 
@@ -160,7 +168,7 @@ Abnahme:
 Risiko: 3.1 ist eine Datenübernahme auf dem Arbeitsrechner. Sie braucht vorher eine Sicherung, einen
 Probelauf auf einer Kopie und einen Rückweg. Erst nach bestandener Wiederherstellungsprüfung ausliefern.
 
-### Stufe 4 – Oberfläche gesund halten (Roadmap 494)
+### Stufe 4 – Oberfläche gesund halten (Roadmap 494) – **vorgezogen: U1, U2, U4, U6 umgesetzt 13.11.2026; U3 und U5 offen**
 
 | Maßnahme | Behebt | Größe |
 |---|---|---|
@@ -184,6 +192,25 @@ alle Felder beschriftet, jeder Weg per Klick erreichbar. Neu: kein Seitenende oh
 | Auswertungsordner `eval/build492/` mit Skript, das Kennzahlen als JSON-Nachweis schreibt | M2 | M |
 | Prüfsätze: 200 Namenspaare, 50 Webseiten mit markiertem Haupttext, 20 Scans mit Solltext, Agenturtext-Korpus mit Übernahmen | M2 | M (Daten braucht Zuarbeit) |
 | Live-Abnahme gegen eine freigegebene Liste öffentlicher Seiten und das Internet Archive | M1 | S, braucht Netzfreigabe oder Lauf auf dem Laptop |
+
+### Stufe B – Büro und Betrieb – **umgesetzt 16.11.2026** (Auftrag: „volle Nutzung für den kleinen OSINT-/Detektei-/Intelligence-Betrieb“)
+
+Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in diesen Branch zusammengeführt (`6c9c5e5`).
+
+| Baustein | Stand |
+|---|---|
+| Mandanten, Aufträge mit Aktenzeichen, Büro als Startseite | umgesetzt |
+| Auftragsprüfung (PersonOSINT-Richtlinie) mit Sperre der Web-Abrufe bis zur Annahme, Warnsignal im laufenden Auftrag | umgesetzt |
+| Zeiterfassung, Auslagen, Storno, Budgetwarnung, Umsatzsteuer/§ 19 UStG, Leistungsnachweis PDF/CSV, Monatszeiten CSV | umgesetzt |
+| Wiedervorlagen, Abgabefristen, „Braucht Aufmerksamkeit“ | umgesetzt |
+| Mandantenbericht als PDF nach Empfängerstufe (Schritt 504 des Prüfberichts: Fußnoten, Quellenverzeichnis) | umgesetzt |
+| Aufbewahrungsfrist, endgültige Löschung mit Vorschau, byteweiser Prüfung und Löschprotokoll | umgesetzt |
+| Teamverwaltung (Benutzer anlegen, Aufträgen zuordnen/entziehen), eigenes Passwort ändern, Zurücksetzen mit Pflichtwechsel, Konten sperren | umgesetzt |
+| Befund 9 des Prüfberichts (Suchbegriff in der Adresszeile) | behoben |
+| Review PR #96 (17.11.): Löschung wiederaufnehmbar, `reports/` einbezogen, Pflicht-Passwortwechsel serverseitig, Suchhinweise robust | umgesetzt |
+| Einheitliche Seitenleiste für die Windows-Desktopanwendung (U3) | umgesetzt |
+| Vorlagen je Auftragsart: Arbeitsliste in der Akte, Prüfumfang im Mandantenbericht | umgesetzt |
+| Offen: verschlüsselte Sicherung aus der App, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag) | offen |
 
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 

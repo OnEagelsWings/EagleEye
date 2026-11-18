@@ -231,6 +231,7 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         confirmation="EXPORT DOSSIER 447",
     )
     from pathlib import Path
+    from zipfile import ZipFile
     import hashlib
     package = Path(exported["export"]["paths"]["case_package"])
     assert package.is_file()
@@ -244,8 +245,29 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         artifact = Path(exported_paths[kind])
         assert artifact.is_file() and artifact.stat().st_size > 0, kind
         assert hashlib.sha256(artifact.read_bytes()).hexdigest() == exported_hashes[artifact.name]
+        # A nonempty file with the right manifest hash is not necessarily a
+        # usable document. Validate actual container signatures as well.
+        if kind == "pdf":
+            assert artifact.read_bytes().startswith(b"%PDF-"), "Export is not a PDF"
+        elif kind == "docx":
+            with ZipFile(artifact) as document_archive:
+                assert document_archive.testzip() is None, "DOCX archive is corrupt"
+                assert "word/document.xml" in document_archive.namelist()
+                assert "[Content_Types].xml" in document_archive.namelist()
     with ZipFile(package) as archive:
         assert archive.testzip() is None, "Case archive has a corrupt member"
+        # Reject ambiguous or escaping paths in the actual approved export.
+        # An otherwise valid ZIP must never contain duplicate names or paths
+        # that could escape the extraction directory on Windows or Linux.
+        names = archive.namelist()
+        assert len(names) == len(set(names)), "Duplicate ZIP member names"
+        for name in names:
+            normalized = name.replace("\\", "/")
+            parts = normalized.split("/")
+            assert not normalized.startswith("/") and not re.match(r"^[A-Za-z]:", normalized)
+            assert all(part not in {".", ".."} for part in parts)
+            assert all(part for part in parts[:-1]), "Empty ZIP path component"
+            assert parts[-1] or name.endswith("/"), "Empty ZIP filename"
         members = {Path(name).name for name in archive.namelist()}
         assert all(Path(exported_paths[kind]).name in members
                    for kind in ("json", "docx", "pdf", "manifest"))

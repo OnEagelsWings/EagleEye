@@ -20,12 +20,14 @@ from starlette.concurrency import run_in_threadpool
 from eagleeye.application.entity_registry461 import EntityRegistry461
 from eagleeye.application.build488.reviews import reviews_for_case
 from eagleeye.application.intel492 import captures, docstructure, enrichjobs, entitymatch, lineage, network, webcapture
-from eagleeye.application.intel492 import lineage_review
+from eagleeye.application.intel492 import lineage_review, markings
 from eagleeye.application.intel492.throttle import Throttle
 from .app364 import CSRF_COOKIE
 from .findings478 import bounded_form, verify_post
 from .operations476 import case_access, page
 from .research483 import listed as listed_leads
+from .findings478 import checked_note, notes_db
+from .report479 import source_states as report_source_states
 
 EXTRA_CSS = ('<style>.ok{color:#9af3de}.bad{color:#ffb4a8}.muted{color:#c2d3e3;font-size:.92rem}'
              '.pill{display:inline-block;border:1px solid #647b93;border-radius:999px;padding:.1rem .6rem;margin:.1rem .2rem .1rem 0;font-size:.85rem}'
@@ -107,6 +109,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
     captures.initialize(ctx)
     docstructure.initialize(ctx)
     lineage.initialize(ctx)
+    markings.initialize(ctx)
     ctx.entity_candidate_matcher = entitymatch.CandidateCache()
     app.state.intel492 = True
     ctx.document_web_provenance = lambda case_id, document_id: captures.provenance_for_document(ctx, case_id, document_id)
@@ -137,7 +140,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                 last = rows[0]
                 html += ('<p role="status">✓ Als Web-Beleg gesichert am ' + escape(last["captured_at"][:16].replace("T", " ")) + ' UTC'
                          + (' (eben gesichert)' if lead["lead_id"] == just_saved else '') + ' · <a href="' +
-                         _link("/documents458", case_id=case_id, document_id=last["document_id"]) + '">Dokument öffnen</a> · <a href="' +
+                         _link("/workbench/document", case_id=case_id, document_id=last["document_id"]) + '">Dokument öffnen</a> · <a href="' +
                          _link("/workbench/findings", case_id=case_id, document_id=last["document_id"]) + '">Befund notieren</a>'
                          + (' · ' + str(len(rows)) + ' Sicherungen' if len(rows) > 1 else '') + '</p>')
             if allowed:
@@ -147,6 +150,171 @@ def attach_intel492(app, build: str, base_dir) -> None:
         return out
 
     app.state.lead_actions = lead_actions
+
+    # ------------------------------------------------ protection classes / recipient levels
+    def class_select(name, selected, label):
+        return ('<label>' + escape(label) + '<select name="' + name + '">' +
+                "".join('<option value="' + k + '"' + (' selected' if k == selected else '') + '>' + escape(v) + '</option>'
+                        for k, v in markings.CLASSES.items()) + '</select></label>')
+
+    def finding_form_extra():
+        return (class_select("protection", "intern", "Schutzklasse des Befunds") +
+                '<p class="muted">„intern“ bleibt in Berichten für Mandant und Behörde/Gericht außen vor, bis du den Befund freigibst.</p>')
+
+    class FindingCreated:
+        def validate(self, form):
+            if str(form.get("protection") or "intern") not in markings.CLASSES:
+                raise HTTPException(422, "Unbekannte Schutzklasse.")
+
+        def __call__(self, user, case_id, row, form):
+            markings.set_marking(ctx, case_id=case_id, object_type="finding", object_id=row["finding_id"],
+                                 marking=str(form.get("protection") or "intern"), reason="Beim Anlegen festgelegt.",
+                                 actor=user["username"])
+
+    def report_card_extra(request, user, case_id, row):
+        marks = markings.current(ctx, case_id)
+        own, own_set = markings.marking_of(marks, "finding", row["finding_id"])
+        doc, doc_set = markings.marking_of(marks, "document", row["document_id"])
+        eff = markings.effective(marks, row)
+        damaged = any(marks.get(k, {}).get("damaged") for k in (("finding", row["finding_id"]), ("document", row["document_id"])))
+        html = ('<p>Schutzklasse: Befund <strong>' + escape(markings.CLASSES[own]) + '</strong>' + ('' if own_set else ' (nicht festgelegt)') +
+                ' · Quelldokument <strong>' + escape(markings.CLASSES[doc]) + '</strong>' + ('' if doc_set else ' (Voreinstellung)') +
+                ' · wirksam <strong>' + escape(markings.CLASSES[eff]) + '</strong></p>')
+        if damaged:
+            html += '<p class="bad">Eine Markierung ist beschädigt und wird wie „intern“ behandelt.</p>'
+        if _can_run(ctx, user, case_id):
+            html += ('<details><summary>Schutzklasse ändern</summary><form method="post" action="/workbench/intel/markings">'
+                     '<input type="hidden" name="case_id" value="' + escape(case_id, quote=True) + '"><input type="hidden" name="csrf" value="' + _csrf(request) +
+                     '"><input type="hidden" name="finding_id" value="' + escape(row["finding_id"], quote=True) + '">' +
+                     class_select("finding_class", own, "Befund") + class_select("document_class", doc, "Quelldokument (gilt für alle Befunde daraus)") +
+                     '<label>Begründung<input name="reason" required minlength="3" maxlength="600"></label>'
+                     '<button>Schutzklasse speichern</button></form></details>')
+        return html
+
+    def web_integrity(case_id, findings):
+        out = {}
+        for document_id in {f["document_id"] for f in findings}:
+            provenance = captures.provenance_for_document(ctx, case_id, document_id)
+            if provenance is not None:
+                out[document_id] = bool(provenance["integrity_verified"])
+        return out
+
+    def report_selector(user, case, notes, level):
+        if level not in markings.LEVELS:
+            raise HTTPException(422, "Unbekannte Empfängerstufe.")
+        case_id = str(case["case_id"])
+        states = report_source_states(app, user, case_id, notes)
+        kept, omitted = markings.select(ctx, case_id, notes, level, states, web_integrity(case_id, notes))
+        marks = markings.current(ctx, case_id)
+        header = markings.report_header(level, len(kept), len(notes), omitted)
+        extra = lambda row: [("Schutzklasse (wirksam)", markings.CLASSES[markings.effective(marks, row)])]
+        ctx.audit.log("report_exported_492", "operational_case", case_id, case_id,
+                      {"level": level, "kept": len(kept), "omitted": omitted, "actor": user["username"]})
+        return kept, header, extra
+
+    def report_levels_block(request, user, case, case_id):
+        with notes_db(app) as db:
+            total = db.one("SELECT COUNT(*) AS n FROM operational_findings_478 WHERE case_id=?", (case_id,))["n"]
+        if total > 1000:
+            return '<p class="card">Mehr als 1000 Befunde: Bitte den Bericht über die Fallverwaltung aufteilen.</p>'
+        notes = [checked_note(r) for r in ctx.db.all("SELECT * FROM operational_findings_478 WHERE case_id=?", (case_id,))]
+        states = report_source_states(app, user, case_id, notes)
+        web = web_integrity(case_id, notes)
+        items = ""
+        for level, label in markings.LEVELS.items():
+            kept, omitted = markings.select(ctx, case_id, notes, level, states, web)
+            href = _link("/workbench/report.md", case_id=case_id, level=level)
+            why = "; ".join(f"{n} × {r}" for r, n in sorted(omitted.items()))
+            items += ('<li><a href="' + href + '">Bericht für ' + escape(label) + ' herunterladen</a> – ' + str(len(kept)) + ' von ' + str(total) +
+                      ' Befunden' + (' <span class="muted">(ausgelassen: ' + escape(why) + ')</span>' if why else '') + '</li>')
+        return ('<section class="card"><h2>Arbeitsbericht herunterladen</h2><ul>' + items + '</ul>'
+                '<p class="muted">Mandant: nur geprüfte Befunde mit Schutzklasse „offen“. Behörde/Gericht: nur von einem zweiten Konto '
+                'geprüfte Befunde mit unveränderter Quelle, ohne „intern“. Auslassungen stehen im Bericht.</p></section>')
+
+    def workflow_status(user, case_id):
+        """Short state per guided-workflow step plus the next sensible step (cheap counts only)."""
+        docs = ctx.document_intelligence_458.documents(identity=user, case_id=case_id)
+        waiting = [d for d in docs if d["state"] == "review_required"]
+        approved = [d for d in docs if d["state"] == "extraction_approved"]
+        promoted = {r["document_id"] for r in ctx.db.all(
+            "SELECT document_id FROM document_evidence_bridge_481 WHERE case_id=?", (case_id,))} if ctx.db.one(
+            "SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='document_evidence_bridge_481'") else set()
+        not_promoted = [d for d in approved if d["document_id"] not in promoted]
+        pdf_open = [d for d in waiting if d["media_type"] == "application/pdf" and not docstructure.enrichment_for(ctx, d["document_id"])]
+        findings = {r["review_state"]: r["n"] for r in ctx.db.all(
+            "SELECT review_state, COUNT(*) AS n FROM operational_findings_478 WHERE case_id=? GROUP BY review_state", (case_id,))}
+        total_findings = sum(findings.values())
+        unreviewed = findings.get("unreviewed", 0) + findings.get("needs_rework", 0)
+        leads = ctx.db.one("SELECT COUNT(*) AS n FROM research_leads_483 WHERE case_id=?", (case_id,))["n"] if ctx.db.one(
+            "SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='research_leads_483'") else 0
+        captured_leads = ctx.db.one("SELECT COUNT(DISTINCT lead_id) AS n FROM web_capture_lead_492 WHERE case_id=?", (case_id,))["n"]
+        captures_n = captures.capture_count(ctx, case_id)
+        status = {
+            "/documents458": (_count(len(docs), "Dokument", "Dokumente") + (f" · {len(waiting)} warten auf Extraktionsprüfung" if waiting else " · alle Extraktionen geprüft" if docs else ""), bool(waiting)),
+            "/workbench/bridge481": ((_count(len(not_promoted), "freigegebenes Dokument", "freigegebene Dokumente") + " noch nicht als Evidence" if not_promoted else
+                                      _count(len(promoted), "Dokument", "Dokumente") + " als Evidence übernommen"), bool(not_promoted)),
+            "/workbench/intel/web": (_count(captures_n, "Web-Beleg", "Web-Belege") + " gesichert", False),
+            "/workbench/intel/documents": ((_count(len(pdf_open), "PDF", "PDFs") + " ohne ergänzte Fundstellen") if pdf_open else "keine offenen PDFs", bool(pdf_open)),
+            "/workbench/leads483": (_count(leads, "Suchhinweis", "Suchhinweise") + (f" · {captured_leads} als Web-Beleg gesichert" if leads else ""), False),
+            "/workbench/findings": (_count(total_findings, "Befund", "Befunde") + (f" · {unreviewed} noch nicht geprüft" if unreviewed else ""), False),
+            "/workbench/report": ((_count(unreviewed, "Befund wartet", "Befunde warten") + " auf Prüfung" if unreviewed else
+                                   ("alle Befunde geprüft" if total_findings else "noch keine Befunde")), bool(unreviewed)),
+        }
+        nxt = None
+        if not docs and not captures_n:
+            nxt = ("Erste Quelle sichern", "Eine öffentliche Seite oder ein Dokument als Beleg aufnehmen.", "/workbench/intel/web")
+        elif waiting:
+            target = waiting[0]
+            nxt = ("Extraktion prüfen", f"„{target['title'][:80]}“ und " + _count(len(waiting) - 1, "weiteres Dokument warten", "weitere warten") + " auf die Prüfung der Textübernahme."
+                   if len(waiting) > 1 else f"„{target['title'][:80]}“ wartet auf die Prüfung der Textübernahme.",
+                   "/workbench/document?" + urlencode({"case_id": case_id, "document_id": target["document_id"]}))
+        elif not_promoted:
+            nxt = ("Als Evidence übernehmen", _count(len(not_promoted), "geprüftes Dokument kann", "geprüfte Dokumente können") + " in die Evidence-Kette.", "/workbench/bridge481")
+        elif unreviewed:
+            nxt = ("Befunde prüfen", _count(unreviewed, "Befund ist", "Befunde sind") + " noch nicht geprüft.", "/workbench/report")
+        next_html = ""
+        if nxt:
+            href = nxt[2] if "?" in nxt[2] else nxt[2] + "?" + urlencode({"case_id": case_id})
+            next_html = ('<section class="card warn" aria-label="Nächster Schritt"><h2>Nächster sinnvoller Schritt: ' + escape(nxt[0]) +
+                         '</h2><p>' + escape(nxt[1]) + '</p><a href="' + escape(href, quote=True) + '">Jetzt erledigen →</a></section>')
+        return status, next_html
+
+    app.state.workflow_status = workflow_status
+    app.state.finding_form_extra = finding_form_extra
+    app.state.finding_created_hook = FindingCreated()
+    app.state.report_card_extra = report_card_extra
+    app.state.report_selector = report_selector
+    # Same selection without logging an export (office module: preview and client PDF).
+    app.state.report_selection = lambda user, case_id, notes, level: markings.select(
+        ctx, case_id, notes, level, report_source_states(app, user, case_id, notes), web_integrity(case_id, notes))
+    app.state.report_levels_block = report_levels_block
+
+    @app.post("/workbench/intel/markings")
+    async def set_markings(request: Request):
+        form = await bounded_form(request, max_bytes=4096)
+        case_id = str(form.get("case_id") or "")
+        user, _ = case_access(app, request, case_id, "research.run")
+        verify_post(app, request, user, form.get("csrf", ""))
+        finding_id = str(form.get("finding_id") or "")
+        row = ctx.db.one("SELECT * FROM operational_findings_478 WHERE finding_id=?", (finding_id,))
+        if not row or row["case_id"] != case_id:
+            raise HTTPException(404, "Befund nicht in diesem Fall.")
+        row = checked_note(row)
+        wanted = {"finding": str(form.get("finding_class") or ""), "document": str(form.get("document_class") or "")}
+        if any(v not in markings.CLASSES for v in wanted.values()):
+            raise HTTPException(422, "Unbekannte Schutzklasse.")
+        marks = markings.current(ctx, case_id)
+        ids = {"finding": row["finding_id"], "document": row["document_id"]}
+        try:
+            with ctx.db.transaction(immediate=True), ctx.audit.actor_scope(user["username"]):
+                for kind, value in wanted.items():
+                    current_value, explicit = markings.marking_of(marks, kind, ids[kind])
+                    if value != current_value or not explicit:
+                        markings.set_marking(ctx, case_id=case_id, object_type=kind, object_id=ids[kind], marking=value,
+                                             reason=str(form.get("reason") or ""), actor=user["username"])
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        return RedirectResponse("/workbench/report?" + urlencode({"case_id": case_id}), status_code=303)
     app.state.report_web_fields = report_web_fields
     app.state.report_web_summary = report_web_summary
     app.state.intel492_throttle = Throttle()
@@ -317,7 +485,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
         table = ""
         for row in rows:
             integrity = '<span class="ok">✓ unverändert</span>' if row["integrity_ok"] else '<span class="bad">✗ Integrität verletzt</span>'
-            table += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=row["document_id"]) + '">' +
+            table += ('<tr><td><a href="' + _link("/workbench/document", case_id=case_id, document_id=row["document_id"]) + '">' +
                       escape(row["page_title"] or row["url"]) + '</a>' + (' <span class="pill">PDF</span>' if row["content_type"] == "application/pdf" else '') +
                       '<br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
                       '<td>' + ("Archiv" if row["kind"] == "archive" else "Live") + '<br><span class="muted">' + escape(row["captured_at"][:16].replace("T", " ")) + ' UTC</span></td>'
@@ -363,6 +531,10 @@ def attach_intel492(app, build: str, base_dir) -> None:
         archive_url = str(form.get("archive_url") or "").strip()
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=archive_url, error="Bitte die Übermittlung an web.archive.org bestätigen.", status=422)
+        gate = getattr(app.state, "research_gate", None)
+        refusal = gate(case_id) if gate else ""
+        if refusal:
+            return web_page(request, user, case_id, url=archive_url, error=refusal, status=409)
         blocked = throttled(request, user, case_id, archive_url, webcapture.WAYBACK_HOST)
         if blocked is not None:
             return blocked
@@ -383,6 +555,10 @@ def attach_intel492(app, build: str, base_dir) -> None:
         lead = lead_for(case_id, str(form.get("lead_id") or "")) if kind == "live" else None
         if form.get("opsec") != "yes":
             return web_page(request, user, case_id, url=url, error="Bitte bestätige den OPSEC-Hinweis vor dem Abruf.", status=422, lead=lead)
+        gate = getattr(app.state, "research_gate", None)  # office module: mandate must be accepted
+        refusal = gate(case_id) if gate else ""
+        if refusal:
+            return web_page(request, user, case_id, url=url, error=refusal, status=409, lead=lead)
         result = None
         try:
             host = webcapture.WAYBACK_HOST if kind == "archive" else (urlsplit(webcapture.normalize_public_url(url)).hostname or "")
@@ -584,13 +760,13 @@ def attach_intel492(app, build: str, base_dir) -> None:
                     action = form("/workbench/intel/documents", "Texterkennung nachholen", document_id=d["document_id"])
                 else:
                     action = '<span class="muted">bereits ergänzt</span>'
-            rows += ('<tr><td><a href="' + _link("/documents458", case_id=case_id, document_id=d["document_id"]) + '">' + escape(d["title"]) +
+            rows += ('<tr><td><a href="' + _link("/workbench/document", case_id=case_id, document_id=d["document_id"]) + '">' + escape(d["title"]) +
                      '</a><br><span class="muted">' + _count(d["page_count"], "Seite", "Seiten") + '</span></td><td>' + state + '</td><td>' + action + '</td></tr>')
         live = ('<p class="muted"><a href="' + _link("/workbench/intel/documents", case_id=case_id) + '">Stand aktualisieren</a></p>'
                 '<script src="/workbench/intel/progress.js" defer></script>') if any_active else ''
         table = ('<div data-jobs-url="' + _link("/workbench/intel/jobs.json", case_id=case_id) + '">'
                  '<table><thead><tr><th>PDF</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/documents458", case_id=case_id) + '">PDF importieren →</a></p>')
+                 if docs else '<p class="card">Noch keine PDF-Dokumente im Fall. <a href="' + _link("/workbench/document", case_id=case_id) + '">PDF importieren →</a></p>')
         body = (back(case_id) + '<p>Ergänzt Fundstellen für Tabellen, Überschriften und gescannte Seiten. Bestehende Fundstellen und das '
                 'Original bleiben unverändert. Möglich, solange die Extraktion noch nicht geprüft wurde. Die Verarbeitung läuft im '
                 'Hintergrund; bei langen Scans dauert die Texterkennung einige Minuten.</p>' + info + table + live)
@@ -678,7 +854,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                     claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · gemeinsamer Ursprung bestätigt"
                 else:
                     claim_state = evidence_labels.get(st["evidence_state"], st["evidence_state"]) + " · eigene Ursprungsgruppe geprüft"
-                items += ('<li><a href="' + _link("/documents458", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
+                items += ('<li><a href="' + _link("/workbench/document", case_id=case_id, document_id=m["document_id"]) + '">' + escape(m["title"]) +
                           '</a> <span class="muted">' + escape(urlsplit(m["source_url"]).hostname or "ohne Quellen-URL") + ' · ' +
                           escape(_when(m["first_seen"]) or "Zeit unbekannt") + ' · ' + escape(claim_state) + '</span></li>')
             if status == "one_origin":

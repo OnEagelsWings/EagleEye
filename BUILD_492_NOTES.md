@@ -109,7 +109,7 @@ Texterkennung an echten 160-Seiten-Scans auf dem Windows-Laptop.
 | S3 Herkunft im Arbeitsbericht | Markdown-Export und Prüfseite zeigen Web-Herkunft und den WARC-Zustand zum Exportzeitpunkt. | `test_working_report_shows_web_capture_provenance` |
 | S4 Recherchefund → Web-Beleg | Jeder Recherchefund bietet „Als Web-Beleg sichern“; die Adresse wird übernommen, abgerufen wird erst nach Bestätigung. Der Bezug bleibt über bestätigte Weiterleitungen erhalten. Der Fund zeigt danach, wann er gesichert wurde. | 5 Tests, u. a. fremde Funde vor jedem Netzkontakt abgelehnt |
 | S2 Quellfamilien → Claims | Die Seite „Quellenunabhängigkeit“ zeigt je Familie den Evidence- und Herkunftsstand und warnt, wenn fast gleiche Texte verschiedenen Ursprüngen zugeordnet sind. Wer Quellen prüfen darf, bestätigt den gemeinsamen Ursprung mit Begründung; das schreibt die reguläre Herkunftsprüfung aus 456. | Ende-zu-Ende: Claim mit 3 übernommenen Texten + 1 eigenem zählt vorher 4, nachher 2 unabhängige Ursprünge |
-| S1 Freigabemodell | **offen – Entscheidung nötig** (siehe Plan) | – |
+| S1 Freigabemodell | **entfällt** – Entscheidung 13.11.2026: weiter OPSEC-Bestätigung je Abruf, keine vorherige Freigabe | – |
 
 Nebenbefunde, mit behoben:
 * Im Formular der Recherchefunde (483) waren Beschriftungen und Felder nicht verknüpft; Screenreader und
@@ -117,9 +117,50 @@ Nebenbefunde, mit behoben:
 * Die Herkunftsprüfung aus 456 war nur als JSON-Schnittstelle erreichbar; Quellfamilien sind jetzt ein
   bedienbarer Weg dorthin.
 
+## Schutzklassen und Empfängerstufen (Schritt 3.4)
+
+* Jeder neue Befund bekommt beim Anlegen eine Schutzklasse: „offen“, „intern“ (Vorbelegung) oder
+  „besonders schutzwürdig (Art. 9/10 DSGVO)“. Quelldokumente haben ebenfalls eine Klasse (Vorbelegung
+  „offen“, weil EagleEye öffentliche Quellen speichert). Wirksam ist die strengere von beiden.
+* Ändern geht an jeder Karte unter „Prüfen und Arbeitsbericht erstellen“, nur mit Begründung; die
+  Historie bleibt erhalten. Ältere Befunde ohne Klasse gelten als „intern“. Eine manipulierte
+  Markierung gilt ebenfalls als „intern“ und wird angezeigt.
+* Der Arbeitsbericht ist in drei Stufen herunterladbar:
+
+| Stufe | Enthält |
+|---|---|
+| intern | alle Befunde (wie bisher) |
+| Mandant | nur geprüfte Befunde (Eigen- oder Zweitprüfung) mit wirksamer Klasse „offen“ |
+| Behörde/Gericht | nur von einem zweiten Konto geprüfte Befunde mit unveränderter Quelle und unveränderter WARC-Datei; „offen“ und „besonders schutzwürdig“, nie „intern“ |
+
+* Jeder Bericht nennt Stufe, Anzahl und die Gründe aller Auslassungen; jeder Export wird protokolliert.
+* Tests: `tests/test_build492_markings.py` (5 Szenarien), Chromium-Check der Berichtsseite.
+
+## Oberfläche (Stufe 4, vorgezogen)
+
+* **Verständliche Fehlerseiten (U2):** Fordert ein Browser eine Seite an, erscheint bei Fehlern eine Seite
+  im gemeinsamen Layout mit Erklärung, Fehlercode und Rückweg (vorherige Seite derselben Herkunft,
+  Arbeitsablauf, Hauptansicht). API-Aufrufe, `fetch()` und Skripte bekommen weiterhin JSON.
+* **Dokumentansicht (U1)** unter `/workbench/document`, `/documents458` leitet dorthin um (Sprungmarken
+  bleiben erhalten). Neu: gemeinsames Layout, Fakten (Quelle, SHA-256, Extraktionsstand, Schutzklasse,
+  Web-Herkunft), nächste Schritte, Filter nach Fundstellenart, Suche mit Hervorhebung.
+* **Extraktionsprüfung in der Oberfläche:** Bisher ließ sich die Extraktion nur über die JSON-Schnittstelle
+  freigeben; „Quelle → Evidence“ verwies auf eine Seite ohne Prüfformular. Jetzt: Freigeben oder Verwerfen
+  mit Begründung und Bestätigung, nur mit Quellenprüfungsrecht, gegen veraltete Stände geschützt.
+* Die neue Ansicht nutzt die Standard-Richtlinie `Referrer-Policy: same-origin`. Unter `no-referrer`
+  (Build 489 für `/documents458`) sendet Chromium bei Formularen `Origin: null`, und der Formularschutz
+  lehnt sie zu Recht ab. Auch `same-origin` gibt Fall-URLs nicht an fremde Seiten weiter.
+* **Deutsche Statusbezeichnungen (U6)** auf Befund- und Berichtsseite statt Rohcodes; der Markdown-Bericht
+  zeigt „Bezeichnung (Code)“.
+* **Arbeitsablauf mit Zustand (U4):** Jeder Schritt zeigt seinen Stand (z. B. „3 Dokumente · 1 wartet auf
+  Extraktionsprüfung“), offene Arbeit ist hervorgehoben. Oben steht der nächste sinnvolle Schritt
+  (Quelle sichern → Extraktion prüfen → Evidence übernehmen → Befunde prüfen).
+* Noch offen aus Stufe 4: Navigation verdichten (U3; der Ablauf hat 23 Schritte und ist auf dem Handy sehr
+  lang) und Fundstellen im Seitenbild markieren (U5).
+
 ## Prüfen
 
 ```bash
-python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
+python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build492_ux.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
 python -m pytest -q tests/test_build492_browser.py   # benötigt Playwright + Chromium
 ```
