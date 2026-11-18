@@ -20,9 +20,9 @@ from html import escape
 from urllib.parse import urlencode
 
 from fastapi import HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from eagleeye.application.buero import accounts, checklists, deletion, service as buero
+from eagleeye.application.buero import accounts, backups, checklists, deletion, service as buero
 from .app364 import CSRF_COOKIE
 from .app448 import COOKIE
 from .app449 import _drop
@@ -69,6 +69,9 @@ DONE = {
     "reset": "Passwort zurückgesetzt. Beim nächsten Anmelden muss ein eigenes gewählt werden.",
     "locked": "Konto gesperrt, alle Anmeldungen beendet.", "unlocked": "Konto entsperrt.",
     "checklist": "Arbeitsliste aktualisiert.",
+    "backup": "Verschlüsselte Sicherung angelegt. Bitte die Datei zusätzlich auf ein externes Laufwerk kopieren.",
+    "backup_ok": "Sicherung geprüft: Passwort stimmt, alle Dateien sind vollständig und unverändert.",
+    "backup_settings": "Sicherungseinstellungen gespeichert.",
 }
 
 
@@ -218,6 +221,9 @@ def _overview(app, request, user, *, show_all: bool) -> str:
                          + (f'<a href="{_href("/buero/loeschen", case_id=row["case_id"])}">Löschung vorbereiten</a></li>'
                             if buero._is_admin(user) else 'Büroleitung informieren</li>'))
     if buero._is_admin(user):
+        due = backups.reminder(app.state.context)
+        if due:
+            attention.append(f'<li><span class="soon">{escape(due)}</span> – <a href="/buero/sicherung">Jetzt sichern</a></li>')
         for job in deletion.open_jobs(app.state.context):
             attention.append(f'<li>{escape(job["aktenzeichen"])} <span class="overdue">Löschung unvollständig</span> – '
                              '<a href="/buero/loeschprotokoll">im Löschprotokoll fortsetzen</a></li>')
@@ -631,7 +637,7 @@ def _settings_body(request, office: dict, error: str = "", values: dict | None =
             + '</div><p class="muted">Vorgabe 36 Monate. Bitte an das eigene Löschkonzept anpassen; Rechnungen und '
               'Buchungsbelege gehören in die Buchhaltung und unterliegen eigenen Fristen.</p></fieldset>'
             + '<button class="primary" type="submit">Einstellungen speichern</button></form>'
-            + '<p><a href="/buero/loeschprotokoll">Löschprotokoll ansehen</a></p>')
+            + '<p><a href="/buero/sicherung">Datensicherung</a> · <a href="/buero/loeschprotokoll">Löschprotokoll ansehen</a></p>')
 
 
 # ---------------------------------------------------------------- PDF statement
@@ -709,6 +715,7 @@ def attach_buero(app, build: str) -> None:
     buero.initialize(ctx)
     deletion.initialize(ctx)
     checklists.initialize(ctx)
+    backups.initialize(ctx)
     app.state.buero = True
     from .buero_report import attach_report_pdf
     attach_report_pdf(app, build)
@@ -1343,3 +1350,107 @@ def attach_buero(app, build: str) -> None:
                 return render("Team", team_body(request, "Diesen Anmeldenamen gibt es schon.", {**form, "password": ""}), 422)
             raise
         return RedirectResponse("/buero/team?done=user", status_code=303)
+
+    # ------------------------------------------------ encrypted backup
+    def _size(n: int) -> str:
+        return f"{n / 1024 / 1024:.1f} MB".replace(".", ",") if n >= 1024 * 1024 else f"{max(1, n // 1024)} KB"
+
+    def backup_body(request, user, error="", values=None) -> str:
+        v = values or {}
+        conf = backups.settings(ctx)
+        rows = backups.backups(ctx, user)
+        csrf = f'<input type="hidden" name="csrf" value="{_csrf(request)}">'
+        due = backups.reminder(ctx)
+        body = _status_line(request) + _error(error)
+        body += (('<p class="warn">' + escape(due) + '</p>') if due else
+                 f'<p class="card ok">Letzte Sicherung: {_when(rows[0]["created_at"])} UTC.</p>' if rows else "")
+        body += ('<form method="post" action="/buero/sicherung" class="card"><h2>Jetzt verschlüsselt sichern</h2>' + csrf
+                 + '<p>Gesichert wird der gesamte Arbeitsbestand (alle Aufträge, Belege, Dokumente, Einstellungen) im laufenden '
+                   'Betrieb. Die Datei ist mit AES-256 verschlüsselt; der Schlüssel entsteht nur aus deinem Passwort.</p>'
+                 + '<p class="warn"><strong>Ohne Passwort ist die Sicherung nicht wiederherstellbar.</strong> Das Passwort wird '
+                   'nicht gespeichert – getrennt von der Sicherung aufbewahren (z. B. Passwortmanager oder Tresor).</p>'
+                 + '<div class="two">'
+                 + _field("Sicherungspasswort (mindestens 12 Zeichen)", "password", "", type="password", required=True,
+                          attrs='autocomplete="new-password" minlength="12" maxlength="256"')
+                 + _field("Passwort wiederholen", "repeat", "", type="password", required=True,
+                          attrs='autocomplete="new-password" maxlength="256"') + '</div>'
+                 + _check("Ich bewahre das Passwort getrennt von der Sicherung auf.", "notiert", False)
+                 + f'<p class="muted">Ablageort: <code>{escape(conf["ordner_wirksam"])}</code></p>'
+                 + '<button class="primary" type="submit">Verschlüsselte Sicherung erstellen</button></form>')
+        if rows:
+            table = ('<table><thead><tr><th>Erstellt</th><th>Datei</th><th>Umfang</th><th>Geprüft</th><th>Aktion</th></tr></thead><tbody>')
+            for r in rows:
+                if r["removed_at"]:
+                    action, state = "", "entfernt (älter als die aufbewahrte Anzahl)"
+                elif not r["present"]:
+                    action, state = "", "nicht am Ablageort"
+                else:
+                    state = (f'{_when(r["verified_at"])} ({escape(r["verified_by"])})' if r["verified_at"] else "noch nicht geprüft")
+                    action = (f'<a href="{_href("/buero/sicherung/datei", backup_id=r["backup_id"])}">herunterladen</a>'
+                              '<details><summary>prüfen</summary><form method="post" action="/buero/sicherung/pruefen">'
+                              + _hidden(backup_id=r["backup_id"]) + csrf
+                              + _field("Passwort der Sicherung", "password", "", type="password", required=True,
+                                       attrs='autocomplete="off" maxlength="256"')
+                              + '<button type="submit">Prüfen</button></form></details>')
+                table += (f'<tr><td class="date">{_when(r["created_at"])}</td><td><code>{escape(r["file_name"])}</code></td>'
+                          f'<td>{r["files"]} Dateien, {_size(r["bytes"])} → {_size(r["size"])}</td><td>{state}</td><td>{action}</td></tr>')
+            body += '<section aria-label="Sicherungen"><h2>Sicherungen</h2>' + _stack_tables(table + '</tbody></table>') + '</section>'
+        sv = v if v.get("_form") == "settings" else conf
+        body += ('<form method="post" action="/buero/sicherung/einstellungen" class="card"><h2>Einstellungen</h2>' + csrf
+                 + _hidden(_form="settings")
+                 + _field("Sicherungsordner (leer = neben dem Arbeitsordner; empfohlen: externes Laufwerk, z. B. E:\\EagleEye-Sicherung)",
+                          "sicherung_ordner", sv.get("sicherung_ordner", ""), attrs='maxlength="400"')
+                 + '<div class="two">'
+                 + _field("Wie viele Sicherungen aufbewahren?", "sicherung_behalten", sv.get("sicherung_behalten", "10"),
+                          attrs='inputmode="numeric" maxlength="3"')
+                 + _field("Erinnern, wenn die letzte Sicherung älter ist als (Tage)", "sicherung_intervall_tage",
+                          sv.get("sicherung_intervall_tage", "7"), attrs='inputmode="numeric" maxlength="2"')
+                 + '</div><p class="muted">Ältere Sicherungen werden beim nächsten Sichern entfernt. Gelöschte Fälle sind erst '
+                   'dann auch aus allen Sicherungen verschwunden.</p><button type="submit">Einstellungen speichern</button></form>')
+        body += ('<section class="card"><h2>Wiederherstellen</h2><p>EagleEye schließen, <code>EAGLEEYE_WIEDERHERSTELLEN.bat</code> '
+                 'starten, die <code>.eebak</code>-Datei wählen, das Passwort eingeben und einen Zielordner wählen. Es entsteht ein '
+                 'neuer Arbeitsordner; der bisherige bleibt unverändert. Alle Dateien werden dabei gegen die Prüfsummen der '
+                 'Sicherung geprüft.</p></section>')
+        return body
+
+    @app.get("/buero/sicherung", response_class=HTMLResponse)
+    def backup_page(request: Request):
+        user = _user(app, request)
+        try:
+            return render("Datensicherung", backup_body(request, user))
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+
+    def backup_action(path, action, done, name):
+        @app.post(path)
+        async def handler(request: Request):
+            form = await _form(request)
+            user = _user(app, request)
+            verify_post(app, request, user, form.get("csrf", ""))
+            try:
+                await run_in_threadpool(action, ctx, user, form)
+            except PermissionError as exc:
+                raise HTTPException(403, str(exc)) from None
+            except buero.BueroError as exc:
+                keep = {k: v for k, v in form.items() if k not in {"password", "repeat", "csrf"}}
+                return render("Datensicherung", backup_body(request, user, str(exc), keep), 422)
+            return RedirectResponse("/buero/sicherung?done=" + done, status_code=303)
+        handler.__name__ = name
+
+    from starlette.concurrency import run_in_threadpool
+    backup_action("/buero/sicherung", backups.run, "backup", "backup_run")
+    backup_action("/buero/sicherung/pruefen", backups.verify, "backup_ok", "backup_verify")
+    backup_action("/buero/sicherung/einstellungen", backups.save_settings, "backup_settings", "backup_settings")
+
+    @app.get("/buero/sicherung/datei")
+    def backup_file(request: Request, backup_id: str = ""):
+        user = _user(app, request)
+        try:
+            path = backups.path_of(ctx, user, backup_id)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except buero.BueroError as exc:
+            raise HTTPException(404, str(exc)) from None
+        ctx.audit.log("buero_backup_downloaded", "buero_backup", backup_id, None, {})
+        return FileResponse(path, media_type="application/octet-stream", filename=path.name,
+                            headers={"Cache-Control": "no-store"})

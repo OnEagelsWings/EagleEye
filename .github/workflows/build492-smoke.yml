@@ -40,7 +40,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get install -y tesseract-ocr tesseract-ocr-deu
       - name: Build 492 features, entity benchmark and adjacent workflow
-        run: python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build492_ux.py tests/test_build490_server_selection.py tests/test_build481_evidence_bridge.py tests/test_build488_candidates.py tests/test_build488_integration.py tests/test_build479_report_recovery.py tests/test_build490_synthetic_journey.py tests/test_buero_service.py tests/test_buero_web.py tests/test_buero_report.py tests/test_buero_deletion.py tests/test_buero_gate.py tests/test_privacy_search_post.py tests/test_review_fixes_96.py tests/test_buero_checklists.py
+        run: python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build492_ux.py tests/test_build490_server_selection.py tests/test_build481_evidence_bridge.py tests/test_build488_candidates.py tests/test_build488_integration.py tests/test_build479_report_recovery.py tests/test_build490_synthetic_journey.py tests/test_buero_service.py tests/test_buero_web.py tests/test_buero_report.py tests/test_buero_deletion.py tests/test_buero_gate.py tests/test_privacy_search_post.py tests/test_review_fixes_96.py tests/test_buero_checklists.py tests/test_buero_backup.py
       - name: Install Chromium browser test runtime
         if: runner.os == 'Linux'
         run: |

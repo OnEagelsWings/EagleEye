@@ -144,14 +144,31 @@ In der Auftragsakte:
 
 ## 4. Datensicherung
 
-1. EagleEye vollständig schließen.
-2. `EAGLEEYE_SICHERUNG.bat` ausführen. Es entsteht ein Sicherungsarchiv des gesamten Arbeitsbestands.
-3. Das Archiv auf ein **verschlüsseltes** Laufwerk kopieren (z. B. BitLocker To Go) –
-   die Sicherung selbst ist nicht verschlüsselt.
-4. Wiederherstellen mit `EAGLEEYE_WIEDERHERSTELLEN.bat` in einen neuen Ordner.
+**Verschlüsselt per Knopfdruck (empfohlen):** Büro → **Datensicherung** (nur Büroleitung).
 
-Empfehlung: wöchentlich sichern, mehrere Generationen aufbewahren, die Wiederherstellung
-einmal im Quartal ausprobieren.
+1. Einmalig unter „Einstellungen“ den Sicherungsordner festlegen – am besten ein externes
+   Laufwerk, z. B. `E:\EagleEye-Sicherung`. Ohne Angabe liegt er neben dem Arbeitsordner.
+2. Sicherungspasswort (mindestens 12 Zeichen) zweimal eingeben, bestätigen, dass es getrennt
+   aufbewahrt wird, und „Verschlüsselte Sicherung erstellen“. EagleEye muss dafür nicht
+   geschlossen werden.
+3. Die Datei `EagleEye-Sicherung_….eebak` ist mit AES-256 verschlüsselt. Ohne Passwort ist sie
+   nicht lesbar – und nicht wiederherstellbar. Das Passwort wird nirgends gespeichert.
+4. **Prüfen:** In der Liste „prüfen“ wählen und das Passwort eingeben. EagleEye entschlüsselt
+   probeweise und vergleicht jede Datei mit ihrer Prüfsumme.
+5. Es werden die letzten N Sicherungen aufbewahrt (Einstellung), ältere werden entfernt.
+6. Ist die letzte Sicherung älter als das eingestellte Intervall (Vorgabe 7 Tage), erinnert das
+   Büro unter „Braucht Aufmerksamkeit“.
+
+**Wiederherstellen:** EagleEye schließen, `EAGLEEYE_WIEDERHERSTELLEN.bat` starten, die
+`.eebak`-Datei wählen, im Fenster das Passwort eingeben und einen Zielordner wählen. Es entsteht
+ein neuer Arbeitsordner; der bisherige bleibt unverändert. Alle Anmeldungen müssen danach neu
+erfolgen.
+
+**Weiterhin möglich:** `EAGLEEYE_SICHERUNG.bat` bei geschlossener App erzeugt eine
+unverschlüsselte ZIP – nur auf ein verschlüsseltes Laufwerk legen.
+
+Empfehlung: wöchentlich sichern, eine Kopie außer Haus aufbewahren, die Wiederherstellung einmal
+im Quartal ausprobieren.
 
 ## 5. Was EagleEye nicht ist
 
@@ -170,4 +187,4 @@ einmal im Quartal ausprobieren.
 2. Im Auftrag recherchieren, Belege sichern, Befunde schreiben und prüfen.
 3. Zeiten und Auslagen sofort buchen.
 4. Bericht und Leistungsnachweis erzeugen, Auftrag abschließen.
-5. Freitags sichern.
+5. Freitags verschlüsselt sichern (Büro → Datensicherung).

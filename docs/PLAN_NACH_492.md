@@ -210,7 +210,8 @@ Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in 
 | Review PR #96 (17.11.): Löschung wiederaufnehmbar, `reports/` einbezogen, Pflicht-Passwortwechsel serverseitig, Suchhinweise robust | umgesetzt |
 | Einheitliche Seitenleiste für die Windows-Desktopanwendung (U3) | umgesetzt |
 | Vorlagen je Auftragsart: Arbeitsliste in der Akte, Prüfumfang im Mandantenbericht | umgesetzt |
-| Offen: verschlüsselte Sicherung aus der App, Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag) | offen |
+| Verschlüsselte Sicherung per Knopfdruck (AES-256-GCM, scrypt), Prüfen, Aufbewahren, Erinnerung, Wiederherstellen über die Batchdatei (18.11.) | umgesetzt |
+| Offen: Rechnungsexport (z. B. CSV für die Buchhaltung je Auftrag) | offen |
 
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 

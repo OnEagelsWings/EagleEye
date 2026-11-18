@@ -89,6 +89,7 @@ MENU = [
     ("Büro", "Neuer Auftrag", "/buero/auftrag/neu", False, lambda u: u.get("global_role") in {"system_administrator", "investigator"}),
     ("Büro", "Mandanten", "/buero/mandanten", False, lambda u: u.get("global_role") in {"system_administrator", "investigator"}),
     ("Büro", "Team", "/buero/team", False, lambda u: u.get("global_role") == "system_administrator"),
+    ("Büro", "Datensicherung", "/buero/sicherung", False, lambda u: u.get("global_role") == "system_administrator"),
     ("Büro", "Einstellungen", "/buero/einstellungen", False, lambda u: u.get("global_role") == "system_administrator"),
     ("Auftrag", "Auftragsakte", "/buero/auftrag", True, None),
     ("Auftrag", "Geführter Ablauf", "/workbench", True, None),
