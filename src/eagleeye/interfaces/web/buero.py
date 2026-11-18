@@ -379,7 +379,9 @@ def _billing_section(app, request, user, row: dict, manage: bool, csrf: str, val
     issued = billing.invoices(ctx, user, case_id)
     body = '<section class="card" aria-label="Abrechnung" id="abrechnung"><h2>Abrechnung</h2>'
     if draft["positions"]:
-        body += (f'<p>Noch nicht abgerechnet: {len(draft["times"])} Zeiteinträge, {len(draft["expenses"])} Auslagen'
+        nt, ne = len(draft["times"]), len(draft["expenses"])
+        body += (f'<p>Noch nicht abgerechnet: {nt} {"Zeiteintrag" if nt == 1 else "Zeiteinträge"}, '
+                 f'{ne} {"Auslage" if ne == 1 else "Auslagen"}'
                  + (", Pauschalhonorar" if draft["flat_fee"] else "") + f' – netto <strong>{buero.euro(draft["net_cents"])}</strong>.</p>')
         table = '<table><thead><tr><th>Leistung</th><th>Menge</th><th>Betrag</th></tr></thead><tbody>'
         table += "".join(f'<tr><td>{escape(p["text"])}</td><td class="num">{escape(p["quantity"])}</td>'
