@@ -39,7 +39,7 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 ## Ehrlicher Stand
 
 - **Geprüft:** PersonOSINT 1.6 mit 107 automatischen Tests (SQLite und PostgreSQL) und Browser-Abnahme; EagleEye mit der vollen
-  Regression (1976 Tests, Linux) und der Windows-Abnahme auf GitHub.
+  Regression (1980 Tests, Linux) und der Windows-Abnahme auf GitHub; PersonOSINT besteht seine Tests dort ebenfalls unter Windows.
 - **Noch offen:** Es sind weiterhin **zwei Anwendungen in einem Paket**, noch nicht eine. Der Plan für die Verschmelzung steht in
   `CLAUDE_REVIEW_UND_UEBERGABE_500.md`. Die meisten Datenquellen sind live noch nicht bestätigt (siehe `PersonOSINT\docs\QUELLEN.md`) –
   deshalb Schritt 3 oben. `START_HIER.bat` und die Server-Startdatei sind neu und wurden auf Windows noch nicht von Hand ausprobiert.
