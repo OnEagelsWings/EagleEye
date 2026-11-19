@@ -119,6 +119,13 @@ def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
     settings = desktop476.settings_directory()
     assert settings.name == "EagleEye-500"
+    previous = settings.parent / "EagleEye-490"
+    previous.mkdir(parents=True)
+    previous_workspace = tmp_path / "previous490"
+    previous_workspace.mkdir()
+    import json
+    previous_config = json.dumps({"workspace_directory": str(previous_workspace)})
+    (previous / "workspace.json").write_text(previous_config, encoding="utf-8")
     old = settings.parent / "EagleEye"
     old.mkdir(parents=True)
     old_workspace = tmp_path / "legacy398"
@@ -132,6 +139,8 @@ def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch
     (install / "data" / "eagleeye.db").write_bytes(b"legacy")
     resolved = desktop476.resolve_workspace(install)
     assert resolved == settings / "workspace"
+    assert resolved != previous_workspace
+    assert (previous / "workspace.json").read_text(encoding="utf-8") == previous_config
     assert resolved != old_workspace
     assert resolved != install
     assert (install / "data" / "eagleeye.db").read_bytes() == b"legacy"
@@ -647,7 +656,7 @@ def test_build490_rejects_in_workspace_evidence_alias(monkeypatch, tmp_path):
         evidence.symlink_to(other, target_is_directory=True)
     except (OSError, NotImplementedError):
         pytest.skip("Directory symlinks are not supported by this test environment")
-    with pytest.raises(ValueError, match="module directories cannot (be|traverse) symbolic links"):
+    with pytest.raises(ValueError, match="module directories cannot be symbolic links"):
         RuntimePaths.resolve(install_dir=tmp_path / "install", base_dir=root)
     assert evidence.is_symlink()
     assert not (root / "data" / "eagleeye.db").exists()

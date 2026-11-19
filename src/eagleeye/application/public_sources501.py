@@ -119,7 +119,10 @@ def catalog(ctx, kind="topic", term=""):
         if kind not in source.kinds:
             continue
         provider = providers.get(source.provider)
-        out.append({"source": source, "ready": bool(provider and provider["supports_live"]),
+        # A registered adapter is not usable when the operator has disabled it.
+        # Show only actually enabled live sources as selectable: prepare() applies
+        # that same gate, and listing disabled ones caused a dead-end UX.
+        out.append({"source": source, "ready": bool(provider and provider["supports_live"] and provider["enabled"]),
                     "url": source.website.replace("{query}", quote(term, safe="")),
                     "provider": provider})
     return out

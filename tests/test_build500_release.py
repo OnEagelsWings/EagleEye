@@ -76,6 +76,7 @@ def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
     installer._install(tmp_path, tmp_path / "python", quiet=True)
     assert verified == [tmp_path]
     assert len(commands) == 1
+    assert "--force-reinstall" in commands[0]
     assert "--no-index" in commands[0]
     assert "--find-links" in commands[0]
     assert "eagleeye-personosint-pro==500.0.0" in commands[0]
@@ -166,3 +167,44 @@ def test_build500_offline_restore_preserves_data_and_revokes_login(tmp_path):
                 follow_redirects=False).status_code == 303
     finally:
         restored.state.context.close()
+
+
+@pytest.mark.parametrize("staged", [False, True])
+def test_release_pack_rejects_dirty_tracked_source(tmp_path, staged):
+    import importlib.util
+    import subprocess
+
+    spec = importlib.util.spec_from_file_location("pack500", ROOT / "tools/pack500.py")
+    pack = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pack)
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True,
+                       capture_output=True)
+    git("init")
+    git("config", "user.name", "Synthetic Test")
+    git("config", "user.email", "test@example.invalid")
+    tracked = tmp_path / "source.py"
+    tracked.write_text("original", encoding="utf-8")
+    git("add", "source.py")
+    git("commit", "-m", "fixture")
+    tracked.write_text("changed", encoding="utf-8")
+    if staged:
+        git("add", "source.py")
+    out = tmp_path / "candidate.zip"
+    with pytest.raises(ValueError, match="clean tracked source"):
+        pack.build(tmp_path, out)
+    assert not out.exists()
+
+
+def test_build500_receipt_fingerprint_changes_with_wheel_manifest(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    folder = tmp_path / "wheelhouse"
+    folder.mkdir()
+    manifest = folder / "MANIFEST-SHA256.json"
+    manifest.write_text('{"fixture.whl":"' + "a" * 64 + '"}', encoding="utf-8")
+    before = installer._source_fingerprint(tmp_path)
+    manifest.write_text('{"fixture.whl":"' + "b" * 64 + '"}', encoding="utf-8")
+    assert installer._source_fingerprint(tmp_path) != before
