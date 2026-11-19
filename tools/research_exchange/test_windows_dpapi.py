@@ -1,5 +1,7 @@
 """Synthetic DPAPI tests; native cases require Windows."""
 import os
+import subprocess
+import sys
 import unittest
 
 from windows_dpapi import _transform, protect_key, unprotect_key
@@ -40,6 +42,21 @@ class NativeDPAPITests(unittest.TestCase):
         self.assertNotEqual(first, second)
         self.assertEqual(unprotect_key(first), b"x" * 32)
         self.assertEqual(unprotect_key(second), b"x" * 32)
+
+    def test_cross_process_roundtrip(self):
+        # DPAPI keys must survive process restart under the same Windows user.
+        key = bytes(range(32))
+        blob = protect_key(key)
+        code = (
+            "import sys; from windows_dpapi import unprotect_key; "
+            "sys.stdout.buffer.write(unprotect_key(bytes.fromhex(sys.argv[1])))"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code, blob.hex()],
+            cwd=os.path.dirname(__file__), capture_output=True, timeout=20,
+            check=True,
+        )
+        self.assertEqual(result.stdout, key)
 
     def test_invalid_blob(self):
         for blob in (b"", b"x" * 65537):
