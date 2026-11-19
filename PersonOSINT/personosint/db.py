@@ -225,8 +225,14 @@ CREATE TABLE correlation_rules (
 )
 """
 
+#: Version 1.6.1 – Zwei-Faktor-Einrichtung mit eigenem, vorläufigem Geheimnis: Eine begonnene, nicht abgeschlossene
+#: Neueinrichtung lässt die bestehende Absicherung unverändert (vorher wurde sie beim Start der Einrichtung abgeschaltet).
+MIGRATION_9 = """
+ALTER TABLE users ADD COLUMN totp_pending TEXT NOT NULL DEFAULT ''
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6),
-                                     (7, MIGRATION_7), (8, MIGRATION_8)]
+                                     (7, MIGRATION_7), (8, MIGRATION_8), (9, MIGRATION_9)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 

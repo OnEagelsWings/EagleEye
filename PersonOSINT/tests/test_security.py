@@ -134,3 +134,79 @@ def test_oversized_photo_rejected(tmp_path):
     sid = anna.get(f"/api/cases/{cid}/overview").json()["subject"]["id"]
     r = anna.post(f"/api/cases/{cid}/entities/{sid}/photo", files={"file": ("x.png", b"\x89PNG" + b"0" * 9_000_000, "image/png")})
     assert r.status_code == 422 and "8 MB" in r.json()["detail"]
+
+
+# --------------------------------------------------------------------------- Befunde aus dem Codex-Review von PR #94
+
+def test_totp_confirm_is_no_second_login_path(tmp_path):
+    """P1: Mit Passwort angemeldet, aber ohne 2FA-Code: /totp/confirm darf die Anmeldung nicht ersetzen."""
+    import time as _t
+
+    app = build_app(tmp_path, require_2fa=True)
+    admin = setup_admin(app)
+    secret = admin.post("/api/auth/totp/begin").json()["secret"].replace(" ", "")
+    assert admin.post("/api/auth/totp/confirm", json={"code": totp_code(secret)}).status_code == 200
+    used = totp_code(secret)
+    half = login(app, "admin", ADMIN_PW)                                   # Passwort richtig, Code noch nicht eingegeben
+    assert half.get("/api/auth/state").json()["state"] == "mfa"
+    r = half.post("/api/auth/totp/confirm", json={"code": used})           # früher: Umgehung mit bereits benutztem Code
+    assert r.status_code == 409 and "keine Einrichtung" in r.json()["detail"]
+    assert half.get("/api/cases").status_code == 401
+    fresh = totp_code(secret, _t.time() + 30)
+    assert half.post("/api/auth/totp/confirm", json={"code": fresh}).status_code == 409   # auch mit gültigem Code kein Umweg
+    assert half.get("/api/cases").status_code == 401
+    # Neueinrichtung nur nach bestätigter Anmeldung – und ohne die Anmeldung zu ersetzen
+    assert half.post("/api/auth/totp/begin").status_code == 403
+    # Falsche Codes bei der Einrichtung zählen wie Fehlversuche bei der Anmeldung
+    app2 = build_app(tmp_path / "zwei", require_2fa=True)
+    new = setup_admin(app2)
+    new.post("/api/auth/totp/begin")
+    codes = []
+    for _ in range(app2.state.settings.max_failed_logins):
+        codes.append(new.post("/api/auth/totp/confirm", json={"code": "000000"}).status_code)
+    assert codes[-1] == 423 and set(codes[:-1]) <= {422}                    # letzter Fehlversuch sperrt das Konto
+
+
+def test_totp_reenrollment_keeps_existing_protection_until_confirmed(tmp_path):
+    """Eine abgebrochene Neueinrichtung darf die bestehende Zwei-Faktor-Absicherung nicht abschalten."""
+    import time as _t
+
+    app = build_app(tmp_path, require_2fa=True)
+    admin = setup_admin(app)
+    old = admin.post("/api/auth/totp/begin").json()["secret"].replace(" ", "")
+    assert admin.post("/api/auth/totp/confirm", json={"code": totp_code(old)}).status_code == 200
+    new = admin.post("/api/auth/totp/begin").json()["secret"].replace(" ", "")   # Neueinrichtung begonnen …
+    assert new != old
+    admin.post("/api/auth/logout")                                                 # … und abgebrochen
+    again = login(app, "admin", ADMIN_PW)
+    assert again.get("/api/auth/state").json()["state"] == "mfa"                   # weiterhin Code verlangt, nicht „einrichten“
+    assert again.post("/api/auth/mfa", json={"code": totp_code(new, _t.time() + 30)}).status_code == 422   # neues Geheimnis gilt noch nicht
+    assert again.post("/api/auth/mfa", json={"code": totp_code(old, _t.time() + 30)}).status_code == 200   # altes gilt weiter
+    # abgeschlossen (direkt nach der Anmeldung, im selben Zeitfenster): ab jetzt gilt nur noch das neue Geheimnis
+    newer = again.post("/api/auth/totp/begin").json()["secret"].replace(" ", "")
+    confirm_code = totp_code(newer)
+    assert again.post("/api/auth/totp/confirm", json={"code": confirm_code}).status_code == 200
+    again.post("/api/auth/logout")
+    third = login(app, "admin", ADMIN_PW)
+    assert third.post("/api/auth/mfa", json={"code": totp_code(old, _t.time() + 30)}).status_code == 422     # altes Geheimnis ersetzt
+    assert third.post("/api/auth/mfa", json={"code": confirm_code}).status_code == 422                       # Einrichtungscode nicht wiederverwendbar
+    assert third.post("/api/auth/mfa", json={"code": totp_code(newer, _t.time() + 30)}).status_code == 200
+
+
+def test_suggestions_ignore_same_name_in_other_case(tmp_path):
+    """P2: Gleicher Name in einem anderen Fall brachte /suggestions (und damit den Verbindungen-Reiter) zum Absturz."""
+    app = build_app(tmp_path)
+    admin = setup_admin(app)
+    anna = add_user(admin, app, "anna", "analyst")
+    body = {"case_type": "personensuche", "purpose": "Testrecherche zum Schutz", "legal_basis": "Einwilligung", "opsec_level": 1}
+    first = anna.post("/api/cases", json={**body, "title": "Fall A", "subject": {"label": "Max Mustermann"}}).json()["id"]
+    second = anna.post("/api/cases", json={**body, "title": "Fall B", "subject": {"label": "Max Mustermann"}}).json()["id"]
+    anna.post(f"/api/cases/{second}/entities", json={"type": "person", "label": "Max Mustermann"})       # höhere ID im anderen Fall
+    for cid in (first, second):
+        r = anna.get(f"/api/cases/{cid}/suggestions")
+        assert r.status_code == 200, r.text
+        own = {e["id"] for e in anna.get(f"/api/cases/{cid}/entities").json()}
+        assert all(s["source_id"] in own and s["target_id"] in own for s in r.json())
+    assert any("Max Mustermann" in s["reason"] for s in anna.get(f"/api/cases/{second}/suggestions").json())   # im selben Fall weiter erkannt
+    assert anna.get(f"/api/cases/{first}/suggestions").json() == []
+    assert anna.get(f"/api/cases/{first}/export/dossier.docx").status_code == 200                        # Dossier nutzt die Vorschläge ebenfalls
