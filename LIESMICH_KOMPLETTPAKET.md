@@ -1,4 +1,4 @@
-# EagleEye – Komplettpaket (Stand 13. Nov. 2026)
+# EagleEye – Komplettpaket (Stand 19. Nov. 2026)
 
 Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 
@@ -6,7 +6,7 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 |---|---|---|
 | 1 | **PersonOSINT** (Einzelplatz) | Person oder Firma suchen: 35 Datenquellen, Treffer prüfen, Verbindungen, Belege, Dossier in Word/PDF |
 | 2 | **PersonOSINT als Server** | wie 1, zusätzlich von anderen Rechnern im eigenen Netz erreichbar (Zwei-Faktor-Anmeldung Pflicht) |
-| 3 | **EagleEye-Fallakte** (Build 500) | Beweisfeste Fallakte: Web-Belege, Dokumente, Rechercheplan mit Freigaben, Prüfregister, Bericht |
+| 3 | **EagleEye-Fallakte** (Build 500) | Büro und Fallakte: Mandanten, Aufträge, Zeiten, Rechnungen, Datensicherung; Web-Belege, Dokumente, Rechercheplan mit Freigaben, Prüfregister, Bericht (Bedienung: `BETRIEBSHANDBUCH_BUERO.md`) |
 | 4 | **Quellen prüfen** | Zeigt, welche Datenquellen von diesem Rechner aus wirklich antworten |
 
 ## Voraussetzungen
@@ -38,10 +38,14 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 
 ## Ehrlicher Stand
 
-- **Geprüft:** PersonOSINT 1.6 mit 107 automatischen Tests (SQLite und PostgreSQL) und Browser-Abnahme; EagleEye mit der vollen
-  Regression (1980 Tests, Linux) und der Windows-Abnahme auf GitHub; PersonOSINT besteht seine Tests dort ebenfalls unter Windows.
+- **Geprüft:** PersonOSINT 1.6.1 mit 110 automatischen Tests (SQLite und PostgreSQL) und Browser-Abnahme; EagleEye mit der vollen
+  Regression (Linux) und der Windows-Abnahme auf GitHub; PersonOSINT besteht seine Tests dort ebenfalls unter Windows.
+- **Enthalten sind alle aktiven Entwicklungsstränge** (ChatGPT, beide Claude-Chats). Welcher ältere Zweig wo steht: `docs\ZWEIGE_STAND.md`.
 - **Noch offen:** Es sind weiterhin **zwei Anwendungen in einem Paket**, noch nicht eine. Der Plan für die Verschmelzung steht in
   `CLAUDE_REVIEW_UND_UEBERGABE_500.md`. Die meisten Datenquellen sind live noch nicht bestätigt (siehe `PersonOSINT\docs\QUELLEN.md`) –
   deshalb Schritt 3 oben. `START_HIER.bat` und die Server-Startdatei sind neu und wurden auf Windows noch nicht von Hand ausprobiert.
 - EagleEye Build 500 ist ein interner Kandidat (Kennzeichnung der Entwickler: „HOLD“ bis zur Abnahme durch Sie).
+- Zwei Bausteine von ChatGPT sind enthalten, aber ausdrücklich noch Vorstufen: die Firecrawl-Anbindung (kostenpflichtig, nur mit eigenem
+  Schlüssel, nur für freigegebene Behördenseiten) und die Austausch-Schnittstelle unter `tools\research_exchange` (Prototyp, nur mit
+  Testdaten verwenden).
 - Rechtliches vor echten Fällen: `PersonOSINT\docs\compliance\` (Entwürfe, von Datenschutzbeauftragten und Anwalt prüfen lassen).
