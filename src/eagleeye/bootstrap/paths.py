@@ -85,6 +85,15 @@ class RuntimePaths:
 
         # A renamed legacy database must not bypass internal workspace isolation.
         if db_path is not None and _internal_release_build():
+            # Reject symlinked explicit DB parent directories before mkdir/SQLite.
+            candidate = Path(db_path).absolute()
+            workspace_root = runtime_root.absolute()
+            if candidate.is_relative_to(workspace_root):
+                cursor = candidate.parent
+                while cursor != workspace_root:
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release database directory cannot be a symbolic link")
+                    cursor = cursor.parent
             chosen = Path(db_path).resolve()
             workspace = runtime_root.resolve()
             if not chosen.is_relative_to(workspace) or chosen == workspace:
