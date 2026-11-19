@@ -39,7 +39,7 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 ## Ehrlicher Stand
 
 - **Geprüft:** PersonOSINT 1.6.1 mit 110 automatischen Tests (SQLite und PostgreSQL) und Browser-Abnahme; EagleEye mit der vollen
-  Regression (Linux) und der Windows-Abnahme auf GitHub; PersonOSINT besteht seine Tests dort ebenfalls unter Windows.
+  Regression (2064 Tests, Linux) und der Windows-Abnahme auf GitHub; PersonOSINT besteht seine Tests dort ebenfalls unter Windows.
 - **Enthalten sind alle aktiven Entwicklungsstränge** (ChatGPT, beide Claude-Chats). Welcher ältere Zweig wo steht: `docs\ZWEIGE_STAND.md`.
 - **Noch offen:** Es sind weiterhin **zwei Anwendungen in einem Paket**, noch nicht eine. Der Plan für die Verschmelzung steht in
   `CLAUDE_REVIEW_UND_UEBERGABE_500.md`. Die meisten Datenquellen sind live noch nicht bestätigt (siehe `PersonOSINT\docs\QUELLEN.md`) –

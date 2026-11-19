@@ -106,6 +106,8 @@ Beide Linien konnten ihre Quellen bisher nicht live bestätigen.
 | Codex-Review zu PR #94 (P1, P2) | beide behoben in PersonOSINT 1.6.1: 2FA-Bestätigung ist kein zweiter Anmeldeweg mehr (nur bei laufender Einrichtung, gleicher Fehlversuchszähler; neues Geheimnis bleibt vorläufig, bis es bestätigt ist); Vorschläge im Verbindungen-Reiter beidseitig fallgebunden. Regressionstests in `PersonOSINT/tests/test_security.py`. |
 | Ältere Zweige | 52 nicht zusammengeführte Zweige geprüft: 44 ohne fehlende Datei (alles in späterer Fassung enthalten), 8 überholte Parallelversuche – Übersicht `docs/ZWEIGE_STAND.md`. Nicht eingemischt, um keine alten Fassungen zurückzuholen. |
 
+**Prüfstand nach der Zusammenführung (`898c2f0`):** volle Regression lokal 2064 bestanden, 3 übersprungen (ClamAV), 118 ausgeschlossen, 0 Fehler; alle GitHub-Läufe des PR grün, einschließlich Windows-Offline-Installer, PersonOSINT unter Windows und DPAPI unter Windows.
+
 Weiterhin offen auf eurer Seite (Stand `affd7f8`): Befund 1 (volle Regression in `ci.yml` für 500 aus), Befund 2 (`Pillow<13`,
 `starlette<0.51`, `cryptography<47`), Befund 4 (Vier-Augen bei der Planfreigabe). Der Fix zu Befund 3 ist im gemeinsamen Branch,
 noch nicht auf `release/build500-internal-rc1`.
