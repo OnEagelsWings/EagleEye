@@ -112,7 +112,29 @@ In der Auftragsakte:
 - **Wiedervorlagen** mit Datum. Fällige und überfällige erscheinen im Büro unter „Braucht Aufmerksamkeit“.
 - Ab 80 % des Budgets warnt das Büro.
 
-### 3.6 Bericht und Leistungsnachweis
+### 3.6 Abrechnung und Rechnung
+Einmalig unter **Büro → Rechnungen → Rechnungsangaben** Steuernummer (oder USt-IdNr.), IBAN,
+BIC, Bank, Zahlungsziel und den Präfix der Rechnungsnummer eintragen; Name und Anschrift des
+Büros stehen in den Einstellungen, die Anschrift des Mandanten in der Mandantenliste.
+
+In der Auftragsakte zeigt **Abrechnung**, was noch nicht abgerechnet ist, und die Positionen der
+nächsten Rechnung (Zeit je Tätigkeit × Stundensatz bzw. das Pauschalhonorar einmalig,
+Fahrtkilometer, Auslagen). **Rechnung erstellen** vergibt die nächste fortlaufende Nummer
+(z. B. `RE-2026-0001`), sperrt die abgerechneten Einträge und erzeugt die Rechnung als PDF mit
+den Angaben nach § 14 UStG und dem Leistungsnachweis als Anlage. Fehlt eine Pflichtangabe, sagt
+die App, welche – eine unvollständige Rechnung entsteht nicht.
+
+- **Korrektur:** „stornieren“ erzeugt eine Stornorechnung mit eigener Nummer; die Nummern
+  bleiben lückenlos, die Einträge werden wieder frei und können neu abgerechnet werden.
+- **Zahlung:** „als bezahlt vermerken“. Überfällige Rechnungen erscheinen im Büro unter
+  „Braucht Aufmerksamkeit“.
+- **Buchhaltung:** Büro → Rechnungen zeigt das Rechnungsausgangsbuch je Jahr (netto, brutto,
+  bezahlt, offen) und exportiert es samt Positionen als CSV.
+
+Die steuerliche Einordnung (Umsatzsteuer, Kleinunternehmer, Aufbewahrung der Rechnungen) bitte
+mit der Steuerberatung abstimmen.
+
+### 3.7 Bericht und Leistungsnachweis
 - **Bericht für Mandant (PDF)**: Briefkopf, Empfänger, Aktenzeichen, Auftrag, Ergebnisse
   mit nummerierten Quellenangaben, Methodik und Grenzen, Quellenverzeichnis mit Abrufzeit
   und SHA-256. Enthalten sind nur Befunde, die für die Empfängerstufe freigegeben sind:
@@ -121,10 +143,10 @@ In der Auftragsakte:
   - *intern*: alles (nicht zur Weitergabe).
   Was zurückgehalten wird, zeigt die Auftragsakte – nicht die Kopie des Mandanten.
 - **Leistungsnachweis (PDF/CSV)**: Zeiten, Auslagen, Honorar, Umsatzsteuer. Er ist
-  **keine Rechnung**; die Rechnung schreibt eure Buchhaltungssoftware.
+  **keine Rechnung**; die Rechnung entsteht unter „Abrechnung“ (Abschnitt 3.6).
 - **Büro → Zeiten für die Buchhaltung**: alle Zeiten eines Monats als CSV (für Excel).
 
-### 3.7 Abschließen und löschen
+### 3.8 Abschließen und löschen
 - **Stand ändern → Abgeschlossen**: ab heute läuft die Aufbewahrungsfrist.
 - Nach Fristablauf erscheint der Auftrag im Büro unter „Löschung prüfen“.
 - **Löschung vorbereiten** (nur Büroleitung) zeigt, was gelöscht wird. Bestätigung durch
@@ -144,18 +166,35 @@ In der Auftragsakte:
 
 ## 4. Datensicherung
 
-1. EagleEye vollständig schließen.
-2. `EAGLEEYE_SICHERUNG.bat` ausführen. Es entsteht ein Sicherungsarchiv des gesamten Arbeitsbestands.
-3. Das Archiv auf ein **verschlüsseltes** Laufwerk kopieren (z. B. BitLocker To Go) –
-   die Sicherung selbst ist nicht verschlüsselt.
-4. Wiederherstellen mit `EAGLEEYE_WIEDERHERSTELLEN.bat` in einen neuen Ordner.
+**Verschlüsselt per Knopfdruck (empfohlen):** Büro → **Datensicherung** (nur Büroleitung).
 
-Empfehlung: wöchentlich sichern, mehrere Generationen aufbewahren, die Wiederherstellung
-einmal im Quartal ausprobieren.
+1. Einmalig unter „Einstellungen“ den Sicherungsordner festlegen – am besten ein externes
+   Laufwerk, z. B. `E:\EagleEye-Sicherung`. Ohne Angabe liegt er neben dem Arbeitsordner.
+2. Sicherungspasswort (mindestens 12 Zeichen) zweimal eingeben, bestätigen, dass es getrennt
+   aufbewahrt wird, und „Verschlüsselte Sicherung erstellen“. EagleEye muss dafür nicht
+   geschlossen werden.
+3. Die Datei `EagleEye-Sicherung_….eebak` ist mit AES-256 verschlüsselt. Ohne Passwort ist sie
+   nicht lesbar – und nicht wiederherstellbar. Das Passwort wird nirgends gespeichert.
+4. **Prüfen:** In der Liste „prüfen“ wählen und das Passwort eingeben. EagleEye entschlüsselt
+   probeweise und vergleicht jede Datei mit ihrer Prüfsumme.
+5. Es werden die letzten N Sicherungen aufbewahrt (Einstellung), ältere werden entfernt.
+6. Ist die letzte Sicherung älter als das eingestellte Intervall (Vorgabe 7 Tage), erinnert das
+   Büro unter „Braucht Aufmerksamkeit“.
+
+**Wiederherstellen:** EagleEye schließen, `EAGLEEYE_WIEDERHERSTELLEN.bat` starten, die
+`.eebak`-Datei wählen, im Fenster das Passwort eingeben und einen Zielordner wählen. Es entsteht
+ein neuer Arbeitsordner; der bisherige bleibt unverändert. Alle Anmeldungen müssen danach neu
+erfolgen.
+
+**Weiterhin möglich:** `EAGLEEYE_SICHERUNG.bat` bei geschlossener App erzeugt eine
+unverschlüsselte ZIP – nur auf ein verschlüsseltes Laufwerk legen.
+
+Empfehlung: wöchentlich sichern, eine Kopie außer Haus aufbewahren, die Wiederherstellung einmal
+im Quartal ausprobieren.
 
 ## 5. Was EagleEye nicht ist
 
-- Keine Rechnungs- oder Buchhaltungssoftware.
+- Keine Buchhaltungssoftware: Rechnungen und das Rechnungsausgangsbuch gehen als PDF/CSV an die Buchhaltung.
 - Keine Anonymisierung von Abrufen.
 - Keine automatische Wahrheitsfeststellung: KI-Vorschläge, Treffer und Beziehungen bleiben
   Hinweise, bis ein Mensch sie am Original geprüft hat.
@@ -170,4 +209,4 @@ einmal im Quartal ausprobieren.
 2. Im Auftrag recherchieren, Belege sichern, Befunde schreiben und prüfen.
 3. Zeiten und Auslagen sofort buchen.
 4. Bericht und Leistungsnachweis erzeugen, Auftrag abschließen.
-5. Freitags sichern.
+5. Freitags verschlüsselt sichern (Büro → Datensicherung).

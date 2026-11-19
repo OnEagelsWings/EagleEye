@@ -791,6 +791,9 @@ def void_entry(ctx, user: dict, case_id: str, form: dict) -> None:
         raise BueroError("Eintrag nicht gefunden.")
     if row["voided_at"]:
         raise BueroError("Dieser Eintrag ist bereits storniert.")
+    if row.get("invoice_id"):
+        number = (ctx.db.one("SELECT number FROM buero_invoices WHERE invoice_id=?", (row["invoice_id"],)) or {}).get("number", "")
+        raise BueroError(f"Dieser Eintrag ist bereits abgerechnet ({number}). Zuerst die Rechnung stornieren.")
     if row["username"] != user["username"] and not may_manage(ctx, user, case_id):
         raise PermissionError("Fremde Einträge storniert nur die Fallleitung.")
     reason = _text(form.get("reason"), 300, field="Grund der Stornierung")
