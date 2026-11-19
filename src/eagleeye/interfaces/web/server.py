@@ -77,7 +77,7 @@ def open_local_browser(url: str, preferred: str = "firefox") -> str:
     if parsed.username is not None or parsed.password is not None or any(ord(ch) < 32 or ord(ch) == 127 for ch in url):
         return "unavailable"
     try:
-        if parsed.port is None:
+        if parsed.port is None or parsed.port == 0:
             return "unavailable"
     except ValueError:
         return "unavailable"
