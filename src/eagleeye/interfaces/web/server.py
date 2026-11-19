@@ -71,6 +71,16 @@ def open_local_browser(url: str, preferred: str = "firefox") -> str:
         return "unavailable"
     if parsed.scheme != "http" or (parsed.hostname or "").casefold() not in {"127.0.0.1", "localhost", "::1"}:
         return "unavailable"
+    # A local launcher URL is a capability-bearing navigation target. Never
+    # accept userinfo, malformed ports, or control characters that could be
+    # interpreted differently by URL parsers and operating-system openers.
+    if parsed.username is not None or parsed.password is not None or any(ord(ch) < 32 or ord(ch) == 127 for ch in url):
+        return "unavailable"
+    try:
+        if parsed.port is None:
+            return "unavailable"
+    except ValueError:
+        return "unavailable"
     if preferred.casefold() == "firefox":
         for candidate in _firefox_candidates():
             if candidate.is_file():
