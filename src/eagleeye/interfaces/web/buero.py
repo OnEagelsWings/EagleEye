@@ -77,6 +77,7 @@ DONE = {
     "invoice": "Rechnung erstellt. Die abgerechneten Einträge sind jetzt gesperrt.",
     "invoice_storno": "Stornorechnung erstellt. Die Einträge sind wieder offen.",
     "invoice_paid": "Zahlungseingang vermerkt.", "invoice_settings": "Rechnungsangaben gespeichert.",
+    "evidence_settings": "Einstellungen der Beweissicherung gespeichert.",
 }
 
 
@@ -691,7 +692,36 @@ def _void_form(case_id: str, kind: str, entry_id: str, csrf: str) -> str:
             '<button type="submit">Stornieren</button></form></details>')
 
 
-def _settings_body(request, office: dict, error: str = "", values: dict | None = None) -> str:
+def _evidence_form(request, evidence: dict, error: str = "") -> str:
+    """Timestamp service and browser for page images (web evidence, Build 492)."""
+    from eagleeye.application.intel492 import pageimage
+
+    found = pageimage.find_browser(evidence.get("browser_path", ""))
+    auto = pageimage.find_browser("")
+    state = (f'Verwendet wird: <code>{_e(found)}</code>' if found else
+             '<strong>Kein Browser gefunden.</strong> Ohne Edge oder Chrome gibt es kein Seitenbild; die Sicherung selbst funktioniert.')
+    return ('<form method="post" action="/buero/beweissicherung" class="card" id="beweissicherung">'
+            f'<input type="hidden" name="csrf" value="{_csrf(request)}"><h2>Beweissicherung (Web-Belege)</h2>' + _error(error)
+            + _field("Zeitstempeldienst (RFC 3161)", "tsa_url", evidence.get("tsa_url", ""), attrs='maxlength="300" inputmode="url"')
+            + '<p class="muted">Vorgabe: DigiCert (kostenlos). An den Dienst geht nur die Prüfsumme des Beweismanifests – kein Inhalt, '
+              'keine Adresse. Für qualifizierte Zeitstempel nach eIDAS hier die Adresse eines qualifizierten Anbieters eintragen.</p>'
+            + _field("Browser für Seitenbilder (leer = automatisch suchen)", "browser_path", evidence.get("browser_path", ""),
+                     attrs='maxlength="400" placeholder="' + _e(auto or r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe") + '"')
+            + '<p class="muted">' + state + '</p>'
+            + '<button type="submit">Beweissicherung speichern</button></form>')
+
+
+def _evidence(ctx) -> dict | None:
+    """Evidence settings when the web-evidence module is installed (Build 492), else None."""
+    try:
+        from eagleeye.application.intel492 import stamps
+        return stamps.settings(ctx)
+    except Exception:  # table missing: module not attached in this build
+        return None
+
+
+def _settings_body(request, office: dict, error: str = "", values: dict | None = None, evidence: dict | None = None,
+                   evidence_error: str = "") -> str:
     v = values or {**office, "stundensatz": f'{int(office["stundensatz_cent"]) // 100},{int(office["stundensatz_cent"]) % 100:02d}',
                    "km_satz": f'{int(office["km_satz_cent"]) // 100},{int(office["km_satz_cent"]) % 100:02d}'}
     return (_status_line(request) + _error(error)
@@ -713,6 +743,7 @@ def _settings_body(request, office: dict, error: str = "", values: dict | None =
             + '</div><p class="muted">Vorgabe 36 Monate. Bitte an das eigene Löschkonzept anpassen; Rechnungen und '
               'Buchungsbelege gehören in die Buchhaltung und unterliegen eigenen Fristen.</p></fieldset>'
             + '<button class="primary" type="submit">Einstellungen speichern</button></form>'
+            + (_evidence_form(request, evidence, evidence_error) if evidence is not None else '')
             + '<p><a href="/buero/sicherung">Datensicherung</a> · <a href="/buero/loeschprotokoll">Löschprotokoll ansehen</a></p>')
 
 
@@ -1172,7 +1203,7 @@ def attach_buero(app, build: str) -> None:
         user = _user(app, request)
         if not buero._is_admin(user):
             raise HTTPException(403, "Nur die Büroleitung (Administration) ändert die Büroeinstellungen.")
-        return render("Büroeinstellungen", _settings_body(request, buero.settings(ctx)))
+        return render("Büroeinstellungen", _settings_body(request, buero.settings(ctx), evidence=_evidence(ctx)))
 
     @app.post("/buero/einstellungen")
     async def settings_save(request: Request):
@@ -1182,10 +1213,26 @@ def attach_buero(app, build: str) -> None:
         try:
             buero.save_settings(ctx, user, form)
         except buero.BueroError as exc:
-            return render("Büroeinstellungen", _settings_body(request, buero.settings(ctx), str(exc), form), 422)
+            return render("Büroeinstellungen", _settings_body(request, buero.settings(ctx), str(exc), form, evidence=_evidence(ctx)), 422)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
         return RedirectResponse("/buero/einstellungen?done=settings", status_code=303)
+
+    @app.post("/buero/beweissicherung")
+    async def evidence_save(request: Request):
+        from eagleeye.application.intel492 import stamps
+
+        form = await _form(request)
+        user = _user(app, request)
+        verify_post(app, request, user, form.get("csrf", ""))
+        try:
+            stamps.save_settings(ctx, user, form)
+        except ValueError as exc:
+            return render("Büroeinstellungen", _settings_body(request, buero.settings(ctx), evidence=dict(form),
+                                                             evidence_error=str(exc)), 422)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        return RedirectResponse("/buero/einstellungen?done=evidence_settings#beweissicherung", status_code=303)
 
     # ------------------------------------------------ final deletion after the retention period
     def deletion_body(request, user, case_id, error="", values=None) -> str:

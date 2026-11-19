@@ -18,7 +18,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import Response
 
 from eagleeye.application.buero import checklists, service as buero
-from eagleeye.application.intel492 import captures, markings
+from eagleeye.application.intel492 import captures, markings, stamps
 from .findings478 import KINDS, REVIEW_LABELS, notes_for_case
 from .intel492 import _when
 
@@ -87,6 +87,8 @@ def _sources(ctx, case_id: str, material: dict) -> tuple[list[dict], dict]:
                 web = captures.provenance_for_document(ctx, case_id, doc_id)
             except ValueError:
                 web = None
+            if web:
+                web["evidence"] = stamps.client_summary(ctx, case_id, web["capture_id"])
             entries.append({"title": doc.get("title") or "Dokument", "url": finding.get("source_url") or doc.get("source_url") or "",
                             "sha256": finding.get("document_sha256") or "", "stored_at": str(doc.get("created_at") or ""),
                             "web": web})
@@ -187,6 +189,9 @@ def report_pdf(app, user, case_id: str, level: str, material: dict | None = None
                       + (" und zusätzlich von einer zweiten Person geprüft." if level == "behoerde" else "."))
     if any(source["web"] for source in sources):
         method.append("Web-Seiten wurden beim Abruf unverändert gesichert (WARC-Format).")
+    if any(source["web"] and any(e.startswith("unabhängiger") for e in source["web"]["evidence"]) for source in sources):
+        method.append("Wo vermerkt, bestätigt ein unabhängiger Zeitstempeldienst (RFC 3161), dass die Prüfsummen der Sicherung "
+                      "zum angegebenen Zeitpunkt vorlagen; ein Prüfpaket zur eigenen Kontrolle kann angefordert werden.")
     method.append("SHA-256-Prüfsummen weisen nach, dass eine Quelle seit der Sicherung nicht verändert wurde; sie bestätigen "
                   "nicht die inhaltliche Richtigkeit. Bewertungen sind als solche gekennzeichnet. Der Bericht gibt den "
                   f"Erkenntnisstand am {today} wieder.")
@@ -202,6 +207,8 @@ def report_pdf(app, user, case_id: str, level: str, material: dict | None = None
             detail.append(("Archivfassung" if web["kind"] == "archive" else "Abruf") + " am "
                           + esc(_when(web["captured_at"])) + " UTC, als WARC gesichert"
                           + ("" if web["integrity_verified"] else " – Sicherung beschädigt, nicht verwenden"))
+            if web["integrity_verified"]:
+                detail.extend(esc(e) for e in web["evidence"])
         elif source["stored_at"]:
             detail.append("übernommen am " + esc(_when(source["stored_at"])))
         if source["sha256"]:

@@ -47,6 +47,13 @@ anlegen. Rollen im Büro:
 Wer welchen Auftrag sieht, legst du in der **Auftragsakte → Team dieses Auftrags** fest
 (Fallleitung, Ermittler/in, Analyst/in, Prüfer/in, Berichtsautor/in, nur lesen).
 
+**Büro → Einstellungen → Beweissicherung (Web-Belege)**
+
+| Feld | Wofür |
+|---|---|
+| Zeitstempeldienst (RFC 3161) | Vorgabe `http://timestamp.digicert.com` (kostenlos). Für qualifizierte Zeitstempel nach eIDAS die Adresse eines qualifizierten Anbieters eintragen. An den Dienst geht nur eine Prüfsumme. |
+| Browser für Seitenbilder | Leer lassen: EagleEye nimmt das vorhandene Microsoft Edge (oder Chrome). Nur bei abweichender Installation den Pfad zu `msedge.exe`/`chrome.exe` eintragen. |
+
 Konten: Jede Person ändert ihr Passwort unter **Büro → Mein Konto**. Die Büroleitung kann
 unter **Team** ein Passwort zurücksetzen (die Person muss beim nächsten Anmelden ein eigenes
 wählen) und Konten sperren – gesperrte Konten werden sofort abgemeldet.
@@ -94,6 +101,7 @@ oder entfällt mit Grund – so ist für den Mandanten nachvollziehbar, was gepr
    über das Internet Archive). **OPSEC:** Der Abruf geht von eurer Internetverbindung aus;
    die Gegenseite sieht eure IP-Adresse. EagleEye anonymisiert nicht – bei Bedarf eine
    eigene, dafür vorgesehene Verbindung verwenden.
+   Beim Sichern zwei Zusätze (siehe 3.4.1): **Zeitstempel** (Vorgabe an) und **Seitenbild**.
 2. Dokumente importieren (PDF, Word, Scans mit Texterkennung), Extraktion prüfen.
 3. Befunde schreiben – jeder Befund hängt an seiner Originalfundstelle – und mit einer
    **Schutzklasse** versehen: offen, intern, besonders schutzwürdig (Art. 9/10 DSGVO).
@@ -102,6 +110,37 @@ oder entfällt mit Grund – so ist für den Mandanten nachvollziehbar, was gepr
 
 Suchbegriffe (Namen) werden in Formularen übertragen, nicht in der Adresszeile – sie
 landen nicht im Browserverlauf.
+
+#### 3.4.1 Zeitstempel, Seitenbild und Prüfpaket
+
+- **Unabhängiger Zeitstempel (RFC 3161).** EagleEye schreibt zu jedem Web-Beleg ein kurzes
+  *Beweismanifest* (Fall, Adresse, Abrufzeit, SHA-256 der WARC-Datei, der Serverantwort und
+  des Seitenbilds) und lässt dessen Prüfsumme von einem Zeitstempeldienst signieren. Damit
+  ist belegt, dass genau diese Sicherung zu diesem Zeitpunkt vorlag – auch gegenüber Dritten,
+  die EagleEye nicht vertrauen. Der Dienst sieht nur die Prüfsumme, keine Adresse und keinen
+  Inhalt. Die Antwort wird vor dem Speichern geprüft (Signatur, Prüfsumme, Einmalwert,
+  Zertifikat für Zeitstempel). War der Dienst nicht erreichbar, bleibt die Sicherung
+  vollständig; der Knopf **Zeitstempel einholen** in der Liste holt ihn nach. Ein später
+  eingeholter Stempel wird als „nachträglich“ gekennzeichnet.
+- **Seitenbild.** Auf Wunsch nimmt EagleEye mit dem vorhandenen Edge (unsichtbar, ohne
+  Anmeldung, mit frischem Profil) ein Bild der ganzen Seite auf – sinnvoll bei Seiten, die
+  erst im Browser entstehen (Soziale Netzwerke, Shops). **OPSEC:** Der Browser lädt die Seite
+  mit allen eingebundenen Inhalten; auch Werbe- und Statistikanbieter sehen den Abruf. Ein
+  Filter lässt nur öffentliche Adressen auf Port 80/443 zu und nur Server, die die Seite selbst
+  anfordert: Die Seite kann den Browser weder ins Büronetz (Router, Drucker, NAS) schicken
+  noch laufen Hintergrunddienste des Browsers mit. Gesperrte Anfragen werden in der Liste
+  gezählt. Wird ein Seitenbild später ergänzt, zeigt es den *heutigen* Stand der Seite; der
+  vorhandene Zeitstempel wird dann automatisch durch einen neuen ersetzt.
+- **Prüfpaket.** Je Web-Beleg als ZIP: WARC-Datei, Seitenbild, Manifest, Zeitstempel
+  (`.tsr`), Zertifikatskette, Prüfsummen und eine Anleitung, wie man alles ohne EagleEye
+  nachprüft (`certutil -hashfile …`, `openssl ts -verify …`). Das Paket ist für Anwalt,
+  Gericht oder Gutachter gedacht.
+- Im **Mandantenbericht** steht beim Quellenverzeichnis, ob ein Seitenbild und ein gültiger
+  Zeitstempel vorliegen.
+
+Was das nicht leistet: Ein Zeitstempel belegt den Zeitpunkt der Sicherung, nicht die
+Richtigkeit des Inhalts. Ein einfacher (nicht qualifizierter) Zeitstempel unterliegt der
+freien Beweiswürdigung.
 
 ### 3.5 Zeit, Auslagen, Wiedervorlagen
 In der Auftragsakte:

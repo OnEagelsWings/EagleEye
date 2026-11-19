@@ -212,12 +212,13 @@ Grundlage ist jetzt der gemeinsame Stand (Build 493–501, PersonOSINT 1.6), in 
 | Vorlagen je Auftragsart: Arbeitsliste in der Akte, Prüfumfang im Mandantenbericht | umgesetzt |
 | Verschlüsselte Sicherung per Knopfdruck (AES-256-GCM, scrypt), Prüfen, Aufbewahren, Erinnerung, Wiederherstellen über die Batchdatei (18.11.) | umgesetzt |
 | Abrechnung je Auftrag: Rechnung mit fortlaufender Nummer und Pflichtangaben (§ 14 UStG), Stornorechnung, Zahlungsstand, Rechnungsausgangsbuch und Positionen als CSV (18.11.) | umgesetzt |
+| Stufe 5.1 vorgezogen (19.11.): Zeitstempel nach RFC 3161 über ein Beweismanifest je Web-Beleg, Seitenbild mit dem vorhandenen Edge/Chrome über einen Filter (nur öffentliche Adressen, nur von der Seite angeforderte Server), Prüfpaket als ZIP, Angaben in Arbeits- und Mandantenbericht | umgesetzt; Live-Test gegen DigiCert und echtes Edge unter Windows stehen aus (Sandbox ohne HTTP-Ausgang, kein Windows) |
 
 ### Stufe 5 – Vertiefen (nach Stufe 1–4)
 
 Nach Nutzen geordnet:
 
-1. **Beweiswert erhöhen:** Zeitstempel einer unabhängigen Stelle auf den WARC-Hash (RFC 3161; die Stelle sieht nur den Hash). Seitenbild der gerenderten Seite als zusätzlicher Beleg (Playwright ist bereits optionale Abhängigkeit), damit auch JavaScript-Seiten sicherbar werden.
+1. ~~**Beweiswert erhöhen:** Zeitstempel einer unabhängigen Stelle auf den WARC-Hash (RFC 3161), Seitenbild der gerenderten Seite.~~ **Umgesetzt 19.11.2026** (siehe Stufe B). Ohne Playwright: Steuerung des vorhandenen Browsers über das DevTools-Protokoll, damit keine Browser-Downloads nötig sind. Offen: Text der gerenderten Seite als zweites Dokument (für reine JavaScript-Seiten).
 2. **Beobachten statt einmal sichern:** erneute Sicherung mit Vergleich zur letzten Fassung. Deckt den Grundfall von changedetection.io ohne eigenen Dienst.
 3. **Entitäten und Eigenschaften aus Dokumenten vorschlagen**, mit Fundstelle, als Prüfmaterial. Verbindet Dokument- und Graphseite; heute werden Entitäten von Hand angelegt. Setzt Schritt 3.3 voraus.
 4. **Abgleich mit Kontext:** gemeinsame Verbindungen und gemeinsames Vorkommen im selben Dokument als Zusatzhinweis neben Namen und Eigenschaften.
