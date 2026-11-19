@@ -1,0 +1,48 @@
+import json
+import sqlite3
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from contextlib import closing
+from staging_db import StagingDB
+
+class StagingTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.path = Path(self.tmp.name) / "staging.sqlite"
+        self.db = StagingDB(self.path)
+        self.record = dict(schema=1, id="00000000-0000-4000-8000-000000000001",
+                           kind="research_result", classification="public-topic",
+                           topic="Synthetic", summary="Test only", sources=[], synthetic=True)
+        self.raw = json.dumps(self.record).encode()
+        self.commit = "a" * 40
+
+    def test_replay_and_conflict(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        reopened = StagingDB(self.path)
+        self.assertEqual(reopened.stage(self.raw, self.commit), "duplicate")
+        self.assertEqual(reopened.stage(self.raw, self.commit), "duplicate")
+        changed = self.raw.replace(b"Test only", b"Changed")
+        self.assertEqual(reopened.stage(changed, self.commit), "conflict")
+        self.assertEqual(reopened.read(self.record["id"]), self.raw)
+        with closing(reopened.connect()) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM audit").fetchone()[0], 3)
+
+    def test_audit_failure_rolls_back_record(self):
+        with closing(self.db.connect()) as db, db:
+            db.execute("CREATE TRIGGER fail_audit BEFORE INSERT ON audit BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.stage(self.raw, self.commit)
+        self.assertIsNone(self.db.read(self.record["id"]))
+        with closing(self.db.connect()) as db, db:
+            db.execute("DROP TRIGGER fail_audit")
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+
+    def test_invalid_commit(self):
+        with self.assertRaises(ValueError):
+            self.db.stage(self.raw, "invalid")
+        self.assertIsNone(self.db.read(self.record["id"]))
+
+if __name__ == "__main__":
+    unittest.main()
