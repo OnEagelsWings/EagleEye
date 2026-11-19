@@ -104,13 +104,18 @@ def stage(root,local, *, database=None):
         store = None
     git(root,"fetch","--no-tags",REMOTE,BRANCH)
     commit=git(root,"rev-parse","FETCH_HEAD").decode().strip()
-    paths=git(root,"ls-tree","-r","--name-only","-z",commit,"exchange/inbox").decode().split("\0")
+    paths=git(root,"ls-tree","-r","-z",commit,"exchange/inbox").decode().split("\0")
     if store is None:
         local.mkdir(parents=True,exist_ok=True)
-    for path in paths:
+    for entry in paths:
+        if not entry:
+            continue
+        metadata, path = entry.split("\t", 1)
         if not re.fullmatch(r"exchange/inbox/[0-9a-f-]{36}\.json",path):
             continue
         try:
+            if not metadata.startswith("100644 blob "):
+                raise ValueError("unexpected Git entry type")
             size=int(git(root,"cat-file","-s",commit+":"+path))
             if size>MAX: raise ValueError("oversize")
             raw=git(root,"show",commit+":"+path)

@@ -65,11 +65,22 @@ class ExchangeRoundtripTests(unittest.TestCase):
                 git("-C", seed, "commit", "-m", "synthetic conflict")
                 git("-C", seed, "push", remote, "HEAD:refs/heads/research-exchange")
                 stage(inbound, root / "unused", database=database)
+                # A symlink blob can contain valid JSON; it is not a record.
+                bad = dict(response, id="00000000-0000-4000-8000-000000000012")
+                blob = subprocess.run(["git", "-C", str(seed), "hash-object", "-w", "--stdin"],
+                                      input=json.dumps(bad).encode(), check=True,
+                                      capture_output=True, timeout=30).stdout.decode().strip()
+                git("-C", seed, "update-index", "--add", "--cacheinfo",
+                    "120000," + blob + ",exchange/inbox/" + bad["id"] + ".json")
+                git("-C", seed, "commit", "-m", "synthetic invalid entry")
+                git("-C", seed, "push", remote, "HEAD:refs/heads/research-exchange")
+                stage(inbound, root / "unused", database=database)
+                self.assertIsNone(StagingDB(database).read(bad["id"]))
 
             self.assertEqual(StagingDB(database).read(response["id"]), result)
             detail = review(database, response["id"])
             self.assertEqual(detail["record"], response)
             self.assertEqual([event["status"] for event in detail["audit"]],
-                             ["staged", "duplicate", "conflict"])
+                             ["staged", "duplicate", "conflict", "conflict"])
             self.assertFalse((root / "unused").exists())
             self.assertIsNone(StagingDB(database).read(request["id"]))
