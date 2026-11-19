@@ -158,9 +158,35 @@ Nebenbefunde, mit behoben:
 * Noch offen aus Stufe 4: Navigation verdichten (U3; der Ablauf hat 23 Schritte und ist auf dem Handy sehr
   lang) und Fundstellen im Seitenbild markieren (U5).
 
+## Beweiswert: Zeitstempel und Seitenbild (Stufe 5.1, vorgezogen 19.11.2026)
+
+* **Beweismanifest** (`application/intel492/stamps.py`): kurzer UTF-8-Text je Web-Beleg mit Fall, Adresse,
+  Archivadresse, Abrufzeit, Server-IP und SHA-256 von WARC, Serverantwort und Seitenbild. Er wird byte-genau
+  gespeichert, damit `openssl ts -verify -data manifest.txt` später gelingt.
+* **RFC 3161** (`timestamps.py`): Anfrage und vollständige Prüfung ohne neue Abhängigkeit (eigener DER-Leser,
+  `cryptography` für Signaturen): Status, Prüfsumme, Einmalwert, `eContentType`, `messageDigest` der signierten
+  Attribute, RSA/ECDSA-Signatur, Zertifikatszweck `timeStamping`, Gültigkeit zum Stempelzeitpunkt, Kette bis zu
+  einer Wurzel aus `certifi` (sonst als „nicht bis zur Wurzel geprüft“ gekennzeichnet). Nur geprüfte Antworten
+  werden gespeichert. Vorgabe: DigiCert (`http://timestamp.digicert.com`), in den Büroeinstellungen änderbar.
+* **Seitenbild** (`pageimage.py`): vorhandenes Edge/Chrome, `--headless=new`, frisches Profil im Temp-Ordner,
+  Steuerung über das DevTools-Protokoll mit eigenem WebSocket-Client. Kein Playwright, kein Browser-Download.
+  Der gesamte Browserverkehr läuft über einen Proxy auf 127.0.0.1: eigene Namensauflösung, alle Adressen müssen
+  öffentlich sein, Verbindung zur geprüften Adresse (kein DNS-Rebinding), nur Port 80/443, Datenmengen- und
+  Verbindungsgrenzen, `<-loopback>` gegen die implizite Loopback-Ausnahme, WebRTC/QUIC aus. Zusätzlich werden
+  alle Anfragen der Seite per `Fetch.requestPaused` angehalten und ihr Host freigegeben; Hintergrunddienste des
+  Browsers (Update, Anmeldung, Safe Browsing) bekommen dadurch keine Verbindung. Downloads sind gesperrt,
+  `alert()` wird abgewiesen. Ganzseitig bis 12 000 Pixel Höhe, Ladezeit höchstens 25 s.
+* **Oberfläche**: Zusätze im Sicherungsformular, Spalte „Seitenbild / Zeitstempel“, Nachholen per Knopf,
+  Prüfpaket als ZIP, Angaben im Arbeitsbericht (Feldpaare) und im Mandantenbericht (Quellenverzeichnis).
+  Fehler der Zusätze lassen die Sicherung bestehen und landen mit Grund im Änderungsprotokoll.
+* **Nicht geprüft in dieser Umgebung:** Live-Anfrage an DigiCert (die Sandbox erlaubt keinen HTTP-Ausgang) und
+  echtes Edge unter Windows. Beides läuft in der Windows-CI (`test_intel_pageimage.py` findet dort Edge) bzw.
+  beim ersten Einsatz im Büro.
+
 ## Prüfen
 
 ```bash
 python -m pytest -q tests/test_build492_intel.py tests/test_build492_hardening.py tests/test_build492_convergence.py tests/test_build492_markings.py tests/test_build492_ux.py tests/test_build490_server_selection.py tests/test_build488_candidates.py
 python -m pytest -q tests/test_build492_browser.py   # benötigt Playwright + Chromium
+python -m pytest -q tests/test_intel_timestamps.py tests/test_intel_evidence.py tests/test_intel_pageimage.py  # OpenSSL, Edge/Chrome/Chromium
 ```
