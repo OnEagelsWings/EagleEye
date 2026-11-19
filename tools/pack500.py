@@ -34,7 +34,10 @@ def build(root:Path,out:Path):
             relative.suffix.lower() in DENIED or relative.name==".env" or
             (relative.name.startswith(".env.") and relative.name!=".env.example")):continue
         path=root.joinpath(*relative.parts)
-        if path.is_symlink() or not path.is_file():continue
+        if path.is_symlink():
+            raise ValueError("Release refuses tracked source symlink: "+relative.as_posix())
+        if not path.is_file():
+            raise ValueError("Release missing tracked source file: "+relative.as_posix())
         if path.stat().st_size>40*1024*1024:raise ValueError("Unexpected large tracked source")
         files[relative.as_posix()]=path.read_bytes()
     wheelhouse=root/"wheelhouse"
