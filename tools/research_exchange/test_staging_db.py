@@ -39,6 +39,22 @@ class StagingTests(unittest.TestCase):
             db.execute("DROP TRIGGER fail_audit")
         self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
 
+    def test_detects_tampered_staged_record(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        with closing(self.db.connect()) as db, db:
+            db.execute("UPDATE records SET raw=? WHERE id=?",
+                       (self.raw.replace(b"Test only", b"Altered"), self.record["id"]))
+        with self.assertRaisesRegex(ValueError, "record digest mismatch"):
+            self.db.read(self.record["id"])
+
+    def test_detects_tampered_staged_digest(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        with closing(self.db.connect()) as db, db:
+            db.execute("UPDATE records SET digest=? WHERE id=?",
+                       ("0" * 64, self.record["id"]))
+        with self.assertRaisesRegex(ValueError, "record digest mismatch"):
+            self.db.read(self.record["id"])
+
     def test_invalid_commit(self):
         with self.assertRaises(ValueError):
             self.db.stage(self.raw, "invalid")
