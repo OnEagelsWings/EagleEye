@@ -87,7 +87,7 @@ class SQLiteInboundTests(unittest.TestCase):
         path = "exchange/inbox/" + ident + ".json"
         def fake_git(root, *args):
             return {"fetch": b"", "rev-parse": commit.encode(),
-                    "ls-tree": (path + "\0").encode(),
+                    "ls-tree": ("100644 blob " + "b" * 40 + "\t" + path + "\0").encode(),
                     "cat-file": str(len(raw)).encode(), "show": raw}[args[0]]
         with TemporaryDirectory() as directory:
             root = Path(directory)
