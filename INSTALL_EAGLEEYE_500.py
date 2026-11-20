@@ -375,7 +375,11 @@ def main(argv=None) -> int:
                 file=sys.stderr,
             )
             return 1
-        _write_receipt(root, fingerprint=fingerprint, probe=probe)
+        try:
+            _write_receipt(root, fingerprint=fingerprint, probe=probe)
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"EagleEye Build 500 receipt write failed: {exc}", file=sys.stderr)
+            return 1
 
     if not args.quiet:
         print(f"EagleEye Build {BUILD} runtime ready ({PACKAGE_VERSION}, non-editable, isolated import).")
