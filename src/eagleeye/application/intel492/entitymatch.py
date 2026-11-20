@@ -12,148 +12,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import threading
-from functools import lru_cache
-from itertools import permutations
 
-from anyascii import anyascii
-from rapidfuzz.distance import Levenshtein
-from rapidfuzz.distance import JaroWinkler
+from eagleeye.infrastructure.providers.personosint_bridge import _personosint
 
-from eagleeye_pro.phase20.entity_lineage456 import PARTICLES, _normalize_name
+# Schritt 503: Der Namensabgleich existiert nur noch einmal – in ``personosint.namematch``. Hier bleiben
+# Vorauswahl (Blocking), Zwischenspeicher und FollowTheMoney-Export der Fallakte.
+_personosint()
+from personosint.namematch import (  # noqa: E402
+    NON_ANCHORS, REASONS, TYPO_MAX_DISTANCE, TYPO_MIN_LENGTH, Prepared as _Prepared, compare_names,
+    compare_prepared as _compare,
+)
 
 COMPARABLE = {"person": "person", "organization": "org", "company": "org", "place": "place",
               "event": "event", "document": "document"}
-GERMAN_FOLD = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
-REASONS = {
-    "same_normalized_name": "gleiche Schreibweise nach Normalisierung",
-    "shared_name_variant": "gleiche Namensvariante (z. B. andere Reihenfolge oder Transliteration)",
-    "umlaut_spelling": "gleicher Name in Umlaut-Schreibweise (ä/ae, ß/ss)",
-    "initial_compatible": "gleicher Nachname, Vorname als Initiale kompatibel",
-    "token_order": "gleiche Namensbestandteile in anderer Reihenfolge",
-    "spelling_similarity": "sehr ähnliche Schreibweise (möglicher Tippfehler)",
-    "consonant_skeleton": "gleiches Konsonantengerüst (Schrift ohne Vokalzeichen) – besonders sorgfältig prüfen",
-}
-
-
-# Tokens that say nothing about *which* entity it is. They take part in the comparison but
-# cannot be the only real agreement between two names (and are not used for blocking).
-NON_ANCHORS = frozenset({
-    "gmbh", "mbh", "ag", "kg", "ohg", "gbr", "ug", "se", "ev", "kgaa", "co", "ltd", "limited", "inc", "llc",
-    "llp", "plc", "corp", "corporation", "sa", "sarl", "sas", "bv", "nv", "spa", "srl", "ab", "oy", "aps",
-    "sro", "ooo", "zao", "oao", "pao", "&", "und", "and", "of", "the", "für", "fuer", "for"})
-TYPO_MIN_LENGTH = 7
-TYPO_MAX_DISTANCE = 2
 DELETION_KEY_MAX_LENGTH = 32
-
-
-def _latin_forms(name: str, normalized: dict) -> set[str]:
-    base = re.sub(r"[^\w\s]", " ", anyascii(name).casefold())
-    forms = {normalized["latin_transliteration"], " ".join(base.split()),
-             " ".join(name.casefold().translate(GERMAN_FOLD).split())}
-    return {f for f in forms if f}
-
-
-def _tokens(form: str) -> list[str]:
-    tokens = [t.strip(".,") for t in re.split(r"[\s'\-]+", form) if t.strip(".,")]
-    return [t for t in tokens if t not in PARTICLES] or tokens
-
-
-@lru_cache(maxsize=200_000)
-def _token_similarity(a: str, b: str) -> tuple[float, str]:
-    """Short name parts must match exactly; typos are tolerated only in long parts."""
-    if a == b:
-        return 1.0, "exact"
-    if (len(a) == 1 and b.startswith(a)) or (len(b) == 1 and a.startswith(b)):
-        return 0.9, "initial"
-    if min(len(a), len(b)) >= TYPO_MIN_LENGTH and Levenshtein.distance(a, b, score_cutoff=TYPO_MAX_DISTANCE) <= TYPO_MAX_DISTANCE:
-        score = JaroWinkler.normalized_similarity(a, b)
-        if score >= 0.93:
-            return score, "typo"
-    return 0.0, "different"
-
-
-def _align(tx: tuple[str, ...], ty: tuple[str, ...]) -> tuple[float, frozenset, bool]:
-    """Best one-to-one alignment; one extra (middle) name part is tolerated.
-
-    An alignment needs an anchor: at least one exactly or nearly equal name part that is not
-    a legal form or filler word. Initials and "GmbH" alone never make two names a candidate.
-    """
-    if not tx or not ty or abs(len(tx) - len(ty)) > 1 or max(len(tx), len(ty)) > 6:
-        return 0.0, frozenset(), False
-    short, long_ = (tx, ty) if len(tx) <= len(ty) else (ty, tx)
-    best, best_kinds, best_order = 0.0, frozenset(), False
-    for perm in permutations(range(len(long_)), len(short)):
-        total, kinds, anchored = 0.0, set(), False
-        for i, j in enumerate(perm):
-            s, kind = _token_similarity(short[i], long_[j])
-            if s == 0.0:
-                break
-            total += s
-            kinds.add(kind)
-            anchored = anchored or kind == "typo" or (kind == "exact" and short[i] not in NON_ANCHORS)
-        else:
-            if not anchored:
-                continue
-            score = total / len(short) * (0.92 if len(short) != len(long_) else 1.0)
-            if score > best:
-                best, best_kinds, best_order = score, frozenset(kinds), list(perm) != sorted(perm)
-    return best, best_kinds, best_order
-
-
-def _skeleton(value: str) -> str:
-    text = anyascii(value).casefold().replace("ch", "kh").replace("c", "k")
-    text = re.sub(r"[aeiouyvw\W_]+", "", text)
-    return re.sub(r"(.)\1+", r"\1", text)
-
-
-_ABJAD = {"Hebrew", "Arabic"}
-
-
-class _Prepared:
-    """Everything needed to compare one name, computed once per entity."""
-    __slots__ = ("key", "variants", "folded", "forms", "token_lists", "abjad", "skeleton")
-
-    def __init__(self, name: str) -> None:
-        normalized = _normalize_name(name)
-        self.key = normalized["comparison_key"]
-        self.variants = frozenset(normalized["variants"]) - {""}
-        self.folded = name.casefold().translate(GERMAN_FOLD)
-        forms = sorted(_latin_forms(name, normalized))
-        self.forms = frozenset(" ".join(f.split()) for f in forms)
-        self.token_lists = tuple(dict.fromkeys(tuple(_tokens(f)) for f in forms))
-        self.abjad = bool(_ABJAD & set(normalized["scripts"]))
-        self.skeleton = _skeleton(name)
-
-
-def _compare(a: _Prepared, b: _Prepared) -> tuple[float, str]:
-    if a.key and a.key == b.key:
-        return 1.0, "same_normalized_name"
-    if a.variants & b.variants:
-        return 0.96, "shared_name_variant"
-    if a.folded == b.folded or (a.forms & b.forms):
-        return 0.95, "umlaut_spelling"
-    best, reason = 0.0, "spelling_similarity"
-    for tx in a.token_lists:
-        for ty in b.token_lists:
-            score, kinds, reordered = _align(tx, ty)
-            if score <= best:
-                continue
-            best = score
-            if "initial" in kinds:
-                reason = "initial_compatible"
-            elif reordered and kinds == {"exact"}:
-                reason = "token_order"
-            else:
-                reason = "spelling_similarity"
-    if best < 0.9 and a.abjad != b.abjad and len(a.skeleton) >= 4 and a.skeleton == b.skeleton:
-        return 0.9, "consonant_skeleton"
-    return round(best, 4), reason
-
-
-def compare_names(left: str, right: str) -> tuple[float, str]:
-    return _compare(_Prepared(left), _Prepared(right))
 
 
 def _deletion_keys(token: str) -> set[str]:

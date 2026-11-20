@@ -126,7 +126,17 @@ noch nicht auf `release/build500-internal-rc1`.
 * **502** `application/personosint_analysis502.py` + Seite `/workbench/personanalyse` (Menü *Auswertung*), API `/api/research/personanalyse`:
   `analysis.assess`, `red_flags`, `correlation.evaluate` auf den Aussagen im Prüfeingang; nur lesend, fallgebunden, abgelehnte/Dubletten = verworfen.
 * Paket: `pyproject.toml` nimmt `personosint` (samt `static`) mit auf. Tests: `tests/test_personosint_engine501.py` (20 Fälle).
-* **503** (eine Fassung für Namensabgleich, Quellfamilien, Netzwerk) ist noch offen.
+* **503** umgesetzt (siehe unten).
+
+### Nachtrag 20. Nov. (2): Schritt 503 – eine Fassung statt zwei
+
+| Baustein | Vorher | Jetzt |
+|---|---|---|
+| Namensabgleich | zwei Kopien (`intel492/entitymatch.py`, `personosint/namematch.py`); PersonOSINT ohne die Anker-Regel („Initialen oder GmbH allein reichen nicht“) | **eine** Fassung in `personosint/namematch.py` (`Prepared`, `compare_prepared`, `compare_names`); `entitymatch` behält Vorauswahl, Zwischenspeicher, FtM-Export. Nachgewiesen: 85 905 Namenspaare und die Fallvorschläge identisch zum bisherigen Verhalten der Fallakte. |
+| Quellfamilien | zwei Definitionen | Definition (5-Wort-Folgen, Mindestlänge, Schwellen, `shingles`) nur in `personosint/lineage.py`. PersonOSINT rechnet exakt, die Fallakte schätzt mit gespeicherten MinHash-Fingerabdrücken; ein Test prüft, dass beide dieselben Familien bilden. |
+| Netzwerkanalyse | NetworkX/Louvain (Fallakte) bzw. eigene Graphfunktionen (PersonOSINT) | **bewusst noch getrennt**: unterschiedliche Graphmodelle (geprüfte Relationen vs. Verbindungsgraph) – eine Vereinheitlichung würde die Ergebnisse beider Seiten ändern. Kandidat für einen eigenen Schritt. |
+
+Tests: `tests/test_personosint_single_source503.py`.
 * Volle Regression auf diesem Stand: **2113 bestanden**, 3 übersprungen, 118 ausgeschlossen. Fünf Tests waren mit euren Commits vom 20. Nov.
   veraltet und sind angepasst, ohne eine Prüfung abzuschwächen: `test_build495_person_workbench` sucht jetzt per POST und prüft zusätzlich, dass
   `GET ?term=` nichts mehr anzeigt (fe98ba7). `test_build500_release` übergibt dem Installer den erwarteten Laufzeitpfad (db4e78e). Zwei

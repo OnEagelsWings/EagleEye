@@ -68,3 +68,12 @@ zweiten Tabelle.
 * Das Paket enthält `personosint` (siehe `pyproject.toml`). Ohne installiertes Paket wird der Ordner `PersonOSINT` neben `src` verwendet.
   Fehlt beides, ist die Brücke leer und die Analyse-Seite meldet das.
 * Tests: `tests/test_personosint_engine501.py`.
+
+## Eine Fassung statt zwei (Schritt 503)
+
+* **Namensabgleich**: Es gibt nur noch `PersonOSINT/personosint/namematch.py`. Die Fallakte (`intel492/entitymatch.py`) ruft ihn auf
+  und ergänzt Vorauswahl, Zwischenspeicher und den FollowTheMoney-Export. Für PersonOSINT kommt damit die strengere Regel der
+  Fallakte hinzu: Initialen oder eine Rechtsform („GmbH“) allein machen zwei Namen nicht zum Kandidaten.
+* **Quellfamilien**: Was als Familie gilt, steht nur in `personosint/lineage.py`. PersonOSINT rechnet exakt. Die Fallakte schätzt
+  dieselbe Größe mit gespeicherten Fingerabdrücken (MinHash), weil das bei großen Fällen schneller ist.
+* **Netzwerkanalyse**: noch zwei Fassungen, weil die Graphmodelle verschieden sind. Diese Vereinheitlichung ist ein eigener späterer Schritt.

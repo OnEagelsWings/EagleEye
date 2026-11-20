@@ -9,18 +9,21 @@ fingerprint is computed once and stored; a view only compares fingerprints.
 from __future__ import annotations
 
 import hashlib
-import re
 from urllib.parse import urlsplit
 
 import numpy as np
 
+from eagleeye.infrastructure.providers.personosint_bridge import _personosint
+
+# Schritt 503: Was eine Quellfamilie ist (5-Wort-Folgen, Mindestlänge, Schwellen), steht nur einmal – in
+# ``personosint.lineage``. PersonOSINT rechnet die Ähnlichkeit exakt; die Fallakte schätzt dieselbe Größe mit
+# gespeicherten MinHash-Fingerabdrücken, damit große Fälle nicht bei jeder Ansicht alle Texte vergleichen.
+_personosint()
+from personosint.lineage import LEVELS, MIN_WORDS, SHINGLE, _WORD, shingles  # noqa: E402
+
 NUM_PERM = 128
-SHINGLE = 5
-MIN_WORDS = 30
 ALGO = "minhash128-splitmix64-shingle5-v2"
-LEVELS = {"streng": 0.7, "normal": 0.5, "locker": 0.3}
 _HEADER_PREFIXES = ("Web-Beleg – ungeprüfte Extraktion", "Public source snapshot")
-_WORD = re.compile(r"\w+", re.UNICODE)
 # One 64-bit seed per hash function. Each function is the splitmix64 finaliser of
 # (shingle hash XOR seed): a bijection on 64 bits that mixes all bits, so the 128 orderings
 # are effectively independent. (A linear a*h+b with small multipliers is NOT: many of the
@@ -48,13 +51,6 @@ def document_text(anchors: list[dict]) -> str:
             continue
         parts.append(text)
     return "\n".join(parts)
-
-
-def shingles(text: str, size: int = SHINGLE) -> set[str]:
-    words = [w.casefold() for w in _WORD.findall(text)]
-    if len(words) < size:
-        return {" ".join(words)} if words else set()
-    return {" ".join(words[i:i + size]) for i in range(len(words) - size + 1)}
 
 
 def sketch(text: str) -> tuple[int, np.ndarray | None]:
