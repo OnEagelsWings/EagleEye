@@ -124,6 +124,9 @@ def _lockdown_acl(path, *, directory):
         ["icacls", str(path), "/grant:r", "*" + sid + rights],
         ["icacls", str(path), "/grant:r", "*S-1-5-18" + rights],
         ["icacls", str(path), "/grant:r", "*S-1-5-32-544" + rights],
+        # Elevated Windows service/CI tokens may default to Administrators
+        # as owner even for newly created files. Normalize to the user SID.
+        ["icacls", str(path), "/setowner", "*" + sid],
     ]
     for command in commands:
         subprocess.run(command, check=True, capture_output=True, timeout=15)
