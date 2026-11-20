@@ -210,3 +210,16 @@ def test_suggestions_ignore_same_name_in_other_case(tmp_path):
     assert any("Max Mustermann" in s["reason"] for s in anna.get(f"/api/cases/{second}/suggestions").json())   # im selben Fall weiter erkannt
     assert anna.get(f"/api/cases/{first}/suggestions").json() == []
     assert anna.get(f"/api/cases/{first}/export/dossier.docx").status_code == 200                        # Dossier nutzt die Vorschläge ebenfalls
+
+
+def test_password_change_revokes_other_sessions_but_keeps_current(tmp_path):
+    """Ein Passwortwechsel widerruft andere Geräte, ohne den aktuellen Ablauf zu unterbrechen."""
+    app = build_app(tmp_path)
+    admin = setup_admin(app)
+    other = login(app, "admin", ADMIN_PW)
+    response = admin.post("/api/auth/password", json={
+        "old_password": ADMIN_PW, "new_password": "Neues!SicheresPasswort2026"})
+    assert response.status_code == 200, response.text
+    assert admin.get("/api/auth/state").json()["state"] == "ok"
+    assert other.get("/api/auth/state").json()["state"] != "ok"
+    assert login(app, "admin", "Neues!SicheresPasswort2026").get("/api/auth/state").json()["state"] == "ok"
