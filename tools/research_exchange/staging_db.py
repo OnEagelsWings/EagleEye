@@ -28,7 +28,9 @@ class StagingDB:
         digest = hashlib.sha256(raw).hexdigest()
         with closing(self.connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
-            old = db.execute("SELECT raw FROM records WHERE id=?", (ident,)).fetchone()
+            old = db.execute("SELECT raw, digest FROM records WHERE id=?", (ident,)).fetchone()
+            if old is not None and hashlib.sha256(old[0]).hexdigest() != old[1]:
+                raise ValueError("record digest mismatch")
             if old is None:
                 db.execute("INSERT INTO records VALUES (?, ?, ?)", (ident, raw, digest))
                 status = "staged"
