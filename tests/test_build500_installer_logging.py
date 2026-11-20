@@ -75,3 +75,25 @@ def test_build500_installer_rejects_linked_runtime_before_pip(tmp_path, monkeypa
     assert not called
     assert list(external.iterdir()) == []
 
+
+
+def test_build500_installer_rejects_linked_installation_root(tmp_path, monkeypatch):
+    import pytest
+    installer_path = Path(__file__).resolve().parents[1] / "INSTALL_EAGLEEYE_500.py"
+    spec = spec_from_file_location("build500_installer_root_guard", installer_path)
+    assert spec and spec.loader
+    installer = module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    real_root = tmp_path / "real-build500"
+    real_root.mkdir()
+    linked_root = tmp_path / "linked-build500"
+    try:
+        linked_root.symlink_to(real_root, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink not permitted")
+    calls = []
+    monkeypatch.setattr(installer.subprocess, "run", lambda *a, **kw: calls.append(a))
+    with pytest.raises(RuntimeError, match="Linked or unexpected installer runtime"):
+        installer._install(linked_root, installer._runtime_python(linked_root), quiet=True)
+    assert not calls
+    assert list(real_root.iterdir()) == []
