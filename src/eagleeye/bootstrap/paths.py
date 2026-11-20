@@ -71,6 +71,15 @@ class RuntimePaths:
             if any(Path(str(candidate) + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
                 raise ValueError("Internal release database cannot contain symbolic links (including WAL/SHM sidecars)")
 
+        if _internal_release_build():
+            # A hard-linked SQLite file can alias a legacy store without any
+            # symlink or path escape. Reject it before workspace initialization.
+            candidate_db = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
+            for suffix in ("", "-wal", "-shm"):
+                candidate_file = Path(str(candidate_db) + suffix)
+                if candidate_file.exists() and candidate_file.stat().st_nlink > 1:
+                    raise ValueError("Internal release database and sidecars cannot be hard-linked")
+
         if db_path is not None and _internal_release_build() and Path(db_path).name in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
             "eagleeye_pro_95_0.db-shm",
