@@ -189,7 +189,7 @@ class Auth:
             self.db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))  # Sitzungen beenden
         return self.public(self.get_user(user_id))  # type: ignore[return-value]
 
-    def change_password(self, user_id: int, old: str, new: str) -> None:
+    def change_password(self, user_id: int, old: str, new: str, keep_session_id: int | None = None) -> None:
         user = self.get_user(user_id)
         if not user or not verify_password(user["password_hash"], old):
             raise AuthError("Das bisherige Passwort ist falsch.", 422)
@@ -198,7 +198,10 @@ class Auth:
         check_password_policy(new, user["username"])
         self.db.update("users", user_id, {"password_hash": hash_password(new), "must_change_password": 0})
         # Passwortwechsel widerruft auch bereits ausgegebene Sitzungen auf anderen Geräten.
-        self.db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        if keep_session_id is None:
+            self.db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        else:
+            self.db.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user_id, keep_session_id))
 
     # ------------------------------------------------------------------ Anmeldung
     def login(self, username: str, password: str, ip: str = "", user_agent: str = "") -> tuple[str, dict[str, Any]]:
