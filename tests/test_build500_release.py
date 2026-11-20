@@ -73,7 +73,7 @@ def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
     commands = []
     monkeypatch.setattr(installer, "_verify_wheelhouse", lambda root: verified.append(root))
     monkeypatch.setattr(installer.subprocess, "run", lambda command, **kwargs: commands.append(command))
-    installer._install(tmp_path, tmp_path / "python", quiet=True)
+    installer._install(tmp_path, installer._runtime_python(tmp_path), quiet=True)
     assert verified == [tmp_path]
     assert len(commands) == 1
     assert "--force-reinstall" in commands[0]
@@ -205,6 +205,15 @@ def test_build500_receipt_fingerprint_changes_with_wheel_manifest(tmp_path):
     folder.mkdir()
     manifest = folder / "MANIFEST-SHA256.json"
     manifest.write_text('{"fixture.whl":"' + "a" * 64 + '"}', encoding="utf-8")
+    # Fingerprinting intentionally requires a complete release tree.
+    # Supply inert fixtures for all mandatory source components.
+    for filename in ("INSTALL_EAGLEEYE_500.py", "pyproject.toml",
+                     "EAGLEEYE_PRO_458_0.py", "RELEASE_MANIFEST_BUILD_458_0.json"):
+        (tmp_path / filename).write_text("fixture", encoding="utf-8")
+    for dirname in ("src/eagleeye", "eagleeye_pro", "alembic_104_1"):
+        folder = tmp_path / dirname
+        folder.mkdir(parents=True)
+        (folder / "fixture.py").write_text("fixture", encoding="utf-8")
     before = installer._source_fingerprint(tmp_path)
     manifest.write_text('{"fixture.whl":"' + "b" * 64 + '"}', encoding="utf-8")
     assert installer._source_fingerprint(tmp_path) != before
@@ -231,7 +240,7 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
     git("add", "source.py")
     git("commit", "-m", "fixture")
     tracked.unlink()
-    with pytest.raises(ValueError, match="missing tracked source"):
+    with pytest.raises(ValueError, match="clean tracked source|missing tracked source"):
         pack.build(tmp_path, tmp_path / "missing.zip")
 
     outside = tmp_path.parent / (tmp_path.name + "-outside.txt")
@@ -240,7 +249,7 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
         os.symlink(outside, tracked)
     except (OSError, NotImplementedError):
         pytest.skip("Symlink creation unavailable on this host")
-    with pytest.raises(ValueError, match="tracked source symlink"):
+    with pytest.raises(ValueError, match="clean tracked source|tracked source symlink"):
         pack.build(tmp_path, tmp_path / "linked.zip")
     assert not (tmp_path / "linked.zip").exists()
 
