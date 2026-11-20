@@ -40,6 +40,9 @@ def tsa(monkeypatch):
             answer["response"] = bytes(broken)
         return answer
     monkeypatch.setattr(timestamps, "request", request)
+    # The test authority's root stands in for the public roots; switch "trusted" off to simulate a forged answer.
+    authority["trusted"] = True
+    monkeypatch.setattr(timestamps, "_trust_roots", lambda: (authority["root"],) if authority["trusted"] else ())
     return authority
 
 
@@ -152,8 +155,17 @@ def test_failed_additions_keep_the_capture_and_can_be_repeated(workspace, fake_n
                         follow_redirects=False)
     assert "zusatz=stempel_fehler" in again.headers["location"]
     assert ctx.db.one("SELECT COUNT(*) AS n FROM web_capture_stamp_492")["n"] == 0
+    # A correctly signed answer whose certificate leads to no trusted root (e.g. someone on the
+    # plain-HTTP path answering with a self-made certificate) is not evidence either.
+    tsa["tamper"], tsa["trusted"] = False, False
+    forged = client.post("/workbench/intel/stempel", data={"case_id": case_id, "csrf": token, "capture_id": row["capture_id"]},
+                         follow_redirects=False)
+    assert "zusatz=stempel_fehler" in forged.headers["location"]
+    assert ctx.db.one("SELECT COUNT(*) AS n FROM web_capture_stamp_492")["n"] == 0
+    reasons = [r["details_json"] for r in ctx.db.all("SELECT details_json FROM audit_events WHERE action='web_capture_stamp_failed_492'")]
+    assert any("vertrauenswürdig" in r for r in reasons)
+    tsa["trusted"] = True
     # Stamp later, then add an image later: the first stamp is outdated, a new one is taken.
-    tsa["tamper"] = False
     client.post("/workbench/intel/stempel", data={"case_id": case_id, "csrf": token, "capture_id": row["capture_id"]})
     first = stamps.latest(ctx, case_id)[row["capture_id"]]
     browser["fail"] = False
@@ -165,6 +177,11 @@ def test_failed_additions_keep_the_capture_and_can_be_repeated(workspace, fake_n
     assert not stamps.check(ctx, first["stamp_id"])["current"]
     newest = stamps.latest(ctx, case_id)[row["capture_id"]]
     assert newest["stamp_id"] != first["stamp_id"] and stamps.check(ctx, newest["stamp_id"])["current"]
+    tsa["trusted"] = False
+    assert not stamps.check(ctx, newest["stamp_id"])["ok"]
+    assert "✗ Zeitstempel nicht prüfbar" in client.get("/workbench/intel/web", params={"case_id": case_id}).text
+    assert stamps.client_summary(ctx, case_id, row["capture_id"]) == ["Seitenbild gesichert"]
+    tsa["trusted"] = True
     # A second image for the same capture is refused (the first one stays the evidence).
     with pytest.raises(ValueError):
         stamps.store_image(ctx, identity=user, case_id=case_id, capture_id=row["capture_id"],

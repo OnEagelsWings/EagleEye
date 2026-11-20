@@ -118,24 +118,42 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID  # noqa: E402
 T = timestamps
 
 
-def _cert(subject, issuer, key, issuer_key, *, ca=False, eku=None, days=(1, 30)):
+def _cert(subject, issuer, key, issuer_key, *, ca=False, eku=None, days=(1, 30), basic=True, path_length=None,
+          cert_sign=None):
     now = datetime.now(timezone.utc)
     builder = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, subject[0]),
                                                                  x509.NameAttribute(NameOID.ORGANIZATION_NAME, subject[1])]))
                .issuer_name(issuer).public_key(key.public_key()).serial_number(x509.random_serial_number())
-               .not_valid_before(now - timedelta(days=days[0])).not_valid_after(now + timedelta(days=days[1]))
-               .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True))
+               .not_valid_before(now - timedelta(days=days[0])).not_valid_after(now + timedelta(days=days[1])))
+    if basic:
+        builder = builder.add_extension(x509.BasicConstraints(ca=ca, path_length=path_length), critical=True)
+    if cert_sign is not None:
+        builder = builder.add_extension(x509.KeyUsage(digital_signature=not cert_sign, content_commitment=False,
+                                                      key_encipherment=False, data_encipherment=False, key_agreement=False,
+                                                      key_cert_sign=cert_sign, crl_sign=cert_sign, encipher_only=False,
+                                                      decipher_only=False), critical=True)
     if eku:
         builder = builder.add_extension(x509.ExtendedKeyUsage(eku), critical=True)
     return builder.sign(issuer_key, hashes.SHA256())
 
 
-def python_tsa(*, key_type="rsa", eku=(ExtendedKeyUsageOID.TIME_STAMPING,), valid_days=(1, 30)):
-    root_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+def _key():
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+def python_tsa(*, key_type="rsa", eku=(ExtendedKeyUsageOID.TIME_STAMPING,), valid_days=(1, 30), middle=None):
+    """Test authority. middle: list of intermediate certificate options (dicts for _cert), root first."""
+    root_key = _key()
     root_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "PyRoot"), x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Py")])
     root = _cert(("PyRoot", "Py"), root_name, root_key, root_key, ca=True)
-    key = ec.generate_private_key(ec.SECP256R1()) if key_type == "ec" else rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    cert = _cert(("PyTSA", "Python Zeitstempel"), root.subject, key, root_key, eku=list(eku), days=valid_days)
+    issuer, issuer_key, extra = root, root_key, []
+    for number, options in enumerate(middle or []):
+        mid_key = _key()
+        mid = _cert((f"PyMid{number}", "Py Zwischen"), issuer.subject, mid_key, issuer_key, **options)
+        extra.append(mid)
+        issuer, issuer_key = mid, mid_key
+    key = ec.generate_private_key(ec.SECP256R1()) if key_type == "ec" else _key()
+    cert = _cert(("PyTSA", "Python Zeitstempel"), issuer.subject, key, issuer_key, eku=list(eku), days=valid_days)
 
     def send(der: bytes) -> bytes:
         req = T._root(der).children()
@@ -155,7 +173,7 @@ def python_tsa(*, key_type="rsa", eku=(ExtendedKeyUsageOID.TIME_STAMPING,), vali
             sig_alg = T._tlv(0x30, T._oid("1.2.840.113549.1.1.11") + b"\x05\x00")
         sid = T._tlv(0x30, cert.issuer.public_bytes() + T._int(cert.serial_number))
         signer_info = T._tlv(0x30, T._int(1) + sid + alg + b"\xa0" + attrs[1:] + sig_alg + T._tlv(0x04, signature))
-        certs = T._tlv(0xA0, cert.public_bytes(serialization.Encoding.DER))
+        certs = T._tlv(0xA0, b"".join(c.public_bytes(serialization.Encoding.DER) for c in [cert, *extra]))
         encap = T._tlv(0x30, T._oid(T.OID_TST_INFO) + T._tlv(0xA0, T._tlv(0x04, tst)))
         signed = T._tlv(0x30, T._int(3) + T._tlv(0x31, alg) + encap + certs + T._tlv(0x31, signer_info))
         return T._tlv(0x30, T._tlv(0x30, T._int(0)) + T._tlv(0x30, T._oid(T.OID_SIGNED_DATA) + T._tlv(0xA0, signed)))
@@ -185,3 +203,43 @@ def test_certificate_not_valid_at_stamp_time_is_rejected():
     result = T.request("http://tsa.example", digest, send=tsa["send"])
     with pytest.raises(T.TimestampError, match="nicht gültig"):
         T.verify(result["response"], digest, nonce=result["nonce"], roots=[tsa["root"]])
+
+
+ISSUING_CA = {"ca": True, "cert_sign": True}
+
+
+@pytest.mark.parametrize("middle, trusted", [
+    ([ISSUING_CA], True),
+    ([ISSUING_CA, ISSUING_CA], True),
+    ([{"ca": False}], False),                                    # ordinary end-entity certificate as issuer
+    ([{"basic": False}], False),                                 # no basic constraints at all
+    ([{"ca": True, "cert_sign": False}], False),                 # CA flag, but not allowed to sign certificates
+    ([{"ca": True, "path_length": 0}, ISSUING_CA], False),       # path length exceeded
+    ([{"ca": True, "path_length": 0}], True),
+    ([{"ca": True, "eku": [ExtendedKeyUsageOID.SERVER_AUTH]}], False),  # intermediate restricted to TLS
+])
+def test_chain_requires_authorised_intermediates(middle, trusted):
+    tsa = python_tsa(middle=middle)
+    digest = hashlib.sha256(b"beleg").digest()
+    result = T.request("http://tsa.example", digest, send=tsa["send"])
+    facts = T.verify(result["response"], digest, nonce=result["nonce"], roots=[tsa["root"]])
+    assert facts["chain_trusted"] is trusted
+
+
+def test_malformed_responses_only_raise_timestamp_errors():
+    tsa = python_tsa()
+    digest = hashlib.sha256(b"beleg").digest()
+    good = T.request("http://tsa.example", digest, send=tsa["send"])["response"]
+    samples = [bytes.fromhex("30023000"), bytes.fromhex("3000"), b"", b"\x30", bytes.fromhex("30053003020100"),
+               bytes.fromhex("3008300302010030013000")]
+    samples += [good[:n] for n in range(0, len(good), 7)]
+    for position in range(0, len(good), 3):
+        for value in (0x00, 0xFF, good[position] ^ 0x80):
+            broken = bytearray(good)
+            broken[position] = value
+            samples.append(bytes(broken))
+    for sample in samples:
+        try:
+            T.verify(sample, digest, roots=[tsa["root"]])
+        except T.TimestampError:
+            pass

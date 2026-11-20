@@ -148,6 +148,10 @@ def stamp(ctx, *, identity: dict, case_id: str, capture_id: str, send=None, root
     url = settings(ctx)["tsa_url"]
     answer = timestamps.request(url, digest, send=send)
     facts = timestamps.verify(answer["response"], digest, nonce=answer["nonce"], roots=roots)
+    if not facts["chain_trusted"]:
+        # Over plain HTTP anyone in between could answer with a self-made certificate.
+        raise timestamps.TimestampError("Das Zertifikat des Zeitstempeldienstes führt zu keiner vertrauenswürdigen "
+                                        "Zertifizierungsstelle – Stempel verworfen.")
     captured = datetime.fromisoformat(row["captured_at"].replace("Z", "+00:00"))
     later = (datetime.fromisoformat(facts["gen_time"]) - captured).total_seconds() > 600
     entry = {"stamp_id": "stamp492_" + secrets.token_hex(10), "capture_id": capture_id, "case_id": case_id,
@@ -194,7 +198,10 @@ def check(ctx, stamp_id: str, *, roots=None) -> dict:
     except timestamps.TimestampError as exc:
         result["problem"] = str(exc)
         return result
-    result.update(ok=True, chain_trusted=facts["chain_trusted"], gen_time=facts["gen_time"], tsa=facts["tsa"])
+    if not facts["chain_trusted"]:
+        result["problem"] = "Zertifikatskette nicht (mehr) bis zu einer vertrauenswürdigen Zertifizierungsstelle prüfbar."
+        return result
+    result.update(ok=True, chain_trusted=True, gen_time=facts["gen_time"], tsa=facts["tsa"])
     result["current"] = manifest(ctx, row["capture_id"]) == row["manifest"]
     if not result["current"]:
         result["problem"] = "Der Beleg hat sich seit dem Stempel geändert (z. B. Seitenbild ergänzt) – neuen Stempel einholen."
@@ -214,7 +221,7 @@ def report_fields(ctx, case_id: str, capture_id: str) -> list[tuple[str, str]]:
         if state["ok"] and state["current"]:
             fields.append(("Unabhängiger Zeitstempel (RFC 3161)",
                            f"{when} UTC · {current['tsa_name']} · Manifest SHA-256 {current['manifest_sha256']}"
-                           + (" · Zertifikatskette geprüft" if state["chain_trusted"] else " · Zertifikatskette nicht bis zur Wurzel geprüft")
+                           " · Signatur und Zertifikatskette geprüft"
                            + (" · nachträglich eingeholt" if current["later"] else "")))
         else:
             fields.append(("Unabhängiger Zeitstempel (RFC 3161)", "nicht aktuell oder nicht prüfbar – " + state["problem"]))

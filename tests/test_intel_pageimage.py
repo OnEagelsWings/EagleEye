@@ -87,12 +87,14 @@ def _png_size(png):
 def test_page_image_is_taken_and_internal_requests_are_blocked(site):
     result = pageimage.take(f"http://site.test:{site['port']}/", browser=BROWSER, check=only_site, ports=None)
     width, height = _png_size(result["png"])
-    assert (width, height) == (pageimage.WIDTH, result["height"]) and height >= 2400
-    assert result["complete"] and result["hosts"] == ["site.test"]
-    assert any(b.startswith("127.0.0.1") for b in result["blocked"])
-    assert any(b.startswith("10.1.2.3") for b in result["blocked"])
+    facts = {k: v for k, v in result.items() if k != "png"}
+    assert (width, height) == (pageimage.WIDTH, result["height"]) and height >= 2400, facts
     paths = [path for _, path in site["hits"]]
-    assert "/ok.png" in paths and "/secret.png" not in paths and "/" in paths
+    assert "/ok.png" in paths and "/secret.png" not in paths and "/" in paths, (paths, facts)
+    assert result["hosts"] == ["site.test"], facts
+    assert any(b.startswith("127.0.0.1") for b in result["blocked"]), facts
+    assert any(b.startswith("10.1.2.3") for b in result["blocked"]), facts
+    assert result["complete"], facts
 
 
 def _ask(proxy, request: bytes) -> bytes:
