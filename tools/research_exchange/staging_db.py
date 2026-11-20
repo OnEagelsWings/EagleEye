@@ -29,8 +29,14 @@ class StagingDB:
         with closing(self.connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT raw, digest FROM records WHERE id=?", (ident,)).fetchone()
-            if old is not None and hashlib.sha256(old[0]).hexdigest() != old[1]:
-                raise ValueError("record digest mismatch")
+            if old is not None:
+                if hashlib.sha256(old[0]).hexdigest() != old[1]:
+                    raise ValueError("record digest mismatch")
+                anchor = db.execute(
+                    "SELECT 1 FROM audit WHERE id=? AND digest=? AND status='staged' LIMIT 1",
+                    (ident, old[1])).fetchone()
+                if anchor is None:
+                    raise ValueError("staged audit anchor mismatch")
             if old is None:
                 db.execute("INSERT INTO records VALUES (?, ?, ?)", (ident, raw, digest))
                 status = "staged"
