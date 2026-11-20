@@ -22,7 +22,19 @@ TOOLS = {
 OUT = Path(os.environ.get("EAGLEEYE_ANALYSIS_HOME", Path.home() / "EagleEye-Analysen"))
 os.environ["PATH"] = os.pathsep.join([str(Path(sys.executable).parent), os.environ.get("PATH", "")])
 
+NATIVE = Path(__file__).resolve().parent / "native"
+PERL = NATIVE / "Library/bin/perl.exe"
+EXIF_SCRIPT = NATIVE / "bin/exiftool"
+if os.name == "nt" and NATIVE.is_dir():
+    suffixes = ["Library/bin", "Scripts", "."]
+    os.environ["PATH"] += os.pathsep + os.pathsep.join(str(NATIVE / s) for s in suffixes)
+    tessdata = NATIVE / "share/tessdata"
+    if (tessdata / "eng.traineddata").is_file():
+        os.environ["TESSDATA_PREFIX"] = str(tessdata)
+
 def locate(name):
+    if name == "exiftool" and os.name == "nt" and PERL.is_file() and EXIF_SCRIPT.is_file():
+        return str(EXIF_SCRIPT)
     return shutil.which(name)
 
 def capabilities():
@@ -36,11 +48,14 @@ def command(name, *args, output=None, timeout=900):
     exe = locate(name)
     if not exe:
         raise ValueError(f"{name} fehlt auf diesem Gerät.")
-    proc = subprocess.run([exe, *map(str, args)], shell=False, stdout=output or subprocess.PIPE,
+    prefix = [exe]
+    if name == "exiftool" and exe == str(EXIF_SCRIPT):
+        prefix = [str(PERL), "-I" + str(NATIVE / "Library/lib"), exe]
+    proc = subprocess.run([*prefix, *map(str, args)], shell=False, stdout=output or subprocess.PIPE,
                           stderr=subprocess.PIPE, timeout=timeout)
     if proc.returncode:
         raise ValueError(f"{name}: " + (proc.stderr or proc.stdout or b"").decode("utf-8", "replace")[-1400:])
-    return (proc.stdout or b"").decode("utf-8", "replace")
+    return (proc.stdout or (proc.stderr if args in [("-v",), ("-V",), ("--version",)] else b"") or b"").decode("utf-8", "replace")
 
 def analyze(case, mode, paths, query="", offset=0):
     if mode not in TOOLS or not isinstance(case, str) or not 0 < len(case) <= 100:
