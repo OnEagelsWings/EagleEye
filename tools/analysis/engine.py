@@ -10,6 +10,7 @@ import sqlite3
 import subprocess
 import sys
 import uuid
+import security_tools
 
 TOOLS = {
     "metadata": ("ExifTool", ["exiftool"]),
@@ -42,6 +43,7 @@ def capabilities():
             for key, (title, tools) in TOOLS.items()}
     if status["search"]["missing"] and locate("pdftotext"):
         status["search"] = {"label":"PDF- und Textsuche (Poppler)", "missing":[]}
+    status.update(security_tools.status())
     return status
 
 def command(name, *args, output=None, timeout=900):
@@ -58,7 +60,7 @@ def command(name, *args, output=None, timeout=900):
     return (proc.stdout or (proc.stderr if args in [("-v",), ("-V",), ("--version",)] else b"") or b"").decode("utf-8", "replace")
 
 def analyze(case, mode, paths, query="", offset=0):
-    if mode not in TOOLS or not isinstance(case, str) or not 0 < len(case) <= 100:
+    if mode not in (TOOLS | security_tools.LABELS) or not isinstance(case, str) or not 0 < len(case) <= 100:
         raise ValueError("Ungültiger Fall oder Auftrag.")
     missing = capabilities()[mode]["missing"]
     if missing:
@@ -66,7 +68,7 @@ def analyze(case, mode, paths, query="", offset=0):
     if not isinstance(paths, list) or len(paths) > 100 or len(query) > 200:
         raise ValueError("Zu viele Eingaben.")
     files = [Path(p.strip().strip('"')).expanduser().resolve(strict=True) for p in paths]
-    if mode != "alias" and (not files or not all(p.is_file() for p in files)):
+    if mode not in ("alias","lynis","leaks") and (not files or not all(p.is_file() for p in files)):
         raise ValueError("Bitte lokale Dateien auswählen.")
     if mode in ("ocr", "timeline") and len(files) != 1:
         raise ValueError("Bitte genau eine Quelldatei wählen.")
@@ -83,13 +85,18 @@ def analyze(case, mode, paths, query="", offset=0):
     dest.mkdir(parents=True, exist_ok=False)
     sources = []
     for p in files:
+        if mode == "leaks" and p.is_dir(): continue
+        if not p.is_file(): raise ValueError("Datei erwartet.")
         with p.open("rb") as stream:
             h = hashlib.file_digest(stream, "sha256").hexdigest()
         sources.append({"name": p.name, "sha256": h})
     def write(name, value):
         (dest / name).write_text(value, encoding="utf-8")
-    programs = TOOLS[mode][1]
-    if mode == "metadata":
+    versions = {}
+    programs = TOOLS.get(mode, ("", []))[1]
+    if mode in security_tools.LABELS:
+        body,versions=security_tools.inspect_files(mode, files)
+    elif mode == "metadata":
         body = command("exiftool", "-j", "-G1", "-n", *files)
         data = json.loads(body)
         for row in data:
@@ -184,7 +191,6 @@ def analyze(case, mode, paths, query="", offset=0):
         (dest / "sortierung.sqlite").unlink()
         body = f"{count} Dateisystemereignisse. Vollständige Daten in zeitleiste.csv.\n" + "\n".join(f"{t} | {kind} | {p}" for t,kind,p in preview)
     write("ausgabe.txt", body)
-    versions = {}
     for name in programs:
         arg = {"pdftotext":"-v","exiftool":"-ver","ffmpeg":"-version","ffprobe":"-version","fls":"-V","recollindex":"-V","recollq":"-v"}.get(name, "--version")
         try: versions[name] = command(name, arg, timeout=10).strip().splitlines()[0][:160]

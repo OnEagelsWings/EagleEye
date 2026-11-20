@@ -16,7 +16,7 @@ source.onchange=async()=>{
   const file=source.files[0];if(!file)return;
   if(file.size>512000)throw Error('Befunddatei zu groß.');
   const text=await file.text(), report=JSON.parse(text);
-  if(report.format!=='eagleeye-analysis/1'||report.caseId!==form.dataset.case||typeof report.body!=='string'||report.body.length>45000||!['ocr','video','search','metadata','alias','timeline'].includes(report.tool))throw Error('Befundformat oder Fallkennung passt nicht.');
+  if(report.format!=='eagleeye-analysis/1'||report.caseId!==form.dataset.case||typeof report.body!=='string'||report.body.length>45000||!['ocr','video','search','metadata','alias','timeline','pcap','zap','leaks','yara','inventory','lynis'].includes(report.tool))throw Error('Befundformat oder Fallkennung passt nicht.');
   selected={text,tool:report.tool};preview.textContent=report.body;submit.disabled=false;
  }catch(err){feedback.textContent=String(err)}
 };
@@ -44,7 +44,7 @@ def attach_analysis_tools(app, build):
             '<section class="card"><h2>Auf dem Analysegerät ausführen</h2>'
             '<p>Mit tools/analysis/EagleEye-Analyse.cmd (Windows) oder python3 bridge.py '
             '(Kali, im Ordner tools/analysis) den lokalen Dienst starten.</p>'
-            '<p>ExifTool, Recoll, OCRmyPDF, FFmpeg, Sherlock und The Sleuth Kit stehen je nach Installation zur Auswahl.</p>'
+            '<p>ExifTool, Recoll, OCRmyPDF, FFmpeg, Sherlock und The Sleuth Kit sowie TShark, ZAP-Passivprüfung, Gitleaks, YARA, Nmap-Berichtsvergleich und Lynis stehen je nach Installation zur Auswahl.</p>'
             f'<a target="_blank" rel="noopener" href="{escape(local,quote=True)}">Analyse für diesen Fall öffnen</a></section>'
             f'<form class="card" id="analysis-import" data-case="{escape(case_id,quote=True)}">'
             '<h2>Befund in den Quellenbestand übernehmen</h2><label>Lokale befund.json'
