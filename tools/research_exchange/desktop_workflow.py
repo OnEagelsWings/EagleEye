@@ -74,11 +74,33 @@ class DesktopWorkflow:
             ident, hashlib.sha256(raw).hexdigest(), "inbound-" + decision)
         return {"event": event, "receipt": receipt}
 
-    def pull_inbound(self):
+    def list_remote_candidates(self):
+        """Fetch metadata of remote inbox, WITHOUT reading any record content."""
         if not (self.gitdir / ".git").is_dir():
             raise ValueError("Local Git staging directory not initialized")
-        # Explicit action only. No checkout of remote files, no vault import.
-        return bridge.stage(self.gitdir, self.inbox, database=self.database)
+        bridge.git(self.gitdir, "fetch", "--no-tags", bridge.REMOTE, bridge.BRANCH)
+        commit = bridge.git(self.gitdir, "rev-parse", "FETCH_HEAD").decode().strip()
+        entries = bridge.git(self.gitdir, "ls-tree", "-r", "-z", commit,
+                             "exchange/inbox").decode().split("\0")
+        names = set()
+        for entry in entries:
+            if not entry:
+                continue
+            meta, path = entry.split("\t", 1)
+            name = path.removeprefix("exchange/inbox/")
+            if path.startswith("exchange/inbox/") and _NAME.fullmatch(name) \
+                    and meta.startswith("100644 blob "):
+                names.add(name[:-5])
+        return sorted(names)
+
+    def pull_inbound(self, ident):
+        if not isinstance(ident, str) or not _NAME.fullmatch(ident + ".json"):
+            raise ValueError("Select an exact remote record ID")
+        if not (self.gitdir / ".git").is_dir():
+            raise ValueError("Local Git staging directory not initialized")
+        # Allowlist prevents reading any other record in the private Git tree.
+        return bridge.stage(self.gitdir, self.inbox, database=self.database,
+                            allowed_ids={ident})
 
     def _outgoing_path(self, filename):
         if not isinstance(filename, str) or not _NAME.fullmatch(filename):

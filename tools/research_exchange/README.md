@@ -52,3 +52,22 @@ GitHub Actions separately runs the full test suite on Linux and Windows. Portabl
 ## Limitations before version 1.0
 
 No independent off-host audit checkpoint, no end-to-end authenticated plugin adapter, no packaged/signed Windows installer, no formal user acceptance of GUI or public-branch transfer. Do not merge, release, or treat imported records as verified evidence until the remaining release criteria are met.
+
+
+## Controlled inbound index / targeted import
+
+The local GUI retrieves only Git **path metadata** when the operator clicks "Remote-IDs laden". The operator selects a specific UUID and explicitly confirms fetching **only that record**. The importer filters by UUID **before** reading any private Git blobs. Pre-existing records on the private branch are neither inspected nor automatically staged. The GUI never opens case files or imports research records as evidence.
+
+First-run launch from an EagleEye checkout executes the idempotent Windows workspace preparation script `install_local.py --init` and opens the GUI. Existing protected DPAPI key material, SQLite records and Git branches are preserved. No paid services or background services are installed.
+
+## Actual synthetic live private-branch acceptance (2026-11-20)
+
+With explicit synthetic-test authorization, `live_private_acceptance.py` was executed against the private MichaIntel `research-exchange` branch, returning exit code 0. It created exactly one synthetic public-topic outbound request (`81955ef7-e0d0-4043-a75d-0e58223d175f`) and one synthetic public-topic inbound response (`1a360777-cf62-46d7-ba5f-6aa295a2b55c`). The test confirmed byte-for-byte remote roundtrip, exact-record inbound staging, explicit inbound approval, idempotent outgoing retry (`duplicate`), blocked same-ID conflicting outgoing content, and a five-event HMAC audit trail. The remote commits were `d7377f0c691f3437ea4cbbc08261b9a03560e119` and `32c374a9e642bd1605fbf2ce723701b5199d0585`.
+
+The script is guarded by two explicit CLI flags and does not make network writes by default. **Do not rerun the live test routinely:** each successful run creates a new pair of synthetic fixtures on the private branch. It does not read pre-existing private records. It is not a general-purpose research crawler.
+
+Real user-facing private-branch publication still requires the operator's on-screen approval and review of record contents. The schema's classification claim does not ensure absence of personal data.
+
+## Integration guidance
+
+EagleEye's integrated root `START_HIER.bat` may offer an additional **Forschungs-Brücke** menu action, calling `tools\research_exchange\START_RESEARCH_BRIDGE_WINDOWS.cmd` in the current checked-out source. It must not import anything into the case/evidence vault, touch `main`, or bypass the two explicit operator confirmations. Keep the integration on a separate review branch based on PR #94 until its concurrent developer has accepted it.

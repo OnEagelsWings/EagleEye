@@ -44,6 +44,7 @@ class ResearchBridgeWindow(tk.Tk):
         self._last_digest = None
         self._inbound_names = []
         self._outbound_names = []
+        self.remote_id = tk.StringVar()
 
         ttk.Label(self, text="EAGLEEYE  /  FORSCHUNGS-BRÜCKE",
                   font=("Segoe UI", 17, "bold")).pack(anchor="w", padx=16, pady=(14, 3))
@@ -72,14 +73,21 @@ class ResearchBridgeWindow(tk.Tk):
     def _build_incoming(self):
         header = ttk.Frame(self.incoming)
         header.pack(fill="x")
-        ttk.Button(header, text="Aus privatem Forschungsbranch abrufen",
+        ttk.Button(header, text="Remote-IDs laden (nur Metadaten)",
+                   command=self._remote_index).pack(side="left", padx=(0, 6))
+        self.remote_choice = ttk.Combobox(header, textvariable=self.remote_id,
+                                           values=[], state="readonly", width=40)
+        self.remote_choice.pack(side="left", padx=(0, 6))
+        ttk.Button(header, text="Ausgewählte ID abrufen",
                    command=self._pull).pack(side="left", padx=(0, 8))
         ttk.Button(header, text="Lokale Liste aktualisieren",
                    command=self._refresh_inbound).pack(side="left")
-        ttk.Button(header, text="Nach Prüfung freigeben",
-                   command=lambda: self._review_inbound("approved")).pack(side="left", padx=(12, 5))
-        ttk.Button(header, text="Zurückstellen",
-                   command=lambda: self._review_inbound("deferred")).pack(side="left", padx=(0, 5))
+        decisions = ttk.Frame(self.incoming)
+        decisions.pack(fill="x", pady=(8, 2))
+        ttk.Button(decisions, text="Nach Prüfung freigeben",
+                   command=lambda: self._review_inbound("approved")).pack(side="left", padx=(0, 8))
+        ttk.Button(decisions, text="Zurückstellen",
+                   command=lambda: self._review_inbound("deferred")).pack(side="left")
         ttk.Label(self.incoming,
                   text="Abruf speichert nur validierte Datensätze lokal. Kein Import in EagleEye-Fallakten.",
                   foreground="#5b6472").pack(anchor="w", pady=(8, 10))
@@ -298,14 +306,24 @@ class ResearchBridgeWindow(tk.Tk):
         except Exception as exc:
             messagebox.showerror("Veröffentlichung verweigert", str(exc))
 
+    def _remote_index(self):
+        if self._busy:
+            return
+        self._run_job("Remote-Index", self.workflow.list_remote_candidates)
+
     def _pull(self):
         if self._busy:
             return
-        if not messagebox.askyesno("Manueller Abruf",
-                    "Jetzt ausschließlich aus dem privaten Forschungsbranch abrufen "
-                    "und valide Datensätze lokal zwischenlagern?"):
+        ident = self.remote_id.get()
+        if not ident:
+            messagebox.showwarning("ID erforderlich",
+                                   "Bitte zuerst die Remote-IDs abrufen und eine auswählen.")
             return
-        self._run_job("Abruf", self.workflow.pull_inbound)
+        if not messagebox.askyesno("Manueller Abruf",
+                    "Nur diesen einen Datensatz aus dem privaten Forschungsbranch "
+                    f"abrufen und nach strikter Validierung lokal speichern?\n{ident}"):
+            return
+        self._run_job("Abruf", self.workflow.pull_inbound, ident)
 
     def _run_job(self, label, fn, *args):
         self._busy = True
@@ -325,8 +343,14 @@ class ResearchBridgeWindow(tk.Tk):
                 self._busy = False
                 self._clear_approval()
                 if ok:
-                    self._set_status(label + " abgeschlossen. "
-                                     + (str(result) if result else ""))
+                    if label == "Remote-Index":
+                        self.remote_choice.configure(values=result)
+                        self.remote_id.set(result[0] if result else "")
+                        self._set_status(f"Remote-Index: {len(result)} mögliche Kennungen. "+
+                                         "Noch keine Inhalte eingelesen.")
+                    else:
+                        self._set_status(label + " abgeschlossen. "
+                                         + (str(result) if result else ""))
                     self._refresh_inbound()
                     self._refresh_outbound()
                     self._refresh_audit()
