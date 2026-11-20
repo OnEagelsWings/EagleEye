@@ -64,6 +64,7 @@ def create_backup(db: Database, vault: Vault, data_dir: Path, out_dir: Path, pas
                 for r in rows:
                     if r.get("totp_secret"):
                         r["totp_secret"] = "PLAIN:" + vault.decrypt_text(r["totp_secret"])
+                    r.pop("totp_pending", None)   # vorläufige Einrichtung nicht sichern – sie wäre im Zieltresor unlesbar
             if table == "settings":
                 for r in rows:
                     if r["key"] in ENCRYPTED_SETTINGS and r["value"]:

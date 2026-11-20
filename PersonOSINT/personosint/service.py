@@ -1556,7 +1556,7 @@ class Platform:
 
         def add(a: int, b: int, reason: str, relation: str, conf: int) -> None:
             k = frozenset((a, b))
-            if a == b or k in linked or k in seen:
+            if a == b or k in linked or k in seen or a not in ents or b not in ents:   # nie Einträge anderer Fälle vorschlagen
                 return
             seen.add(k)
             out.append({"source_id": a, "target_id": b, "source_label": ents[a]["label"], "target_label": ents[b]["label"],
@@ -1571,7 +1571,7 @@ class Platform:
             add(r["a"], r["b"], f"Gemeinsamer Identifikator ({kind}): {r['value']}", rel, 60 if r["kind"] in {"email", "phone"} else 40)
         names = self.db.all("SELECT a.entity_id AS a, b.entity_id AS b, a.value FROM identifiers a JOIN identifiers b "
                             "ON a.normalized = b.normalized AND a.kind IN ('name','alias') AND b.kind IN ('name','alias') AND a.entity_id < b.entity_id "
-                            "WHERE a.case_id = ?", (case_id,))
+                            "WHERE a.case_id = ? AND b.case_id = ?", (case_id, case_id))   # beide Seiten auf den Fall begrenzen
         for r in names:
             add(r["a"], r["b"], f"Gleicher Name „{r['value']}“ – möglicherweise dieselbe Person (Dublette?)", "identisch mit (vermutet)", 30)
         # Begründeter Namensabgleich über Schreibweisen und Schriften (aus Build 492) – nur Prüfvorschlag, nie Zusammenführung

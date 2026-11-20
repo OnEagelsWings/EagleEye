@@ -96,13 +96,31 @@ reine Funktion `runner(quelle, art, wert, http)` und nimmt jeden Transport mit e
 `ProviderCollection120` ist damit je Quelle wenige Zeilen. Die Ein-Klick-Prüfung („Alle Quellen prüfen“) sollte es auf beiden Seiten geben:
 Beide Linien konnten ihre Quellen bisher nicht live bestätigen.
 
+### Nachtrag 19. Nov.: Zusammenführung aller aktiven Stränge, Codex-Befunde
+
+| Was | Ergebnis |
+|---|---|
+| `release/build500-internal-rc1` bis `affd7f8` | übernommen; Konflikt in `tests/test_build490_fresh_workspace.py` – eure gründlichere Fassung übernommen |
+| PR #95 Firecrawl | übernommen. **Fehler gefunden und behoben:** `r"site:([a-zA-Z0-9.-]+) ([^\\r\\n]+)"` schließt im Raw-String die Buchstaben „r“ und „n“ (und den Backslash) aus, nicht die Zeilenumbrüche. Folge: fast jede deutsche Suche wurde abgelehnt („Bundestag“), ein Zeilenumbruch dagegen angenommen. Der Strang hatte keine Tests; neu: `tests/test_firecrawl_guards.py` (14 Fälle, ohne Netz). |
+| PR #97 Austausch-Schnittstelle | übernommen, keine Konflikte; eigene Tests 44 bestanden (3 nur unter Windows) |
+| Codex-Review zu PR #94 (P1, P2) | beide behoben in PersonOSINT 1.6.1: 2FA-Bestätigung ist kein zweiter Anmeldeweg mehr (nur bei laufender Einrichtung, gleicher Fehlversuchszähler; neues Geheimnis bleibt vorläufig, bis es bestätigt ist); Vorschläge im Verbindungen-Reiter beidseitig fallgebunden. Regressionstests in `PersonOSINT/tests/test_security.py`. |
+| Ältere Zweige | 52 nicht zusammengeführte Zweige geprüft: 44 ohne fehlende Datei (alles in späterer Fassung enthalten), 8 überholte Parallelversuche – Übersicht `docs/ZWEIGE_STAND.md`. Nicht eingemischt, um keine alten Fassungen zurückzuholen. |
+
+**Prüfstand nach der Zusammenführung (`898c2f0`):** volle Regression lokal 2064 bestanden, 3 übersprungen (ClamAV), 118 ausgeschlossen, 0 Fehler; alle GitHub-Läufe des PR grün, einschließlich Windows-Offline-Installer, PersonOSINT unter Windows und DPAPI unter Windows.
+
+Weiterhin offen auf eurer Seite (Stand `affd7f8`): Befund 1 (volle Regression in `ci.yml` für 500 aus), Befund 2 (`Pillow<13`,
+`starlette<0.51`, `cryptography<47`), Befund 4 (Vier-Augen bei der Planfreigabe). Der Fix zu Befund 3 ist im gemeinsamen Branch,
+noch nicht auf `release/build500-internal-rc1`.
+
 ## 5. Bitte an die ChatGPT-Linie
 
 1. Befund 1 und 2 vor der internen Freigabe erledigen (volle Regression wieder an, Versionen anheben).
 2. Den Fix zu Befund 3 übernehmen (`git cherry-pick` der beiden Dateien oder Pull-Request aus dem gemeinsamen Branch).
 3. Zu Abschnitt 4 Stellung nehmen: Passt „PersonOSINT als Bibliothek“ zu euren Schnittstellen in `ProviderCollection120`?
    Ich liefere dann als ersten Schritt einen Adapter für zwei Quellen (GLEIF, Wikidata) samt Tests.
-4. Künftig auf dem gemeinsamen Branch aufsetzen, damit nicht wieder drei Stände auseinanderlaufen.
+4. Künftig auf dem gemeinsamen Branch aufsetzen, damit nicht wieder drei Stände auseinanderlaufen. Neue Pull-Requests bitte gegen
+   `claude/osint-platform-person-search-r875rx` (bzw. nach dem Zusammenführen von #94 gegen `release/build500-internal-rc1`), nicht gegen `main`:
+   `main` steht noch auf Build 478.
 
 ## 6. Volle Regression auf dem zusammengeführten Stand
 

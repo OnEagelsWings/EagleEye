@@ -179,7 +179,7 @@ class Auth:
         if payload.get("unlock"):
             values.update({"failed_logins": 0, "locked_until": ""})
         if payload.get("reset_2fa"):
-            values.update({"totp_secret": "", "totp_enabled": 0})
+            values.update({"totp_secret": "", "totp_pending": "", "totp_enabled": 0})
         if payload.get("new_password"):
             check_password_policy(payload["new_password"], user["username"])
             values.update({"password_hash": hash_password(payload["new_password"]), "must_change_password": 1})
@@ -265,11 +265,13 @@ class Auth:
             return "mfa_setup"
         return "ok"
 
-    def verify_mfa(self, sess: dict[str, Any], user: dict[str, Any], code: str) -> None:
-        if not user["totp_enabled"]:
-            raise AuthError("Für dieses Konto ist keine Zwei-Faktor-Anmeldung eingerichtet.", 422)
-        counter = totp_counter(self.vault.decrypt_text(user["totp_secret"]), code)
-        if counter is not None and counter <= int(user.get("totp_last") or 0):
+    def _check_code(self, user: dict[str, Any], secret_enc: str, code: str, wrong: str, replay_check: bool = True) -> int:
+        """Gemeinsame Prüfung für Anmeldung und Einrichtung: Wiederholungsschutz und Fehlversuchszähler mit Sperre.
+
+        ``replay_check=False`` nur für ein *neues*, noch nie benutztes Geheimnis: Dessen Codes können nicht wiederholt
+        worden sein; die Zeitzählung des alten Geheimnisses würde sonst eine Neueinrichtung direkt nach der Anmeldung sperren."""
+        counter = totp_counter(self.vault.decrypt_text(secret_enc), code)
+        if replay_check and counter is not None and counter <= int(user.get("totp_last") or 0):
             raise AuthError("Dieser Code wurde bereits verwendet – bitte den nächsten Code abwarten.", 422)
         if counter is None:
             failed = user["failed_logins"] + 1
@@ -278,23 +280,35 @@ class Auth:
                 self.db.update("users", user["id"], {"failed_logins": 0, "locked_until": (datetime.now(timezone.utc) + timedelta(minutes=self.settings.lockout_minutes)).replace(microsecond=0).isoformat()})
                 self.db.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
                 raise AuthError("Zu viele falsche Codes – Konto vorübergehend gesperrt.", 423)
-            raise AuthError("Der Code ist falsch oder abgelaufen.", 422)
+            raise AuthError(wrong, 422)
+        return counter
+
+    def verify_mfa(self, sess: dict[str, Any], user: dict[str, Any], code: str) -> None:
+        if not user["totp_enabled"]:
+            raise AuthError("Für dieses Konto ist keine Zwei-Faktor-Anmeldung eingerichtet.", 422)
+        counter = self._check_code(user, user["totp_secret"], code, "Der Code ist falsch oder abgelaufen.")
         self.db.update("users", user["id"], {"failed_logins": 0, "last_login": now_iso(), "totp_last": counter})
         self.db.update("sessions", sess["id"], {"mfa_passed": 1})
 
     def begin_totp_setup(self, user: dict[str, Any]) -> dict[str, str]:
+        """Neues Geheimnis nur *vorläufig* speichern. Eine bestehende Zwei-Faktor-Absicherung bleibt aktiv,
+        bis die Einrichtung mit einem gültigen Code des neuen Geheimnisses abgeschlossen ist."""
         secret = new_totp_secret()
-        self.db.update("users", user["id"], {"totp_secret": self.vault.encrypt_text(secret), "totp_enabled": 0})
+        self.db.update("users", user["id"], {"totp_pending": self.vault.encrypt_text(secret)})
         uri = totp_uri(secret, user["username"])
         return {"secret": " ".join(secret[i:i + 4] for i in range(0, len(secret), 4)), "uri": uri, "qr_svg": qr_svg(uri)}
 
     def confirm_totp_setup(self, sess: dict[str, Any], user: dict[str, Any], code: str) -> None:
-        if not user["totp_secret"]:
-            raise AuthError("Bitte die Einrichtung zuerst starten.", 422)
-        counter = totp_counter(self.vault.decrypt_text(user["totp_secret"]), code)
-        if counter is None:
-            raise AuthError("Der Code passt nicht. Uhrzeit des Smartphones prüfen und erneut versuchen.", 422)
-        self.db.update("users", user["id"], {"totp_enabled": 1, "last_login": now_iso(), "totp_last": counter})
+        """Schließt eine *laufende* Einrichtung ab. Kein zweiter Anmeldeweg: Ohne begonnene Einrichtung wird abgelehnt,
+        und es gelten derselbe Wiederholungsschutz und derselbe Fehlversuchszähler wie bei der Anmeldung."""
+        if not user.get("totp_pending"):
+            raise AuthError("Es läuft keine Einrichtung der Zwei-Faktor-Anmeldung. Bitte die Einrichtung zuerst starten.", 409)
+        if user["totp_enabled"] and not sess["mfa_passed"]:
+            raise AuthError("Bitte zuerst mit dem bisherigen Code anmelden.", 403)
+        counter = self._check_code(user, user["totp_pending"], code, "Der Code passt nicht. Uhrzeit des Smartphones prüfen und erneut versuchen.",
+                                   replay_check=False)
+        self.db.update("users", user["id"], {"totp_secret": user["totp_pending"], "totp_pending": "", "totp_enabled": 1, "failed_logins": 0,
+                                             "last_login": now_iso(), "totp_last": counter})
         self.db.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user["id"], sess["id"]))
         self.db.update("sessions", sess["id"], {"mfa_passed": 1})
 
