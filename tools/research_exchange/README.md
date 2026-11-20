@@ -71,3 +71,24 @@ Real user-facing private-branch publication still requires the operator's on-scr
 ## Integration guidance
 
 EagleEye's integrated root `START_HIER.bat` may offer an additional **Forschungs-Brücke** menu action, calling `tools\research_exchange\START_RESEARCH_BRIDGE_WINDOWS.cmd` in the current checked-out source. It must not import anything into the case/evidence vault, touch `main`, or bypass the two explicit operator confirmations. Keep the integration on a separate review branch based on PR #94 until its concurrent developer has accepted it.
+
+
+## Windows 1.0 Release Candidate (2026-11-20)
+
+The **unsigned** RC2 is packaged with free PyInstaller 6.19 on Windows x64. Once installed it runs without a Python interpreter, but private Git exchange still requires Git Credential Manager access to the private research branch. The package does not contain tokens, private records or signing keys.
+
+On DoMi313 the package lives on drive D: at `D:\EagleEyeResearchBuild\rc2\EagleEyeResearchBridge-1.0.0-rc2-Windows-x64.zip`. Verify its SHA256:
+
+`e8974769d0ed9814dd448eddaa7a4f9856f8ad7eecc0edd2d174478253d5de82`
+
+Extract the ZIP, inspect the package, and run **Install.cmd**. The user-scoped installer validates every payload SHA256 from the manifest and installs under `%LOCALAPPDATA%\Programs\EagleEyeResearchBridge\versions\1.0.0-rc2`. It creates the desktop link **EagleEye Forschungs-Bruecke (Vorschau)** without requiring administrator privileges. The existing key, audit log, Git staging workspace and research records are **never** overwritten. An explicit **Uninstall.cmd** removes only the program; user data is retained.
+
+The installer keeps older version directories and supports explicit SHA256-verified rollback via `Switch-ResearchBridge-Version.ps1 -Version 1.0.0-rc1`. Only the user requests an update/rollback; there is no silent updater.
+
+Reproducible build command on an authorized Windows developer machine with Python 3.12 + PyInstaller:
+
+```powershell
+python tools/research_exchange/packaging/build_windows_release.py D:\EagleEyeResearchBuild\clean-output
+```
+
+The resulting ZIP is an **internal Release Candidate, NOT a signed or approved 1.0 release**. See `RELEASE_CANDIDATE_RC2.md`, `acceptance_rc2.json` and run the fail-closed `release_gate.py`. Manual GUI acceptance, off-host audit anchor, explicit unsigned internal-use risk acceptance or code signing, integration owner approval and final release owner approval remain outstanding. These steps cannot be automated away.
