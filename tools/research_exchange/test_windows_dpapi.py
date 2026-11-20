@@ -1,8 +1,10 @@
 """Synthetic DPAPI tests; native cases require Windows."""
 import os
+import subprocess
+import sys
 import unittest
 
-from windows_dpapi import protect_key, unprotect_key
+from windows_dpapi import _transform, protect_key, unprotect_key
 
 
 class DPAPIValidationTests(unittest.TestCase):
@@ -26,6 +28,35 @@ class NativeDPAPITests(unittest.TestCase):
         blob = protect_key(key)
         self.assertNotEqual(blob, key)
         self.assertEqual(unprotect_key(blob), key)
+
+    def test_valid_dpapi_blob_with_wrong_plaintext_length(self):
+        for size in (1, 31, 33):
+            with self.subTest(size=size):
+                blob = _transform(b"x" * size, False)
+                with self.assertRaisesRegex(ValueError, "invalid decrypted key length"):
+                    unprotect_key(blob)
+
+    def test_independent_protection_roundtrips(self):
+        first = protect_key(b"x" * 32)
+        second = protect_key(b"x" * 32)
+        self.assertNotEqual(first, second)
+        self.assertEqual(unprotect_key(first), b"x" * 32)
+        self.assertEqual(unprotect_key(second), b"x" * 32)
+
+    def test_cross_process_roundtrip(self):
+        # DPAPI keys must survive process restart under the same Windows user.
+        key = bytes(range(32))
+        blob = protect_key(key)
+        code = (
+            "import sys; from windows_dpapi import unprotect_key; "
+            "sys.stdout.buffer.write(unprotect_key(bytes.fromhex(sys.argv[1])))"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code, blob.hex()],
+            cwd=os.path.dirname(__file__), capture_output=True, timeout=20,
+            check=True,
+        )
+        self.assertEqual(result.stdout, key)
 
     def test_invalid_blob(self):
         for blob in (b"", b"x" * 65537):
