@@ -95,8 +95,13 @@ def publish_record(target, raw):
         os.unlink(name)
 
 
-def stage(root,local, *, database=None):
-    """Stage into SQLite when explicitly selected; never import evidence."""
+def stage(root, local, *, database=None, allowed_ids=None):
+    """Stage manually. With allowed_ids, skip all unrequested Git blobs."""
+    if allowed_ids is not None:
+        allowed_ids = frozenset(allowed_ids)
+        if not allowed_ids or any(not isinstance(item, str) or not ID.fullmatch(item)
+                                  for item in allowed_ids):
+            raise ValueError("invalid allowed record IDs")
     if database is not None:
         from staging_db import StagingDB
         store = StagingDB(database)
@@ -112,6 +117,8 @@ def stage(root,local, *, database=None):
             continue
         metadata, path = entry.split("\t", 1)
         if not re.fullmatch(r"exchange/inbox/[0-9a-f-]{36}\.json",path):
+            continue
+        if allowed_ids is not None and pathlib.PurePosixPath(path).stem not in allowed_ids:
             continue
         try:
             if not metadata.startswith("100644 blob "):
