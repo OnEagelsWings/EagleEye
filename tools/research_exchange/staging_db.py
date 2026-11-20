@@ -28,7 +28,15 @@ class StagingDB:
         digest = hashlib.sha256(raw).hexdigest()
         with closing(self.connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
-            old = db.execute("SELECT raw FROM records WHERE id=?", (ident,)).fetchone()
+            old = db.execute("SELECT raw, digest FROM records WHERE id=?", (ident,)).fetchone()
+            if old is not None:
+                if hashlib.sha256(old[0]).hexdigest() != old[1]:
+                    raise ValueError("record digest mismatch")
+                anchor = db.execute(
+                    "SELECT 1 FROM audit WHERE id=? AND digest=? AND status='staged' LIMIT 1",
+                    (ident, old[1])).fetchone()
+                if anchor is None:
+                    raise ValueError("staged audit anchor mismatch")
             if old is None:
                 db.execute("INSERT INTO records VALUES (?, ?, ?)", (ident, raw, digest))
                 status = "staged"
@@ -39,10 +47,18 @@ class StagingDB:
         return status
 
     def read(self, ident):
+        # Keep the record and its audit anchor in one SQLite read snapshot.
+        # Separate connections could observe different database revisions.
         with closing(self.connect()) as db:
+            db.execute("BEGIN")
             row = db.execute("SELECT raw,digest FROM records WHERE id=?", (ident,)).fetchone()
-        if row is None:
-            return None
-        if hashlib.sha256(row[0]).hexdigest() != row[1]:
-            raise ValueError("record digest mismatch")
-        return row[0]
+            if row is None:
+                return None
+            if hashlib.sha256(row[0]).hexdigest() != row[1]:
+                raise ValueError("record digest mismatch")
+            anchor = db.execute(
+                "SELECT 1 FROM audit WHERE id=? AND digest=? AND status='staged' LIMIT 1",
+                (ident, row[1])).fetchone()
+            if anchor is None:
+                raise ValueError("staged audit anchor mismatch")
+            return row[0]

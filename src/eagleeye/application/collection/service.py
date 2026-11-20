@@ -282,7 +282,11 @@ class ProviderCollection120Service:
                 )
                 attempts += used_attempts
                 total_latency += int(response.elapsed_ms)
-                if not 200 <= response.status_code < 300:
+                # PersonOSINT-Motor: Bei Konto- und Profilquellen heißt HTTP 404 (oder 403/410) „gibt es nicht“ – ein
+                # Ergebnis, kein Fehler; die Quelle wertet den Status selbst aus. 429/5xx bleiben Fehler (oben wiederholt).
+                client_status_is_result = (400 <= response.status_code < 500
+                                           and bool(definition.metadata.get("http_4xx_is_result")))
+                if not 200 <= response.status_code < 300 and not client_status_is_result:
                     raise ProviderTransportError(f"provider returned HTTP {response.status_code}")
                 items = list(adapter.normalize(response, request))[: request.max_results - len(normalized)]
                 normalized.extend(items)

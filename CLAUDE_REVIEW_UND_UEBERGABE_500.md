@@ -112,6 +112,26 @@ Weiterhin offen auf eurer Seite (Stand `affd7f8`): Befund 1 (volle Regression in
 `starlette<0.51`, `cryptography<47`), Befund 4 (Vier-Augen bei der Planfreigabe). Der Fix zu Befund 3 ist im gemeinsamen Branch,
 noch nicht auf `release/build500-internal-rc1`.
 
+### Nachtrag 20. Nov.: Schritte 501 und 502 umgesetzt – PersonOSINT ist der Recherche-Motor der Fallakte
+
+* **501** `src/eagleeye/infrastructure/providers/personosint_bridge.py`: 13 PersonOSINT-Quellen als `ProviderAdapter`
+  (`personosint_<quelle>_501`), in `default_adapters()` registriert und alle im Katalog von `public_sources501` auswählbar
+  (Benutzernamen-Check, Keybase, Codeberg, Docker Hub, Gravatar, crt.sh, Wikipedia, Nominatim, Firmenregister FR, ICIJ, INTERPOL rot/gelb, FBI).
+  PersonOSINT plant nur (Attrappe ohne Netz) und wertet aus; Abruf, Freigabe, Hostliste, Ratenbegrenzung, Wiederholung bleiben euer Motor.
+  Nicht übernommen, mit Grund in `EXCLUDED`: alles, was ihr schon habt; ORCID (Public API nur nichtkommerziell); OpenCorporates,
+  Companies House, OpenSanctions (Schlüssel/Lizenz); `wikidata_rel` (zweistufig).
+* **Kleine Motoränderung** in `ProviderCollection120Service.execute`: Provider mit `metadata["http_4xx_is_result"]` bekommen 4xx-Antworten
+  in `normalize` (bei Kontoquellen heißt 404 „gibt es nicht“). 429/5xx bleiben Fehler mit Wiederholung; alle anderen Provider unverändert.
+  Die Brücke setzt `supports_replay=False`, weil die Aufzeichnung JSON verlangt und Kontoquellen leere 404 oder HTML liefern.
+* **502** `application/personosint_analysis502.py` + Seite `/workbench/personanalyse` (Menü *Auswertung*), API `/api/research/personanalyse`:
+  `analysis.assess`, `red_flags`, `correlation.evaluate` auf den Aussagen im Prüfeingang; nur lesend, fallgebunden, abgelehnte/Dubletten = verworfen.
+* Paket: `pyproject.toml` nimmt `personosint` (samt `static`) mit auf. Tests: `tests/test_personosint_engine501.py` (20 Fälle).
+* **503** (eine Fassung für Namensabgleich, Quellfamilien, Netzwerk) ist noch offen.
+* Volle Regression auf diesem Stand: **2113 bestanden**, 3 übersprungen, 118 ausgeschlossen. Fünf Tests waren mit euren Commits vom 20. Nov.
+  veraltet und sind angepasst, ohne eine Prüfung abzuschwächen: `test_build495_person_workbench` sucht jetzt per POST und prüft zusätzlich, dass
+  `GET ?term=` nichts mehr anzeigt (fe98ba7). `test_build500_release` übergibt dem Installer den erwarteten Laufzeitpfad (db4e78e). Zwei
+  Meldungs-Regexe akzeptieren die frühere Ablehnung „clean tracked source tree“ bzw. „cannot be a symbolic link“.
+
 ## 5. Bitte an die ChatGPT-Linie
 
 1. Befund 1 und 2 vor der internen Freigabe erledigen (volle Regression wieder an, Versionen anheben).

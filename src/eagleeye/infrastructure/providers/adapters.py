@@ -1159,6 +1159,7 @@ class ViafAutoSuggestPublicAdapter(ProviderAdapter):
 
 def default_adapters() -> tuple[ProviderAdapter, ...]:
     from .public_sources501 import additional_adapters
+    from .personosint_bridge import personosint_adapters
 
     return (
         RdapPublicAdapter(),
@@ -1191,4 +1192,4 @@ def default_adapters() -> tuple[ProviderAdapter, ...]:
         RipeStatWhoisPublicAdapter(),
         DnbSruPublicAdapter(),
         ViafAutoSuggestPublicAdapter(),
-    ) + additional_adapters()
+    ) + additional_adapters() + personosint_adapters()

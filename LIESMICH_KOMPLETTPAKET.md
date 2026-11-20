@@ -35,6 +35,7 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 |---|---|
 | PersonOSINT → EagleEye-Fallakte | In PersonOSINT: *Dossier & Export → „Übergabe an EagleEye“*. Die Dateien in der Fallakte unter „PersonOSINT-Quellen importieren“ einlesen. |
 | EagleEye-Fallakte → PersonOSINT | In der Fallakte den Graphen im FollowTheMoney-Format exportieren, in PersonOSINT unter *Verbindungen → „FollowTheMoney einlesen“* laden. |
+| **PersonOSINT in der Fallakte** (neu) | Ohne Umweg: In der Fallakte unter *Recherche → Quellen & Personen* stehen 13 zusätzliche Quellen des PersonOSINT-Motors (Benutzernamen-Check auf 13 Plattformen, Keybase, Codeberg, Docker Hub, Gravatar, crt.sh, Wikipedia, Nominatim, Firmenregister Frankreich, ICIJ Offshore Leaks, INTERPOL, FBI). Sie laufen über denselben Freigabeweg wie alle anderen Quellen. Die Auswertung – Widersprüche, Warnhinweise, Querbezüge, Bewertung jeder Aussage – steht unter *Auswertung → Personenanalyse*. Beschreibung: `docs\PERSONOSINT_IN_EAGLEEYE.md`. |
 
 ## Ehrlicher Stand
 

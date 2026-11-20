@@ -25,6 +25,15 @@ class LocalKeyTests(unittest.TestCase):
             create_key(self.path)
         self.assertEqual(read_key(self.path), key)
 
+    def test_restrictive_umask(self):
+        previous = os.umask(0o777)
+        try:
+            create_key(self.path)
+        finally:
+            os.umask(previous)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(len(read_key(self.path)), 32)
+
     def test_missing(self):
         with self.assertRaises(FileNotFoundError):
             read_key(self.path)

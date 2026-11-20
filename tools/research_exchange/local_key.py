@@ -22,6 +22,8 @@ def create_key(path):
     try:
         fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory)
         with os.fdopen(fd, 'wb') as stream:
+            # A restrictive umask must not create an unreadable key file.
+            os.fchmod(stream.fileno(), 0o600)
             stream.write(secrets.token_bytes(32))
             stream.flush()
             os.fsync(stream.fileno())
