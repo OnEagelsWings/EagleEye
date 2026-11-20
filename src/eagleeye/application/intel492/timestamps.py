@@ -21,12 +21,14 @@ from __future__ import annotations
 import functools
 import hashlib
 import secrets
+import ssl
+import sys
 import urllib.request
 import warnings
 from datetime import datetime, timezone
 
 from cryptography import x509
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 
@@ -209,13 +211,55 @@ def request(url: str, digest: bytes, *, timeout: float = 20, send=None) -> dict:
 
 @functools.lru_cache(maxsize=1)
 def _trust_roots() -> tuple[x509.Certificate, ...]:
+    """Mozilla roots (certifi) plus, on Windows, the machine's root store (covers more qualified providers)."""
+    roots: list[x509.Certificate] = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # a few old roots have non-RFC serial numbers
+        try:
+            import certifi
+            with open(certifi.where(), "rb") as handle:
+                roots.extend(x509.load_pem_x509_certificates(handle.read()))
+        except Exception:  # no bundle available: chains are reported as untrusted
+            pass
+        if sys.platform == "win32":
+            try:
+                for der, encoding, _trust in ssl.enum_certificates("ROOT"):
+                    if encoding == "x509_asn":
+                        try:
+                            roots.append(x509.load_der_x509_certificate(der))
+                        except ValueError:
+                            continue
+            except OSError:
+                pass
+    return tuple(roots)
+
+
+ANY_EKU = "2.5.29.37.0"
+
+
+def _may_issue(cert: x509.Certificate, below: int) -> bool:
+    """Whether an intermediate certificate may issue the one beneath it (RFC 5280 constraints).
+
+    below: number of intermediate CA certificates already between it and the TSA certificate.
+    """
     try:
-        import certifi
-        with open(certifi.where(), "rb") as handle, warnings.catch_warnings():
-            warnings.simplefilter("ignore")  # a few old roots in the bundle have non-RFC serial numbers
-            return tuple(x509.load_pem_x509_certificates(handle.read()))
-    except Exception:  # no bundle available: chain is reported as unchecked
-        return ()
+        constraints = cert.extensions.get_extension_for_class(x509.BasicConstraints).value
+    except x509.ExtensionNotFound:
+        return False
+    if not constraints.ca or (constraints.path_length is not None and below > constraints.path_length):
+        return False
+    try:
+        if not cert.extensions.get_extension_for_class(x509.KeyUsage).value.key_cert_sign:
+            return False
+    except x509.ExtensionNotFound:
+        pass
+    try:
+        purposes = {p.dotted_string for p in cert.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value}
+        if OID_TIMESTAMPING not in purposes and ANY_EKU not in purposes:
+            return False  # an intermediate restricted to other purposes cannot vouch for timestamps
+    except x509.ExtensionNotFound:
+        pass
+    return True
 
 
 def _verify_signature(cert: x509.Certificate, signature: bytes, data: bytes, sig_oid: str, digest_cls) -> None:
@@ -230,11 +274,15 @@ def _verify_signature(cert: x509.Certificate, signature: bytes, data: bytes, sig
 
 def _chain(signer: x509.Certificate, pool: list[x509.Certificate], roots: list[x509.Certificate],
            at: datetime) -> tuple[bool, list[x509.Certificate]]:
-    """Walk from the signer to a trusted root; returns (trusted, certificates from signer upwards)."""
+    """Walk from the signer to a trusted root; returns (trusted, certificates from signer upwards).
+
+    Trust anchors are taken as they are; every intermediate must be a CA allowed to issue the
+    certificate beneath it (basic constraints, path length, key usage, purpose).
+    """
     trusted = {c.fingerprint(hashes.SHA256()) for c in roots}
-    candidates = list(pool) + list(roots)
+    candidates = list(roots) + list(pool)
     current, path = signer, [signer]
-    for _ in range(8):
+    for depth in range(8):
         if not current.not_valid_before_utc <= at <= current.not_valid_after_utc:
             raise TimestampError("Ein Zertifikat der Kette war zum Zeitpunkt des Stempels nicht gültig.")
         if current.fingerprint(hashes.SHA256()) in trusted:
@@ -242,9 +290,12 @@ def _chain(signer: x509.Certificate, pool: list[x509.Certificate], roots: list[x
         issuer = None
         for candidate in candidates:
             if candidate.subject == current.issuer:
+                anchor = candidate.fingerprint(hashes.SHA256()) in trusted
+                if not anchor and not _may_issue(candidate, depth):
+                    continue
                 try:
                     current.verify_directly_issued_by(candidate)
-                except (ValueError, TypeError, InvalidSignature):
+                except (ValueError, TypeError, InvalidSignature, UnsupportedAlgorithm):
                     continue
                 issuer = candidate
                 break
@@ -257,7 +308,22 @@ def _chain(signer: x509.Certificate, pool: list[x509.Certificate], roots: list[x
 
 def verify(response_der: bytes, digest: bytes, *, nonce: int | None = None,
            roots: list[x509.Certificate] | None = None) -> dict:
-    """Check a TimeStampResp for ``digest``; raises TimestampError, returns the facts."""
+    """Check a TimeStampResp for ``digest``; raises only TimestampError, returns the facts.
+
+    ``chain_trusted`` is False when the signer does not chain to a trusted root; such a response
+    is not independent evidence (the default service is plain HTTP) and callers must not treat
+    it as verified.
+    """
+    try:
+        return _verify(response_der, digest, nonce=nonce, roots=roots)
+    except TimestampError:
+        raise
+    except (IndexError, KeyError, ValueError, TypeError, AttributeError, OverflowError, UnicodeError,
+            UnsupportedAlgorithm):
+        raise TimestampError("Antwort des Zeitstempeldienstes ist beschädigt oder unvollständig.") from None
+
+
+def _verify(response_der: bytes, digest: bytes, *, nonce: int | None, roots) -> dict:
     resp = _root(response_der).children()
     if not resp or resp[0].tag != 0x30:
         raise TimestampError("Antwort beschädigt.")
@@ -334,11 +400,15 @@ def verify(response_der: bytes, digest: bytes, *, nonce: int | None = None,
         raise TimestampError("Das Zertifikat des Zeitstempeldienstes fehlt in der Antwort.")
     if signed_attrs is None:
         raise TimestampError("Zeitstempel ohne signierte Attribute.")
-    message_digest = None
+    message_digest = content_type = None
     for attribute in signed_attrs.children():
         parts = attribute.children()
         if _as_oid(parts[0]) == OID_MESSAGE_DIGEST:
             message_digest = parts[1].children()[0].value
+        elif _as_oid(parts[0]) == OID_CONTENT_TYPE:
+            content_type = _as_oid(parts[1].children()[0])
+    if content_type != OID_TST_INFO:
+        raise TimestampError("Signierte Attribute nennen keinen Zeitstempel als Inhalt.")
     hasher = hashes.Hash(digest_cls())
     hasher.update(econtent)
     if message_digest != hasher.finalize():
@@ -355,6 +425,12 @@ def verify(response_der: bytes, digest: bytes, *, nonce: int | None = None,
         purposes = set()
     if OID_TIMESTAMPING not in purposes:
         raise TimestampError("Das Zertifikat ist nicht für Zeitstempel bestimmt.")
+    try:
+        usage = signer.extensions.get_extension_for_class(x509.KeyUsage).value
+        if not (usage.digital_signature or usage.content_commitment):
+            raise TimestampError("Das Zertifikat darf nicht signieren.")
+    except x509.ExtensionNotFound:
+        pass
     trusted, path = _chain(signer, certs, list(_trust_roots()) if roots is None else roots, gen_time)
     names = signer.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME) or \
         signer.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
