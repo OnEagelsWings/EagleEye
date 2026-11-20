@@ -93,6 +93,10 @@ def _read_receipt(root: Path) -> dict:
 
 def _runtime_path_linked(root: Path) -> bool:
     """Reject links at every runtime path component, not only its endpoints."""
+    # Reject a linked installation root before probing or reusing a runtime.
+    # Otherwise a launcher could silently execute another installation.
+    if root.is_symlink():
+        return True
     runtime = root / RUNTIME_DIR
     python = _runtime_python(root)
     current = runtime
