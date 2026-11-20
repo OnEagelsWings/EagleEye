@@ -47,16 +47,18 @@ class StagingDB:
         return status
 
     def read(self, ident):
+        # Keep the record and its audit anchor in one SQLite read snapshot.
+        # Separate connections could observe different database revisions.
         with closing(self.connect()) as db:
+            db.execute("BEGIN")
             row = db.execute("SELECT raw,digest FROM records WHERE id=?", (ident,)).fetchone()
-        if row is None:
-            return None
-        if hashlib.sha256(row[0]).hexdigest() != row[1]:
-            raise ValueError("record digest mismatch")
-        with closing(self.connect()) as db:
+            if row is None:
+                return None
+            if hashlib.sha256(row[0]).hexdigest() != row[1]:
+                raise ValueError("record digest mismatch")
             anchor = db.execute(
                 "SELECT 1 FROM audit WHERE id=? AND digest=? AND status='staged' LIMIT 1",
                 (ident, row[1])).fetchone()
-        if anchor is None:
-            raise ValueError("staged audit anchor mismatch")
-        return row[0]
+            if anchor is None:
+                raise ValueError("staged audit anchor mismatch")
+            return row[0]
