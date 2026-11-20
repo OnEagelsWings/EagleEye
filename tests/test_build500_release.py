@@ -243,3 +243,24 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
     with pytest.raises(ValueError, match="tracked source symlink"):
         pack.build(tmp_path, tmp_path / "linked.zip")
     assert not (tmp_path / "linked.zip").exists()
+
+
+def test_build500_runtime_probe_rejects_linked_installation_root(tmp_path):
+    """A symlinked release root must not reuse another installation runtime."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    actual = tmp_path / "release-original"
+    actual.mkdir()
+    alias = tmp_path / "release-alias"
+    try:
+        alias.symlink_to(actual, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Symlinks unavailable on this host")
+    assert installer._runtime_path_linked(alias)
+    assert installer._probe(alias)["reason"] == "runtime_link_forbidden"
+    with pytest.raises(RuntimeError, match="Linked runtime paths"):
+        installer._ensure_runtime(alias, quiet=True)
+    assert not (actual / installer.RUNTIME_DIR).exists()
