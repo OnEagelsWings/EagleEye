@@ -38,7 +38,7 @@ jobs:
           import os
           from eagleeye_pro.version import BUILD
           build_number = int(BUILD.split(".", 1)[0])
-          full = (build_number % 5 == 0 and build_number < 500)
+          full = (build_number % 5 == 0)
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"full={'true' if full else 'false'}\n")
               handle.write(f"build_number={build_number}\n")
