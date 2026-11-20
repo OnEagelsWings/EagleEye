@@ -55,6 +55,27 @@ class StagingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "record digest mismatch"):
             self.db.read(self.record["id"])
 
+    def test_replay_rejects_tampered_existing_record_without_new_audit(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        with closing(self.db.connect()) as db, db:
+            db.execute("UPDATE records SET raw=? WHERE id=?",
+                       (self.raw.replace(b"Test only", b"Altered"), self.record["id"]))
+        with self.assertRaisesRegex(ValueError, "record digest mismatch"):
+            self.db.stage(self.raw, "b" * 40)
+        with closing(self.db.connect()) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM audit").fetchone()[0], 1)
+
+    def test_conflict_rejects_tampered_existing_digest(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        with closing(self.db.connect()) as db, db:
+            db.execute("UPDATE records SET digest=? WHERE id=?",
+                       ("0" * 64, self.record["id"]))
+        changed = self.raw.replace(b"Test only", b"Changed")
+        with self.assertRaisesRegex(ValueError, "record digest mismatch"):
+            self.db.stage(changed, "b" * 40)
+        with closing(self.db.connect()) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM audit").fetchone()[0], 1)
+
     def test_invalid_commit(self):
         with self.assertRaises(ValueError):
             self.db.stage(self.raw, "invalid")
