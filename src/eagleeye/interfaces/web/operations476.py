@@ -103,6 +103,7 @@ MENU = [
     ("Belege", "Quelle → Evidence", "/workbench/bridge481", True, None),
     ("Auswertung", "Befunde", "/workbench/findings", True, None),
     ("Auswertung", "Entity-Prüfung", "/workbench/entities488", True, None),
+    ("Auswertung", "Personenanalyse", "/workbench/personanalyse", True, None),
     ("Auswertung", "Quellenfamilien", "/workbench/intel/lineage", True, None),
     ("Auswertung", "Netzwerk", "/workbench/intel/network", True, None),
     ("Bericht", "Arbeitsbericht & Prüfung", "/workbench/report", True, None),

@@ -46,8 +46,8 @@ voice-local = ["faster-whisper>=1.2,<2"]
 test = ["pytest>=9.0", "httpx>=0.28,<1", "hypothesis>=6.0", "import-linter>=2.0", "bandit>=1.8"]
 
 [tool.setuptools.packages.find]
-where = [".", "src"]
-include = ["eagleeye*", "eagleeye_pro*"]
+where = [".", "src", "PersonOSINT"]
+include = ["eagleeye*", "eagleeye_pro*", "personosint*"]
 exclude = ["tests*", "archive*", "tools*"]
 
 [tool.setuptools.data-files]
@@ -62,6 +62,7 @@ exclude = ["tests*", "archive*", "tools*"]
 
 [tool.setuptools.package-data]
 "eagleeye.interfaces.web" = ["assets/*.js"]
+personosint = ["static/*", "static/vendor/**/*"]
 
 [tool.pytest.ini_options]
 minversion = "9.0"
