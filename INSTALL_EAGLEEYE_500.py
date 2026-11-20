@@ -245,6 +245,10 @@ def _verify_wheelhouse(root: Path) -> None:
 
 
 def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: bool = False) -> None:
+    # Guard this entry point independently of _ensure_runtime: a linked venv
+    # must never receive pip writes, even in direct or recovery invocation.
+    if _runtime_path_linked(root) or runtime_python != _runtime_python(root):
+        raise RuntimeError("Linked or unexpected installer runtime path is forbidden")
     if not quiet:
         print(f"[EagleEye {BUILD}] Installing package {PACKAGE_VERSION} into the local runtime...")
     # Windows Defender, disk space, or long-path failures can terminate an
