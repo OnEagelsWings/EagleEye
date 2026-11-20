@@ -7,6 +7,14 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+function Get-LocalSHA256([string]$path) {
+    $stream = [IO.File]::OpenRead($path)
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+    } finally { $stream.Dispose() }
+}
 if ($Version -notmatch '^1\.0\.0-rc[0-9]+$') { throw 'Invalid RC version' }
 $root = [IO.Path]::GetFullPath($Destination)
 $marker = Join-Path $root '.eagleeye-public-research-bridge'
@@ -33,7 +41,7 @@ foreach ($file in $m.files) {
     $target = Join-Path $folder ($relative.Substring('payload/ResearchBridge/'.Length) -replace '/', '\')
     $info = Get-Item -LiteralPath $target -Force -ErrorAction Stop
     if ($info.Attributes -band [IO.FileAttributes]::ReparsePoint -or
-        (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $file.sha256) {
+        (Get-LocalSHA256 $target) -ne $file.sha256) {
         throw "Installed version modified: $relative"
     }
 }

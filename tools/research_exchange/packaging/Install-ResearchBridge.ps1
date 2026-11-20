@@ -6,6 +6,14 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+function Get-LocalSHA256([string]$path) {
+    $stream = [IO.File]::OpenRead($path)
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+    } finally { $stream.Dispose() }
+}
 function Assert-Safe([string]$candidate) {
     $full = [IO.Path]::GetFullPath($candidate)
     if ($full -match '^\\\\' -or $full -match '^[A-Za-z]:\\$') {
@@ -55,7 +63,7 @@ foreach ($item in $m.files) {
     if (-not ($info -is [IO.FileInfo]) -or
         ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
         $info.Length -ne [long]$item.size -or
-        (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $item.sha256) {
+        (Get-LocalSHA256 $file) -ne $item.sha256) {
         throw "Payload integrity failure: $rel"
     }
     $paths[$rel] = $true
@@ -84,7 +92,7 @@ if (Test-Path -LiteralPath $target) {
         $relative = ([string]$item.path).Substring('payload/ResearchBridge/'.Length)
         $file = Join-Path $target ($relative -replace '/', '\')
         if (-not (Test-Path -LiteralPath $file -PathType Leaf) -or
-            (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $item.sha256) {
+            (Get-LocalSHA256 $file) -ne $item.sha256) {
             throw "Installed version was modified: $relative"
         }
     }
@@ -99,7 +107,7 @@ if (Test-Path -LiteralPath $target) {
             $relative = ([string]$item.path).Substring('payload/ResearchBridge/'.Length)
             $file = Join-Path $stage ($relative -replace '/', '\')
             if (-not (Test-Path -LiteralPath $file -PathType Leaf) -or
-                (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $item.sha256) {
+                (Get-LocalSHA256 $file) -ne $item.sha256) {
                 throw "Staged version hash mismatch: $relative"
             }
         }
@@ -112,8 +120,8 @@ $manifestDir = Join-Path $dest 'manifests'
 New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
 $installedManifest = Join-Path $manifestDir ($m.version + '.json')
 if (Test-Path -LiteralPath $installedManifest) {
-    if ((Get-FileHash -LiteralPath $installedManifest -Algorithm SHA256).Hash -ne
-        (Get-FileHash -LiteralPath $manifestFile -Algorithm SHA256).Hash) {
+    if ((Get-LocalSHA256 $installedManifest) -ne
+        (Get-LocalSHA256 $manifestFile)) {
         throw 'Installed version manifest unexpectedly differs'
     }
 } else {

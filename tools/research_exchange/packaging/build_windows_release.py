@@ -13,7 +13,7 @@ import subprocess
 import sys
 import zipfile
 
-VERSION = "1.0.0-rc1"
+VERSION = "1.0.0-rc2"
 APP = "eagleeye-public-research-bridge"
 
 
@@ -103,7 +103,7 @@ def build(output_dir):
         "This is not the final 1.0 release; no signing certificate is included.\n",
         encoding="utf-8"
     )
-    archive = package.with_suffix(".zip")
+    archive = package.parent / (package.name + ".zip")
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED,
                          compresslevel=6, allowZip64=True) as zipfile_out:
         for file in sorted(package.rglob("*")):
