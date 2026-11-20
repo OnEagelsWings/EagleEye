@@ -239,7 +239,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         sess, user = found
         if user["totp_enabled"] and not sess["mfa_passed"]:
             raise AuthError("Bitte zuerst den Zwei-Faktor-Code eingeben.", 403)
-        auth.change_password(user["id"], payload.get("old_password", ""), payload.get("new_password", ""))
+        auth.change_password(user["id"], payload.get("old_password", ""), payload.get("new_password", ""), keep_session_id=sess["id"])
         p.log(None, "Passwort geändert", "")
         return {"ok": True}
 
