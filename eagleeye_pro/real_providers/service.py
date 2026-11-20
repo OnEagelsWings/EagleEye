@@ -67,6 +67,9 @@ class RealProviderConnector:
 
 
 REAL_CONNECTORS: List[RealProviderConnector] = [
+    RealProviderConnector("firecrawl_search", "Firecrawl search", "public_research", "firecrawl_search", "api_json", "https://api.firecrawl.dev/v2/search", True, "FIRECRAWL_API_KEY", "firecrawl_search", "medium", ["public_institutional_sources", "review_first", "bounded"], "Explicit live run; approved institutional sources only."),
+    RealProviderConnector("firecrawl_scrape", "Firecrawl scrape", "public_research", "firecrawl_scrape", "api_json", "https://api.firecrawl.dev/v2/scrape", True, "FIRECRAWL_API_KEY", "firecrawl_scrape", "medium", ["public_institutional_sources", "review_first", "bounded"], "Explicit live run; approved institutional sources only."),
+    RealProviderConnector("firecrawl_crawl", "Firecrawl crawl", "public_research", "firecrawl_crawl", "api_json", "https://api.firecrawl.dev/v2/crawl", True, "FIRECRAWL_API_KEY", "firecrawl_crawl", "medium", ["public_institutional_sources", "review_first", "bounded"], "Explicit live run; approved institutional sources only."),
     RealProviderConnector(
         "brave_web_api", "Brave Web Search API", "search_api", "brave_api", "api_json",
         "https://api.search.brave.com/res/v1/web/search?q={query}&count=10", True,
@@ -283,7 +286,7 @@ class RealProviderConnectorService:
                 status = "blocked_preflight"
             else:
                 try:
-                    raw_payload = self._http_json(c, self._build_url(c, q))
+                    raw_payload = self._firecrawl(c["parser_key"], q) if c["parser_key"].startswith("firecrawl_") else self._http_json(c, self._build_url(c, q))
                     status = "completed"
                 except Exception as exc:
                     issues.append("http_error:" + _safe_short(str(exc), 260))
@@ -429,6 +432,75 @@ class RealProviderConnectorService:
             data = resp.read(2_000_000)
         return json.loads(data.decode("utf-8", errors="replace"))
 
+    def _firecrawl(self, parser_key: str, query: str) -> Any:
+        # Institutional research only; never send private case data or credentials.
+        allowed = {"www.bundestag.de", "www.destatis.de", "www.bundesregierung.de",
+                   "eur-lex.europa.eu", "www.un.org", "www.who.int", "www.nasa.gov"}
+        op = parser_key.removeprefix("firecrawl_")
+        if op not in {"search", "scrape", "crawl"}:
+            raise ValueError("unsupported Firecrawl operation")
+        if op == "search":
+            # Only a single explicit site scope is accepted.
+            match = re.fullmatch(r"site:([a-zA-Z0-9.-]+) ([^\\r\\n]+)", query)
+            if not match or match[1].lower() not in allowed or "site:" in match[2].lower():
+                raise ValueError("Firecrawl search requires an approved institutional site")
+            body = {"query": query, "limit": 5}
+        else:
+            target = urllib.parse.urlsplit(query)
+            if target.scheme != "https" or target.hostname not in allowed or target.username or target.password or target.port not in (None, 443) or target.query or target.fragment:
+                raise ValueError("Firecrawl requires an approved institutional HTTPS URL without query parameters")
+            options = {"formats": ["markdown"], "onlyMainContent": True, "storeInCache": False, "redactPII": True}
+            body = {"url": query, **options} if op == "scrape" else {
+                "url": query, "limit": 5, "maxDiscoveryDepth": 1,
+                "allowExternalLinks": False, "allowSubdomains": False,
+                "ignoreRobotsTxt": False, "maxConcurrency": 1, "scrapeOptions": options}
+        key = os.environ.get("FIRECRAWL_API_KEY", "").strip()
+        if not key:
+            raise RuntimeError("Firecrawl API key missing")
+
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args, **kwargs):
+                return None
+
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler(), NoRedirect())
+        def call(path, payload=None, method=None):
+            req = urllib.request.Request("https://api.firecrawl.dev/v2/" + path,
+                data=json.dumps(payload).encode("utf-8") if payload is not None else None,
+                headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+                method=method or ("POST" if payload is not None else "GET"))
+            with opener.open(req, timeout=20) as response:
+                raw = response.read(2_000_001)
+            if len(raw) > 2_000_000:
+                raise ValueError("Firecrawl response too large")
+            result = json.loads(raw)
+            if not isinstance(result, dict) or result.get("success") is False:
+                raise ValueError("Firecrawl returned an unsuccessful response")
+            return result
+
+        result = call(op, body)
+        if op != "crawl":
+            return result
+        job = result.get("id", "")
+        if not isinstance(job, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,100}", job):
+            raise ValueError("invalid Firecrawl crawl job ID")
+        try:
+            for _ in range(10):
+                status = call("crawl/" + job)
+                if status.get("status") == "completed":
+                    if status.get("next"):
+                        raise RuntimeError("Firecrawl crawl returned additional pages; partial result not imported")
+                    return status
+                if status.get("status") in {"failed", "cancelled"}:
+                    raise RuntimeError("Firecrawl crawl failed")
+                time.sleep(2)
+            raise TimeoutError("Firecrawl crawl polling limit reached")
+        except Exception:
+            try:
+                call("crawl/" + job, method="DELETE")
+            except Exception:
+                pass
+            raise
+
     def _run_dns_local(self, domain: str) -> Dict[str, Any]:
         host = _domain_from_text(domain)
         if not host or " " in host or "." not in host:
@@ -448,6 +520,31 @@ class RealProviderConnectorService:
         if payload is None:
             return []
         try:
+            if parser_key.startswith("firecrawl_"):
+                if not isinstance(payload, dict) or payload.get("success") is False:
+                    return []
+                data = payload.get("data")
+                if parser_key == "firecrawl_search":
+                    rows = data.get("web", []) if isinstance(data, dict) else data
+                elif parser_key == "firecrawl_scrape":
+                    rows = [data]
+                else:
+                    rows = data
+                allowed = {"www.bundestag.de", "www.destatis.de", "www.bundesregierung.de",
+                           "eur-lex.europa.eu", "www.un.org", "www.who.int", "www.nasa.gov"}
+                out = []
+                for row in (rows or [])[:5]:
+                    if not isinstance(row, dict):
+                        continue
+                    meta = row.get("metadata") or {}
+                    url = row.get("url") or meta.get("sourceURL") or meta.get("url") or ""
+                    parsed = urllib.parse.urlsplit(url)
+                    if parsed.scheme != "https" or parsed.hostname not in allowed or parsed.username or parsed.password:
+                        continue
+                    out.append({"title": row.get("title") or meta.get("title") or url,
+                                "url": url, "snippet": row.get("description") or row.get("markdown") or "",
+                                "raw": row, "published_at": ""})
+                return out
             if parser_key == "brave_web":
                 return self._norm_list(((payload or {}).get("web") or {}).get("results") or [], "title", "url", "description", "age")
             if parser_key == "brave_image":
