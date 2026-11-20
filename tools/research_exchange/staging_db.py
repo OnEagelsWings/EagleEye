@@ -53,4 +53,10 @@ class StagingDB:
             return None
         if hashlib.sha256(row[0]).hexdigest() != row[1]:
             raise ValueError("record digest mismatch")
+        with closing(self.connect()) as db:
+            anchor = db.execute(
+                "SELECT 1 FROM audit WHERE id=? AND digest=? AND status='staged' LIMIT 1",
+                (ident, row[1])).fetchone()
+        if anchor is None:
+            raise ValueError("staged audit anchor mismatch")
         return row[0]
