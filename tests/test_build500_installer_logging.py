@@ -18,7 +18,7 @@ def test_build500_offline_pip_emits_log_and_uses_low_overhead_flags(tmp_path, mo
         return subprocess.CompletedProcess(command, 0)
 
     monkeypatch.setattr(installer.subprocess, "run", run)
-    python = tmp_path / ".eagleeye-runtime-500" / "Scripts" / "python.exe"
+    python = installer._runtime_python(tmp_path)
     installer._install(tmp_path, python, offline=True)
     args = observed["command"]
     assert args[:3] == [str(python), "-m", "pip"]
@@ -52,3 +52,26 @@ def test_build500_installer_rejects_linked_log(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="Linked installer log"):
         installer._install(tmp_path, runtime / "Scripts" / "python.exe", offline=True)
     assert external.read_text(encoding="utf-8") == "do not overwrite"
+
+
+def test_build500_installer_rejects_linked_runtime_before_pip(tmp_path, monkeypatch):
+    import pytest
+    installer_path = Path(__file__).resolve().parents[1] / "INSTALL_EAGLEEYE_500.py"
+    spec = spec_from_file_location("build500_installer_runtime_guard", installer_path)
+    assert spec and spec.loader
+    installer = module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    external = tmp_path / "old-install"
+    external.mkdir()
+    runtime = tmp_path / installer.RUNTIME_DIR
+    try:
+        runtime.symlink_to(external, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink not permitted")
+    called = []
+    monkeypatch.setattr(installer.subprocess, "run", lambda *a, **kw: called.append(a))
+    with pytest.raises(RuntimeError, match="runtime path"):
+        installer._install(tmp_path, installer._runtime_python(tmp_path), quiet=True)
+    assert not called
+    assert list(external.iterdir()) == []
+
