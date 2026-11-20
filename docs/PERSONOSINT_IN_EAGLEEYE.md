@@ -76,4 +76,19 @@ zweiten Tabelle.
   Fallakte hinzu: Initialen oder eine Rechtsform („GmbH“) allein machen zwei Namen nicht zum Kandidaten.
 * **Quellfamilien**: Was als Familie gilt, steht nur in `personosint/lineage.py`. PersonOSINT rechnet exakt. Die Fallakte schätzt
   dieselbe Größe mit gespeicherten Fingerabdrücken (MinHash), weil das bei großen Fällen schneller ist.
-* **Netzwerkanalyse**: noch zwei Fassungen, weil die Graphmodelle verschieden sind. Diese Vereinheitlichung ist ein eigener späterer Schritt.
+* **Netzwerkanalyse**: ein gemeinsamer Kern in `personosint/network.py` (`analyse_weighted`) und `personosint/graph.py`
+  (`weighted_betweenness`, `louvain`, `best_path`), ohne Zusatzbibliothek. Gruppen, Brücken, „am stärksten vernetzt“ und der
+  am besten belegte Weg werden in beiden Oberflächen gleich berechnet, gewichtet nach Belegstärke. Die Fallakte gewichtet nach
+  Prüfstand und geprüften Quellen, PersonOSINT nach der Konfidenz der Verbindung.
+  Geprüft gegen NetworkX auf 300 Zufallsgraphen:
+  * Zwischenzentralität, Wege, Komponenten und Isolierte sind identisch.
+  * Die Gruppen stimmen in 77 % der Fälle überein. Louvain ist ein Näherungsverfahren; die Güte der Gruppierung (Modularität)
+    ist praktisch gleich, bei einem einzigen Graphen lag sie um 0,035 darunter.
+  * NetworkX bleibt nur für den GEXF-Export der Fallakte.
+
+## Quellen prüfen
+
+`QUELLEN_PRUEFEN.bat` (Hauptordner, auch Menüpunkt 4 in `START_HIER.bat`) prüft jetzt **beide** Teile: die rund 50 Quellen
+der Fallakte (`tools/quellen_pruefen_fallakte.py`) und die Quellen von PersonOSINT. Je Quelle gibt es eine unkritische
+Testabfrage über den normalen, abgesicherten Abrufweg. Gespeichert und freigegeben wird nichts. Ergebnis sind die Berichte
+`Quellen-Pruefbericht-Fallakte.md` und `Quellen-Pruefbericht-PersonOSINT.md`.

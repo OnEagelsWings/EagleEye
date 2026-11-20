@@ -87,36 +87,56 @@ def _adjacency(graph: dict[str, Any]) -> dict[int, set[int]]:
     return g.adjacency([n["id"] for n in graph["nodes"]], [{"source_id": e["source"], "target_id": e["target"]} for e in graph["edges"]])
 
 
-def analyse(graph: dict[str, Any]) -> dict[str, Any]:
-    """graph = Ergebnis von ``Platform.graph`` (nodes mit group/betweenness, edges mit confidence)."""
-    nodes = {n["id"]: n for n in graph["nodes"]}
-    adj = _adjacency(graph)
-    weighted: dict[int, float] = {i: 0.0 for i in nodes}
-    for e in graph["edges"]:
-        if e["source"] in weighted and e["target"] in weighted:
-            weighted[e["source"]] += e["confidence"] / 100
-            weighted[e["target"]] += e["confidence"] / 100
-    brief = lambda n: {"id": n["id"], "label": n["label"], "type": n["type"], "type_label": n.get("type_label", n["type"])}  # noqa: E731
-    by_group: dict[int, list[dict[str, Any]]] = {}
-    for n in nodes.values():
-        if adj[n["id"]]:
-            by_group.setdefault(n.get("group", 0), []).append(n)
-    groups = [sorted((brief(n) for n in members), key=lambda x: (-weighted[x["id"]], x["label"]))
-              for members in sorted(by_group.values(), key=len, reverse=True) if len(members) >= 2]
+def analyse_weighted(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], *, brief_keys: tuple[str, ...]) -> dict[str, Any]:
+    """Gemeinsame Netzwerkanalyse für PersonOSINT und die EagleEye-Fallakte (Schritt 503).
+
+    nodes: [{id, label, …}], edges: [{source, target, weight (0..1)}]. Gruppen: Louvain über die Belegstärke;
+    Brücken: Zwischenzentralität > 0 und Verbindung mehrerer Gruppen oder Knotenpunkt (ohne ihn zerfällt das Netz);
+    am stärksten vernetzt: Summe der Belegstärken. Kennzahlen sind Orientierung, keine Feststellung.
+    """
+    by_id = {n["id"]: n for n in nodes}
+    weighted = [(e["source"], e["target"], float(e["weight"])) for e in edges
+                if e["source"] in by_id and e["target"] in by_id and e["source"] != e["target"] and float(e["weight"]) > 0]
+    pair_weight: dict[tuple, float] = {}
+    for a, b, w in weighted:
+        key = (a, b) if str(a) <= str(b) else (b, a)
+        pair_weight[key] = max(w, pair_weight.get(key, 0.0))
+    adj: dict[Any, set[Any]] = {i: set() for i in by_id}
+    strength: dict[Any, float] = dict.fromkeys(by_id, 0.0)
+    for (a, b), w in pair_weight.items():
+        adj[a].add(b)
+        adj[b].add(a)
+        strength[a] += w
+        strength[b] += w
+    brief = lambda n: {k: n[k] for k in brief_keys if k in n}  # noqa: E731
+    if not by_id:
+        return {"nodes": 0, "edges": 0, "components": 0, "groups": [], "bridges": [], "central": [], "isolated": [],
+                "truth_determined": False}
+    between = g.weighted_betweenness(by_id, weighted) if pair_weight else {}
+    groups = [sorted((brief(by_id[i]) for i in members), key=lambda x: (-round(strength[x["id"]], 6), x["label"]))
+              for members in g.louvain(by_id, weighted) if len(members) >= 2] if pair_weight else []
     group_of = {m["id"]: i for i, grp in enumerate(groups) for m in grp}
     cut = articulation_points(adj)
     bridges = []
-    for n in sorted(nodes.values(), key=lambda x: -x.get("betweenness", 0)):
-        neighbour_groups = {group_of.get(x) for x in adj[n["id"]]} - {None}
-        if n.get("betweenness", 0) > 0 and (len(neighbour_groups) > 1 or n["id"] in cut):
-            bridges.append({**brief(n), "betweenness": round(n["betweenness"], 3), "connects_groups": len(neighbour_groups),
-                            "cut_point": n["id"] in cut})
+    for node_id, score in sorted(between.items(), key=lambda kv: (-kv[1], str(kv[0]))):
+        neighbour_groups = {group_of.get(x) for x in adj[node_id]} - {None}
+        if score > 0 and (len(neighbour_groups) > 1 or node_id in cut):
+            bridges.append({**brief(by_id[node_id]), "betweenness": round(score, 3), "connects_groups": len(neighbour_groups),
+                            "cut_point": node_id in cut})
         if len(bridges) >= 10:
             break
-    central = [{**brief(nodes[i]), "weighted_degree": round(w, 2), "links": len(adj[i])}
-               for i, w in sorted(weighted.items(), key=lambda kv: (-kv[1], nodes[kv[0]]["label"]))[:10] if w > 0]
-    return {"nodes": len(nodes), "edges": len(graph["edges"]), "components": components(adj), "groups": groups, "bridges": bridges,
-            "central": central, "isolated": [brief(n) for n in nodes.values() if not adj[n["id"]]], "truth_determined": False}
+    central = [{**brief(by_id[i]), "weighted_degree": round(w, 2), "links": len(adj[i])}
+               for i, w in sorted(strength.items(), key=lambda kv: (-round(kv[1], 6), by_id[kv[0]]["label"]))[:10] if w > 0]
+    return {"nodes": len(by_id), "edges": len(pair_weight), "components": components(adj), "groups": groups, "bridges": bridges,
+            "central": central, "isolated": [brief(by_id[i]) for i in by_id if not adj[i]], "truth_determined": False}
+
+
+def analyse(graph: dict[str, Any]) -> dict[str, Any]:
+    """graph = Ergebnis von ``Platform.graph``; Belegstärke = Konfidenz der Verbindung."""
+    edges = [{"source": e["source"], "target": e["target"], "weight": e["confidence"] / 100} for e in graph["edges"]]
+    result = analyse_weighted(graph["nodes"], edges, brief_keys=("id", "label", "type", "type_label"))
+    result["edges"] = len(graph["edges"])
+    return result
 
 
 # --------------------------------------------------------------------------- GEXF (Gephi)

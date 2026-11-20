@@ -178,3 +178,147 @@ def force_layout(node_ids: list[int], adj: dict[int, set[int]], width: float = 1
     sx = (width - 2 * pad_x) / ((max(xs) - min(xs)) or 1)
     sy = (height - 2 * pad_y - 40) / ((max(ys) - min(ys)) or 1)
     return {v: (pad_x + (p[0] - min(xs)) * sx, pad_y + (p[1] - min(ys)) * sy) for v, p in pos.items()}
+
+
+# --------------------------------------------------------------------------- gewichtete Verfahren (gemeinsamer Kern)
+# Schritt 503 der Zusammenführung: Diese Funktionen nutzen PersonOSINT *und* die EagleEye-Fallakte. Gewicht = Belegstärke
+# einer Verbindung (0..1); als Weglänge zählt 1/Gewicht, gut belegte Verbindungen sind also „kurz“.
+
+def _weighted(edges: Iterable[tuple[Any, Any, float]]) -> dict[Any, dict[Any, float]]:
+    adj: dict[Any, dict[Any, float]] = defaultdict(dict)
+    for a, b, w in edges:
+        if a == b or w <= 0:
+            continue
+        adj[a][b] = adj[b][a] = max(w, adj[a].get(b, 0.0))
+    return adj
+
+
+def weighted_betweenness(node_ids: Iterable[Any], edges: Iterable[tuple[Any, Any, float]]) -> dict[Any, float]:
+    """Brandes mit Dijkstra (Weglänge 1/Gewicht), normalisiert wie NetworkX (ungerichtet, normalized=True)."""
+    import heapq
+    from itertools import count
+
+    nodes = list(dict.fromkeys(node_ids))
+    adj = _weighted(edges)
+    cb = dict.fromkeys(nodes, 0.0)
+    tie = count()
+    for s in nodes:
+        stack: list[Any] = []
+        pred: dict[Any, list[Any]] = defaultdict(list)
+        sigma: dict[Any, float] = dict.fromkeys(nodes, 0.0)
+        sigma[s] = 1.0
+        dist: dict[Any, float] = {}
+        seen = {s: 0.0}
+        heap = [(0.0, next(tie), s, s)]
+        while heap:
+            d, _, prev, v = heapq.heappop(heap)
+            if v in dist:
+                continue
+            sigma[v] += sigma[prev] if prev != v else 0.0
+            stack.append(v)
+            dist[v] = d
+            for w, weight in adj.get(v, {}).items():
+                vw = d + 1.0 / weight
+                if w not in dist and (w not in seen or vw < seen[w]):
+                    seen[w] = vw
+                    heapq.heappush(heap, (vw, next(tie), v, w))
+                    sigma[w] = 0.0
+                    pred[w] = [v]
+                elif vw == seen.get(w):
+                    sigma[w] += sigma[v]
+                    pred[w].append(v)
+        delta = dict.fromkeys(stack, 0.0)
+        while stack:
+            w = stack.pop()
+            for v in pred[w]:
+                delta[v] += sigma[v] / sigma[w] * (1 + delta[w])
+            if w != s:
+                cb[w] += delta[w]
+    n = len(nodes)
+    scale = 1.0 / ((n - 1) * (n - 2)) if n > 2 else 1.0
+    return {k: v * scale for k, v in cb.items()}
+
+
+def louvain(node_ids: Iterable[Any], edges: Iterable[tuple[Any, Any, float]], resolution: float = 1.0) -> list[set[Any]]:
+    """Louvain-Gruppen (gewichtete Modularität), deterministisch: Knoten werden in fester Reihenfolge besucht."""
+    nodes = sorted(dict.fromkeys(node_ids), key=str)
+    base = _weighted(edges)
+    graph: dict[Any, dict[Any, float]] = {n: dict(base.get(n, {})) for n in nodes}
+    members: dict[Any, set[Any]] = {n: {n} for n in nodes}
+    m = sum(sum(w for b, w in nb.items() if b != a) for a, nb in graph.items()) / 2 + sum(nb.get(a, 0.0) for a, nb in graph.items())
+    if m <= 0:
+        return [{n} for n in nodes]
+    while True:
+        degree = {a: sum(w for b, w in nb.items() if b != a) + 2 * nb.get(a, 0.0) for a, nb in graph.items()}
+        comm = {a: a for a in graph}
+        tot = dict(degree)
+        order = sorted(graph, key=str)
+        moved_any = False
+        improved = True
+        while improved:
+            improved = False
+            for i in order:
+                current = comm[i]
+                links: dict[Any, float] = defaultdict(float)
+                for j, w in graph[i].items():
+                    if j != i:
+                        links[comm[j]] += w
+                tot[current] -= degree[i]
+                best, best_gain = current, links.get(current, 0.0) - resolution * tot[current] * degree[i] / (2 * m)
+                for c in sorted(links, key=str):
+                    gain = links[c] - resolution * tot[c] * degree[i] / (2 * m)
+                    if gain > best_gain + 1e-12:
+                        best, best_gain = c, gain
+                tot[best] += degree[i]
+                if best != current:
+                    comm[i] = best
+                    improved = moved_any = True
+        if not moved_any:
+            break
+        new_members: dict[Any, set[Any]] = defaultdict(set)
+        new_graph: dict[Any, dict[Any, float]] = defaultdict(lambda: defaultdict(float))
+        for a in graph:
+            new_members[comm[a]] |= members[a]
+            new_graph[comm[a]]  # Knoten auch ohne Kanten anlegen
+        for a, nb in graph.items():
+            for b, w in nb.items():
+                ca, cb_ = comm[a], comm[b]
+                if a == b:
+                    new_graph[ca][ca] += w
+                elif ca == cb_:
+                    if str(a) < str(b):
+                        new_graph[ca][ca] += w
+                else:
+                    new_graph[ca][cb_] += w
+        graph = {a: dict(nb) for a, nb in new_graph.items()}
+        members = dict(new_members)
+    return sorted(members.values(), key=lambda s: (-len(s), sorted(map(str, s))))
+
+
+def best_path(edges: Iterable[tuple[Any, Any, float]], a: Any, b: Any) -> list[Any]:
+    """Am besten belegter Weg (kleinste Summe 1/Gewicht) von a nach b; leer, wenn keiner existiert."""
+    import heapq
+
+    adj = _weighted(edges)
+    if a not in adj or b not in adj:
+        return [a] if a == b else []
+    dist, prev, heap = {a: 0.0}, {}, [(0.0, str(a), a)]
+    done: set[Any] = set()
+    while heap:
+        d, _, v = heapq.heappop(heap)
+        if v in done:
+            continue
+        done.add(v)
+        if v == b:
+            break
+        for w, weight in adj[v].items():
+            nd = d + 1.0 / weight
+            if nd < dist.get(w, float("inf")):
+                dist[w], prev[w] = nd, v
+                heapq.heappush(heap, (nd, str(w), w))
+    if b not in done:
+        return []
+    path = [b]
+    while path[-1] != a:
+        path.append(prev[path[-1]])
+    return path[::-1]

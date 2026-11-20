@@ -1505,8 +1505,11 @@ class Platform:
         ents = self.db.all("SELECT id, type, label, is_subject, data, photo FROM entities WHERE case_id = ?", (case_id,))
         links = [l for l in self.list_links(case_id) if l["confidence"] >= min_confidence]
         adj = g.adjacency([e["id"] for e in ents], links)
-        bc = g.betweenness(adj)
-        groups = g.communities(adj)
+        # Gleiche Verfahren wie die Netzwerkanalyse (und die EagleEye-Fallakte): gewichtet nach Konfidenz.
+        weighted = [(l["source_id"], l["target_id"], l["confidence"] / 100) for l in links]
+        ids = [e["id"] for e in ents]
+        bc = {k: round(v, 4) for k, v in g.weighted_betweenness(ids, weighted).items()}
+        groups = {n: i for i, members in enumerate(g.louvain(ids, weighted)) for n in members}
         nodes = [{"id": e["id"], "label": e["label"], "type": e["type"], "type_label": ENTITY_TYPES.get(e["type"], e["type"]),
                   "subject": bool(e["is_subject"]), "degree": len(adj[e["id"]]), "betweenness": bc.get(e["id"], 0.0),
                   "group": groups.get(e["id"], 0), "has_photo": bool(e["photo"]),

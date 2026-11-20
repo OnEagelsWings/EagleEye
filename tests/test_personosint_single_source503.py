@@ -46,3 +46,61 @@ def test_exact_and_minhash_families_agree():
     assert groups(exact, "id") == groups(estimated, "document_id")
     assert exact["independent_origins"] == estimated["independent_origins"] == 6
     assert exact["duplicate_documents"] == estimated["duplicate_documents"]
+
+
+def _random_case_graph(rng, n, p):
+    ents = [{"id": f"e{i}", "label": f"N{i:03d}", "kind": rng.choice(["person", "organization"])} for i in range(n)]
+    rels = [{"source_id": f"e{i}", "target_id": f"e{j}", "predicate": "kennt",
+             "state": rng.choice(["supported", "hypothesis", "disputed", "rejected"]),
+             "sources": [{"review_state": "reviewed"}] * rng.randint(0, 3)}
+            for i in range(n) for j in range(i + 1, n) if rng.random() < p]
+    return {"entities": ents, "relations": rels}
+
+
+def test_network_analysis_is_one_core_and_matches_networkx():
+    import networkx as nx
+    from networkx.algorithms import community
+
+    from eagleeye.application.intel492 import network
+    from personosint import graph as po_graph
+
+    rng = random.Random(503)
+    for _ in range(60):
+        graph = _random_case_graph(rng, rng.randint(3, 30), rng.uniform(0.05, 0.3))
+        g = network.build_graph(graph)
+        if not g.number_of_edges():
+            continue
+        for _, _, data in g.edges(data=True):
+            data["distance"] = 1 / data["weight"]
+        edges = [(str(r["source_id"]), str(r["target_id"]), network.relation_weight(r)) for r in graph["relations"]]
+        ours = po_graph.weighted_betweenness(list(g.nodes), edges)
+        theirs = nx.betweenness_centrality(g, weight="distance", normalized=True)
+        assert all(abs(ours[k] - theirs[k]) < 1e-9 for k in theirs)
+        groups = po_graph.louvain(list(g.nodes), [e for e in edges if e[2] > 0])
+        assert community.modularity(g, groups, weight="weight") >= community.modularity(
+            g, community.louvain_communities(g, weight="weight", seed=492), weight="weight") - 0.05
+        a, b = rng.sample(list(g.nodes), 2)
+        steps = network.path_between(graph, a, b)
+        try:
+            expected = nx.shortest_path_length(g, a, b, weight="distance")
+        except nx.NetworkXNoPath:
+            assert steps == []
+        else:
+            assert abs(sum(1 / s["weight"] for s in steps) - expected) < 1e-9
+        result = network.analyse(graph)
+        assert result["components"] == nx.number_connected_components(g) and result["truth_determined"] is False
+
+
+def test_case_file_network_page_uses_the_shared_core(monkeypatch):
+    from eagleeye.application.intel492 import network
+    from personosint import network as po_network
+
+    calls = []
+    original = po_network.analyse_weighted
+    monkeypatch.setattr(po_network, "analyse_weighted", lambda *a, **k: calls.append(1) or original(*a, **k))
+    graph = {"entities": [{"id": "a", "label": "A", "kind": "person"}, {"id": "b", "label": "B", "kind": "person"},
+                          {"id": "c", "label": "C", "kind": "organization"}],
+             "relations": [{"source_id": "a", "target_id": "c", "predicate": "arbeitet bei", "state": "supported", "sources": []},
+                           {"source_id": "b", "target_id": "c", "predicate": "arbeitet bei", "state": "hypothesis", "sources": []}]}
+    result = network.analyse(graph)
+    assert calls and result["central"][0]["label"] == "C" and result["bridges"][0]["label"] == "C"
