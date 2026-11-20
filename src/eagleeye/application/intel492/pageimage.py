@@ -435,7 +435,11 @@ def _launch(browser: str, profile: Path, proxy_port: int) -> subprocess.Popen:
             "--webrtc-ip-handling-policy=disable_non_proxied_udp",
             "--no-first-run", "--no-default-browser-check", "--disable-extensions", "--disable-sync",
             "--disable-background-networking", "--disable-component-update", "--disable-default-apps",
-            "--disable-features=Translate,MediaRouter,OptimizationHints,AutofillServerCommunication",
+            # Local-network permission prompts would stall a page without a screen; the proxy above
+            # is the guard and refuses every internal address anyway.
+            "--disable-features=Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,"
+            "LocalNetworkAccessChecks,PrivateNetworkAccessPermissionPrompt",
+            "--deny-permission-prompts",
             "--hide-scrollbars", "--mute-audio", f"--window-size={WIDTH},{VIEW_HEIGHT}", "about:blank"]
     if os.name == "posix" and hasattr(os, "geteuid") and os.geteuid() == 0:
         args.insert(1, "--no-sandbox")  # Chromium refuses to start as root otherwise (containers)
@@ -508,6 +512,7 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
                 tools.call("Emulation.setUserAgentOverride", {"userAgent": agent}, session)
             tools.call("Emulation.setDeviceMetricsOverride",
                        {"width": WIDTH, "height": VIEW_HEIGHT, "deviceScaleFactor": 1, "mobile": False}, session)
+            tools.events.clear()  # a late load event of about:blank must not count as the page's
             navigated = tools.call("Page.navigate", {"url": url}, session)
             if navigated.get("errorText"):
                 raise ImageError("Die Seite ließ sich im Browser nicht laden (" + str(navigated["errorText"])[:80] + ").")
