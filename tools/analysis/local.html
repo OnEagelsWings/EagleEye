@@ -8,7 +8,7 @@ let caps={}, report;
 el('caseid').value=params.get('caseId')||'';
 function update(){
  const k=el('tool').value,c=caps[k];if(!c)return;
- el('fileGroup').hidden=k==='alias';el('paths').required=k!=='alias';el('queryGroup').hidden=!['alias','search','ocr'].includes(k);el('queryLabel').textContent=k==='alias'?'Öffentlicher Benutzername':k==='ocr'?'OCR-Sprachcodes':'Suchbegriff';el('query').value=k==='ocr'?'deu+eng':'';el('offsetGroup').hidden=k!=='timeline';el('hint').textContent=hints[k];
+ el('fileGroup').hidden=k==='alias';el('paths').required=k!=='alias';el('queryGroup').hidden=!['alias','search','ocr'].includes(k);el('queryLabel').textContent=k==='alias'?'Öffentlicher Benutzername':k==='ocr'?'OCR-Sprachcodes':'Suchbegriff';el('query').value=k==='ocr'?'deu+eng':'';el('offsetGroup').hidden=k!=='timeline';el('hint').textContent=c.label.includes('Poppler')?'Wörtliche Suche in PDF-, TXT- und Markdown-Dateien mit Seite und Zeile.':hints[k];
  el('availability').textContent=c.missing.length?'Auf diesem Gerät fehlen: '+c.missing.join(', '):'Werkzeuge auf diesem Gerät gefunden.';el('run').disabled=!!c.missing.length;
 }
 fetch('/status').then(r=>r.json()).then(d=>{caps=d;for(const [k,c] of Object.entries(d))el('tool').add(new Option(c.label,k));if(caps[params.get('tool')])el('tool').value=params.get('tool');update()}).catch(()=>el('msg').textContent='Werkzeugstatus nicht erreichbar.');

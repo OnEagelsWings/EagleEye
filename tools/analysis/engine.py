@@ -26,8 +26,11 @@ def locate(name):
     return shutil.which(name)
 
 def capabilities():
-    return {key: {"label": title, "missing": [t for t in tools if not locate(t)]}
+    status = {key: {"label": title, "missing": [t for t in tools if not locate(t)]}
             for key, (title, tools) in TOOLS.items()}
+    if status["search"]["missing"] and locate("pdftotext"):
+        status["search"] = {"label":"PDF- und Textsuche (Poppler)", "missing":[]}
+    return status
 
 def command(name, *args, output=None, timeout=900):
     exe = locate(name)
@@ -70,6 +73,7 @@ def analyze(case, mode, paths, query="", offset=0):
         sources.append({"name": p.name, "sha256": h})
     def write(name, value):
         (dest / name).write_text(value, encoding="utf-8")
+    programs = TOOLS[mode][1]
     if mode == "metadata":
         body = command("exiftool", "-j", "-G1", "-n", *files)
         data = json.loads(body)
@@ -88,6 +92,24 @@ def analyze(case, mode, paths, query="", offset=0):
         body = "Durchsuchbare Arbeitskopie: OCR.pdf"
         if locate("pdftotext"):
             body += "\n" + command("pdftotext", "-layout", target, "-")
+    elif mode == "search" and not all(locate(t) for t in programs):
+        programs = ["pdftotext"]
+        hits = []
+        match_count = 0
+        for p in files:
+            if p.suffix.lower() == ".pdf":
+                content = command("pdftotext", "-layout", p, "-")
+            elif p.suffix.lower() in (".txt", ".md"):
+                content = p.read_text(encoding="utf-8-sig", errors="replace")
+            else:
+                raise ValueError("Die Poppler-Ersatzsuche unterstützt PDF-, TXT- und MD-Dateien.")
+            for page, block in enumerate(content.split("\f"), 1):
+                for line_no, line in enumerate(block.splitlines(), 1):
+                    if query.casefold() in line.casefold():
+                        match_count += 1
+                        if len(hits) < 100:
+                            hits.append(f"{p.name} · Seite {page}, Zeile {line_no}: {line.strip()[:800]}")
+        body = f"PDF- und Textsuche (Poppler): {match_count} Trefferzeilen, bis zu 100 angezeigt.\n" + "\n".join(hits)
     elif mode == "search":
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
@@ -148,8 +170,8 @@ def analyze(case, mode, paths, query="", offset=0):
         body = f"{count} Dateisystemereignisse. Vollständige Daten in zeitleiste.csv.\n" + "\n".join(f"{t} | {kind} | {p}" for t,kind,p in preview)
     write("ausgabe.txt", body)
     versions = {}
-    for name in TOOLS[mode][1]:
-        arg = {"exiftool":"-ver","ffmpeg":"-version","ffprobe":"-version","fls":"-V","recollindex":"-V","recollq":"-v"}.get(name, "--version")
+    for name in programs:
+        arg = {"pdftotext":"-v","exiftool":"-ver","ffmpeg":"-version","ffprobe":"-version","fls":"-V","recollindex":"-V","recollq":"-v"}.get(name, "--version")
         try: versions[name] = command(name, arg, timeout=10).strip().splitlines()[0][:160]
         except (ValueError, IndexError, subprocess.TimeoutExpired): versions[name] = "Version nicht ermittelt"
     report = {"format":"eagleeye-analysis/1", "id":job, "caseId":case, "tool":mode,
