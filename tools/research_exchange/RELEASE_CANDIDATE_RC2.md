@@ -1,6 +1,6 @@
 # EagleEye Forschungs-Brücke – Abnahmeprotokoll 1.0.0-rc2
 
-**Datum:** 20.11.2026 · **Entscheidung:** **HOLD – noch kein Release 1.0**
+**Datum:** 20.11.2026 · **Entscheidung:** **HOLD – Nutzerfreigabe erteilt, aber noch kein Release 1.0**
 **Quellbranch:** `feature/public-research-bridge-integration-20261120` (Draft PR #100, basiert auf dem laufenden Integrations-PR #94).
 **Quellcommit des ausführbaren Windows-Pakets:** `991753fc5faac703263eea8852c61c0d2be56ba2`.
 
@@ -33,20 +33,20 @@
 | Datenaustausch zu privatem GitHub | Synthetisches Hin-/Zurück, Duplikat- und Konfliktschutz bestanden |
 | ChatGPT → GitHub → Windows | Synthetischer Datensatz `00000000-0000-4000-8000-00000000e502` freigegeben, Audit bestätigt |
 | GitHub Research-Regression Windows/Linux auf `991753f` | Erfolgreich (Windows und Linux bestätigt) |
-| Gesamter EagleEye-CI-Gate auf `991753f` | Zum Erstellungszeitpunkt noch in Arbeit |
+| Gesamter EagleEye-CI-Gate auf Integrations-Commit `d81d782` | **Fehlgeschlagen:** `tests/test_intel_pageimage.py::test_page_image_is_taken_and_internal_requests_are_blocked`, Screenshot-Status `complete=False` (1 fehlgeschlagen, 2127 bestanden, 4 übersprungen, 118 abgewählt); Actions #44795228665. |
 
 **Sicherheit:** Keine personenbezogenen Fälle, privaten Dokumente, Kennwörter oder laufende Observationen transferiert. Keine automatische Synchronisation und kein automatischer Merge. Die Klassifizierung `public-topic` ist **keine** automatische Datenschutzprüfung.
 
-## Release-HOLD: Pflichtprüfungen, die noch fehlen
+## Release-HOLD: Status der formalen Abnahmepunkte
 
-1. **Benutzerabnahme:** Desktop-Fenster auf dem Zielgerät tatsächlich bedienen und Layout/Barrierefreiheit bestätigen. Die zwei Tk-Smoke-Tests ersetzen keine visuelle Nutzerabnahme.
+1. **Benutzerabnahme und Freigabe:** **Erteilt am 20.11.2026.** Nutzer berichtet, dass nach eigener Kontrolle alles funktioniert, und spricht die offizielle Freigabe aus. Diese Freigabe ersetzt keine grüne Gesamt-CI, unabhängige Audit-Verankerung oder digitale Signatur/Risikoakzeptanz.
 2. **Unabhängiger Audit-Anker:** Die HMAC-Kette erkennt Änderungen innerhalb einer Protokollkette, aber eine vollständige Entfernung ihres Endes kann ohne separat aufbewahrten Prüfan­ker unentdeckt bleiben.
 3. **Signierung oder Risikofreigabe:** Der ausführbare RC ist nicht code-signiert. Für ein allgemeines Release braucht es eine vertrauenswürdige Signatur; alternativ ist für ausschließlich interne Nutzung eine informierte, ausdrücklich dokumentierte Freigabe dieser Einschränkung notwendig.
 4. **Integrationsfreigabe:** Der parallele EagleEye-Entwicklungsauftrag muss Draft PR #100 prüfen. Nicht ungeprüft in PR #94 oder `main` übernehmen.
-5. **Gesamte CI-Abnahme:** Alle verpflichtenden Builds auf dem tatsächlichen Freigabecommit müssen grün sein; übersprungene freiwillige Jobs sind nicht bestanden.
-6. **Ausdrückliche Freigabe:** Ohne manuelle Releasefreigabe bleibt dieser Kandidat auf HOLD.
+5. **Gesamte CI-Abnahme:** **Momentan rot**, siehe Seitebild-Test oben. Der Fehler liegt im allgemeinen EagleEye-Testbereich und ist nicht als Research-Bridge-Testausfall ausgewiesen. Trotzdem ist diese Freigabevoraussetzung nicht erfüllt. Alle verpflichtenden Builds auf dem tatsächlichen Freigabecommit müssen grün sein.
+6. **Ausdrückliche Freigabe:** **Erteilt am 20.11.2026**, aber der Release-Candidate bleibt auf HOLD, solange technische und Integrationsbedingungen scheitern.
 
-## Manuelle Nutzerabnahme (noch offen)
+## Nutzerabnahme – Freigabe erteilt; zusätzliche Sicherheitsprüfung bleibt offen
 
 Im Windows-Desktop die Verknüpfung **EagleEye Forschungs-Brücke (Vorschau)** öffnen. Anschließend ausschließlich ein *synthetisches* Sachthema erstellen, die Vorschau ansehen, den Freigabeprozess **ohne Veröffentlichung** prüfen und den Audit-Bereich öffnen. Danach unter *Eingang* zunächst ausschließlich die Git-Metadaten aufrufen, bewusst eine synthetische ID auswählen und den Eintrag prüfen; keine vorhandenen privaten Forschungsdatensätze ohne gesonderte Prüfung öffnen.
 
