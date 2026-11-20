@@ -651,3 +651,30 @@ def test_build490_rejects_in_workspace_evidence_alias(monkeypatch, tmp_path):
         RuntimePaths.resolve(install_dir=tmp_path / "install", base_dir=root)
     assert evidence.is_symlink()
     assert not (root / "data" / "eagleeye.db").exists()
+
+
+def test_internal_release_rejects_hardlinked_database_and_wal(monkeypatch, tmp_path):
+    """An in-workspace hard link must not alias an old SQLite database."""
+    import os
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setattr(paths, "BUILD", "490.0")
+    root = tmp_path / "internal"
+    data = root / "data"
+    data.mkdir(parents=True)
+    old = tmp_path / "legacy398.db"
+    old.write_bytes(b"legacy unchanged")
+    for suffix in ("", "-wal", "-shm"):
+        alias = data / ("eagleeye.db" + suffix)
+        try:
+            os.link(old, alias)
+        except OSError as exc:
+            pytest.skip(f"Filesystem does not support hard links: {exc}")
+        with pytest.raises(ValueError, match="hard-linked"):
+            paths.RuntimePaths.resolve(
+                install_dir=tmp_path / "install", base_dir=root
+            )
+        alias.unlink()
+    assert old.read_bytes() == b"legacy unchanged"
+    assert not (root / "reports").exists()
