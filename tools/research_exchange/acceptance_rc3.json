@@ -1,0 +1,39 @@
+{
+    "app_id":  "eagleeye-public-research-bridge",
+    "version":  "1.0.0-rc3",
+    "source_commit":  "93582dde6fa52f9b5da1566c1515c99f3695bf26",
+    "archive_sha256":  "1b8806e4040c61cc4a2b18fda4151e799b43e31dd7315b8e9dcf00aa4ceb7066",
+    "archive_bytes":  12780277,
+    "private_audit_checkpoint_commit":  "bb435256a94b2a9ce82b5185716378d8e062f937",
+    "private_audit_checkpoint_sequence":  8,
+    "research_regression":  "108 tests, 94 passed, 14 skipped, 0 failed, Windows DoMi313",
+    "git_actions_research_regression":  "GitHub Actions workflow 44800539332 success on Linux and Windows",
+    "user_approval":  "Official user release approval from chat, 20 Nov 2026",
+    "review_scope":  "Repository OnEagelsWings project-owner authorization; no branch merge performed",
+    "code_signature":  "NotSigned; no trusted code signing certificate installed",
+    "eagleeye_ci_url":  "https://github.com/OnEagelsWings/EagleEye/actions/runs/44800539567",
+    "checks":  {
+                   "synthetic_private_roundtrip":  "passed",
+                   "chatgpt_to_eagleeye":  "passed",
+                   "windows_regression":  "passed",
+                   "linux_regression":  "passed",
+                   "windows_frozen_gui_smoke":  "passed",
+                   "package_sha256":  "passed",
+                   "install_update_rollback_uninstall":  "passed",
+                   "eagleeye_ci":  "failed",
+                   "gui_user_acceptance":  "passed",
+                   "audit_independent_anchor":  "passed",
+                   "code_signing_or_risk_approval":  "passed",
+                   "integration_owner_approval":  "passed",
+                   "release_owner_approval":  "passed"
+               },
+    "notice":  "INTERNAL UNSIGNED RISK ACCEPTED; FULL EAGLEEYE CI FAILED. HOLD: no merge/tag/public release until CI succeeds.",
+    "unsigned_internal_acceptance":  {
+                                         "date":  "2026-11-20",
+                                         "source":  "Explicit user instruction in ChatGPT",
+                                         "statement":  "ich gebe es frei zur internen nutzung",
+                                         "scope":  "Unsigned internal-only Windows deployment approved, not a public trusted code signature",
+                                         "signature_status":  "NotSigned",
+                                         "public_distribution_approved":  false
+                                     }
+}
