@@ -69,12 +69,12 @@ def check(adapter, transport) -> dict:
         return {**row, "state": "nicht erreichbar", "query": query, "detail": str(exc)[:160]}
     ms = int((time.monotonic() - started) * 1000)
     status = response.status_code
-    if 200 <= status < 300 or (400 <= status < 500 and status != 429 and d.metadata.get("http_4xx_is_result")):
+    if status in (401, 403):
+        return {**row, "state": "abgewiesen", "query": query, "detail": f"HTTP {status} – Quelle verlangt Anmeldung oder sperrt diesen Zugang"}
+    if 200 <= status < 300 or (400 <= status < 500 and status not in (429,) and d.metadata.get("http_4xx_is_result")):
         return {**row, "state": "antwortet", "query": query, "detail": f"HTTP {status} · {ms} ms"}
     if status == 429:
         return {**row, "state": "gebremst", "query": query, "detail": "HTTP 429 – Abfragegrenze der Quelle, später erneut prüfen"}
-    if status in (401, 403):
-        return {**row, "state": "abgewiesen", "query": query, "detail": f"HTTP {status} – Quelle verlangt Anmeldung oder sperrt diesen Zugang"}
     return {**row, "state": "Fehler", "query": query, "detail": f"HTTP {status}"}
 
 
@@ -86,7 +86,7 @@ def report(rows: list[dict]) -> str:
     lines = ["# Quellen der EagleEye-Fallakte – Prüfbericht", "",
              f"Geprüft am {datetime.now():%d.%m.%Y %H:%M} · {len(rows)} Quellen · " +
              " · ".join(f"{n} {s}" for s, n in sorted(counts.items(), key=lambda kv: order.get(kv[0], 9))), "",
-             "Je Quelle eine unkritische Testabfrage. „antwortet“ heißt: Die Quelle ist von diesem Rechner aus nutzbar. "
+             "Je Quelle eine unkritische Testabfrage. „antwortet“ heißt: Der Endpunkt reagiert (auch 404 bei Existenzabfragen), nicht dass die Live-Recherche funktioniert. "
              "„nicht erreichbar“ liegt oft an Firewall, Proxy oder Virenschutz dieses Rechners – nicht unbedingt an der Quelle.", "",
              "| Quelle | Ergebnis | Einzelheiten | Testbegriff | Adressen |", "|---|---|---|---|---|"]
     for r in sorted(rows, key=lambda r: (order.get(r["state"], 9), r["label"].casefold())):
