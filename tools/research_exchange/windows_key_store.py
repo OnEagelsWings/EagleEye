@@ -17,7 +17,6 @@ from windows_dpapi import protect_key, unprotect_key
 
 MAGIC = b"EAGLEEYE-DPAPI-KEY-V1\x00"
 MAX_BLOB = 65536
-_ALLOWED_SYSTEM = {"SY", "BA", "S-1-5-18", "S-1-5-32-544"}
 
 
 def _windows_only():
@@ -80,6 +79,31 @@ def _sddl(path):
         kernel.LocalFree(ptr)
 
 
+def _canonical_sid(value):
+    """Resolve SDDL aliases (LA/BA/SY) and raw SIDs to the same SID form."""
+    adv = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    adv.ConvertStringSidToSidW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
+    adv.ConvertStringSidToSidW.restype = wintypes.BOOL
+    adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    adv.ConvertSidToStringSidW.restype = wintypes.BOOL
+    kernel.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel.LocalFree.restype = ctypes.c_void_p
+    sid_ptr = ctypes.c_void_p()
+    if not adv.ConvertStringSidToSidW(value, ctypes.byref(sid_ptr)):
+        raise ValueError("unrecognized SDDL trustee")
+    try:
+        result_ptr = ctypes.c_void_p()
+        if not adv.ConvertSidToStringSidW(sid_ptr, ctypes.byref(result_ptr)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            return ctypes.wstring_at(result_ptr.value)
+        finally:
+            kernel.LocalFree(result_ptr)
+    finally:
+        kernel.LocalFree(sid_ptr)
+
+
 def _assert_private_acl(path):
     """Fail closed for any inheritable, unknown or non-owner ACL entries."""
     _windows_only()
@@ -89,7 +113,7 @@ def _assert_private_acl(path):
     sid = _current_sid()
     sddl = _sddl(path)
     owner = re.search(r"O:(.*?)(?=G:|D:)", sddl)
-    if owner is None or owner.group(1) != sid:
+    if owner is None or _canonical_sid(owner.group(1)) != sid:
         raise ValueError("key-store entry must be owned by current user")
     marker = sddl.find("D:")
     if marker < 0:
@@ -107,11 +131,12 @@ def _assert_private_acl(path):
         if len(fields) != 6 or fields[0] != "A":
             raise ValueError("unsupported key-store ACL entry")
         flags, rights, trustee = fields[1], fields[2], fields[5]
-        if "ID" in flags or trustee not in _ALLOWED_SYSTEM | {sid}:
+        normalized_trustee = _canonical_sid(trustee)
+        if "ID" in flags or normalized_trustee not in {"S-1-5-18", "S-1-5-32-544", sid}:
             raise ValueError("inherited or unexpected key-store ACL principal")
         if rights not in ("FA", "0x1f01ff", "0x1F01FF"):
             raise ValueError("unexpected key-store ACL permissions")
-        have_user |= trustee == sid
+        have_user |= normalized_trustee == sid
     if not have_user:
         raise ValueError("current user has no explicit key-store permission")
 
