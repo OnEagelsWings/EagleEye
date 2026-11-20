@@ -197,6 +197,8 @@ class Auth:
             raise AuthError("Das neue Passwort muss sich vom bisherigen unterscheiden.", 422)
         check_password_policy(new, user["username"])
         self.db.update("users", user_id, {"password_hash": hash_password(new), "must_change_password": 0})
+        # Passwortwechsel widerruft auch bereits ausgegebene Sitzungen auf anderen Geräten.
+        self.db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
 
     # ------------------------------------------------------------------ Anmeldung
     def login(self, username: str, password: str, ip: str = "", user_agent: str = "") -> tuple[str, dict[str, Any]]:
