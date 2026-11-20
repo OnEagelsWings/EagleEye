@@ -1,4 +1,4 @@
-"""POSIX-only local key provisioning; Windows ACL support is pending."""
+"""Local signing-key API: POSIX mode 0700/0600 or Windows ACL + user DPAPI."""
 import os
 import secrets
 import stat
@@ -17,6 +17,9 @@ def _directory(path):
 
 
 def create_key(path):
+    if os.name == 'nt':
+        from windows_key_store import create_key as create_windows_key
+        return create_windows_key(path)
     path = Path(path)
     directory = _directory(path)
     try:
@@ -32,6 +35,9 @@ def create_key(path):
 
 
 def read_key(path):
+    if os.name == 'nt':
+        from windows_key_store import read_key as read_windows_key
+        return read_windows_key(path)
     path = Path(path)
     directory = _directory(path)
     try:
