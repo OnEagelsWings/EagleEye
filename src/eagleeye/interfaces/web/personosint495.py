@@ -80,12 +80,12 @@ def attach_personosint495(app, build: str) -> None:
     app.state.personosint495 = True
 
     @app.get("/workbench/personosint495", response_class=HTMLResponse)
-    def person_workbench(request: Request, case_id: str = "", kind: str = "person", term: str = ""):
+    def person_workbench(request: Request, case_id: str = "", kind: str = "person"):
         _user, _case = case_access(app, request, case_id)
-        return render(request, case_id, kind, term)
+        return render(request, case_id, kind, "")
 
     # The form posts the search term so that names of target persons stay out of the
-    # address bar, the browser history and bookmarks (GET with ?term= keeps working).
+    # address bar, the browser history and bookmarks. Legacy GET ?term= is ignored.
     @app.post("/workbench/personosint495", response_class=HTMLResponse)
     async def person_workbench_post(request: Request):
         form = await bounded_form(request, max_bytes=4096)
