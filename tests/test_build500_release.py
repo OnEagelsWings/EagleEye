@@ -208,3 +208,38 @@ def test_build500_receipt_fingerprint_changes_with_wheel_manifest(tmp_path):
     before = installer._source_fingerprint(tmp_path)
     manifest.write_text('{"fixture.whl":"' + "b" * 64 + '"}', encoding="utf-8")
     assert installer._source_fingerprint(tmp_path) != before
+
+
+def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
+    """No silent omission of tracked source, including a link outside the release tree."""
+    import importlib.util
+    import os
+    import subprocess
+
+    spec = importlib.util.spec_from_file_location("pack500", ROOT / "tools/pack500.py")
+    pack = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pack)
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True)
+
+    git("init")
+    git("config", "user.name", "Synthetic Test")
+    git("config", "user.email", "test@example.invalid")
+    tracked = tmp_path / "source.py"
+    tracked.write_text("original", encoding="utf-8")
+    git("add", "source.py")
+    git("commit", "-m", "fixture")
+    tracked.unlink()
+    with pytest.raises(ValueError, match="missing tracked source"):
+        pack.build(tmp_path, tmp_path / "missing.zip")
+
+    outside = tmp_path.parent / (tmp_path.name + "-outside.txt")
+    outside.write_text("not part of release", encoding="utf-8")
+    try:
+        os.symlink(outside, tracked)
+    except (OSError, NotImplementedError):
+        pytest.skip("Symlink creation unavailable on this host")
+    with pytest.raises(ValueError, match="tracked source symlink"):
+        pack.build(tmp_path, tmp_path / "linked.zip")
+    assert not (tmp_path / "linked.zip").exists()
