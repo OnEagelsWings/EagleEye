@@ -104,7 +104,10 @@ async def bounded_form(request,max_bytes=40000):
         if len(data)+len(chunk)>max_bytes:raise HTTPException(413,'Formular zu groß.')
         data.extend(chunk)
     async def receive():return {'type':'http.request','body':bytes(data),'more_body':False}
-    form=await Request(request.scope,receive=receive).form(max_fields=10,max_files=0,max_part_size=12000)
+    # starlette>=1.0 wendet max_part_size auch auf urlencodierte Felder an (gemessen in %-kodierten Bytes).
+    # Dort begrenzt bereits max_bytes den ganzen Körper; die 12-KB-Grenze bleibt wie bisher für Mehrteil-Formulare.
+    multipart=request.headers.get('content-type','').lower().startswith('multipart/')
+    form=await Request(request.scope,receive=receive).form(max_fields=10,max_files=0,max_part_size=12000 if multipart else max(max_bytes,12000))
     if len(form.multi_items())>10:raise HTTPException(413,'Zu viele Formularfelder.')
     return form
 

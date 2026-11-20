@@ -28,7 +28,7 @@ Sortiert nach Gewicht. „Behoben“ heißt: im gemeinsamen Branch geändert und
 | # | Befund | Stelle | Empfehlung / Stand |
 |---|---|---|---|
 | 1 | **Volle Regression für Build 500 abgeschaltet.** `full = (build_number % 5 == 0 and build_number < 500)` – ausgerechnet der Freigabekandidat läuft in `ci.yml` nur mit dem gezielten Teil. | `.github/workflows/ci.yml` Zeile 39 | Bedingung `and build_number < 500` entfernen. Die volle Suite ist lokal grün (1896 Tests, 11 min), es gibt also keinen Grund für die Ausnahme. **Offen** – bewusst nicht von mir geändert, weil es eure Freigaberegel ist. |
-| 2 | **Festgeschriebene Versionen mit bekannten Lücken:** `Pillow<13` (40 Meldungen), `starlette<0.51` (10), `cryptography<47` (7). | `pyproject.toml` | Obergrenzen anheben (`Pillow>=13`, aktuelle Starlette/cryptography), volle Regression laufen lassen. PersonOSINT nutzt bereits Pillow 13. **Offen.** |
+| 2 | **Festgeschriebene Versionen mit bekannten Lücken:** `Pillow<13` (40 Meldungen), `starlette<0.51` (10), `cryptography<47` (7). | `pyproject.toml` | Obergrenzen anheben (`Pillow>=13`, aktuelle Starlette/cryptography), volle Regression laufen lassen. PersonOSINT nutzt bereits Pillow 13. **Erledigt am 20. Nov.** (siehe Nachtrag 3) |
 | 3 | **Transfer bleibt nach Abbruch hängen.** Wiederholung mit anders formulierter Begründung → `Existing external graph entry differs`; bei Abbruch vor dem Graph-Schreiben weichen Journal und Graph-Notiz voneinander ab. | `src/eagleeye/application/transfer499.py` | **Behoben:** bei Wiederholung gilt die beim Vormerken protokollierte Begründung. Test: `tests/test_build499_transfer_retry.py` (2 Fälle). |
 | 4 | **Kein Vier-Augen-Prinzip bei der Planfreigabe.** Wer `research.run` und `source.review` hat, gibt den eigenen Plan frei (nachgestellt: `created_by == reviewed_by`). Der eigene Test `test_build496_plan.py` tut genau das. | `plan496.review_plan` | Entscheidung des Betreibers: Für den Einzelplatz in Ordnung, für Teambetrieb `created_by != reviewer` erzwingen (schaltbar). **Offen.** |
 | 5 | **PersonOSINT ist in Build 500 nicht enthalten.** 493 übernimmt Links, 494 Namen, 495 ist eine Seite mit elf festen Suchlinks. Quellen-Anbindungen, Aussagenmodell, Bewertung, Dossier-Vorlagen, Netzausgänge, Teambetrieb fehlen. Paketname `eagleeye-personosint-pro` und Seitentitel „PersonOSINT Intelligence“ versprechen mehr. | 493–495 | Siehe Vorschlag in Abschnitt 4. |
@@ -108,8 +108,7 @@ Beide Linien konnten ihre Quellen bisher nicht live bestätigen.
 
 **Prüfstand nach der Zusammenführung (`898c2f0`):** volle Regression lokal 2064 bestanden, 3 übersprungen (ClamAV), 118 ausgeschlossen, 0 Fehler; alle GitHub-Läufe des PR grün, einschließlich Windows-Offline-Installer, PersonOSINT unter Windows und DPAPI unter Windows.
 
-Weiterhin offen auf eurer Seite (Stand `affd7f8`): Befund 1 (volle Regression in `ci.yml` für 500 aus), Befund 2 (`Pillow<13`,
-`starlette<0.51`, `cryptography<47`), Befund 4 (Vier-Augen bei der Planfreigabe). Der Fix zu Befund 3 ist im gemeinsamen Branch,
+Weiterhin offen auf eurer Seite (Stand `affd7f8`): Befund 1 (volle Regression in `ci.yml` für 500 aus), Befund 2 (inzwischen erledigt, siehe Nachtrag 3), Befund 4 (Vier-Augen bei der Planfreigabe). Der Fix zu Befund 3 ist im gemeinsamen Branch,
 noch nicht auf `release/build500-internal-rc1`.
 
 ### Nachtrag 20. Nov.: Schritte 501 und 502 umgesetzt – PersonOSINT ist der Recherche-Motor der Fallakte
@@ -137,6 +136,24 @@ noch nicht auf `release/build500-internal-rc1`.
 | Netzwerkanalyse | NetworkX/Louvain (Fallakte) bzw. eigene Graphfunktionen (PersonOSINT) | **bewusst noch getrennt**: unterschiedliche Graphmodelle (geprüfte Relationen vs. Verbindungsgraph) – eine Vereinheitlichung würde die Ergebnisse beider Seiten ändern. Kandidat für einen eigenen Schritt. |
 
 Tests: `tests/test_personosint_single_source503.py`.
+
+### Nachtrag 20. Nov. (3): Netzwerkanalyse aus einem Kern, Abhängigkeiten ohne bekannte Lücken, Quellenprüfung für beide Teile
+
+* **Netzwerkanalyse**: Der gemeinsame Kern liegt in `personosint/network.py` (`analyse_weighted`) und `personosint/graph.py`
+  (`weighted_betweenness`, `louvain`, `best_path`). `intel492/network.py` (`analyse`, `path_between`) und die
+  PersonOSINT-Graphansicht nutzen ihn. NetworkX bleibt nur für den GEXF-Export.
+  Gegen NetworkX auf 300 Zufallsgraphen geprüft:
+  * Zentralität, Wege, Komponenten und Isolierte sind identisch.
+  * Die Louvain-Gruppen stimmen in 77 % der Fälle überein; die Modularität ist praktisch gleich (höchstens 0,035 darunter).
+* **Befund 2 erledigt**: `Pillow>=13,<14`, `starlette>=1.6,<2`, `cryptography>=50.0.2,<51`, `fastapi>=0.165`. Das ist der Stand von
+  `pip-audit`; vorher gab es Meldungen zu Pillow (CVE-2026-128066) und starlette (PYSEC-2026-161/248/249/2280/2281).
+  * Einzige Codeanpassung: starlette ≥ 1.0 wendet `max_part_size` auch auf urlencodierte Felder an, gemessen in %-kodierten Bytes.
+    Mehrsprachige Begründungen wurden dadurch mit 400 abgelehnt.
+  * In `bounded_form` (478), `app471.submission` und `buero._form` gilt die Feldgrenze deshalb wie bisher nur für Mehrteil-Formulare.
+    Bei urlencodierten Formularen begrenzt weiterhin `max_bytes` den ganzen Körper.
+  * Volle Regression mit alten **und** neuen Versionen ausgeführt.
+* **Quellenprüfung**: `tools/quellen_pruefen_fallakte.py` und `QUELLEN_PRUEFEN.bat` im Hauptordner. Je Fallakten-Quelle gibt es eine
+  unkritische Testabfrage über den abgesicherten Transport, ohne Speicherung; dazu kommt die bestehende PersonOSINT-Prüfung.
 * Volle Regression auf diesem Stand: **2113 bestanden**, 3 übersprungen, 118 ausgeschlossen. Fünf Tests waren mit euren Commits vom 20. Nov.
   veraltet und sind angepasst, ohne eine Prüfung abzuschwächen: `test_build495_person_workbench` sucht jetzt per POST und prüft zusätzlich, dass
   `GET ?term=` nichts mehr anzeigt (fe98ba7). `test_build500_release` übergibt dem Installer den erwarteten Laufzeitpfad (db4e78e). Zwei

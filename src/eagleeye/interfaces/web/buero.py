@@ -157,7 +157,10 @@ async def _form(request: Request, *, max_bytes: int = 60000, max_fields: int = 4
 
     async def receive():
         return {"type": "http.request", "body": bytes(data), "more_body": False}
-    form = await Request(request.scope, receive=receive).form(max_fields=max_fields, max_files=0, max_part_size=12000)
+    # starlette>=1.0: max_part_size gilt auch für urlencodierte Felder (in %-kodierten Bytes); dort begrenzt max_bytes.
+    multipart = request.headers.get("content-type", "").lower().startswith("multipart/")
+    form = await Request(request.scope, receive=receive).form(max_fields=max_fields, max_files=0,
+                                                              max_part_size=12000 if multipart else max(max_bytes, 12000))
     return {key: str(value) for key, value in form.multi_items()}
 
 
