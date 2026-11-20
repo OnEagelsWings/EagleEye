@@ -44,6 +44,11 @@ def _source_fingerprint(root: Path) -> str:
         root / "eagleeye_pro",
         root / "alembic_104_1",
     ]
+    # A partial or damaged release must never be accepted as a valid source fingerprint.
+    # Otherwise removing a critical source tree can leave an apparently valid receipt.
+    for required in roots:
+        if not required.exists() or required.is_symlink():
+            raise RuntimeError(f"Missing or linked Build 500 source component: {required.name}")
     files: list[Path] = []
     for item in roots:
         if item.is_symlink():
