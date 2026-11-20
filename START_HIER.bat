@@ -12,6 +12,7 @@ echo    2   PersonOSINT als Server     wie 1, zusaetzlich fuer andere Rechner im
 echo    3   EagleEye-Fallakte starten  Beweissicherung, Pruefablaeufe, Recherche-Plan, Bericht
 echo    4   Quellen pruefen            zeigt, welche Datenquellen von diesem Rechner aus antworten
 echo    5   Anleitung oeffnen
+echo    6   Forschungs-Bruecke        oeffentliche Sachthemen, mit manueller Freigabe
 echo    0   Beenden
 echo.
 set "WAHL="
@@ -21,5 +22,6 @@ if "%WAHL%"=="2" start "PersonOSINT Server" cmd /k "PersonOSINT\START_PERSONOSIN
 if "%WAHL%"=="3" start "EagleEye Fallakte" cmd /k "START_EAGLEEYE_PRO.bat"
 if "%WAHL%"=="4" start "Quellen pruefen" cmd /k "QUELLEN_PRUEFEN.bat"
 if "%WAHL%"=="5" start "" "LIESMICH_KOMPLETTPAKET.md"
+if "%WAHL%"=="6" start "Research Bridge" cmd /k "tools\research_exchange\START_RESEARCH_BRIDGE_WINDOWS.cmd"
 if "%WAHL%"=="0" exit /b 0
 goto menu
