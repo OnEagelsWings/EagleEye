@@ -264,3 +264,14 @@ def test_build500_runtime_probe_rejects_linked_installation_root(tmp_path):
     with pytest.raises(RuntimeError, match="Linked runtime paths"):
         installer._ensure_runtime(alias, quiet=True)
     assert not (actual / installer.RUNTIME_DIR).exists()
+
+
+def test_build500_fingerprint_rejects_missing_critical_source(tmp_path):
+    """An incomplete release must not be fingerprinted as installable."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    (tmp_path / "INSTALL_EAGLEEYE_500.py").write_text("incomplete", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="Missing or linked Build 500 source component"):
+        installer._source_fingerprint(tmp_path)
