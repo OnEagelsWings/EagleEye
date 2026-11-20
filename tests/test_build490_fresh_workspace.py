@@ -656,7 +656,9 @@ def test_build490_rejects_in_workspace_evidence_alias(monkeypatch, tmp_path):
         evidence.symlink_to(other, target_is_directory=True)
     except (OSError, NotImplementedError):
         pytest.skip("Directory symlinks are not supported by this test environment")
-    with pytest.raises(ValueError, match="module directories cannot be symbolic links"):
+    # Seit der Zusammenführung mit dem Build-490-Strang prüft paths.py auch Zwischenverzeichnisse ("cannot traverse");
+    # beide Formulierungen bedeuten dieselbe Ablehnung.
+    with pytest.raises(ValueError, match="module directories cannot (be|traverse) symbolic links"):
         RuntimePaths.resolve(install_dir=tmp_path / "install", base_dir=root)
     assert evidence.is_symlink()
     assert not (root / "data" / "eagleeye.db").exists()

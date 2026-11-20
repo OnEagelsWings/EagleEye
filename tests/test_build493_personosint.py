@@ -95,7 +95,11 @@ def test_browser_imports_to_existing_case_without_promoting_claims(workspace):
     rows = listed(ctx, case_id)
     assert len(rows) == 1
     guided = client.get("/workbench/leads483", params={"case_id": case_id})
-    assert "Als WARC-Webbeleg sichern (Freigabe erforderlich)" in guided.text
+    # Since the merge with the Build 492 convergence work the leads list offers the
+    # lead-bound capture action ("Als Web-Beleg sichern"); the plain-url link of
+    # Build 495 remains the fallback when that action is unavailable.
+    assert ("Als Web-Beleg sichern" in guided.text
+            or "Als WARC-Webbeleg sichern (Freigabe erforderlich)" in guided.text)
     form = client.get("/workbench/intel/web", params={"case_id": case_id, "url": "https://company.example/public"})
     assert form.status_code == 200 and 'value="https://company.example/public"' in form.text
     assert rows[0]["review_state"] == "unverified_lead"

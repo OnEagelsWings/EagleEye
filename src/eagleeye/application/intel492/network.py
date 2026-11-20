@@ -1,4 +1,4 @@
-"""Network analysis of the case entity graph (NetworkX).
+"""Network analysis of the case entity graph (shared core in ``personosint.network``; NetworkX only for GEXF export).
 
 Relations are hypotheses unless a reviewer accepted them; the analysis therefore
 weights relations by their review state and reports metrics as orientation only.
@@ -6,6 +6,12 @@ weights relations by their review state and reports metrics as orientation only.
 from __future__ import annotations
 
 import io
+
+from eagleeye.infrastructure.providers.personosint_bridge import _personosint
+
+_personosint()
+from personosint import graph as po_graph  # noqa: E402
+from personosint import network as po_network  # noqa: E402
 
 # A relation with reviewed sources counts fully; open hypotheses count less.
 STATE_WEIGHT = {"supported": 0.8, "hypothesis": 0.5,
@@ -38,60 +44,44 @@ def build_graph(graph: dict):
     return g
 
 
-def analyse(graph: dict) -> dict:
-    import networkx as nx
-    from networkx.algorithms import community
+def _core_input(graph: dict) -> tuple[list[dict], list[dict], dict]:
+    nodes = [{"id": str(e["id"]), "label": e["label"], "kind": e["kind"]} for e in graph["entities"]]
+    edges, predicates = [], {}
+    for rel in graph["relations"]:
+        a, b = str(rel["source_id"]), str(rel["target_id"])
+        weight = relation_weight(rel)
+        edges.append({"source": a, "target": b, "weight": weight})
+        if weight > 0:
+            predicates.setdefault((a, b) if a <= b else (b, a), []).append(rel["predicate"])
+    return nodes, edges, predicates
 
-    g = build_graph(graph)
-    if g.number_of_nodes() == 0:
-        return {"nodes": 0, "edges": 0, "groups": [], "bridges": [], "central": [], "isolated": [],
-                "components": 0, "truth_determined": False}
-    # distance = 1/weight so well-supported links count as "short"
-    for _, _, data in g.edges(data=True):
-        data["distance"] = 1.0 / data["weight"]
-    betweenness = nx.betweenness_centrality(g, weight="distance", normalized=True) if g.number_of_edges() else {}
-    degree = dict(g.degree(weight="weight"))
-    groups = []
-    if g.number_of_edges():
-        found = community.louvain_communities(g, weight="weight", seed=492)
-        for members in sorted(found, key=len, reverse=True):
-            if len(members) < 2:
-                continue
-            groups.append(sorted(({"id": n, "label": g.nodes[n]["label"], "kind": g.nodes[n]["kind"]} for n in members),
-                                 key=lambda x: (-degree.get(x["id"], 0), x["label"])))
-    group_of = {m["id"]: i for i, grp in enumerate(groups) for m in grp}
-    bridges = []
-    for node, score in sorted(betweenness.items(), key=lambda kv: -kv[1]):
-        neighbour_groups = {group_of.get(n) for n in g.neighbors(node)} - {None}
-        if score > 0 and (len(neighbour_groups) > 1 or node in set(nx.articulation_points(g))):
-            bridges.append({"id": node, "label": g.nodes[node]["label"], "kind": g.nodes[node]["kind"],
-                            "betweenness": round(score, 3), "connects_groups": len(neighbour_groups)})
-        if len(bridges) >= 10:
-            break
-    central = [{"id": n, "label": g.nodes[n]["label"], "kind": g.nodes[n]["kind"],
-                "weighted_degree": round(d, 2), "links": g.degree(n)}
-               for n, d in sorted(degree.items(), key=lambda kv: (-kv[1], g.nodes[kv[0]]["label"]))[:10] if d > 0]
-    isolated = [{"id": n, "label": g.nodes[n]["label"], "kind": g.nodes[n]["kind"]} for n in nx.isolates(g)]
-    return {"nodes": g.number_of_nodes(), "edges": g.number_of_edges(), "groups": groups, "bridges": bridges,
-            "central": central, "isolated": isolated, "components": nx.number_connected_components(g),
-            "truth_determined": False}
+
+def analyse(graph: dict) -> dict:
+    """Schritt 503: dieselbe Analyse wie in PersonOSINT (``personosint.network.analyse_weighted``)."""
+    nodes, edges, _ = _core_input(graph)
+    result = po_network.analyse_weighted(nodes, edges, brief_keys=("id", "label", "kind"))
+    for bridge in result["bridges"]:
+        bridge.pop("cut_point", None)
+    return result
 
 
 def path_between(graph: dict, source: str, target: str) -> list[dict]:
     """Best-supported path (lowest total 1/weight)."""
-    import networkx as nx
-
-    g = build_graph(graph)
-    for _, _, data in g.edges(data=True):
-        data["distance"] = 1.0 / data["weight"]
-    try:
-        nodes = nx.shortest_path(g, source, target, weight="distance")
-    except (nx.NetworkXNoPath, nx.NodeNotFound):
+    nodes, edges, predicates = _core_input(graph)
+    labels = {n["id"]: n["label"] for n in nodes}
+    usable = [(e["source"], e["target"], e["weight"]) for e in edges
+              if e["source"] in labels and e["target"] in labels and e["weight"] > 0]
+    weight = {}
+    for a, b, w in usable:
+        key = (a, b) if a <= b else (b, a)
+        weight[key] = max(w, weight.get(key, 0.0))
+    if source not in labels or target not in labels:
         return []
+    nodes_on_path = po_graph.best_path(usable, source, target)
     steps = []
-    for a, b in zip(nodes, nodes[1:]):
-        steps.append({"from": g.nodes[a]["label"], "to": g.nodes[b]["label"],
-                      "predicates": g[a][b]["predicates"], "weight": g[a][b]["weight"]})
+    for a, b in zip(nodes_on_path, nodes_on_path[1:]):
+        key = (a, b) if a <= b else (b, a)
+        steps.append({"from": labels[a], "to": labels[b], "predicates": predicates[key], "weight": weight[key]})
     return steps
 
 

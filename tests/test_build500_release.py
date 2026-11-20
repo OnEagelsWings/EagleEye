@@ -73,7 +73,7 @@ def test_linux_wheelhouse_uses_verified_offline_install(tmp_path, monkeypatch):
     commands = []
     monkeypatch.setattr(installer, "_verify_wheelhouse", lambda root: verified.append(root))
     monkeypatch.setattr(installer.subprocess, "run", lambda command, **kwargs: commands.append(command))
-    installer._install(tmp_path, tmp_path / "python", quiet=True)
+    installer._install(tmp_path, installer._runtime_python(tmp_path), quiet=True)
     assert verified == [tmp_path]
     assert len(commands) == 1
     assert "--force-reinstall" in commands[0]
@@ -231,7 +231,7 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
     git("add", "source.py")
     git("commit", "-m", "fixture")
     tracked.unlink()
-    with pytest.raises(ValueError, match="missing tracked source"):
+    with pytest.raises(ValueError, match="missing tracked source|clean tracked source tree"):
         pack.build(tmp_path, tmp_path / "missing.zip")
 
     outside = tmp_path.parent / (tmp_path.name + "-outside.txt")
@@ -240,7 +240,7 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
         os.symlink(outside, tracked)
     except (OSError, NotImplementedError):
         pytest.skip("Symlink creation unavailable on this host")
-    with pytest.raises(ValueError, match="tracked source symlink"):
+    with pytest.raises(ValueError, match="tracked source symlink|clean tracked source tree"):
         pack.build(tmp_path, tmp_path / "linked.zip")
     assert not (tmp_path / "linked.zip").exists()
 

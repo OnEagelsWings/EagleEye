@@ -1,3 +1,28 @@
+## Büroverwaltung für Detektei- und OSINT-Betrieb (auf Build 500)
+
+Nach der Anmeldung öffnet sich das **Büro**: Mandanten, Aufträge mit fortlaufendem Aktenzeichen,
+Auftragsprüfung (Schutz von Zielpersonen, Warnsignale mit Begründungspflicht, Sperre bei bekannter
+Schutzanordnung), Web-Abrufe erst nach Annahme, Zeiterfassung und Auslagen mit Storno statt Löschen,
+Wiedervorlagen und Abgabefristen, Budgetwarnung, Mandantenbericht als PDF nach Empfängerstufe
+(Schutzklassen), Leistungsnachweis als PDF/CSV, Teamverwaltung, Aufbewahrungsfristen und endgültige
+Löschung mit Löschprotokoll. Bedienung: [BETRIEBSHANDBUCH_BUERO.md](BETRIEBSHANDBUCH_BUERO.md).
+
+Code: `src/eagleeye/application/buero/` (Dienst, Löschung), `src/eagleeye/interfaces/web/buero.py`,
+`buero_report.py`. Tests: `tests/test_buero_*.py`, `tests/test_privacy_search_post.py`.
+
+## Gemeinsamer Stand: EagleEye Build 500 (Kandidat) + Build 492 gehärtet + PersonOSINT 1.5
+
+Dieser Branch führt die drei Arbeitslinien zusammen. Prüfbericht zu Build 493–500 und Vorschlag für die weitere
+Zusammenführung: [CLAUDE_REVIEW_UND_UEBERGABE_500.md](CLAUDE_REVIEW_UND_UEBERGABE_500.md).
+
+## EagleEye PersonOSINT 1.5 – Personen- und Investigativrecherche mit Top-Dossier
+
+Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
+Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem
+Netzwerkgraphen, Zeitleiste/Karte und **Word-Dossiers** (.docx) inkl. Vermissten-Suchplakat.
+Ausbauplan: [`PersonOSINT/ROADMAP_UNTERNEHMEN.md`](PersonOSINT/ROADMAP_UNTERNEHMEN.md).
+Start: `PersonOSINT/START_PERSONOSINT.bat` (Windows) bzw. `PersonOSINT/start_personosint.sh` (Linux/macOS).
+
 ## Aktueller Integrationsstand – öffentliche Quellen und Personenrecherche
 
 Fall öffnen → **Geführte Recherche → Öffentliche Quellen und Personenrecherche**.

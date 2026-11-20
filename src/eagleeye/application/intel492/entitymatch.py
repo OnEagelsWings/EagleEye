@@ -11,121 +11,106 @@ Windows wheels).
 from __future__ import annotations
 
 import hashlib
-import re
-from itertools import permutations
+import json
+import threading
 
-from anyascii import anyascii
-from rapidfuzz.distance import Levenshtein
-from rapidfuzz.distance import JaroWinkler
+from eagleeye.infrastructure.providers.personosint_bridge import _personosint
 
-from eagleeye_pro.phase20.entity_lineage456 import PARTICLES, _normalize_name
+# Schritt 503: Der Namensabgleich existiert nur noch einmal – in ``personosint.namematch``. Hier bleiben
+# Vorauswahl (Blocking), Zwischenspeicher und FollowTheMoney-Export der Fallakte.
+_personosint()
+from personosint.namematch import (  # noqa: E402
+    NON_ANCHORS, REASONS, TYPO_MAX_DISTANCE, TYPO_MIN_LENGTH, Prepared as _Prepared, compare_names,
+    compare_prepared as _compare,
+)
 
 COMPARABLE = {"person": "person", "organization": "org", "company": "org", "place": "place",
               "event": "event", "document": "document"}
-GERMAN_FOLD = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
-REASONS = {
-    "same_normalized_name": "gleiche Schreibweise nach Normalisierung",
-    "shared_name_variant": "gleiche Namensvariante (z. B. andere Reihenfolge oder Transliteration)",
-    "umlaut_spelling": "gleicher Name in Umlaut-Schreibweise (ä/ae, ß/ss)",
-    "initial_compatible": "gleicher Nachname, Vorname als Initiale kompatibel",
-    "token_order": "gleiche Namensbestandteile in anderer Reihenfolge",
-    "spelling_similarity": "sehr ähnliche Schreibweise (möglicher Tippfehler)",
-    "consonant_skeleton": "gleiches Konsonantengerüst (Schrift ohne Vokalzeichen) – besonders sorgfältig prüfen",
-}
+DELETION_KEY_MAX_LENGTH = 32
 
 
-def _latin_forms(name: str, normalized: dict) -> set[str]:
-    base = re.sub(r"[^\w\s]", " ", anyascii(name).casefold())
-    forms = {normalized["latin_transliteration"], " ".join(base.split()),
-             " ".join(name.casefold().translate(GERMAN_FOLD).split())}
-    return {f for f in forms if f}
+def _deletion_keys(token: str) -> set[str]:
+    """All strings reachable by deleting up to two characters. Two tokens within edit
+    distance two always share at least one such string, so no typo pair is missed."""
+    keys = {token}
+    for i in range(len(token)):
+        once = token[:i] + token[i + 1:]
+        keys.add(once)
+        for j in range(i, len(once)):
+            keys.add(once[:j] + once[j + 1:])
+    return keys
 
 
-def _tokens(form: str) -> list[str]:
-    tokens = [t.strip(".,") for t in re.split(r"[\s'\-]+", form) if t.strip(".,")]
-    return [t for t in tokens if t not in PARTICLES] or tokens
-
-
-def _token_similarity(a: str, b: str) -> tuple[float, str]:
-    """Short name parts must match exactly; typos are tolerated only in long parts."""
-    if a == b:
-        return 1.0, "exact"
-    if (len(a) == 1 and b.startswith(a)) or (len(b) == 1 and a.startswith(b)):
-        return 0.9, "initial"
-    if min(len(a), len(b)) >= 7 and Levenshtein.distance(a, b) <= 2:
-        score = JaroWinkler.normalized_similarity(a, b)
-        if score >= 0.93:
-            return score, "typo"
-    return 0.0, "different"
-
-
-def _align(tx: list[str], ty: list[str]) -> tuple[float, set[str], bool]:
-    """Best one-to-one alignment; one extra (middle) name part is tolerated."""
-    if not tx or not ty or abs(len(tx) - len(ty)) > 1 or max(len(tx), len(ty)) > 6:
-        return 0.0, set(), False
-    short, long_ = (tx, ty) if len(tx) <= len(ty) else (ty, tx)
-    best, best_kinds, best_order = 0.0, set(), False
-    for perm in permutations(range(len(long_)), len(short)):
-        scores, kinds = [], set()
-        for i, j in enumerate(perm):
-            s, kind = _token_similarity(short[i], long_[j])
-            if s == 0.0:
-                break
-            scores.append(s)
-            kinds.add(kind)
-        else:
-            score = sum(scores) / len(scores) * (0.92 if len(short) != len(long_) else 1.0)
-            if score > best:
-                best, best_kinds, best_order = score, kinds, list(perm) != sorted(perm)
-    return best, best_kinds, best_order
-
-
-def _skeleton(value: str) -> str:
-    text = anyascii(value).casefold().replace("ch", "kh").replace("c", "k")
-    text = re.sub(r"[aeiouyvw\W_]+", "", text)
-    return re.sub(r"(.)\1+", r"\1", text)
-
-
-def compare_names(left: str, right: str) -> tuple[float, str]:
-    a, b = _normalize_name(left), _normalize_name(right)
-    if a["comparison_key"] and a["comparison_key"] == b["comparison_key"]:
-        return 1.0, "same_normalized_name"
-    shared = (set(a["variants"]) & set(b["variants"])) - {""}
-    if shared:
-        return 0.96, "shared_name_variant"
-    fa, fb = _latin_forms(left, a), _latin_forms(right, b)
-    if left.casefold().translate(GERMAN_FOLD) == right.casefold().translate(GERMAN_FOLD) or \
-            any(" ".join(x.split()) == " ".join(y.split()) for x in fa for y in fb):
-        return 0.95, "umlaut_spelling"
-    best, reason = 0.0, "spelling_similarity"
-    for x in fa:
-        for y in fb:
-            score, kinds, reordered = _align(_tokens(x), _tokens(y))
-            if score <= best:
+def _blocking_keys(p: _Prepared) -> set[str]:
+    """Keys such that every pair with a non-zero score shares at least one of them."""
+    keys = {"f:" + p.folded}
+    if p.key:
+        keys.add("k:" + p.key)
+    keys.update("v:" + v for v in p.variants)
+    keys.update("m:" + f for f in p.forms)
+    if len(p.skeleton) >= 4:
+        keys.add("s:" + p.skeleton)
+    for tokens in p.token_lists:
+        for token in tokens:
+            if token in NON_ANCHORS:
                 continue
-            best = score
-            if "initial" in kinds:
-                reason = "initial_compatible"
-            elif reordered and kinds == {"exact"}:
-                reason = "token_order"
-            else:
-                reason = "spelling_similarity"
-    abjad = {"Hebrew", "Arabic"}
-    if best < 0.9 and (bool(abjad & set(a["scripts"])) != bool(abjad & set(b["scripts"]))):
-        sa, sb = _skeleton(left), _skeleton(right)
-        if len(sa) >= 4 and sa == sb:
-            return 0.9, "consonant_skeleton"
-    return round(best, 4), reason
+            keys.add("t:" + token)
+            if TYPO_MIN_LENGTH <= len(token) <= DELETION_KEY_MAX_LENGTH:
+                keys.update("d:" + k for k in _deletion_keys(token))
+            elif len(token) > DELETION_KEY_MAX_LENGTH:
+                keys.add("l:long")  # extremely long parts are compared among themselves
+    return keys
 
 
-def suggest_case_pairs_492(case_id: str, entities: list[dict], *, threshold: float = 0.88, limit: int = 100) -> list[dict]:
+def _candidate_pairs(prepared: list[_Prepared], groups: list[str | None], blocking: bool) -> list[tuple[int, int]]:
+    n = len(prepared)
+    if not blocking:
+        return [(i, j) for i in range(n) for j in range(i + 1, n) if groups[i] is not None and groups[i] == groups[j]]
+    blocks: dict[tuple[str, str], list[int]] = {}
+    for index, item in enumerate(prepared):
+        if groups[index] is None:
+            continue
+        for key in _blocking_keys(item):
+            blocks.setdefault((groups[index], key), []).append(index)
+    pairs: set[tuple[int, int]] = set()
+    for members in blocks.values():
+        if len(members) > 1:
+            for a in range(len(members)):
+                for b in range(a + 1, len(members)):
+                    pairs.add((members[a], members[b]))
+    return sorted(pairs)
+
+
+def _all_candidates(case_id: str, checked: list[tuple[str, str, str]], threshold: float, blocking: bool) -> list[dict]:
+    prepared = [_Prepared(name) for _, name, _ in checked]
+    groups = [COMPARABLE.get(kind) for _, _, kind in checked]
+    out = []
+    # A threshold of zero admits pairs without any agreement; blocking cannot find those.
+    for i, j in _candidate_pairs(prepared, groups, blocking and threshold > 0):
+        score, code = _compare(prepared[i], prepared[j])
+        if score < threshold:
+            continue
+        left, right = checked[i], checked[j]
+        out.append({
+            "case_id": case_id, "left_entity_id": left[0], "right_entity_id": right[0],
+            "left_name": left[1], "right_name": right[1], "entity_type": left[2],
+            "similarity_score": score, "reason": REASONS[code], "reason_code": code,
+            "matcher": "492-rapidfuzz-anyascii", "review_status": "unreviewed",
+            "identity_confirmed": False, "automatically_merged": False, "evidence_created": False,
+        })
+    return sorted(out, key=lambda x: (-x["similarity_score"], x["left_entity_id"], x["right_entity_id"]))
+
+
+def suggest_case_pairs_492(case_id: str, entities: list[dict], *, threshold: float = 0.88, limit: int = 100,
+                           blocking: bool = True) -> list[dict]:
+    """Review-only candidates. ``blocking=False`` compares every pair (reference for tests)."""
     if not isinstance(case_id, str) or not case_id.strip():
         raise ValueError("case_id required")
     if not 0.0 <= threshold <= 1.0 or not 1 <= limit <= 500:
         raise ValueError("invalid threshold or limit")
     if len(entities) > 1000:
         raise ValueError("case entity limit exceeded")
-    prepared, seen = [], set()
+    checked, seen = [], set()
     for entity in entities:
         if entity.get("case_id") != case_id:
             raise ValueError("cross-case entity input rejected")
@@ -134,24 +119,40 @@ def suggest_case_pairs_492(case_id: str, entities: list[dict], *, threshold: flo
         if not entity_id or not name or entity_id in seen:
             raise ValueError("missing or duplicate entity")
         seen.add(entity_id)
-        prepared.append((entity_id, name, str(entity.get("entity_type") or "unknown")))
-    out = []
-    for i, left in enumerate(prepared):
-        for right in prepared[i + 1:]:
-            group = COMPARABLE.get(left[2])
-            if group is None or group != COMPARABLE.get(right[2]):
-                continue
-            score, code = compare_names(left[1], right[1])
-            if score < threshold:
-                continue
-            out.append({
-                "case_id": case_id, "left_entity_id": left[0], "right_entity_id": right[0],
-                "left_name": left[1], "right_name": right[1], "entity_type": left[2],
-                "similarity_score": score, "reason": REASONS[code], "reason_code": code,
-                "matcher": "492-rapidfuzz-anyascii", "review_status": "unreviewed",
-                "identity_confirmed": False, "automatically_merged": False, "evidence_created": False,
-            })
-    return sorted(out, key=lambda x: (-x["similarity_score"], x["left_entity_id"], x["right_entity_id"]))[:limit]
+        checked.append((entity_id, name, str(entity.get("entity_type") or "unknown")))
+    return _all_candidates(case_id, checked, threshold, blocking)[:limit]
+
+
+class CandidateCache:
+    """Remember the candidates for an unchanged set of case entities.
+
+    The review page computes candidates on every view and again on every saved decision.
+    The key covers ids, names and types, so any change to the entities recomputes.
+    """
+
+    def __init__(self, matcher=suggest_case_pairs_492, max_entries: int = 16) -> None:
+        self.matcher, self.max_entries = matcher, max_entries
+        self._lock = threading.Lock()
+        self._entries: dict[str, list[dict]] = {}
+        self.hits = self.misses = 0
+
+    def __call__(self, case_id: str, entities: list[dict]) -> list[dict]:
+        digest = hashlib.sha256(json.dumps(
+            [case_id, sorted((str(e.get("case_id")), str(e.get("entity_id")), str(e.get("name")), str(e.get("entity_type")))
+                             for e in entities)], ensure_ascii=False).encode("utf-8")).hexdigest()
+        with self._lock:
+            cached = self._entries.get(digest)
+            if cached is not None:
+                self.hits += 1
+                self._entries[digest] = self._entries.pop(digest)  # most recently used last
+                return [dict(item) for item in cached]
+        result = self.matcher(case_id, entities)
+        with self._lock:
+            self.misses += 1
+            self._entries[digest] = result
+            while len(self._entries) > self.max_entries:
+                self._entries.pop(next(iter(self._entries)))
+        return [dict(item) for item in result]
 
 
 FTM_SCHEMA = {"person": "Person", "organization": "Organization", "company": "Company",

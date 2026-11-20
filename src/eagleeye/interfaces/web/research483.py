@@ -127,6 +127,8 @@ def attach_research483(app,build):
     def get_leads(request:Request,case_id:str=""):
         user,case=case_access(app,request,case_id)
         rows=listed(ctx,case_id)
+        lead_actions=getattr(app.state,'lead_actions',None)  # later builds: capture as web evidence
+        actions=lead_actions(request,user,case_id,rows) if lead_actions else {}
         form=(
             '<section class="card"><h2>1. Öffentlichen Treffer als Suchhinweis aufnehmen</h2>'
             '<p>Recherchelink zuerst im Browser öffnen und Herkunft beurteilen. '
@@ -134,10 +136,10 @@ def attach_research483(app,build):
             '<form action="/workbench/leads483" method="post">'
             '<input type="hidden" name="case_id" value="'+escape(case_id,quote=True)+'">'
             '<input type="hidden" name="csrf" value="'+escape(request.cookies.get(CSRF_COOKIE,""),quote=True)+'">'
-            '<label>Öffentliche HTTPS-URL</label><input required type="url" name="url" maxlength="1800">'
-            '<label>Seitentitel oder Befundthema</label><input required name="title" maxlength="240">'
-            '<label>Woher stammt der Link? Warum ist er relevant?</label>'
-            '<textarea required name="note" maxlength="1600" rows="3"></textarea>'
+            '<label for="lead483-url">Öffentliche HTTPS-URL</label><input id="lead483-url" required type="url" name="url" maxlength="1800">'
+            '<label for="lead483-title">Seitentitel oder Befundthema</label><input id="lead483-title" required name="title" maxlength="240">'
+            '<label for="lead483-note">Woher stammt der Link? Warum ist er relevant?</label>'
+            '<textarea id="lead483-note" required name="note" maxlength="1600" rows="3"></textarea>'
             '<button type="submit">Als ungeprüften Suchhinweis speichern</button></form></section>'
         )
         def capture_link(lead):
@@ -153,9 +155,42 @@ def attach_research483(app,build):
             '<p><strong>Ungeprüfter Suchhinweis – keine Evidence</strong></p>'
             '<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
             escape(x["url"],quote=True)+'">Originaladresse im Browser prüfen</a></p>'
-            '<p>'+escape(x["analyst_note"])+'</p>' + capture_link(x) +
-            '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p></section>'
+            '<p>'+escape(x["analyst_note"])+'</p>'
+            '<p>Erfasst von '+escape(x["created_by"])+' am '+escape(x["created_at"])+'</p>'+
+            # Prefer the lead-bound capture action (Build 492 S4); fall back to the plain link.
+            (actions.get(x["lead_id"]) or capture_link(x))+'</section>'
             for x in rows
+        )
+        # Provider adapters write only unreviewed intake candidates. Surface them
+        # in the same case workbench without silently promoting them to Evidence.
+        # The provider schema is optional for installations without that adapter.
+        provider_candidates = []
+        has_provider_intake = ctx.db.one(
+            "SELECT 1 AS present FROM sqlite_master WHERE type='table' AND name='provider_intake_120'"
+        )
+        if has_provider_intake:
+            provider_candidates = ctx.db.all(
+                "SELECT title,url,provider_key,review_status,created_at "
+                "FROM provider_intake_120 WHERE case_id=? AND candidate_only=1 "
+                "ORDER BY created_at DESC LIMIT 50", (case_id,)
+            )
+        def candidate_link(url):
+            # Provider intake also accepts http:// or explicit ports; one such
+            # candidate must not take down the whole page. Unsafe ones stay unlinked.
+            try:
+                safe = validate_public_lead_url(url)
+            except HTTPException as exc:
+                return ('<p class="muted">Fundadresse nicht verlinkt ('+escape(str(exc.detail))+'): <code>'+
+                        escape(str(url or "")[:300])+'</code></p>')
+            return ('<p><a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="'+
+                    escape(safe,quote=True)+'">Öffentliche Fundadresse manuell prüfen</a></p>')
+        candidate_cards = "".join(
+            '<section class="card"><h3>'+escape(str(item["title"]))+'</h3>'
+            '<p><strong>Provider-Hinweis – keine geprüfte Evidence</strong> · '+
+            escape(str(item["provider_key"]))+' · '+escape(str(item["review_status"]))+'</p>'+
+            candidate_link(item["url"])+
+            '<p>Erfasst: '+escape(str(item["created_at"]))+'</p></section>'
+            for item in provider_candidates
         )
         body=('<p>Fall: <strong>'+escape(str(case.get("title") or ""))+'</strong> · '+
               str(len(rows))+' Suchhinweise.</p>'
@@ -164,6 +199,10 @@ def attach_research483(app,build):
               'Externe Seiten dürfen den Zugriff protokollieren.</p>'+form+
               '<h2>2. Ungeprüfte Recherchefunde</h2>'+(entries or
               '<p>Noch keine Treffer aufgenommen.</p>')+
+              '<h2>3. Automatische Provider-Hinweise (max. 50)</h2>'+
+              '<p>Nur fallgebundene Kandidaten aus freigegebenen Provider-Läufen. '
+              'Keine automatische Quellen- oder Identitätsbestätigung.</p>'+
+              (candidate_cards or '<p>Keine Provider-Hinweise vorhanden.</p>')+
               '<p><a href="/workbench/dorks482?'+escape(urlencode({"case_id":case_id}),quote=True)+
               '">Dork-Suchstrategie öffnen</a> · <a href="/documents458?'+
               escape(urlencode({"case_id":case_id}),quote=True)+

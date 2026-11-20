@@ -16,7 +16,7 @@ from eagleeye.infrastructure.providers.contracts import ProviderRunRequest
 from eagleeye.infrastructure.providers.policy import validate_public_scope
 
 KINDS = {"topic": "Thema", "person": "Person", "company": "Unternehmen",
-         "username": "Benutzername", "url": "Webadresse", "place": "Ort",
+         "username": "Benutzername", "email": "E-Mail-Adresse", "url": "Webadresse", "place": "Ort",
          "federal": "Bund, Bundestag und öffentliche Register"}
 
 
@@ -57,7 +57,7 @@ SOURCES = (
     Source("gitlab", "GitLab – öffentliches Profil", ("username",), "Öffentliches Profil zu einem konkreten Benutzernamen.", "https://gitlab.com/", "gitlab_public_profile_120"),
     Source("bluesky", "Bluesky – öffentliche Profile", ("person", "username"), "Öffentliche Profilsuche, ausschließlich unbestätigte Kandidaten.", "https://bsky.app/", "bluesky_actor_search_public_147"),
     Source("gleif", "GLEIF / LEI", ("company",), "Rechtsträger mit LEI-Kennung; kein vollständiges Firmenverzeichnis.", "https://www.gleif.org/", "gleif_lei_public_135", terms="CC0; Quelle und zeitliche Gültigkeit prüfen."),
-    Source("icij", "ICIJ Offshore Leaks", ("person", "company"), "Historische Offshore-Verknüpfungen und strukturierte Downloads.", "https://offshoreleaks.icij.org/search?q={query}", access="download", terms="ODbL / CC BY-SA; Quellenangabe und Weitergabebedingungen; Eintrag ist kein Straftatnachweis."),
+    Source("icij", "ICIJ Offshore Leaks", ("person", "company"), "Historische Offshore-Verknüpfungen (Personen, Firmen, Vermittler) über die öffentliche Abgleichsschnittstelle.", "https://offshoreleaks.icij.org/search?q={query}", "personosint_icij_online_501", terms="ODbL / CC BY-SA; Quellenangabe ICIJ Pflicht; ein Eintrag ist kein Straftatnachweis."),
     Source("aleph", "OCCRP Aleph", ("person", "company", "topic"), "Öffentliche investigative Dokument- und Registersammlungen.", "https://aleph.occrp.org/", access="manual", terms="Öffentliche Bestände kostenlos; weitere Zugänge beschränkt; journalistische API-Bedingungen."),
     Source("eu_sanctions", "EU-Sanktionsliste", ("person", "company"), "Amtliche Listungen und ihre jeweiligen Rechtsgrundlagen.", "https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/overview-sanctions-and-related-resources_en", access="download"),
     Source("un_sanctions", "UN-Sanktionsliste", ("person", "company"), "Konsolidierte amtliche Listungen; Identität separat abgleichen.", "https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list", access="download"),
@@ -95,7 +95,27 @@ FEDERAL_SOURCES = (
 # Recherchegruppe, ohne sie fälschlich als Bundesbehörden zu bezeichnen.
 SOURCES = tuple(replace(s, kinds=s.kinds + ("federal",)) if s.key in
                 {"handelsregister", "dip", "lobbyregister"} else s for s in SOURCES) + FEDERAL_SOURCES
+# Recherche-Motor PersonOSINT (Schritt 501 der Zusammenführung): Quellen, die EagleEye vorher fehlten.
+# Sie laufen über denselben Freigabe-, Hostlisten- und Aufzeichnungsweg wie alle anderen Provider.
+PERSONOSINT_SOURCES = (
+    Source("po_username", "Benutzernamen-Check (13 Plattformen)", ("username",), "Prüft, auf welchen öffentlichen Plattformen ein Benutzername existiert (u. a. GitHub, GitLab, Reddit, PyPI, Docker Hub, Keybase, Telegram). Gleicher Name heißt nicht gleiche Person.", "https://github.com/", "personosint_username_presence_501", terms="Öffentliche Profilseiten; nur Existenzprüfung, keine Inhalte."),
+    Source("po_keybase", "Keybase", ("username",), "Öffentliches Keybase-Profil samt selbst bestätigter Verknüpfungen zu anderen Konten.", "https://keybase.io/", "personosint_keybase_501", terms="Öffentliche Profilangaben; Verknüpfungen sind Selbstauskünfte."),
+    Source("po_codeberg", "Codeberg", ("username", "person"), "Öffentliches Profil auf Codeberg (freie Code-Plattform).", "https://codeberg.org/", "personosint_codeberg_501", terms="Öffentliche Profilangaben."),
+    Source("po_dockerhub", "Docker Hub", ("username",), "Öffentliches Docker-Hub-Konto und veröffentlichte Abbilder.", "https://hub.docker.com/", "personosint_dockerhub_501", terms="Öffentliche Profilangaben."),
+    Source("po_gravatar", "Gravatar", ("email",), "Öffentliches Gravatar-Profil zu einer E-Mail-Adresse (abgefragt wird nur der Prüfwert der Adresse).", "https://gravatar.com/", "personosint_gravatar_501", terms="Öffentliche Profilangaben; viele Adressen haben kein Profil."),
+    Source("po_crtsh", "crt.sh – Zertifikate", ("url",), "Öffentliche TLS-Zertifikate zu einer Domain: Unterdomains, Ausstellungsdaten.", "https://crt.sh/", "personosint_crtsh_501", terms="Frei nutzbar (Sectigo); Abfragen können langsam sein."),
+    Source("po_wikipedia", "Wikipedia (de/en)", ("person", "topic", "company"), "Artikel, in denen der Suchbegriff vorkommt.", "https://de.wikipedia.org/", "personosint_wikipedia_501", terms="CC BY-SA 4.0; Artikelangaben am Beleg prüfen."),
+    Source("po_nominatim", "OpenStreetMap Nominatim", ("place",), "Ortsangaben auflösen: Koordinaten, Verwaltungsgliederung.", "https://nominatim.openstreetmap.org/", "personosint_nominatim_501", terms="ODbL; höchstens eine Abfrage je Sekunde, keine Massenabfragen."),
+    Source("po_fr_entreprises", "Frankreich – Firmenregister", ("company", "person"), "Annuaire des Entreprises: französische Firmen und eingetragene Geschäftsleitung.", "https://annuaire-entreprises.data.gouv.fr/", "personosint_fr_entreprises_501", terms="Licence Ouverte 2.0 (Etalab)."),
+    Source("po_interpol_red", "INTERPOL – Fahndung (Red Notices)", ("person",), "Öffentlich bekanntgemachte internationale Fahndungsersuchen.", "https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices", "personosint_interpol_red_501", terms="Öffentliche Bekanntmachung; Namensgleichheit ist kein Fahndungstreffer – Identität immer gesondert prüfen."),
+    Source("po_interpol_yellow", "INTERPOL – Vermisste (Yellow Notices)", ("person",), "Öffentlich bekanntgemachte Vermisstenfälle.", "https://www.interpol.int/How-we-work/Notices/Yellow-Notices/View-Yellow-Notices", "personosint_interpol_yellow_501", terms="Öffentliche Bekanntmachung; sensibel behandeln."),
+    Source("po_fbi_wanted", "FBI – Wanted", ("person",), "Öffentliche Fahndungs- und Suchmeldungen des FBI.", "https://www.fbi.gov/wanted", "personosint_fbi_wanted_501", terms="Gemeinfrei (US-Bundesbehörde); Namensgleichheit ist kein Treffer."),
+)
+SOURCES = SOURCES + PERSONOSINT_SOURCES
 BY_KEY = {source.key: source for source in SOURCES}
+#: Rechercheart → Eingabeart des PersonOSINT-Motors (als Präfix der freigegebenen Suchanfrage)
+PERSONOSINT_PREFIX = {"person": "name", "topic": "name", "company": "firma", "username": "benutzername",
+                      "email": "email", "url": "url", "place": "ort"}
 
 
 def clean_term(term):
@@ -148,6 +168,8 @@ def prepare(ctx, user, case_id, kind, term, selected, purpose, collection=""):
         if not provider["enabled"] or not provider["supports_live"]:
             raise ValueError("Quelle ist deaktiviert")
         query = (collection.strip() + " " + term) if key == "common_crawl" else term
+        if source.provider.startswith("personosint_"):
+            query = PERSONOSINT_PREFIX[kind] + ": " + term
         adapter = ctx.provider_collection_120._adapters[source.provider]
         request = ProviderRunRequest(case_id, source.provider, query, purpose, user["username"], max_results=20)
         adapter.validate_request(request)
