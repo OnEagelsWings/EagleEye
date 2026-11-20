@@ -88,6 +88,24 @@ class StagingTests(unittest.TestCase):
         with closing(self.db.connect()) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM audit").fetchone()[0], 1)
 
+    def test_read_rejects_recomputed_digest_without_staged_anchor(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        altered = self.raw.replace(b"Test only", b"Altered")
+        import hashlib
+        with closing(self.db.connect()) as db, db:
+            db.execute("UPDATE records SET raw=?, digest=? WHERE id=?",
+                       (altered, hashlib.sha256(altered).hexdigest(), self.record["id"]))
+        with self.assertRaisesRegex(ValueError, "staged audit anchor mismatch"):
+            self.db.read(self.record["id"])
+
+    def test_read_rejects_missing_staged_anchor(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        with closing(self.db.connect()) as db, db:
+            db.execute("DELETE FROM audit WHERE id=? AND status='staged'",
+                       (self.record["id"],))
+        with self.assertRaisesRegex(ValueError, "staged audit anchor mismatch"):
+            self.db.read(self.record["id"])
+
     def test_invalid_commit(self):
         with self.assertRaises(ValueError):
             self.db.stage(self.raw, "invalid")
