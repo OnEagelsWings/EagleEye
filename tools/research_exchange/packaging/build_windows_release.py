@@ -13,7 +13,7 @@ import subprocess
 import sys
 import zipfile
 
-VERSION = "1.0.0-rc2"
+VERSION = "1.0.0-rc3"
 APP = "eagleeye-public-research-bridge"
 
 

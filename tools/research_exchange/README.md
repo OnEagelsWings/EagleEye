@@ -92,3 +92,14 @@ python tools/research_exchange/packaging/build_windows_release.py D:\EagleEyeRes
 ```
 
 The resulting ZIP is an **internal Release Candidate, NOT a signed or approved 1.0 release**. See `RELEASE_CANDIDATE_RC2.md`, `acceptance_rc2.json` and run the fail-closed `release_gate.py`. Manual GUI acceptance, off-host audit anchor, explicit unsigned internal-use risk acceptance or code signing, integration owner approval and final release owner approval remain outstanding. These steps cannot be automated away.
+
+
+## Independent private-Git audit checkpoint (RC3)
+
+The **Audit** tab now provides two explicit, separate controls:
+- **Privaten Audit-Anker prüfen**: fetch only audit-anchor metadata from the private `MichaIntel/research-exchange` branch, compare every checkpoint to the HMAC-verified local SQLite chain, and report how many local events remain unanchored. It does not read other private research blobs.
+- **Audit-Prüfanker speichern**: after exact typed confirmation `ANCHOR PUBLIC RESEARCH AUDIT`, publish one new immutable-by-convention path containing only schema, random-key-derived installation identifier, event sequence and final HMAC (no events, record IDs, human names, secret bytes or case data). Git rejects non-fast-forward pushes and the code never overwrites existing checkpoint paths.
+
+On DoMi313 a first real independent checkpoint of eight local audit events was published and reverified on the PRIVATE branch in commit `bb435256a94b2a9ce82b5185716378d8e062f937`; local sequence and remote sequence were both **8**, unanchored count **0**. This does not mean Git history is cryptographically immutable to a repository administrator, and events added after the latest checkpoint are not protected from tail deletion until the next explicit checkpoint. The audit UI makes checkpointing available after review actions. Tests with **local synthetic Git** confirm malicious local tail truncation is rejected when comparing to the independent remote checkpoint. Re-run the independent verification after each research session and always anchor outstanding events before archival or release.
+
+The required separate GitHub integration PR CI must pass independently of this audit feature. **No automatic merge or public GitHub release is performed.**

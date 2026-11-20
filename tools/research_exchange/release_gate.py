@@ -29,7 +29,7 @@ VALID = {"passed", "pending", "failed", "skipped"}
 
 def evaluate(record):
     if not isinstance(record, dict) or record.get("app_id") != "eagleeye-public-research-bridge" \
-            or record.get("version") not in ("1.0.0-rc1", "1.0.0-rc2"):
+            or record.get("version") not in ("1.0.0-rc1", "1.0.0-rc2", "1.0.0-rc3"):
         raise ValueError("release record identity invalid")
     checks = record.get("checks")
     if not isinstance(checks, dict) or set(checks) != set(REQUIRED):

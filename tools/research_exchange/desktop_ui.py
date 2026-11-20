@@ -164,8 +164,14 @@ class ResearchBridgeWindow(tk.Tk):
         ttk.Label(self.audit_tab,
                   text="Lokales Ausgangsprotokoll – HMAC-verkettet, vor jedem Lesen geprüft",
                   foreground="#5b6472").pack(anchor="w", pady=(0, 8))
-        ttk.Button(self.audit_tab, text="Audit aktualisieren",
-                   command=self._refresh_audit).pack(anchor="w", pady=(0, 8))
+        actions = ttk.Frame(self.audit_tab)
+        actions.pack(anchor="w", fill="x", pady=(0, 8))
+        ttk.Button(actions, text="Lokales Audit aktualisieren",
+                   command=self._refresh_audit).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Privaten Audit-Anker prüfen",
+                   command=self._verify_remote_audit).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Audit-Prüfanker speichern",
+                   command=self._anchor_audit).pack(side="left", padx=(0, 8))
         self.audit_preview = text_view(self.audit_tab, height=25)
         self.audit_preview.pack(fill="both", expand=True)
 
@@ -360,6 +366,33 @@ class ResearchBridgeWindow(tk.Tk):
         except queue.Empty:
             pass
         self.after(150, self._poll_jobs)
+
+    def _verify_remote_audit(self):
+        if self._busy:
+            return
+        if not messagebox.askyesno("Unabhängigen Anker prüfen",
+                                   "Jetzt ausschließlich Hash-/Sequenzmetadaten aus "
+                                   "dem privaten GitHub-Branch lesen und lokal vergleichen?"):
+            return
+        self._run_job("Anker-Prüfung", self.workflow.audit_remote_status)
+
+    def _anchor_audit(self):
+        if self._busy:
+            return
+        from audit_anchor import CONFIRMATION as ANCHOR_PHRASE
+        typed = simpledialog.askstring(
+            "Audit außerhalb des Rechners sichern",
+            "Nur Sequenz und HMAC-Prüfwert werden auf den privaten MichaIntel-Branch "
+            "übertragen, keine Forschungsinhalte, Personen oder Schlüssel.\n"
+            "Bestätigung exakt eingeben: " + ANCHOR_PHRASE, parent=self)
+        if typed is None:
+            return
+        if not messagebox.askyesno("Anker wirklich veröffentlichen?",
+                                    "Einen neuen Git-Dateipfad mit "
+                                    "dem lokalen Audit-Prüfwert auf dem privaten Branch "
+                                    "veröffentlichen?"):
+            return
+        self._run_job("Audit-Anker", self.workflow.anchor_audit, typed)
 
     def _refresh_audit(self):
         try:
