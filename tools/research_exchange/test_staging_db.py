@@ -106,6 +106,18 @@ class StagingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "staged audit anchor mismatch"):
             self.db.read(self.record["id"])
 
+    def test_replay_rejects_deleted_staged_anchor_without_new_audit(self):
+        self.assertEqual(self.db.stage(self.raw, self.commit), "staged")
+        with closing(self.db.connect()) as db, db:
+            db.execute("DELETE FROM audit WHERE id=? AND status='staged'",
+                       (self.record["id"],))
+        with self.assertRaisesRegex(ValueError, "staged audit anchor mismatch"):
+            self.db.stage(self.raw, "b" * 40)
+        with closing(self.db.connect()) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM audit").fetchone()[0], 0)
+        with self.assertRaisesRegex(ValueError, "staged audit anchor mismatch"):
+            self.db.read(self.record["id"])
+
     def test_invalid_commit(self):
         with self.assertRaises(ValueError):
             self.db.stage(self.raw, "invalid")
