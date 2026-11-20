@@ -43,7 +43,7 @@ def test_current_build_explicit_database_rejects_in_workspace_parent_alias(tmp_p
     except (OSError, NotImplementedError):
         pytest.skip("Symlinks are unavailable in this environment")
     target = alias / "cases.db"
-    with pytest.raises(ValueError, match="cannot traverse symbolic links"):
+    with pytest.raises(ValueError, match="cannot (traverse symbolic links|be a symbolic link)"):
         paths.RuntimePaths.resolve(
             install_dir=install, base_dir=workspace, db_path=target
         )
