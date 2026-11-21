@@ -253,6 +253,14 @@ def _verify_wheelhouse(root: Path) -> None:
             raise RuntimeError("Wheel SHA-256 mismatch: " + name)
 
 
+def _reject_shared_installer_file(path: Path) -> None:
+    """Never overwrite a hard-linked receipt or pip log from another installation."""
+    if path.is_symlink():
+        raise RuntimeError("Linked installer file path is forbidden for Build 500")
+    if path.exists() and path.stat().st_nlink > 1:
+        raise RuntimeError("Shared hard-linked installer file is forbidden for Build 500")
+
+
 def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: bool = False) -> None:
     # Guard this entry point independently of _ensure_runtime: a linked venv
     # must never receive pip writes, even in direct or recovery invocation.
@@ -266,8 +274,7 @@ def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: 
     # Local, sealed wheels need neither a download cache nor eager .pyc builds.
     log_path = root / RUNTIME_DIR / "install-pip-500.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    if log_path.is_symlink():
-        raise RuntimeError("Linked installer log path is forbidden")
+    _reject_shared_installer_file(log_path)
     if not quiet:
         print(f"[EagleEye {BUILD}] Installationsprotokoll: {log_path}", flush=True)
     command = [str(runtime_python), "-m", "pip", "--log", str(log_path),
@@ -309,8 +316,10 @@ def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
         "offline_wheelhouse": (root / "wheelhouse").is_dir(),
     }
     temp = path.with_suffix(".tmp")
-    if _runtime_path_linked(root) or path.is_symlink() or temp.is_symlink():
+    if _runtime_path_linked(root):
         raise RuntimeError("Linked installer receipt paths are forbidden for Build 500")
+    _reject_shared_installer_file(path)
+    _reject_shared_installer_file(temp)
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     try:
         temp.chmod(0o600)
