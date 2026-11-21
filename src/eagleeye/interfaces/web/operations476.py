@@ -168,6 +168,9 @@ def attach_workbench(app, workspace_build):
                        "/workbench/personosint495")] if getattr(app.state,"personosint495",False) else []) + ([step(3,"PersonOSINT-Quellen übernehmen",
                        "Öffentliche Recherchetreffer aus dem Claude-PersonOSINT-Export als ungeprüfte Hinweise aufnehmen.",
                        "/workbench/personosint493")] if getattr(app.state,"personosint493",False) else []) + [
+                  ] + ([step(3,"Öffentliche Quellen und Personenrecherche",
+                       "Nachrichten, Personenverzeichnisse, Forschung und Register gemeinsam auswählen und fallgebunden abfragen.",
+                       "/workbench/public-sources")] if getattr(app.state,"public_sources501",False) else []) + [
                   step(3,"Öffentliche Datenquellen",
                        "DNS-, RDAP- oder DOI-Quellen im definierten Fall abrufen.",
                        "/collect469")] + ([step(3,"Webseite als Beleg sichern",
@@ -242,6 +245,28 @@ def attach_workbench(app, workspace_build):
             )
         body = '<p><strong>'+escape(str(case.get("title") or ""))+'</strong> · '+str(len(docs))+' gespeicherte Dokumente.</p>'
         body += '<section class="card"><h2>Dein Rechercheauftrag</h2><p>'+escape(str(case.get('purpose') or 'Im Fall dokumentiert'))+'</p><p>Rechtsgrundlage: '+escape(str(case.get('legal_basis') or 'Im Fall dokumentiert'))+'</p></section>'
+        if not docs:
+            # A freshly created case is intentionally empty. Previously this was
+            # indistinguishable from a broken scraper or a blank AI response.
+            # Provide an actionable, non-automatic path through existing services.
+            source_url = "/workbench/public-sources?" + urlencode({"case_id":case_id})
+            import_url = "/documents458?" + urlencode({"case_id":case_id})
+            body += (
+                '<section class="card" role="status"><h2>Noch keine Dokumenttexte im Fall</h2>'
+                '<p>Das Anlegen eines Falls startet <strong>keine automatische Recherche</strong>. '
+                'EagleEye hat noch keine Originaldokumente, Quellentexte oder KI-Ausgaben für diesen Fall. '
+                'Leere Ergebnislisten bedeuten nicht, dass eine Suche erfolglos war.</p>'
+                '<p><strong>Erster Funktionsnachweis:</strong> Eine öffentliche TXT- oder PDF-Datei '
+                'unter „Dokumente &amp; Quellen“ importieren und den gespeicherten Text prüfen. '
+                'Alternativ eine passende Quelle auswählen, ein Suchpaket anlegen, '
+                'ausdrücklich freigeben und den Einzelabruf starten. '
+                'Nicht jede Katalogquelle besitzt einen ausführbaren Adapter.</p>'
+                '<p>Der lokale KI-Ermittler benötigt zusätzlich ein bereits installiertes '
+                'Ollama-Modell; ohne Modell bleibt die manuelle Fallarbeit möglich.</p>'
+                '<nav><a href="' + escape(import_url, quote=True) + '">Dokumenttext importieren →</a> '
+                '<a href="' + escape(source_url, quote=True) + '">Öffentliche Quellen prüfen →</a></nav>'
+                '</section>'
+            )
         body += grouped if stage>=482 else '<div class="grid">'+"".join(steps)+'</div>'
         return HTMLResponse(page("Dein Ermittlungs- und Rechercheablauf",case_id,body,workspace_build),
                             headers={"Cache-Control":"no-store"})

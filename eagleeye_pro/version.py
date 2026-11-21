@@ -1,6 +1,6 @@
-BUILD = "490.0"
+BUILD = "500.0"
 SCHEMA_VERSION = "485.0"
-BUILD_NAME = "EagleEye Intelligence Platform – Build 490 Integrated Investigation Draft"
+BUILD_NAME = "EagleEye Intelligence Platform – Build 500 Internal Release Candidate"
 
 def historical_schema_compatible(runtime_build: str, schema_version: str, required_build: str) -> bool:
     """Historical service is usable when the installed schema supports it.

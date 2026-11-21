@@ -22,7 +22,7 @@ from eagleeye.bootstrap.runtime_lock import workspace_runtime_lock
 from eagleeye_pro.version import BUILD
 from eagleeye.bootstrap.desktop476 import write_start_status, _atomic_json
 
-from .app499 import create_workspace_app499
+from .app500 import create_workspace_app500
 
 
 def create_workspace_app(*, base_dir=None):
@@ -31,7 +31,7 @@ def create_workspace_app(*, base_dir=None):
     Keep the installed build identifier until the package/installer version is
     advanced as one tested release unit. Do not silently claim Build 490 GO.
     """
-    return create_workspace_app499(base_dir=base_dir, workspace_build=BUILD)
+    return create_workspace_app500(base_dir=base_dir, workspace_build=BUILD)
 
 
 def _free_port(host: str, preferred: int) -> int:
@@ -70,6 +70,16 @@ def open_local_browser(url: str, preferred: str = "firefox") -> str:
     except ValueError:
         return "unavailable"
     if parsed.scheme != "http" or (parsed.hostname or "").casefold() not in {"127.0.0.1", "localhost", "::1"}:
+        return "unavailable"
+    # A local launcher URL is a capability-bearing navigation target. Never
+    # accept userinfo, malformed ports, or control characters that could be
+    # interpreted differently by URL parsers and operating-system openers.
+    if parsed.username is not None or parsed.password is not None or any(ord(ch) < 32 or ord(ch) == 127 for ch in url):
+        return "unavailable"
+    try:
+        if parsed.port is None or parsed.port == 0:
+            return "unavailable"
+    except ValueError:
         return "unavailable"
     if preferred.casefold() == "firefox":
         for candidate in _firefox_candidates():

@@ -63,7 +63,19 @@ def transfer(ctx,user,case_id,candidate_id,document_id,rationale,*,base_dir):
             if (prev["case_id"],prev["document_id"],prev["entity_id"],prev["source_sha256"])!=(
                 case_id,document_id,entity_id,source_hash):
                 raise TransferError("Transfer already staged with different source")
-            if prev["state"]=="completed":return prev
+            if prev["state"]=="completed":
+                # The journal and graph live in separate SQLite databases.
+                # A completed journal alone cannot prove the graph survived a
+                # restore or manual removal. Fail closed instead of reporting
+                # a successful transfer with a missing graph node.
+                graph_path=(Path(base_dir) if base_dir is not None else ctx.base_dir)/"entity_registry_462.sqlite3"
+                if not graph_path.is_file():
+                    raise TransferError("Completed transfer graph database is missing")
+                with EntityRegistry461(graph_path) as graph:
+                    nodes=graph.graph(case_id)["entities"]
+                    if not any(node["id"]==entity_id for node in nodes):
+                        raise TransferError("Completed transfer graph node is missing")
+                return prev
             if prev["state"]!="staged":raise TransferError("Unexpected transfer state")
         else:
             row=dict(candidate_id=candidate_id,case_id=case_id,entity_id=entity_id,
