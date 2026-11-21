@@ -66,3 +66,21 @@ def test_auth_denials_are_not_success_even_when_4xx_means_missing_result():
         assert row["state"] == "abgewiesen"
         assert f"HTTP {status}" in row["detail"]
     assert tool.check(adapter, DeniedTransport(404))["state"] == "antwortet"
+
+
+def test_one_provider_request_build_failure_does_not_abort_diagnostics(monkeypatch):
+    adapter = next(a for a in default_adapters() if a.definition.enabled and a.definition.supports_live
+                   and tool._query_for(a) is not None)
+    original = adapter.build_requests
+    calls = {"count": 0}
+
+    def fail_after_query_validation(request):
+        calls["count"] += 1
+        if calls["count"] > 1:
+            raise ProviderValidationError("synthetic invalid request")
+        return original(request)
+
+    monkeypatch.setattr(adapter, "build_requests", fail_after_query_validation)
+    row = tool.check(adapter, FakeTransport())
+    assert row["state"] == "nicht prüfbar"
+    assert calls["count"] >= 2
