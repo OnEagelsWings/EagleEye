@@ -166,6 +166,11 @@ def test_synthetic_case_review_source_and_original_navigation(workspace, tmp_pat
         foreign_graph = registry.graph(workspace[5])
     assert any(edge["id"] == graph_relation["id"] for edge in own_graph["relations"])
     assert all(edge["id"] != graph_relation["id"] for edge in foreign_graph["relations"])
+    # The authenticated graph route must enforce the same case boundary as storage.
+    # A valid session must not expose another case merely through a query parameter.
+    foreign_graph_page = client.get("/graph464", params={"case_id": workspace[5]})
+    assert graph_relation["id"] not in foreign_graph_page.text
+    assert graph_subject["id"] not in foreign_graph_page.text
     graph_page = client.get("/graph464", params={
         "case_id": case_id, "focus": graph_relation["id"],
     })
