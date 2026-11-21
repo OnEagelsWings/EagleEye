@@ -17,9 +17,24 @@ echo.
 rem CHOICE accepts only the listed keys; do not interpolate untrusted console input into CMD commands.
 choice /c 123450 /n /m "   Auswahl (1-5, 0=Beenden): "
 if errorlevel 6 exit /b 0
-if errorlevel 5 start "" "LIESMICH_KOMPLETTPAKET.md" & goto menu
-if errorlevel 4 start "Quellen pruefen" cmd /k "QUELLEN_PRUEFEN.bat" & goto menu
-if errorlevel 3 start "EagleEye Fallakte" cmd /k "START_EAGLEEYE_PRO.bat" & goto menu
-if errorlevel 2 start "PersonOSINT Server" cmd /k "PersonOSINT\START_PERSONOSINT_SERVER.bat" & goto menu
-if errorlevel 1 start "PersonOSINT" cmd /k "PersonOSINT\START_PERSONOSINT.bat" & goto menu
+if errorlevel 5 goto action5
+if errorlevel 4 goto action4
+if errorlevel 3 goto action3
+if errorlevel 2 goto action2
+if errorlevel 1 goto action1
+goto menu
+:action5
+start "" "LIESMICH_KOMPLETTPAKET.md"
+goto menu
+:action4
+start "Quellen pruefen" cmd /k "QUELLEN_PRUEFEN.bat"
+goto menu
+:action3
+start "EagleEye Fallakte" cmd /k "START_EAGLEEYE_PRO.bat"
+goto menu
+:action2
+start "PersonOSINT Server" cmd /k "PersonOSINT\START_PERSONOSINT_SERVER.bat"
+goto menu
+:action1
+start "PersonOSINT" cmd /k "PersonOSINT\START_PERSONOSINT.bat"
 goto menu
