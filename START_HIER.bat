@@ -14,12 +14,12 @@ echo    4   Quellen pruefen            zeigt, welche Datenquellen von diesem Rec
 echo    5   Anleitung oeffnen
 echo    0   Beenden
 echo.
-set "WAHL="
-set /p WAHL=   Auswahl und Eingabetaste:
-if "%WAHL%"=="1" start "PersonOSINT" cmd /k "PersonOSINT\START_PERSONOSINT.bat"
-if "%WAHL%"=="2" start "PersonOSINT Server" cmd /k "PersonOSINT\START_PERSONOSINT_SERVER.bat"
-if "%WAHL%"=="3" start "EagleEye Fallakte" cmd /k "START_EAGLEEYE_PRO.bat"
-if "%WAHL%"=="4" start "Quellen pruefen" cmd /k "QUELLEN_PRUEFEN.bat"
-if "%WAHL%"=="5" start "" "LIESMICH_KOMPLETTPAKET.md"
-if "%WAHL%"=="0" exit /b 0
+rem CHOICE accepts only the listed keys; do not interpolate untrusted console input into CMD commands.
+choice /c 123450 /n /m "   Auswahl (1-5, 0=Beenden): "
+if errorlevel 6 exit /b 0
+if errorlevel 5 start "" "LIESMICH_KOMPLETTPAKET.md" & goto menu
+if errorlevel 4 start "Quellen pruefen" cmd /k "QUELLEN_PRUEFEN.bat" & goto menu
+if errorlevel 3 start "EagleEye Fallakte" cmd /k "START_EAGLEEYE_PRO.bat" & goto menu
+if errorlevel 2 start "PersonOSINT Server" cmd /k "PersonOSINT\START_PERSONOSINT_SERVER.bat" & goto menu
+if errorlevel 1 start "PersonOSINT" cmd /k "PersonOSINT\START_PERSONOSINT.bat" & goto menu
 goto menu
