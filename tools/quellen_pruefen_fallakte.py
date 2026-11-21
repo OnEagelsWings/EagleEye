@@ -64,9 +64,9 @@ def check(adapter, transport) -> dict:
         if "DNS resolution failed" in str(exc):
             return {**row, "state": "nicht erreichbar", "query": query,
                     "detail": "Name der Quelle lässt sich nicht auflösen (keine Internetverbindung, Proxy oder Firewall)"}
-        return {**row, "state": "gesperrt", "query": query, "detail": f"Sicherheitsprüfung: {str(exc)[:120]}"}
+        return {**row, "state": "gesperrt", "query": query, "detail": "Sicherheitsprüfung verweigert den Abruf (Details nur im geschützten Diagnoseprotokoll)"}
     except (ProviderFrameworkError, OSError) as exc:
-        return {**row, "state": "nicht erreichbar", "query": query, "detail": str(exc)[:160]}
+        return {**row, "state": "nicht erreichbar", "query": query, "detail": f"{type(exc).__name__} beim Abruf (keine URLs oder Zugangsdaten im Bericht)"}
     ms = int((time.monotonic() - started) * 1000)
     status = response.status_code
     if status in (401, 403):
