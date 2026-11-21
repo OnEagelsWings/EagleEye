@@ -333,6 +333,12 @@ def main(argv=None) -> int:
         return 2
 
     root = _root()
+    # The sealed Windows wheelhouse contains CPython 3.12 wheels. Fail before
+    # creating or changing the runtime when invoked with an incompatible host.
+    # Linux/source installs remain governed by their own dependency resolution.
+    if os.name == "nt" and (args.offline or (root / "wheelhouse").exists()) and sys.version_info[:2] != (3, 12):
+        print("EagleEye Build 500 Windows offline installation requires Python 3.12.x.", file=sys.stderr)
+        return 2
     # Offline mode is an integrity contract, including --check and an already
     # installed runtime. Never report readiness for a tampered wheelhouse.
     # A bundled wheelhouse is part of the installation trust boundary even
