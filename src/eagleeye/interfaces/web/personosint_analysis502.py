@@ -5,7 +5,7 @@ from html import escape
 from urllib.parse import urlencode
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from eagleeye.application import personosint_analysis502 as po_analysis
 from .operations476 import case_access, page
@@ -80,7 +80,7 @@ def attach_personosint_analysis502(app, build):
     def analysis_api(request: Request, case_id: str = ""):
         user, _ = case_access(app, request, case_id)
         result = po_analysis.analyze(ctx, user, case_id)
-        return {"case_id": case_id, **result}
+        return JSONResponse({"case_id": case_id, **result}, headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
 
     @app.get(PATH, response_class=HTMLResponse)
     def analysis_page(request: Request, case_id: str = ""):
