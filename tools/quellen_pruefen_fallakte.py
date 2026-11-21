@@ -55,7 +55,13 @@ def check(adapter, transport) -> dict:
     query = _query_for(adapter)
     if query is None:
         return {**row, "state": "nicht prüfbar", "detail": "kein passender Testbegriff (Quelle braucht eine besondere Eingabe)"}
-    first = adapter.build_requests(ProviderRunRequest("quellenpruefung", d.provider_key, query, PURPOSE, "pruefung"))[0]
+    try:
+        requests = adapter.build_requests(ProviderRunRequest("quellenpruefung", d.provider_key, query, PURPOSE, "pruefung"))
+        if not requests:
+            return {**row, "state": "nicht prüfbar", "detail": "Quelle erzeugt keine sichere Testabfrage"}
+        first = requests[0]
+    except (ProviderFrameworkError, ValueError, IndexError):
+        return {**row, "state": "nicht prüfbar", "detail": "Testabfrage konnte nicht vorbereitet werden"}
     started = time.monotonic()
     try:
         response = transport.fetch(first, allowed_hosts=d.allowed_hosts, timeout_seconds=min(d.timeout_seconds, 20.0),
