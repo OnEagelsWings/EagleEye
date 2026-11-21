@@ -35,12 +35,44 @@ def test_checkpoint_integrates_real_human_review_and_original(workspace, tmp_pat
 
 
 def test_checkpoint_denies_anonymous_and_foreign_case(workspace):
-    app, client, user, cid, doc, foreign, *_ = workspace
-    response = client.get("/workbench/checkpoint489", params={"case_id": foreign})
-    assert response.status_code in (403, 404)
-    with TestClient(app) as anon:
-        assert anon.get("/workbench/checkpoint489",
-                        params={"case_id": cid}).status_code == 401
+    app, client, admin, cid, doc, foreign, *_ = workspace
+    # The fixture's initial admin created BOTH cases and legitimately has
+    # access to both. Test cross-case denial with a genuinely restricted user.
+    ctx = app.state.context
+    restricted = ctx.team_governance_359.create_user(
+        identity=admin, username="restricted489",
+        display_name="Restricted checkpoint reviewer",
+        global_role="reviewer", password="Independent!Review_2026",
+    )
+    ctx.team_governance_359.assign_case_role(
+        identity=admin, case_id=cid, username=restricted["username"],
+        case_role="reviewer", notes="Only the primary synthetic case",
+    )
+    import hashlib
+    from eagleeye.interfaces.web.app448 import COOKIE
+    fingerprint = hashlib.sha256(b"testclient||testclient").hexdigest()
+    session = ctx.team_identity_359.authenticate(
+        username=restricted["username"],
+        password="Independent!Review_2026",
+        client_fingerprint=fingerprint,
+    )
+    # Switch credentials on the fixture's existing client. Nested TestClient
+    # contexts close the same shared database when their lifespan exits.
+    original_token = client.cookies.get(COOKIE)
+    client.cookies.set(COOKIE, session.token)
+    try:
+        assert client.get("/workbench/checkpoint489",
+                          params={"case_id": cid}).status_code == 200
+        response = client.get("/workbench/checkpoint489",
+                              params={"case_id": foreign})
+        assert response.status_code in (403, 404)
+        client.cookies.delete(COOKIE)
+        assert client.get("/workbench/checkpoint489",
+                          params={"case_id": cid}).status_code == 401
+    finally:
+        client.cookies.delete(COOKIE)
+        if original_token is not None:
+            client.cookies.set(COOKIE, original_token)
 
 
 def test_checkpoint_fails_closed_on_tampered_review(workspace, tmp_path):
