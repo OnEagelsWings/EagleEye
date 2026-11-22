@@ -73,8 +73,18 @@ def transfer(ctx,user,case_id,candidate_id,document_id,rationale,*,base_dir):
                     raise TransferError("Completed transfer graph database is missing")
                 with EntityRegistry461(graph_path) as graph:
                     nodes=graph.graph(case_id)["entities"]
-                    if not any(node["id"]==entity_id for node in nodes):
+                    expected_notes=(
+                        "Unverifizierter PersonOSINT-Prüfkandidat. Quelle: doc458:"+
+                        prev["document_id"]+". Prüfbegründung: "+prev["rationale"]+
+                        ". Keine Identitätsbestätigung oder automatische Verknüpfung."
+                    )
+                    matches=[node for node in nodes if node["id"]==entity_id]
+                    if not matches:
                         raise TransferError("Completed transfer graph node is missing")
+                    node=matches[0]
+                    if (node["case_id"],node["kind"],node["label"],node["notes"])!=(
+                        case_id,selection["kind"],selection["label"],expected_notes):
+                        raise TransferError("Completed transfer graph node differs from reviewed source")
                 return prev
             if prev["state"]!="staged":raise TransferError("Unexpected transfer state")
             # Retry after an interrupted transfer: the rationale recorded when the
