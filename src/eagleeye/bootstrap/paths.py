@@ -20,9 +20,9 @@ def _internal_release_build(build: str | None = None) -> bool:
 def default_runtime_root() -> Path:
     if os.name == "nt":
         parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
-        return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
+        return parent / ("EagleEye-500" if str(BUILD).split(".", 1)[0] == "500" else "EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
     parent = Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))
-    return parent / ("eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
+    return parent / ("eagleeye-500" if str(BUILD).split(".", 1)[0] == "500" else "eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
 
 
 @dataclass(frozen=True, slots=True)
