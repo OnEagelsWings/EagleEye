@@ -92,3 +92,29 @@ def test_unknown_source_filter_fails_without_creating_false_success_report(tmp_p
     assert result == 2
     assert not out.exists()
     assert "Keine passende Quelle" in capsys.readouterr().err
+
+
+def test_diagnostics_never_send_credentials_or_state_changing_requests(monkeypatch):
+    from types import SimpleNamespace
+
+    adapter = next(a for a in default_adapters()
+                   if a.definition.enabled and a.definition.supports_live
+                   and tool._query_for(a) is not None)
+
+    class NoNetwork:
+        def fetch(self, *args, **kwargs):
+            raise AssertionError("unsafe diagnostic request reached transport")
+
+    for method, headers in (
+        ("POST", {}),
+        ("GET", {"Authorization": "Bearer synthetic-secret"}),
+        ("GET", {"Cookie": "session=synthetic"}),
+        ("GET", {"X-API-Key": "synthetic"}),
+    ):
+        monkeypatch.setattr(adapter, "build_requests",
+                            lambda request, m=method, h=headers: [
+                                SimpleNamespace(method=m, headers=h)
+                            ])
+        row = tool.check(adapter, NoNetwork())
+        assert row["state"] == "nicht prüfbar"
+        assert "nicht für Diagnosen erlaubten Abruf" in row["detail"]
