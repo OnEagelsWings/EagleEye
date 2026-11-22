@@ -64,6 +64,15 @@ class RuntimePaths:
         else:
             runtime_root = Path(base_dir)
 
+        if _internal_release_build():
+            # Reject directories, devices and named pipes before creating any
+            # workspace state. SQLite must only open regular database files.
+            candidate = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
+            for suffix in ("", "-wal", "-shm"):
+                entry = Path(str(candidate) + suffix)
+                if entry.exists() and not entry.is_file():
+                    raise ValueError("Internal release database and sidecars must be regular files")
+
         if db_path is not None and _internal_release_build():
             # SQLite can write to WAL/SHM siblings even when the main DB is safe.
             # Reject redirected sidecars before creating any workspace folders.
