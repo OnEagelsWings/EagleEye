@@ -223,6 +223,10 @@ def _verify_wheelhouse(root: Path) -> None:
         raise RuntimeError("Wheelhouse manifest invalid") from exc
     if not isinstance(expected, dict) or not expected:
         raise RuntimeError("Wheelhouse manifest empty")
+    # Hard links can alias a mutable wheel or manifest in another installation.
+    # Refuse shared inodes before pip consumes these supposedly sealed inputs.
+    if manifest.stat().st_nlink > 1:
+        raise RuntimeError("Shared hard-linked wheelhouse manifest is forbidden")
     if any(
         not isinstance(name, str)
         or not name.endswith(".whl")
@@ -238,7 +242,7 @@ def _verify_wheelhouse(root: Path) -> None:
     # archives, links or other payloads alongside the verified wheel set.
     entries = list(folder.iterdir())
     if any(
-        p.is_symlink() or not p.is_file()
+        p.is_symlink() or not p.is_file() or p.stat().st_nlink > 1
         or (p.name != manifest.name and p.name not in expected)
         for p in entries
     ):
