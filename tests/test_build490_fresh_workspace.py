@@ -678,3 +678,29 @@ def test_internal_release_rejects_hardlinked_database_and_wal(monkeypatch, tmp_p
         alias.unlink()
     assert old.read_bytes() == b"legacy unchanged"
     assert not (root / "reports").exists()
+
+
+def test_internal_workspace_picker_rejects_redirected_graph_and_dossier_stores(monkeypatch, tmp_path):
+    """Reject a redirected evidence/graph/export directory before saving workspace.json."""
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(tmp_path / "settings"))
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    for relative in (
+        "data/interactive_graph_workspace_103",
+        "data/canonical_artifacts_103_1",
+        "data/evidence_preservation_121",
+        "reports/casefile_pro_90",
+    ):
+        root = tmp_path / ("workspace-" + relative.replace("/", "-"))
+        target = root / relative
+        target.parent.mkdir(parents=True)
+        try:
+            target.symlink_to(outside, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("Directory symlinks unavailable on this runner")
+        with pytest.raises(ValueError, match="umgeleitete Datenverzeichnisse"):
+            desktop476.remember_workspace(root)
+        assert not (tmp_path / "settings" / "workspace.json").exists()
