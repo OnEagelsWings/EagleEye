@@ -70,3 +70,17 @@ def test_retry_before_graph_write_uses_staged_rationale(workspace):
     with EntityRegistry461(ctx.base_dir / "entity_registry_462.sqlite3") as db:
         nodes = [e for e in db.graph(cid)["entities"] if e["id"] == first["entity_id"]]
     assert len(nodes) == 1 and FIRST in nodes[0]["notes"]
+
+
+@ws
+def test_completed_transfer_rejects_tampered_graph_notes(workspace):
+    app, client, user, cid, document_id, *_ = workspace
+    ctx = app.state.context
+    candidate_id = _reviewed_candidate(ctx, user, cid)
+    completed = transfer499.transfer(ctx, user, cid, candidate_id, document_id, FIRST, base_dir=ctx.base_dir)
+    with EntityRegistry461(ctx.base_dir / "entity_registry_462.sqlite3") as db:
+        db.db.execute("UPDATE entity461 SET notes=? WHERE id=?",
+                      ("Tampered source attribution", completed["entity_id"]))
+        db.db.commit()
+    with pytest.raises(transfer499.TransferError, match="differs from reviewed source"):
+        transfer499.transfer(ctx, user, cid, candidate_id, document_id, FIRST, base_dir=ctx.base_dir)
