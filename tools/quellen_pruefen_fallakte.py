@@ -60,6 +60,14 @@ def check(adapter, transport) -> dict:
         if not requests:
             return {**row, "state": "nicht prüfbar", "detail": "Quelle erzeugt keine sichere Testabfrage"}
         first = requests[0]
+        # Diagnostics must never execute state-changing requests or send credentials.
+        # Some providers legitimately need authenticated/POST calls in normal operation.
+        if first.method.upper() != "GET" or any(
+            name.casefold() in {"authorization", "cookie", "proxy-authorization", "x-api-key"}
+            for name in first.headers
+        ):
+            return {**row, "state": "nicht prüfbar",
+                    "detail": "Quelle benötigt einen nicht für Diagnosen erlaubten Abruf"}
     except (ProviderFrameworkError, ValueError, IndexError):
         return {**row, "state": "nicht prüfbar", "detail": "Testabfrage konnte nicht vorbereitet werden"}
     started = time.monotonic()
