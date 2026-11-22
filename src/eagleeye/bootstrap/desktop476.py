@@ -95,7 +95,11 @@ def _reject_legacy_internal_workspace(root):
         root / 'data' / 'evidence_vault',
         root / 'data' / 'search_captures',
         root / 'data' / 'secure_storage',
+        root / 'data' / 'interactive_graph_workspace_103',
+        root / 'data' / 'canonical_artifacts_103_1',
+        root / 'data' / 'evidence_preservation_121',
         root / 'reports' / 'report_builder_pro_89',
+        root / 'reports' / 'casefile_pro_90',
     )
     for directory in module_roots:
         if directory.is_symlink() or not directory.resolve().is_relative_to(root.resolve()):
