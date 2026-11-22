@@ -108,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     transport = UrllibPublicTransport()
     adapters = [a for a in default_adapters() if not args.only or args.only in a.definition.provider_key]
+    if not adapters:
+        print("Keine passende Quelle gefunden; kein Prüfbericht erstellt.", file=sys.stderr)
+        return 2
     print(f"Prüfe {len(adapters)} Quellen der Fallakte (je eine Testabfrage) …")
     with ThreadPoolExecutor(max_workers=6) as pool:
         rows = list(pool.map(lambda a: check(a, transport), adapters))
