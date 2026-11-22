@@ -20,8 +20,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "EAGLEEYE_SETTINGS_DIR=%CD%\.eagleeye-config-490"
-set "EAGLEEYE_DATA_DIR=%CD%\.eagleeye-data-490"
+rem Build 490 uses the separate per-user configuration and workspace defaults.
+rem Never place the case database inside the program installation.
 %PYTHON% INSTALL_EAGLEEYE_490.py
 if errorlevel 1 goto :failed
 
