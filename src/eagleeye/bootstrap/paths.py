@@ -80,7 +80,7 @@ class RuntimePaths:
                 if candidate_file.exists() and candidate_file.stat().st_nlink > 1:
                     raise ValueError("Internal release database and sidecars cannot be hard-linked")
 
-        if db_path is not None and _internal_release_build() and Path(db_path).name in {
+        if db_path is not None and _internal_release_build() and Path(db_path).name.casefold() in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
             "eagleeye_pro_95_0.db-shm",
         }:
