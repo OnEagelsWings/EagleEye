@@ -84,3 +84,11 @@ def test_one_provider_request_build_failure_does_not_abort_diagnostics(monkeypat
     row = tool.check(adapter, FakeTransport())
     assert row["state"] == "nicht prüfbar"
     assert calls["count"] >= 2
+
+
+def test_unknown_source_filter_fails_without_creating_false_success_report(tmp_path, capsys):
+    out = tmp_path / "diagnose.md"
+    result = tool.main(["--only", "does-not-exist-xyz", "--out", str(out)])
+    assert result == 2
+    assert not out.exists()
+    assert "Keine passende Quelle" in capsys.readouterr().err
