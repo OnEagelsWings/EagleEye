@@ -118,7 +118,14 @@ def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
     settings = desktop476.settings_directory()
-    assert settings.name == "EagleEye-490"
+    assert settings.name == "EagleEye-500"
+    previous = settings.parent / "EagleEye-490"
+    previous.mkdir(parents=True)
+    previous_workspace = tmp_path / "previous490"
+    previous_workspace.mkdir()
+    import json
+    previous_config = json.dumps({"workspace_directory": str(previous_workspace)})
+    (previous / "workspace.json").write_text(previous_config, encoding="utf-8")
     old = settings.parent / "EagleEye"
     old.mkdir(parents=True)
     old_workspace = tmp_path / "legacy398"
@@ -132,6 +139,8 @@ def test_build500_desktop_uses_isolated_settings_and_fresh_workspace(monkeypatch
     (install / "data" / "eagleeye.db").write_bytes(b"legacy")
     resolved = desktop476.resolve_workspace(install)
     assert resolved == settings / "workspace"
+    assert resolved != previous_workspace
+    assert (previous / "workspace.json").read_text(encoding="utf-8") == previous_config
     assert resolved != old_workspace
     assert resolved != install
     assert (install / "data" / "eagleeye.db").read_bytes() == b"legacy"

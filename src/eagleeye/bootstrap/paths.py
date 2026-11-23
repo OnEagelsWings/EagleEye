@@ -18,6 +18,12 @@ def _internal_release_build(build: str | None = None) -> bool:
 
 
 def default_runtime_root() -> Path:
+    if str(BUILD).split(".", 1)[0] == "500":
+        if os.name == "nt":
+            parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
+            return parent / "EagleEye-500" / "workspace"
+        parent = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home()/".config")))
+        return parent / "EagleEye-500" / "workspace"
     if os.name == "nt":
         parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
         return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
@@ -64,6 +70,15 @@ class RuntimePaths:
         else:
             runtime_root = Path(base_dir)
 
+        if _internal_release_build():
+            # A hard link can alias an old installation without appearing as a
+            # symlink. SQLite may modify the linked inode or its WAL sidecars.
+            target_db = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
+            for suffix in ("", "-wal", "-shm"):
+                candidate = Path(str(target_db) + suffix)
+                if candidate.exists() and candidate.stat().st_nlink > 1:
+                    raise ValueError("Internal release database files cannot be hard linked")
+
         if db_path is not None and _internal_release_build():
             # SQLite can write to WAL/SHM siblings even when the main DB is safe.
             # Reject redirected sidecars before creating any workspace folders.
@@ -79,6 +94,15 @@ class RuntimePaths:
 
         # A renamed legacy database must not bypass internal workspace isolation.
         if db_path is not None and _internal_release_build():
+            # Reject symlinked explicit DB parent directories before mkdir/SQLite.
+            candidate = Path(db_path).absolute()
+            workspace_root = runtime_root.absolute()
+            if candidate.is_relative_to(workspace_root):
+                cursor = candidate.parent
+                while cursor != workspace_root:
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release database directory cannot be a symbolic link")
+                    cursor = cursor.parent
             chosen = Path(db_path).resolve()
             workspace = runtime_root.resolve()
             if not chosen.is_relative_to(workspace) or chosen == workspace:
