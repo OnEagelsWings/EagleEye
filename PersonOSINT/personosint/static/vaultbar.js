@@ -155,6 +155,7 @@
       <span class="vb-brand"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="4" y="4" width="40" height="40" rx="9" fill="#0b1f38" stroke="#facc15" stroke-width="3"/><circle cx="24" cy="24" r="8" fill="none" stroke="#facc15" stroke-width="3.5"/></svg><b>Vault offen</b><span class="vb-muted vb-hide-sm">${esc(st.owner || "")}</span></span>
       <span class="vb-sep"></span><span class="vb-net"></span>
       <button id="vb-log" class="vb-hide-sm" title="Welche Verbindungen das Programm aufgebaut hat">Verbindungen</button><span class="vb-muted vb-stats vb-hide-sm"></span>
+      ${st.fallakte && st.fallakte.available ? `<button id="vb-fa" title="EagleEye-Fallakte: Büro, Mandanten, Rechnungen, beweissichere Web-Belege – im selben Vault, ohne zweite Anmeldung">📁 Fallakte</button>` : ""}
       <span class="vb-right"><span class="vb-muted vb-saved vb-hide-sm"></span><span class="vb-muted vb-idle"></span>
         <button id="vb-settings" title="Vault-Einstellungen">⚙</button>
         <button class="vb-lock" id="vb-lock" title="Sofort sperren (Strg+Alt+L)">🔒 Sperren</button></span>`;
@@ -162,6 +163,8 @@
     document.body.classList.add("has-vb");
     bar.querySelector("#vb-log").onclick = () => showLog().catch(() => {});
     bar.querySelector("#vb-settings").onclick = settingsDialog;
+    const fa = bar.querySelector("#vb-fa");
+    if (fa) fa.onclick = () => { window.open("/vault/fallakte", "eagleeye-fallakte", "noopener"); };
     bar.querySelector("#vb-lock").onclick = async () => { try { await call("POST", "/vault/api/lock"); } catch (_) { /* schon gesperrt */ } toLock(); };
     render();
   }

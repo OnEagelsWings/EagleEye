@@ -107,6 +107,47 @@ Sie.
 - Keine echten Personen nachahmen, und keine Täuschung, die über die stille Beobachtung hinausgeht. Für Detekteien gelten zusätzlich
   Datenschutzrecht und Standesregeln.
 
+## 4. Legenden-Browser
+
+Jede Legende hat ein **eigenes Browserprofil** (Verwaltung → 🎭 Tarnung & Websuche → „🌐 Browser“ bei der Legende).
+
+- Das Fenster geht **nur über den Ausgang der Legende** ins Netz (Tor oder Proxy, Pflichtangabe). Ohne Ausgang startet es nicht.
+- Namensauflösung nur über den Ausgang, WebRTC ohne direkten Weg, kein QUIC: Ihre echte Adresse soll nicht durchsickern.
+- Anmeldungen, Cookies und Verlauf der Legende bleiben erhalten – **verschlüsselt im Vault** (`files\persona-browser\`). Beim Schließen
+  des Fensters oder beim Sperren wird das Profil verschlüsselt zurückgelegt und der Klartext gelöscht.
+- Benötigt Edge, Chrome, Chromium oder Brave.
+- Grenze: Der Netzschalter des Vaults regelt den Vault-Prozess. Der Legenden-Browser ist ein eigenes Programm; er hält sich an den
+  Proxy der Legende, nicht an den Netzschalter.
+
+## 5. Vermissten-Überwachung
+
+Beim Anlegen einer Überwachung (Reiter Suche & Treffer → Überwachen) die Art **„Vermisst“** wählen.
+
+- Abgefragt werden die Vermisstenregister mit automatischer Anbindung (INTERPOL, FBI, GDELT) und die Websuche, und zwar mit **allen
+  Namensvarianten** und Kennungen der Person.
+- Takt bis hinunter zu **stündlich**. Im Vault läuft die Überwachung, sobald Sie das Netz öffnen (höchstens einmal pro Stunde).
+- Neue Treffer erscheinen wie gewohnt als Hinweis im Fall.
+
+## 6. Treffer-Vorprüfung (Triage)
+
+Knopf **„🧹 Vorsortieren“** im Reiter Suche & Treffer (bei den neuen Treffern). Jeder Treffer bekommt eine Einschätzung mit Begründung:
+
+- **Dublette** (gleiche Fundstelle oder gleiches Konto),
+- **vermutlich andere Person** (anderes Geburtsjahr, Name zu verschieden, nur der Ort passt bei schwacher Übereinstimmung),
+- **starker Treffer** (hohe Übereinstimmung ohne Gegenanzeichen), sonst **prüfen**.
+- Die Liste wird danach in dieser Reihenfolge sortiert.
+- Optional zusätzlich eine **lokale KI** (Ollama, auf Ihrem Rechner): Sie gibt eine zweite Meinung. Keine Daten verlassen den Rechner.
+- Die Vorprüfung **löscht nichts**. Sie sortiert nur vor; die Entscheidung bleibt bei Ihnen.
+
+## 7. Firmendaten (OffeneRegister)
+
+Verwaltung → Lokale Referenzdatenbanken → **OffeneRegister** laden (einmalig, große Datei, nur bei offenem Netz).
+
+- Enthält rund 5 Millionen deutsche Firmen aus dem Handelsregister mit Geschäftsführern, Vorständen und Prokuristen.
+- Danach findet jede Personensuche **offline** Firmenrollen der Person (Treffer mit Quelle „OffeneRegister“).
+- **Stand: Ende 2018.** Spätere Änderungen fehlen. Für aktuelle Angaben das amtliche Handelsregister prüfen
+  (handelsregister.de, seit 2022 kostenlos).
+
 ## Für Entwickler
 
 | Datei | Inhalt |
@@ -114,6 +155,10 @@ Sie.
 | `personosint/deepsearch.py` | Varianten, Dorks, Plan, Hintergrundlauf, SearXNG-Quelle `websuche` |
 | `personosint/personas.py` | Legenden (Tabellen `personas`, `persona_use`, Migration 10) |
 | `personosint/connectors2.py` | Quellen `fbi_missing` und `gdelt_missing` |
+| `personosint/persona_browser.py` | Legenden-Browser, verschlüsseltes Profil |
+| `personosint/monitor.py` | Überwachungsart `vermisst`, Lauf bei geöffnetem Netz |
+| `personosint/triage.py` | Treffer-Vorprüfung (Regeln, optional Ollama) |
+| `personosint/refdata.py` | Datensatz `offeneregister` |
 | `Platform.renew_identity()` | Tor `SIGNAL NEWNYM` |
 | `Platform.run_search(queries=…, user_agent=…)` | Abfrageliste für die Tiefenrecherche, wechselnde Browserkennung |
 

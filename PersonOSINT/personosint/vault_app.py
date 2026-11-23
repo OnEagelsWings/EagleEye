@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from . import __version__, netgate
 from .auth import new_totp_secret, qr_svg, totp_counter, totp_uri
@@ -97,6 +97,9 @@ class VaultManager:
         self._thread: threading.Thread | None = None
         self.browsers = None  # Legenden-Browser, nur im geöffneten Zustand
         self.refdb: Database | None = None
+        self.fallakte = None  # EagleEye-Fallakte (falls installiert), nur im geöffneten Zustand
+        self.fallakte_port = 0
+        self._last_fallakte_sync = 0.0
         self.gate.on_close.append(self._net_closed)
 
     def _net_closed(self, reason: str) -> None:
@@ -138,6 +141,9 @@ class VaultManager:
                 self.lock(f"Automatisch gesperrt nach {idle // 60} Minuten ohne Eingabe")
                 return
             self.save()
+            if self.fallakte and self.fallakte.is_open and self.clock() - self._last_fallakte_sync > 60:
+                self._last_fallakte_sync = self.clock()
+                self.fallakte.sync()
 
     # ------------------------------------------------------------------ Zustand
     @property
@@ -164,7 +170,9 @@ class VaultManager:
                         # „ungespeichert“ erst melden, wenn der Zwischenspeicher-Takt verpasst wurde
                         "unsaved": self.db is not None and self.db.changes() != self._saved_changes
                         and self.clock() - self.last_saved > 2 * self.autosave_seconds + 1,
-                        "folder": str(self.store.folder), "idle_choices": list(IDLE_CHOICES)})
+                        "folder": str(self.store.folder), "idle_choices": list(IDLE_CHOICES),
+                        "fallakte": {"available": self.fallakte is not None and bool(self.fallakte_port), "open": bool(self.fallakte and self.fallakte.is_open),
+                                     "port": self.fallakte_port}})
         return out
 
     def classic_available(self) -> bool:
@@ -288,6 +296,9 @@ class VaultManager:
         from .persona_browser import PersonaBrowsers, find_chromium
 
         self.browsers = PersonaBrowsers(files / "persona-browser", Vault.from_key(opened.files_key), find_chromium)
+        from . import fallakte as fa
+
+        self.fallakte = fa.FallakteVault(files / "fallakte", Vault.from_key(opened.files_key)) if fa.available() else None
         self._saved_changes = -1 if imported else db.changes()
         self.lock_reason = ""
         self.touch()
@@ -319,12 +330,17 @@ class VaultManager:
                 return
             if self.browsers:
                 self.browsers.close_all()  # Profile verschlüsseln, solange der Schlüssel noch da ist
+            if self.fallakte:
+                try:
+                    self.fallakte.close()  # letzte Sicherung, Arbeitsordner löschen
+                except Exception:  # noqa: BLE001 - Sperren darf nie scheitern
+                    log.exception("Fallakte konnte beim Sperren nicht vollständig gesichert werden")
             try:
                 self.save(force=True)
             finally:
                 if self.db:
                     self.db.close()
-                self.inner = self.db = self.opened = self.browsers = None
+                self.inner = self.db = self.opened = self.browsers = self.fallakte = None
                 self._tiles.clear()
                 self.lock_reason = reason
                 log.info("Vault gesperrt: %s", reason)
@@ -595,6 +611,30 @@ def create_vault_app(folder: Path | str | None = None, *, http=None, kdf: dict |
                                            "used_at": now_iso()})
         return JSONResponse(result)
 
+    # ---------------- EagleEye-Fallakte: öffnen und automatisch anmelden
+    @vapp.get("/vault/fallakte")
+    def open_fallakte(request: Request) -> Response:
+        if not _session_ok(request):
+            return Response(status_code=423)
+        if not manager.fallakte or not manager.fallakte_port:
+            return HTMLResponse("<p>Die EagleEye-Fallakte ist in dieser Installation nicht enthalten.</p>", status_code=404)
+        manager.touch()
+        # genau wie die Fallakte selbst lesen (erster Wert je Kopfzeile), damit die Sitzung an diesen Browser gebunden ist
+        headers = {"user-agent": request.headers.get("user-agent", ""), "accept-language": request.headers.get("accept-language", "")}
+        try:
+            with manager._lock:  # noqa: SLF001
+                token, csrf, max_age = manager.fallakte.single_sign_on(manager.opened.owner, manager.opened.owner.get("display_name", "Inhaber"),
+                                                                       headers, request.client.host if request.client else "")
+                manager.store.save_owner(manager.opened)
+        except Exception as exc:  # noqa: BLE001 - lesbare Meldung
+            return HTMLResponse(f"<p>Fallakte konnte nicht geöffnet werden: {str(exc)[:300]}</p>", status_code=409)
+        from .fallakte import COOKIE as FA_COOKIE, CSRF_COOKIE as FA_CSRF
+
+        resp = RedirectResponse(f"http://127.0.0.1:{manager.fallakte_port}/", status_code=303)
+        resp.set_cookie(FA_COOKIE, token, httponly=True, samesite="strict", secure=False, max_age=max_age, path="/")
+        resp.set_cookie(FA_CSRF, csrf, httponly=False, samesite="strict", secure=False, max_age=max_age, path="/")
+        return resp
+
     @vapp.get("/vault/tiles/{z}/{x}/{y}.png")
     def tiles(request: Request, z: int, x: int, y: int) -> Response:
         if not _session_ok(request):
@@ -697,6 +737,46 @@ def create_vault_app(folder: Path | str | None = None, *, http=None, kdf: dict |
     return app
 
 
+FALLAKTE_LOCKED = ("<!doctype html><meta charset='utf-8'><title>EagleEye Fallakte</title><body style='font:16px system-ui;padding:3rem;"
+                   "background:#0b1f38;color:#e2e8f0'><h1>🔒 Fallakte gesperrt</h1><p>Die Fallakte öffnet sich nur aus dem geöffneten Vault: "
+                   "im Vault-Fenster oben auf <b>„📁 Fallakte“</b> klicken.</p></body>").encode()
+
+
+def create_fallakte_asgi(app) -> Callable:
+    """Zweiter lokaler Zugang (eigener Port) für die Fallakte – nur bei geöffnetem Vault, nur von diesem Rechner."""
+    manager = app.manager
+
+    async def fallakte_app(scope, receive, send):
+        if scope["type"] == "lifespan":
+            while True:
+                message = await receive()
+                if message["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif message["type"] == "lifespan.shutdown":
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
+        if scope["type"] != "http":
+            return
+        headers = {k.decode().lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
+        host = headers.get("host", "").rsplit(":", 1)[0]
+        client = (scope.get("client") or ("", 0))[0]
+        fa = manager.fallakte
+        if host not in LOCAL_HOSTS | {"testserver"} or (client and client not in {"127.0.0.1", "::1", "testclient"}):
+            status, body = 403, b"Nur auf diesem Rechner erreichbar."
+        elif not manager.unlocked or not fa or not fa.is_open:
+            status, body = 423, FALLAKTE_LOCKED
+        else:
+            if not scope["path"].startswith(("/static", "/assets")):
+                manager.touch()
+            await fa.app(scope, receive, send)
+            return
+        await send({"type": "http.response.start", "status": status, "headers": [(b"content-type", b"text/html; charset=utf-8"),
+                                                                                (b"cache-control", b"no-store"), (b"referrer-policy", b"no-referrer")]})
+        await send({"type": "http.response.body", "body": body})
+
+    return fallakte_app
+
+
 def _cookie(headers: dict[str, str]) -> str | None:
     from http.cookies import SimpleCookie
 
@@ -708,4 +788,4 @@ def _cookie(headers: dict[str, str]) -> str | None:
     return jar[COOKIE].value if COOKIE in jar else None
 
 
-__all__ = ["create_vault_app", "VaultManager", "default_vault_dir"]
+__all__ = ["create_vault_app", "create_fallakte_asgi", "VaultManager", "default_vault_dir"]

@@ -134,6 +134,19 @@ def cmd_vault(args) -> None:
     print("  Beenden:      Vault-Fenster schließen oder hier Strg+C. Beides sperrt den Vault.")
     config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="warning", lifespan="on")
     server = uvicorn.Server(config)
+    from . import fallakte as fa
+
+    if fa.available():
+        from .vault_app import create_fallakte_asgi
+
+        app.manager.fallakte_port = args.port + 1
+        fa_server = uvicorn.Server(uvicorn.Config(create_fallakte_asgi(app), host="127.0.0.1", port=args.port + 1, log_level="warning",
+                                                  lifespan="on"))
+        fa_server.install_signal_handlers = lambda: None
+        threading.Thread(target=fa_server.run, name="fallakte-server", daemon=True).start()
+        print(f"  Fallakte:     über die Vault-Leiste („📁 Fallakte“), lokal auf Port {args.port + 1}")
+    else:
+        print("  Fallakte:     nicht installiert (START_VAULT.bat mit Fallakte einrichten, siehe docs/VAULT.md)")
 
     def launch() -> None:
         browser = None if args.no_browser else _vault_browser()
