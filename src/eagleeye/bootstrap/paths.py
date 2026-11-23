@@ -73,10 +73,12 @@ class RuntimePaths:
                 if entry.exists() and not entry.is_file():
                     raise ValueError("Internal release database and sidecars must be regular files")
 
-        if db_path is not None and _internal_release_build():
-            # SQLite can write to WAL/SHM siblings even when the main DB is safe.
-            # Reject redirected sidecars before creating any workspace folders.
-            candidate = Path(db_path)
+        if _internal_release_build():
+            # The implicit default database needs the same protection as an
+            # explicitly selected path. Otherwise a pre-existing symlink at
+            # data/eagleeye.db (or its WAL/SHM siblings) could redirect writes
+            # into an unrelated or legacy workspace before initialization.
+            candidate = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
             if any(Path(str(candidate) + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
                 raise ValueError("Internal release database cannot contain symbolic links (including WAL/SHM sidecars)")
 
