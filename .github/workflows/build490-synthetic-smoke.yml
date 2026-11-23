@@ -1,0 +1,70 @@
+name: EagleEye Build 490 Synthetic Journey Smoke
+on:
+  pull_request:
+    paths:
+      - 'tests/test_build490_synthetic_journey.py'
+      - 'tests/test_build490_real_server_start.py'
+      - 'tests/test_build490_package_contract.py'
+      - 'tests/test_build490_fresh_workspace.py'
+      - 'START_EAGLEEYE_PRO.bat'
+      - 'START_EAGLEEYE_PRO.sh'
+      - 'INSTALL_EAGLEEYE_490.py'
+      - 'pyproject.toml'
+      - 'eagleeye_pro/version.py'
+      - '.github/workflows/build490-synthetic-smoke.yml'
+      - 'src/eagleeye/**'
+  workflow_dispatch:
+jobs:
+  synthetic-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[test]'
+      - name: Focused synthetic journey
+        run: python -m pytest -q tests/test_build490_synthetic_journey.py tests/test_build490_real_server_start.py tests/test_build490_package_contract.py tests/test_build490_fresh_workspace.py
+      - name: Package tracked Build 490 installer sources
+        run: |
+          python - <<'PY'
+          import hashlib
+          import subprocess
+          import zipfile
+          from pathlib import Path
+          root = Path.cwd()
+          out = root / "EagleEye-490-Internal-Preview-Windows.zip"
+          tracked = subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0")
+          with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+              for raw in tracked:
+                  if not raw:
+                      continue
+                  relative = Path(raw.decode("utf-8"))
+                  if relative.parts[0] == ".git":
+                      continue
+                  source = root / relative
+                  if source.is_file() and not source.is_symlink():
+                      archive.write(source, arcname=(Path("EagleEye-490") / relative).as_posix())
+          digest = hashlib.sha256(out.read_bytes()).hexdigest()
+          (root / "EagleEye-490-Internal-Preview-Windows.zip.sha256").write_text(
+              f"{digest}  {out.name}\n", encoding="utf-8"
+          )
+          with zipfile.ZipFile(out) as archive:
+              assert archive.testzip() is None
+              assert "EagleEye-490/START_EAGLEEYE_PRO.bat" in archive.namelist()
+              assert "EagleEye-490/INSTALL_EAGLEEYE_490.py" in archive.namelist()
+          print(f"Packaged {out.name}: SHA256 {digest}")
+          PY
+      - name: Upload internal preview source installer ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: eagleeye-490-internal-preview-windows
+          path: |
+            EagleEye-490-Internal-Preview-Windows.zip
+            EagleEye-490-Internal-Preview-Windows.zip.sha256
+          if-no-files-found: error
+          retention-days: 14

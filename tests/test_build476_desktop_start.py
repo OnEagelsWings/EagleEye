@@ -18,7 +18,10 @@ def isolated_settings(tmp_path,monkeypatch):
     monkeypatch.delenv('EAGLEEYE_REMOTE_TEAM_ENABLED',raising=False)
 
 
-def test_existing_data_directory_is_preserved_across_build_folders(tmp_path):
+def test_existing_data_directory_is_preserved_across_build_folders(tmp_path,monkeypatch):
+    # Historical 476 discovery applies only to pre-490 installations.
+    from eagleeye.bootstrap import desktop476
+    monkeypatch.setattr(desktop476,'BUILD','476.0')
     old=tmp_path/'old-install';(old/'data').mkdir(parents=True)
     (old/'data/eagleeye.db').write_bytes(b'unchanged existing data')
     assert resolve_workspace(old)==old
@@ -125,7 +128,11 @@ def test_existing_workspace_reports_failed_browser_start(tmp_path):
 
 
 @pytest.mark.parametrize('location',['installation','previous_default'])
-def test_legacy_database_is_discovered_without_silent_new_case_directory(tmp_path,location):
+def test_legacy_database_is_discovered_without_silent_new_case_directory(tmp_path,location,monkeypatch):
+    from eagleeye.bootstrap import desktop476,paths
+    # Preserve the original legacy contract without allowing 490+ to import old data.
+    monkeypatch.setattr(desktop476,'BUILD','476.0')
+    monkeypatch.setattr(paths,'BUILD','476.0')
     from eagleeye.bootstrap.paths import default_runtime_root
     install=tmp_path/'install'
     old=install if location=='installation' else default_runtime_root()

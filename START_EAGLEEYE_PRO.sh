@@ -8,8 +8,10 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
   exit 1
 }
 
-"$PYTHON_BIN" INSTALL_EAGLEEYE_487.py
-RUNTIME_PY=".eagleeye-runtime/bin/python"
+# Keep configuration and case data outside the program directory.
+# desktop476 resolves the isolated per-user Build 490 workspace.
+"$PYTHON_BIN" INSTALL_EAGLEEYE_490.py
+RUNTIME_PY=".eagleeye-runtime-490/bin/python"
 if [ ! -x "$RUNTIME_PY" ]; then
   echo "EagleEye runtime is missing after installation." >&2
   exit 1
