@@ -55,13 +55,27 @@ class NetGate:
         self.blocked = 0
         self.allowed = 0
         self.sessions: deque[dict[str, Any]] = deque(maxlen=100)
+        #: werden nach jedem Schließen aufgerufen (z. B. Legendenfenster beenden) – außerhalb der Sperre
+        self.on_close: list[Any] = []
 
     # ------------------------------------------------------------------ Zustand
     def is_open(self) -> bool:
+        expired = False
         with self._lock:
             if self._open_until and time.time() >= self._open_until:
                 self._close_locked("Zeitfenster abgelaufen")
-            return bool(self._open_until)
+                expired = True
+            state = bool(self._open_until)
+        if expired:
+            self._notify("Zeitfenster abgelaufen")
+        return state
+
+    def _notify(self, reason: str) -> None:
+        for callback in list(self.on_close):
+            try:
+                callback(reason)
+            except Exception:  # noqa: BLE001 - ein Beobachter darf das Schließen nie verhindern
+                pass
 
     def open(self, minutes: int, purpose: str = "") -> dict[str, Any]:
         minutes = int(minutes)
@@ -78,7 +92,10 @@ class NetGate:
 
     def close(self, reason: str = "von Hand geschlossen") -> dict[str, Any]:
         with self._lock:
+            was_open = bool(self._open_until)
             self._close_locked(reason)
+        if was_open:
+            self._notify(reason)
         return self.status()
 
     def _close_locked(self, reason: str) -> None:

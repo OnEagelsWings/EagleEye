@@ -123,6 +123,13 @@ class Personas:
                            ("bio", 600), ("notes", 2000)):
             if key in data:
                 fields[key] = " ".join(str(data.get(key) or "").split())[:limit] if key not in {"bio", "notes"} else str(data.get(key) or "")[:limit]
+        if "egress_profile" in data:
+            eg = str(data.get("egress_profile") or "")
+            if eg:
+                prof = self.p.egress_profile(eg)
+                if prof.kind != "proxy":
+                    raise PersonaError("Eine Legende braucht einen Anonymisierungs-Ausgang (Tor oder Proxy), nicht den Direktzugang.")
+            fields["egress_profile"] = eg
         if "status" in data:
             if data["status"] not in STATUSES:
                 raise PersonaError("Unbekannter Status.")

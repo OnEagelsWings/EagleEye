@@ -151,7 +151,10 @@
   // ------------------------------------------------------------------ Verwaltung „Tarnung & Websuche“
   async function adminTarnung(el) {
     const { api, esc, modal, guard } = E();
-    const [ps, web] = await Promise.all([api("GET", "/api/personas"), api("GET", "/api/admin/websearch")]);
+    const [ps, web, egress, running] = await Promise.all([api("GET", "/api/personas"), api("GET", "/api/admin/websearch"),
+      api("GET", "/api/egress-profiles"), window.EE_VAULT ? api("GET", "/vault/api/personas/browsers").catch(() => ({ items: [] })) : { items: [] }]);
+    const proxies = egress.filter((x) => x.kind === "proxy");
+    const open = new Set(running.items.map((r) => r.persona_id));
     el.innerHTML = `
       <div class="card"><h2>🎭 Legenden (Sockpuppets)</h2>
         <div class="note-box small"><b>So schützen Sie sich:</b> Die automatischen Abfragen brauchen kein Konto und übertragen nichts über Sie. Eine Legende
@@ -167,7 +170,9 @@
         ${ps.items.map((p) => `<tr class="${p.status === "verbrannt" ? "muted" : ""}"><td><b>${esc(p.codename)}</b></td><td>${esc(p.display_name)}<br><span class="small muted">${esc(p.birth_year)} · ${esc(p.city)}</span></td>
           <td>${esc(p.username)}<br><span class="small">${esc(p.email_alias || "–")}</span></td>
           <td><span class="badge ${p.status === "aktiv" ? "b-green" : p.status === "verbrannt" ? "b-red" : "b-grey"}">${esc(p.status)}</span></td>
-          <td>${p.case_count}</td><td><button class="btn btn-sm" data-pe="${p.id}">Bearbeiten</button>${p.has_secret ? ` <button class="btn btn-sm" data-ps="${p.id}">Zugang</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">Noch keine Legende.</td></tr>`}</table>
+          <td>${p.case_count}</td><td class="nowrap">${window.EE_VAULT && p.status !== "verbrannt" ? (open.has(p.id)
+            ? `<button class="btn btn-sm btn-danger" data-pbc="${p.id}">■ Fenster schließen</button> `
+            : `<button class="btn btn-sm btn-primary" data-pb="${p.id}" title="${p.egress_profile ? "Eigenes Browserfenster der Legende über ihren Ausgang" : "Zuerst einen Ausgang zuordnen"}" ${p.egress_profile ? "" : "disabled"}>🌐 Fenster öffnen</button> `) : ""}<button class="btn btn-sm" data-pe="${p.id}">Bearbeiten</button>${p.has_secret ? ` <button class="btn btn-sm" data-ps="${p.id}">Zugang</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">Noch keine Legende.</td></tr>`}</table>
       </div>
       <div class="card"><h2>🌐 Eigene Websuche (SearXNG) für automatische Dorks</h2>
         <p class="small">SearXNG ist eine Meta-Suchmaschine, die Sie selbst betreiben (z. B. mit Docker). Die Tiefenrecherche schickt ihre Dorks dorthin und übernimmt die Treffer.
@@ -196,6 +201,9 @@
           <label class="field"><span>Alias-E-Mail</span><input name="email_alias" value="${esc(p.email_alias)}"></label>
           <label class="field"><span>Geburtsjahr</span><input name="birth_year" value="${esc(p.birth_year)}" maxlength="4"></label>
           <label class="field"><span>Wohnort</span><input name="city" value="${esc(p.city)}"></label></div>
+        <label class="field"><span>Ausgang der Legende (für ihr Browserfenster)</span><select name="egress_profile"><option value="">– keiner –</option>
+          ${proxies.map((x) => `<option value="${esc(x.id)}" ${x.id === p.egress_profile ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+          <small>${proxies.length ? "Nur Tor- oder Proxy-Ausgänge – nie direkt." : "Noch kein Tor-/Proxy-Ausgang eingerichtet (Verwaltung → OPSEC)."}</small></label>
         <label class="field"><span>Kurzprofil</span><textarea name="bio" rows="2">${esc(p.bio || "")}</textarea></label>
         <label class="field"><span>Plattformen, auf denen Sie das Konto angelegt haben (kommagetrennt)</span><input name="platforms" value="${esc((p.platforms || []).join(", "))}" placeholder="Instagram, Facebook, LinkedIn"></label>
         <label class="field"><span>Zugangsdaten (verschlüsselt gespeichert)</span><textarea name="secret" rows="2" placeholder="${p.has_secret ? "unverändert lassen = bleibt gespeichert" : "Passwörter, Wiederherstellungscodes …"}"></textarea></label>
@@ -206,7 +214,7 @@
       const val = (n) => m.el.querySelector(`[name=${n}]`).value;
       m.el.querySelector("#pe-save").onclick = async () => {
         const body = { codename: val("codename"), display_name: val("display_name"), username: val("username"), email_alias: val("email_alias"),
-          birth_year: val("birth_year"), city: val("city"), bio: val("bio"), notes: val("notes"),
+          birth_year: val("birth_year"), city: val("city"), bio: val("bio"), notes: val("notes"), egress_profile: val("egress_profile"),
           platforms: val("platforms").split(",").map((x) => x.trim()).filter(Boolean) };
         if (val("secret")) body.secret = val("secret");
         if (!isNew) body.status = val("status");
@@ -218,6 +226,19 @@
     };
     el.querySelector("#pe-gen").onclick = async () => editor(await api("POST", "/api/personas/generate", {}), true);
     el.querySelectorAll("[data-pe]").forEach((b) => (b.onclick = () => editor(ps.items.find((x) => x.id === Number(b.dataset.pe)), false)));
+    el.querySelectorAll("[data-pb]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const r = await guard(() => api("POST", `/vault/api/personas/${b.dataset.pb}/browser`, { open: true }), "Legendenfenster wird geöffnet");
+        if (r.restored === false) E().toast("Neues Profil für diese Legende angelegt – beim Schließen wird es verschlüsselt im Vault gespeichert.", "ok");
+      } catch (_) { /* Meldung bereits angezeigt */ }
+      adminTarnung(el);
+    }));
+    el.querySelectorAll("[data-pbc]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      await guard(() => api("POST", `/vault/api/personas/${b.dataset.pbc}/browser`, { open: false }), "Fenster geschlossen, Profil verschlüsselt gespeichert");
+      adminTarnung(el);
+    }));
     el.querySelectorAll("[data-ps]").forEach((b) => (b.onclick = async () => {
       const r = await api("GET", `/api/personas/${b.dataset.ps}/secret`);
       modal("Zugangsdaten", `<pre class="secret-box">${esc(r.secret)}</pre><p class="small muted">Das Anzeigen wird protokolliert.</p>`, `<button class="btn btn-primary" data-close>Schließen</button>`);

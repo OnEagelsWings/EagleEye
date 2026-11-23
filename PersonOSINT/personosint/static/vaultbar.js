@@ -3,6 +3,7 @@
   "use strict";
   // Kartenkacheln über den Server (Netzschalter), nie direkt vom Browser zu OpenStreetMap
   window.EE_TILE_URL = "/vault/tiles/{z}/{x}/{y}.png";
+  window.EE_VAULT = true;  // Vault-Funktionen (Legenden-Browser) in der Oberfläche einblenden
   const origFetch = window.fetch.bind(window);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let st = null, csrf = "", bar = null, lastPing = 0, interacted = false, receivedAt = Date.now();

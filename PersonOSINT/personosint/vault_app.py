@@ -33,7 +33,7 @@ from . import __version__, netgate
 from .auth import new_totp_secret, qr_svg, totp_counter, totp_uri
 from .config import Settings, default_data_dir
 from .crypto import Vault
-from .db import Database
+from .db import Database, now_iso
 from .vault import Opened, VaultError, VaultStore, WrongSecret, check_passphrase, fingerprint
 
 log = logging.getLogger("eagleeye.vault")
@@ -95,6 +95,14 @@ class VaultManager:
         self._tiles: OrderedDict[str, bytes] = OrderedDict()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self.browsers = None  # Legenden-Browser, nur im geöffneten Zustand
+        self.gate.on_close.append(self._net_closed)
+
+    def _net_closed(self, reason: str) -> None:
+        """Netz zu ⇒ alle Legendenfenster schließen (im Hintergrund, damit der Netzschalter nie wartet)."""
+        browsers = self.browsers
+        if browsers and browsers.status():
+            threading.Thread(target=browsers.close_all, name="legenden-schliessen", daemon=True).start()
 
     # ------------------------------------------------------------------ Hintergrund: Speichern, Auto-Sperre, Überwachung
     def start_background(self) -> None:
@@ -274,6 +282,9 @@ class VaultManager:
         self.inner = create_app(settings=settings, http=self.http, start_scheduler=False, db=db,
                                 vault=Vault.from_key(opened.files_key))
         self.db, self.opened = db, opened
+        from .persona_browser import PersonaBrowsers, find_chromium
+
+        self.browsers = PersonaBrowsers(files / "persona-browser", Vault.from_key(opened.files_key), find_chromium)
         self._saved_changes = -1 if imported else db.changes()
         self.lock_reason = ""
         self.touch()
@@ -303,12 +314,14 @@ class VaultManager:
             self.gate.allowed = self.gate.blocked = 0
             if not self.opened:
                 return
+            if self.browsers:
+                self.browsers.close_all()  # Profile verschlüsseln, solange der Schlüssel noch da ist
             try:
                 self.save(force=True)
             finally:
                 if self.db:
                     self.db.close()
-                self.inner = self.db = self.opened = None
+                self.inner = self.db = self.opened = self.browsers = None
                 self._tiles.clear()
                 self.lock_reason = reason
                 log.info("Vault gesperrt: %s", reason)
@@ -477,8 +490,16 @@ def create_vault_app(folder: Path | str | None = None, *, http=None, kdf: dict |
             if payload.get("open"):
                 manager.gate.open(int(payload.get("minutes") or manager.opened.owner.get("net_minutes", 30)),
                                   str(payload.get("purpose") or ""))
-                manager.inner.state.platform.log(None, "Vault: Netz geöffnet",
-                                                 f"{payload.get('minutes')} Minuten · {str(payload.get('purpose') or '')[:120]}")
+                platform = manager.inner.state.platform
+                platform.log(None, "Vault: Netz geöffnet", f"{payload.get('minutes')} Minuten · {str(payload.get('purpose') or '')[:120]}")
+
+                def due_missing() -> None:
+                    from . import monitor
+                    try:
+                        monitor.run_on_net_open(platform)
+                    except Exception:  # noqa: BLE001 - Überwachung darf das Öffnen nie stören
+                        log.exception("Vermisstenüberwachung nach Netzöffnung fehlgeschlagen")
+                threading.Thread(target=due_missing, name="vermisst-bei-netz", daemon=True).start()
             else:
                 manager.gate.close("von Hand geschlossen")
                 manager.inner.state.platform.log(None, "Vault: Netz geschlossen", "von Hand")
@@ -529,6 +550,47 @@ def create_vault_app(folder: Path | str | None = None, *, http=None, kdf: dict |
             return denied
         manager.save(force=True)
         return JSONResponse({"ok": True, "last_saved": manager.last_saved})
+
+    # ---------------- Legenden-Browser (nur im Vault: das Fenster öffnet sich auf diesem Rechner)
+    @vapp.get("/vault/api/personas/browsers")
+    def persona_browsers(request: Request) -> Response:
+        if (denied := _need(request)) is not None:
+            return denied
+        return JSONResponse({"items": manager.browsers.status() if manager.browsers else []})
+
+    @vapp.post("/vault/api/personas/{pid}/browser")
+    def persona_browser(request: Request, pid: int, payload: dict = Body(...)) -> Response:
+        if (denied := _need(request)) is not None:
+            return denied
+        manager.touch()
+        from .persona_browser import BrowserError
+
+        platform = manager.inner.state.platform
+        if not payload.get("open"):
+            return JSONResponse({"closed": manager.browsers.close(pid)})
+        if not manager.gate.is_open():
+            return fail(VaultError("Bitte zuerst das Netz öffnen – das Legendenfenster läuft nur bei offenem Netz und schließt mit ihm."), 409)
+        row = platform.db.one("SELECT * FROM personas WHERE id = ?", (pid,))
+        if not row:
+            return fail(VaultError("Legende nicht gefunden."), 404)
+        if row["status"] == "verbrannt":
+            return fail(VaultError("Diese Legende ist verbrannt und darf nicht mehr verwendet werden."), 409)
+        if not row.get("egress_profile"):
+            return fail(VaultError("Der Legende ist kein Anonymisierungs-Ausgang zugeordnet (Legende bearbeiten → Ausgang)."), 409)
+        try:
+            prof = platform.egress_profile(row["egress_profile"])
+            if prof.kind != "proxy":
+                raise BrowserError("Legenden-Browser nur über Tor oder Proxy.")
+            platform.proxy_check(prof)
+            result = manager.browsers.open(row, prof.proxy_url, prof.name)
+        except Exception as exc:  # noqa: BLE001 - lesbare Meldung statt Abbruch
+            return fail(VaultError(str(exc)), 422)
+        from .service import current_user
+        current_user.set(manager.inner.state.auth.get_user(int(manager.opened.owner["user_id"])))
+        platform.db.insert("persona_use", {"persona_id": pid, "case_id": int(payload["case_id"]) if payload.get("case_id") else None,
+                                           "purpose": "Legenden-Browser geöffnet (" + prof.name + ")", "used_by": "inhaber",
+                                           "used_at": now_iso()})
+        return JSONResponse(result)
 
     @vapp.get("/vault/tiles/{z}/{x}/{y}.png")
     def tiles(request: Request, z: int, x: int, y: int) -> Response:

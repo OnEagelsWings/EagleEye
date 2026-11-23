@@ -108,20 +108,9 @@ def cmd_serve(args) -> None:
 
 
 def _vault_browser() -> str | None:
-    """Chromium-Browser für das abgeschottete Vault-Fenster (Edge, Chrome, Brave, Chromium)."""
-    import shutil
+    from .persona_browser import find_chromium
 
-    candidates = []
-    for base in (os.environ.get("PROGRAMFILES(X86)", ""), os.environ.get("PROGRAMFILES", ""), os.environ.get("LOCALAPPDATA", "")):
-        if base:
-            candidates += [os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"),
-                           os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"),
-                           os.path.join(base, "BraveSoftware", "Brave-Browser", "Application", "brave.exe")]
-    candidates += ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-                   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
-    candidates += [shutil.which(n) or "" for n in ("microsoft-edge", "google-chrome", "chromium", "chromium-browser", "brave-browser")]
-    env = os.environ.get("EAGLEEYE_VAULT_BROWSER", "")
-    return next((c for c in [env] + candidates if c and os.path.isfile(c)), None)
+    return find_chromium()
 
 
 def cmd_vault(args) -> None:

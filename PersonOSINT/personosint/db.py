@@ -246,8 +246,14 @@ CREATE TABLE persona_use (
 CREATE INDEX ix_persona_use ON persona_use(persona_id, case_id)
 """
 
+#: Version 1.9 – Legenden-Browser (Ausgang je Legende) und Überwachung mit Tiefenrecherche-Spuren
+MIGRATION_11 = """
+ALTER TABLE personas ADD COLUMN egress_profile TEXT NOT NULL DEFAULT '';
+ALTER TABLE watches ADD COLUMN mode TEXT NOT NULL DEFAULT 'suche'
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6),
-                                     (7, MIGRATION_7), (8, MIGRATION_8), (9, MIGRATION_9), (10, MIGRATION_10)]
+                                     (7, MIGRATION_7), (8, MIGRATION_8), (9, MIGRATION_9), (10, MIGRATION_10), (11, MIGRATION_11)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 

@@ -837,17 +837,19 @@
     const canWrite = ov.permissions.includes("write");
     box.innerHTML = `<div class="card-head"><h3>🔁 Überwachung</h3></div>
       <p class="small muted">Gespeicherte Suchen laufen regelmäßig im Hintergrund – nach den OPSEC-Regeln des Falls. Bei neuen Treffern erhält das Fallteam eine Benachrichtigung (🔔).</p>
-      ${ws.map((w) => `<div class="watch ${w.active ? "" : "off"}"><div class="row"><b class="grow">${esc(w.entity_label)}</b><span class="badge ${w.active ? "b-green" : "b-grey"}">${w.active ? esc(w.interval_label) : "pausiert"}</span></div>
+      ${ws.map((w) => `<div class="watch ${w.active ? "" : "off"}"><div class="row"><b class="grow">${w.mode === "vermisst" ? "🧭 " : ""}${esc(w.entity_label)} <span class="small muted">${esc(w.mode_label || "")}</span></b><span class="badge ${w.active ? "b-green" : "b-grey"}">${w.active ? esc(w.interval_label) : "pausiert"}</span></div>
         <div class="small muted">${w.sources.length} Quellen · angelegt von ${esc(w.created_by_name || "–")} · ${w.runs} Läufe${w.last_run ? " · zuletzt " + fmtTs(w.last_run) : ""}${w.active ? " · nächster " + fmtTs(w.next_run) : ""}</div>
         ${w.last_result ? `<div class="small ${w.last_result.startsWith("Blockiert") ? "bad-text" : ""}">${esc(w.last_result)}</div>` : ""}
         ${canWrite ? `<div class="row" style="margin-top:.3rem"><button class="btn btn-sm" data-wrun="${w.id}">▶ Jetzt prüfen</button><button class="btn btn-sm" data-wtog="${w.id}:${w.active ? 0 : 1}">${w.active ? "⏸ Pausieren" : "▶ Fortsetzen"}</button><button class="btn btn-sm btn-danger" data-wdel="${w.id}">×</button></div>` : ""}</div>`).join("") || '<div class="small muted">Noch keine Überwachung.</div>'}
-      ${canWrite && person ? `<div class="row" style="margin-top:.6rem"><select id="w-int" style="width:auto">${[[6, "alle 6 Stunden"], [12, "alle 12 Stunden"], [24, "täglich"], [72, "alle 3 Tage"], [168, "wöchentlich"]].map(([k, l]) => opt(k, l, 24)).join("")}</select>
+      ${canWrite && person ? `<div class="row" style="margin-top:.6rem"><select id="w-mode" style="width:auto"><option value="suche">Gewählte Quellen</option><option value="vermisst" ${ov.case.case_type === "vermisst" ? "selected" : ""}>Vermisst: Register, Presse, alle Varianten${window.EE_VAULT ? " (+ bei jedem Netzöffnen)" : ""}</option></select>
+        <select id="w-int" style="width:auto">${[[1, "stündlich"], [6, "alle 6 Stunden"], [12, "alle 12 Stunden"], [24, "täglich"], [72, "alle 3 Tage"], [168, "wöchentlich"]].map(([k, l]) => opt(k, l, 24)).join("")}</select>
         <button class="btn btn-sm btn-primary" id="w-new" title="Die oben gewählten Quellen für ${esc(person.label)} regelmäßig abfragen">＋ Auswahl überwachen</button></div>` : ""}`;
     const wn = $("#w-new", box);
     if (wn) wn.onclick = async () => {
       const sources = $$("input[name=src]:checked").map((c) => c.value);
-      if (!sources.length) return toast("Bitte oben Quellen auswählen.", "err");
-      await guard(() => api("POST", `/api/cases/${ov.case.id}/watches`, { entity_id: person.id, sources, interval_hours: Number($("#w-int", box).value) }), "Überwachung angelegt");
+      const mode = $("#w-mode", box).value;
+      if (!sources.length && mode !== "vermisst") return toast("Bitte oben Quellen auswählen.", "err");
+      await guard(() => api("POST", `/api/cases/${ov.case.id}/watches`, { entity_id: person.id, sources, mode, interval_hours: Number($("#w-int", box).value) }), "Überwachung angelegt");
       renderWatches(ov, person);
     };
     $$("[data-wrun]", box).forEach((b) => (b.onclick = async () => {

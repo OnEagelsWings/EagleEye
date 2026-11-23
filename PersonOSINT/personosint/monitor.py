@@ -11,7 +11,7 @@ from typing import Any
 from . import opsec as ops
 from .db import now_iso
 
-INTERVALS = {6: "alle 6 Stunden", 12: "alle 12 Stunden", 24: "täglich", 72: "alle 3 Tage", 168: "wöchentlich"}
+INTERVALS = {1: "stündlich", 6: "alle 6 Stunden", 12: "alle 12 Stunden", 24: "täglich", 72: "alle 3 Tage", 168: "wöchentlich"}
 
 
 def _iso(dt: datetime) -> str:
@@ -40,13 +40,45 @@ def team_ids(p, case: dict[str, Any]) -> set[int]:
     return ids & active
 
 
+#: Art „Vermisst“: Register und Presse mit allen Namensvarianten, dazu alle Kennungen in den gewählten Quellen
+MISSING_SOURCES = ("interpol_yellow", "fbi_missing", "gdelt_missing", "gdelt_news")
+MODES = {"suche": "gespeicherte Suche", "vermisst": "Vermisstenüberwachung (Register, Presse, Varianten)"}
+#: Im Vault läuft eine Vermisstenüberwachung zusätzlich gleich nach dem Öffnen des Netzes – aber höchstens so oft
+NET_OPEN_MIN_MINUTES = 60
+
+
+def missing_queries(p, case_id: int, entity_id: int, sources: list[str]) -> list[tuple[str, str, str]]:
+    """Abfragen einer Vermisstenüberwachung (bewusst ohne „schon abgefragt“-Filter: es geht um Neues seit dem letzten Lauf)."""
+    from .deepsearch import name_variants, profile_of
+    from .matching import normalize
+
+    smap = p.source_map()
+    prof = profile_of(p, case_id, entity_id)
+    keys = p.api_keys()
+    usable = lambda k: k in smap and not p.source_unavailable(smap[k], keys)  # noqa: E731
+    out: list[tuple[str, str, str]] = []
+    for v in name_variants(prof["names"], limit=6):
+        out += [(k, "name", v["value"]) for k in MISSING_SOURCES if usable(k)]
+    idents = [("username", normalize("username", u)) for u in prof["usernames"]] + [("email", normalize("email", e)) for e in prof["emails"]] \
+        + [("phone", ph) for ph in prof["phones"]] + [("name", n) for n in prof["names"]]
+    for k in sources:
+        if usable(k):
+            out += [(k, kind, value) for kind, value in idents if kind in smap[k].kinds]
+    return list(dict.fromkeys(out))
+
+
 def create_watch(p, case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     from .service import Invalid, current_user
 
     case = p.get_case(case_id)
     entity_id = int(payload.get("entity_id") or 0)
     p._entity(case_id, entity_id)  # noqa: SLF001
+    mode = str(payload.get("mode") or "suche")
+    if mode not in MODES:
+        raise Invalid("Unbekannte Art der Überwachung.")
     sources = [s for s in (payload.get("sources") or []) if s in p.source_map()]
+    if mode == "vermisst":
+        sources = list(dict.fromkeys(sources + [k for k in MISSING_SOURCES if k in p.source_map()]))
     if not sources:
         raise Invalid("Bitte mindestens eine Quelle für die Überwachung wählen.")
     hours = int(payload.get("interval_hours") or 24)
@@ -54,9 +86,9 @@ def create_watch(p, case_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         raise Invalid("Ungültiger Abstand.")
     user = current_user.get()
     now = datetime.now(timezone.utc)
-    wid = p.db.insert("watches", {"case_id": case_id, "entity_id": entity_id, "sources": sources, "interval_hours": hours, "active": 1,
+    wid = p.db.insert("watches", {"case_id": case_id, "entity_id": entity_id, "sources": sources, "interval_hours": hours, "active": 1, "mode": mode,
                                   "created_by": user["id"] if user else None, "created_at": _iso(now), "next_run": _iso(now + timedelta(hours=hours))})
-    p.log(case_id, "Überwachung angelegt", f"{len(sources)} Quellen, {INTERVALS[hours]}")
+    p.log(case_id, "Überwachung angelegt", f"{MODES[mode]}: {len(sources)} Quellen, {INTERVALS[hours]}")
     del case
     return get_watch(p, case_id, wid)
 
@@ -69,6 +101,7 @@ def get_watch(p, case_id: int, wid: int) -> dict[str, Any]:
     if not w:
         raise NotFound("Überwachung nicht gefunden.")
     w["interval_label"] = INTERVALS.get(w["interval_hours"], f"alle {w['interval_hours']} h")
+    w["mode_label"] = MODES.get(w.get("mode") or "suche", "gespeicherte Suche")
     return w
 
 
@@ -115,13 +148,19 @@ def run_watch(p, wid: int) -> dict[str, Any]:
             return {"ok": False, "message": "Fall abgeschlossen"}
         if not user or "write" not in p.permissions(case, user):
             raise PermissionError("Die anlegende Person hat keine Bearbeitungsrechte mehr für diesen Fall.")
-        res = p.run_search(w["case_id"], w["entity_id"], w["sources"])
+        if (w.get("mode") or "suche") == "vermisst":
+            res = p.run_search(w["case_id"], w["entity_id"], queries=missing_queries(p, w["case_id"], w["entity_id"], w["sources"]),
+                               pivot={"kind": "überwachung", "value": "Vermisst", "depth": 0, "origin": {"type": "watch", "label": f"Vermisstenüberwachung #{wid}"}})
+        else:
+            res = p.run_search(w["case_id"], w["entity_id"], w["sources"])
         new = res["new_findings"]
         msg = f"{new} neue Treffer, {res.get('new_facts', 0)} neue Aussagen über „{res['egress']}“"
         p.db.update("watches", wid, {"last_run": _iso(now), "next_run": _iso(now + timedelta(hours=w["interval_hours"])), "last_result": msg,
                                      "last_new": new, "runs": w["runs"] + 1})
         if new:
-            notify(p, team_ids(p, case), case["id"], f"Überwachung „{_display(p, case)}“: {new} neue Treffer zu prüfen", f"#/case/{case['id']}/search")
+            what = "Vermisstenüberwachung" if (w.get("mode") or "suche") == "vermisst" else "Überwachung"
+            notify(p, team_ids(p, case), case["id"], f"{what} „{_display(p, case)}“: {new} neue Treffer zu prüfen", f"#/case/{case['id']}/search",
+                   "dringend" if what == "Vermisstenüberwachung" else "info")
         return {"ok": True, "message": msg, "new": new}
     except Exception as exc:  # noqa: BLE001 - OPSEC-Sperren, fehlende Schlüssel, Netzfehler
         msg = f"Blockiert/Fehler: {exc}"
@@ -141,6 +180,16 @@ def run_due(p, now: datetime | None = None) -> int:
     for row in due:
         run_watch(p, row["id"])
     return len(due)
+
+
+def run_on_net_open(p, now: datetime | None = None) -> int:
+    """Vault: Netz wurde geöffnet ⇒ aktive Vermisstenüberwachungen sofort laufen lassen (höchstens einmal je Stunde)."""
+    now = now or datetime.now(timezone.utc)
+    limit = _iso(now - timedelta(minutes=NET_OPEN_MIN_MINUTES))
+    rows = p.db.all("SELECT id FROM watches WHERE active = 1 AND mode = 'vermisst' AND (last_run = '' OR last_run <= ?) ORDER BY id", (limit,))
+    for row in rows:
+        run_watch(p, row["id"])
+    return len(rows)
 
 
 def notifications(p, user_id: int, limit: int = 30) -> dict[str, Any]:
