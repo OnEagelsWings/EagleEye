@@ -47,6 +47,7 @@ SOURCE_EXPOSURE = {
     "lobid_gnd": "passiv", "abgeordnetenwatch": "passiv", "wikipedia": "passiv", "fr_entreprises": "passiv", "icij_online": "passiv",
     "interpol_red": "passiv", "fbi_wanted": "passiv", "gdelt_news": "passiv", "crossref": "passiv", "dblp": "passiv",
     "keybase": "plattform", "codeberg": "plattform", "dockerhub": "plattform",
+    "fbi_missing": "passiv", "gdelt_missing": "passiv", "websuche": "passiv",
 }
 
 #: Exposition manueller Recherchelinks (nach Gruppe bzw. Schlüsselwort im Linktext)

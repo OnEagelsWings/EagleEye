@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-JSON_FIELDS = {"data", "reasons", "queries", "source_status", "sources", "facts_used", "checks", "meta", "snapshot", "pivot"}
+JSON_FIELDS = {"data", "reasons", "queries", "source_status", "sources", "facts_used", "checks", "meta", "snapshot", "pivot", "platforms"}
 
 # --------------------------------------------------------------------------- Schema-Migrationen
 # Platzhalter: {PK} = automatisch hochzählender Primärschlüssel, {REAL} = Gleitkommazahl
@@ -231,8 +231,23 @@ MIGRATION_9 = """
 ALTER TABLE users ADD COLUMN totp_pending TEXT NOT NULL DEFAULT ''
 """
 
+#: Version 1.8 – Legenden (Tarnidentitäten für manuelle Recherche) und ihr Einsatz je Fall
+MIGRATION_10 = """
+CREATE TABLE personas (
+    id {PK}, codename TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, username TEXT NOT NULL DEFAULT '', email_alias TEXT NOT NULL DEFAULT '',
+    birth_year TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '', bio TEXT NOT NULL DEFAULT '', platforms TEXT NOT NULL DEFAULT '[]',
+    secret_enc TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'aktiv', notes TEXT NOT NULL DEFAULT '',
+    created_by TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE TABLE persona_use (
+    id {PK}, persona_id INTEGER NOT NULL REFERENCES personas(id) ON DELETE CASCADE, case_id INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+    purpose TEXT NOT NULL DEFAULT '', used_by TEXT NOT NULL DEFAULT '', used_at TEXT NOT NULL
+);
+CREATE INDEX ix_persona_use ON persona_use(persona_id, case_id)
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [(1, MIGRATION_1), (2, MIGRATION_2), (3, MIGRATION_3), (4, MIGRATION_4), (5, MIGRATION_5), (6, MIGRATION_6),
-                                     (7, MIGRATION_7), (8, MIGRATION_8), (9, MIGRATION_9)]
+                                     (7, MIGRATION_7), (8, MIGRATION_8), (9, MIGRATION_9), (10, MIGRATION_10)]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 

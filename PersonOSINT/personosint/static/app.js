@@ -314,7 +314,7 @@
 
   // ------------------------------------------------------------------ Fallansicht
   const TABS = [
-    ["overview", "Übersicht"], ["persons", "Personen & Profile"], ["search", "Suche & Treffer"], ["graph", "Verbindungen"], ["facts", "📊 Fakten & Bewertung"],
+    ["overview", "Übersicht"], ["persons", "Personen & Profile"], ["search", "Suche & Treffer"], ["deep", "🔭 Tiefenrecherche"], ["graph", "Verbindungen"], ["facts", "📊 Fakten & Bewertung"],
     ["timeline", "Zeitleiste & Karte"], ["tasks", "Aufgaben"], ["dossier", "Dossier & Export"], ["opsec", "🛡 OPSEC"], ["audit", "Protokoll"],
   ];
 
@@ -348,7 +348,7 @@
     $$(".veil").forEach((v) => (v.onclick = () => v.classList.toggle("open")));
     $("#case-edit").onclick = () => editCase(c);
     document.title = "EagleEye";  // Browsertitel verrät nie Fall- oder Personennamen
-    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, graph: tabGraph, facts: tabFacts, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, opsec: tabOpsec, audit: tabAudit }[state.tab] || tabOverview;
+    const r = { overview: tabOverview, persons: tabPersons, search: tabSearch, deep: (el2, ov2) => window.EEDeep.tabDeep(el2, ov2), graph: tabGraph, facts: tabFacts, timeline: tabTimeline, tasks: tabTasks, dossier: tabDossier, opsec: tabOpsec, audit: tabAudit }[state.tab] || tabOverview;
     await r($("#tab"), ov);
     markWrite();
   }
@@ -1692,9 +1692,10 @@
   // ------------------------------------------------------------------ Verwaltung (Administration)
   async function renderAdmin(section) {
     if (state.auth.user.role !== "admin") { location.hash = "#/"; return; }
-    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["ai", "🤖 KI-Assistent"], ["retention", "🗑 Löschfristen"], ["restricted", "🔒 Vertrauliche Fälle"]];
+    const tabs = [["users", "👤 Benutzer"], ["sources", "📚 Quellen & Daten"], ["opsec", "🛡 OPSEC"], ["security", "🔐 Sicherheit & Protokoll"], ["backups", "💾 Sicherungen"], ["branding", "🎨 Berichtslayout"], ["ai", "🤖 KI-Assistent"], ["retention", "🗑 Löschfristen"], ["restricted", "🔒 Vertrauliche Fälle"], ["tarnung", "🎭 Tarnung & Websuche"]];
     $("#main").innerHTML = `<h1>Verwaltung</h1><div class="admin-tabs">${tabs.map(([k, l]) => `<a class="btn ${k === section ? "btn-primary" : ""}" href="#/admin/${k}">${l}</a>`).join("")}</div><div id="adm"></div>`;
     const el = $("#adm");
+    if (section === "tarnung") { await window.EEDeep.adminTarnung(el); return; }
     if (section === "users") {
       const users = await api("GET", "/api/admin/users");
       el.innerHTML = `<div class="card"><div class="card-head"><h2>Benutzer (${users.length})</h2><div class="right"><button class="btn btn-primary" id="u-new">＋ Person einladen</button></div></div>
@@ -2020,5 +2021,7 @@
     }));
     await showAuth();
   }
+  // Hilfsfunktionen für Erweiterungen (deep.js: Tiefenrecherche, Tarnung)
+  window.EE = { api, esc, toast, modal, guard, confirmDlg, fmtTs, $, $$, state };
   init().catch((e) => { document.body.innerHTML = `<div style="padding:2rem;font-family:sans-serif"><h2>EagleEye konnte nicht starten</h2><p>${esc(e.message)}</p></div>`; });
 })();

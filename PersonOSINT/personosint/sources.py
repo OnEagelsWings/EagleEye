@@ -495,6 +495,25 @@ def research_links(subject: dict[str, Any], identifiers: Iterable[dict[str, Any]
         add("Vermisstenfälle", "Initiative Vermisste Kinder", "https://www.vermisste-kinder.de/")
         add("Vermisstenfälle", "NamUs (USA)", "https://www.namus.nij.ojp.gov/")
         add("Vermisstenfälle", "Missing People (UK)", "https://www.missingpeople.org.uk/appeal-search")
+        police = " OR ".join(f"site:{d}" for d in ("polizei.bayern.de", "polizei-bw.de", "polizei.nrw", "polizei.niedersachsen.de", "polizei.hessen.de",
+                                                    "polizei.sachsen.de", "polizei.berlin.de", "polizei.hamburg.de", "polizei.rlp.de", "polizei.sachsen-anhalt.de",
+                                                    "polizei.thueringen.de", "polizei.brandenburg.de", "polizei.bremen.de", "polizei.mvnet.de",
+                                                    "polizei.saarland.de", "schleswig-holstein.de", "presseportal.de"))
+        add("Vermisstenfälle", "Polizeien aller Bundesländer + Presseportal (eine Suche)",
+            g + quote_plus(f'{q} (vermisst OR "zuletzt gesehen" OR Vermisstenfahndung) ({police})'))
+        add("Vermisstenfälle", "Österreich: Bundeskriminalamt / Polizei", g + quote_plus(f"{q} abgängig OR vermisst (site:bundeskriminalamt.at OR site:polizei.gv.at)"))
+        add("Vermisstenfälle", "Schweiz: Polizeien und fedpol", g + quote_plus(f"{q} vermisst OR disparu (site:fedpol.admin.ch OR site:police.ch OR site:polizei.ch OR site:kapo.zh.ch)"))
+        add("Vermisstenfälle", "NCMEC – vermisste Kinder (USA)", "https://www.missingkids.org/gethelpnow/search", "Suchmaske; die Schnittstelle verlangt eine Registrierung")
+        add("Vermisstenfälle", "NamUs – Name in Fallakten (USA)", g + quote_plus(f"{q} site:namus.nij.ojp.gov"))
+        add("Vermisstenfälle", "Charley Project (USA, Altfälle)", g + quote_plus(f"{q} site:charleyproject.org"))
+        add("Vermisstenfälle", "Doe Network (international, auch unbekannte Tote)", g + quote_plus(f"{q} site:doenetwork.org"))
+        add("Vermisstenfälle", "Kanada: Canada's Missing", g + quote_plus(f"{q} site:canadasmissing.ca"))
+        add("Vermisstenfälle", "Australien: National Missing Persons", g + quote_plus(f"{q} site:missingpersons.gov.au"))
+        add("Vermisstenfälle", "IKRK: Verzeichnis der Suchdienste (Flucht, Krieg, Katastrophen)", "https://missingpersons.icrc.org/directory",
+            "Für Vermisste nach Flucht oder Krieg zusätzlich den Suchdienst des DRK einbeziehen")
+        add("Vermisstenfälle", "DRK-Suchdienst", "https://www.drk-suchdienst.de/")
+        add("Vermisstenfälle", "Missing Children Europe (Hotline 116 000)", "https://missingchildreneurope.eu/")
+        add("Vermisstenfälle", "Suchaufrufe in sozialen Netzwerken", g + quote_plus(f"{q} (vermisst OR \"wer hat\" OR \"bitte teilen\") (site:facebook.com OR site:instagram.com OR site:x.com)"))
         add("Vermisstenfälle", "Unbekannte Tote (BKA)", "https://www.bka.de/DE/IhreSicherheit/Fahndungen/UnbekannteTote/unbekannteTote_node.html", "Behutsam einsetzen – nur bei entsprechender Lage")
         if locs:
             add("Vermisstenfälle", f"Lokale Nachrichten {locs[0]}", "https://news.google.com/search?hl=de&q=" + quote_plus(f"{q} {locs[0]}"))

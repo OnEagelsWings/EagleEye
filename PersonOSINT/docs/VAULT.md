@@ -39,6 +39,10 @@ nichts gesendet.
 
 **Beenden:** Vault-Fenster schließen. Der Vault speichert, sperrt und beendet sich.
 
+## Tiefenrecherche, Vermisstenregister, Tarnung
+
+Siehe `TIEFENRECHERCHE.md`: automatische Varianten, Dorks und Folgespuren (Reiter **🔭 Tiefenrecherche**), Vermisstenregister, Legenden-Verwaltung und neue Netzidentität je Suche (Verwaltung → **🎭 Tarnung & Websuche**).
+
 ## Was technisch passiert (OPSEC-Konzept)
 
 **1. Nur dieser Rechner**

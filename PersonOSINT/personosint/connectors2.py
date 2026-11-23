@@ -185,8 +185,49 @@ def _fbi_wanted(src: Source, kind: str, value: str, http: Http) -> list[dict]:
 
 # --------------------------------------------------------------------------- Presse (GDELT) und Wikipedia
 
+#: Suchwörter für Vermisstenmeldungen in den häufigsten Sprachen der Presse (GDELT wertet über 100 Sprachen aus)
+MISSING_TERMS = ("vermisst", "missing", "disparu", "disparue", "desaparecido", "desaparecida", "scomparso", "scomparsa", "zaginiony",
+                 "zaginiona", "kayıp", "vermist", "försvunnen", "savnet")
+
+
+def _fbi_missing(src: Source, kind: str, value: str, http: Http) -> list[dict]:
+    """FBI-Liste, nur Einträge der Art „missing“ (Vermisste) – Filter serverseitig und zur Sicherheit noch einmal hier."""
+    data = _json(src.get(http, "https://api.fbi.gov/wanted/v1/list?" + urlencode({"title": value, "poster_classification": "missing", "pageSize": 20}))) or {}
+    out = []
+    for it in data.get("items", []):
+        if str(it.get("poster_classification") or "").lower() != "missing":
+            continue
+        name = str(it.get("title") or "").title()
+        aliases = [str(a).title() for a in (it.get("aliases") or [])]
+        if max([name_similarity(name, value)] + [name_similarity(a, value) for a in aliases]) < 0.82:
+            continue
+        place = it.get("place_of_birth") or ""
+        claims = [claim("gelistet_in", "FBI – Vermisste"), claim("geburtsdatum", (it.get("dates_of_birth_used") or [""])[0])]
+        claims += [claim("alias", a) for a in aliases[:5]]
+        out.append({"title": f"FBI – vermisst: {name}", "url": it.get("url", ""),
+                    "snippet": _clean(" · ".join(x for x in [it.get("description"), it.get("details"), it.get("remarks")] if x)),
+                    "category": "Vermisstenregister", "names": [name] + aliases[:5], "locations": [place, it.get("field_offices") and ", ".join(it["field_offices"]) or ""],
+                    "claims": [c for c in claims if c["object"]],
+                    "data": {"fbi_uid": it.get("uid"), "art": "missing", "veroeffentlicht": it.get("publication"), "geschlecht": it.get("sex"),
+                             "groesse": it.get("height_max"), "augen": it.get("eyes"), "haare": it.get("hair")}})
+    return out
+
+
+def _gdelt_missing(src: Source, kind: str, value: str, http: Http) -> list[dict]:
+    """Presse weltweit, nur Artikel, in denen der Name zusammen mit einem Vermisst-Begriff vorkommt."""
+    name = '"' + value.replace('"', " ").strip() + '"'
+    hits = _gdelt_query(src, name + " (" + " OR ".join(MISSING_TERMS) + ")", http)
+    for h in hits:
+        h["title"] = h["title"].replace("Presse:", "Vermisstenmeldung (Presse):", 1)
+        h["category"] = "Vermisstenregister"
+    return hits
+
+
 def _gdelt(src: Source, kind: str, value: str, http: Http) -> list[dict]:
-    query = '"' + value.replace('"', " ").strip() + '"'
+    return _gdelt_query(src, '"' + value.replace('"', " ").strip() + '"', http)
+
+
+def _gdelt_query(src: Source, query: str, http: Http) -> list[dict]:
     r = src.get(http, "https://api.gdeltproject.org/api/v2/doc/doc?" + urlencode({"query": query, "mode": "artlist", "maxrecords": 15, "format": "json", "sort": "datedesc"}))
     if r.status != 200:
         raise SourceError(f"HTTP {r.status}")
@@ -339,6 +380,14 @@ MORE_SOURCES: list[Source] = [
     Source("fbi_wanted", "FBI – Wanted", "Öffentliche Fahndungs- und Vermisstenliste des FBI (USA).",
            ("name",), ("api.fbi.gov",), "Risiko", 1.0, "Risiko & Compliance", _fbi_wanted,
            license="gemeinfrei (US-Bundesbehörde)", reliability="A", docs="https://www.fbi.gov/wanted/api", rate_per_min=20, test_query=("name", "Smith")),
+    Source("fbi_missing", "FBI – Vermisste", "Vermisstenfälle aus der öffentlichen FBI-Liste (USA), ohne Fahndungen.",
+           ("name",), ("api.fbi.gov",), "Vermisstenregister", 1.0, "Vermisstenfälle", _fbi_missing,
+           license="gemeinfrei (US-Bundesbehörde)", reliability="A", docs="https://www.fbi.gov/wanted/api", rate_per_min=20, test_query=("name", "Smith")),
+    Source("gdelt_missing", "Vermisstenmeldungen in der Presse (GDELT)",
+           "Presseberichte weltweit, in denen der Name zusammen mit „vermisst“, „missing“, „disparu“ … vorkommt (14 Sprachen).",
+           ("name",), ("api.gdeltproject.org",), "Vermisstenregister", 0.7, "Vermisstenfälle", _gdelt_missing,
+           license="frei nutzbar mit Quellenangabe GDELT; Artikel bleiben bei den Verlagen", reliability="C", docs="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/",
+           rate_per_min=10),
     Source("gdelt_news", "Presse weltweit (GDELT)", "Aktuelle Presseberichte der letzten Monate aus über 100 Sprachen, in denen der Name genau so vorkommt.",
            ("name", "employer"), ("api.gdeltproject.org",), "Presse", 0.6, "Presse & Medien", _gdelt,
            license="frei nutzbar mit Quellenangabe GDELT; Artikel bleiben bei den Verlagen", reliability="C", docs="https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/",

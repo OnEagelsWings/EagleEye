@@ -276,7 +276,66 @@ class Platform:
                                 test_query=("name", "Vladimir Putin")))
         from .pivot import apply_manifest
 
-        return apply_manifest(list(SOURCES) + list(ONLINE_SOURCES) + list(MORE_SOURCES) + local)
+        from .deepsearch import websearch_source
+
+        web = websearch_source(self.websearch_config())
+        return apply_manifest(list(SOURCES) + list(ONLINE_SOURCES) + list(MORE_SOURCES) + local + ([web] if web else []))
+
+    # ------------------------------------------------------------------ Tarnung: neue Tor-Identität je Suche
+    def tor_control_config(self, reveal: bool = False) -> dict[str, Any]:
+        raw = self._setting("tor_control", "")
+        cfg = json.loads(self.vault.decrypt_text(raw)) if raw else {"host": "", "port": 9051, "password": ""}
+        if not reveal:
+            cfg = {**cfg, "password": "***" if cfg.get("password") else ""}
+        return cfg
+
+    def save_tor_control(self, data: dict[str, Any]) -> dict[str, Any]:
+        old = self.tor_control_config(reveal=True)
+        host = str(data.get("host") or "").strip()
+        if host and host not in {"127.0.0.1", "localhost", "::1"} and not re.fullmatch(r"[a-z0-9.\-]{1,63}", host):
+            raise Invalid("Steuerport-Adresse ungültig (z. B. 127.0.0.1 oder der Name des Tor-Containers).")
+        port = int(data.get("port") or 9051)
+        if not 1 <= port <= 65535:
+            raise Invalid("Ungültiger Port.")
+        password = str(data.get("password") or "")
+        if password == "***":
+            password = old.get("password", "")
+        cfg = {"host": host, "port": port, "password": password}
+        self._set_setting("tor_control", self.vault.encrypt_text(json.dumps(cfg)) if host else "")
+        self.log(None, "Tor-Steuerport eingerichtet" if host else "Tor-Steuerport entfernt", f"{host}:{port}" if host else "–")
+        return self.tor_control_config()
+
+    def renew_identity(self) -> bool:
+        """Fordert bei Tor einen neuen Ausgang an (SIGNAL NEWNYM). True, wenn Tor zugestimmt hat."""
+        cfg = self.tor_control_config(reveal=True)
+        if not cfg.get("host"):
+            return False
+        import socket as _socket
+
+        try:
+            with _socket.create_connection((cfg["host"], int(cfg["port"])), timeout=5) as conn:
+                pw = cfg.get("password", "").replace("\\", "\\\\").replace('"', '\\"')
+                conn.sendall(f'AUTHENTICATE "{pw}"\r\nSIGNAL NEWNYM\r\nQUIT\r\n'.encode())
+                answer = conn.recv(1024).decode("ascii", "replace")
+        except OSError:
+            return False
+        ok = answer.count("250") >= 2
+        if ok:
+            time.sleep(1.0)  # Tor braucht einen Moment für neue Leitungen
+        return ok
+
+    # ------------------------------------------------------------------ Tiefenrecherche: eigene Websuche (SearXNG)
+    def websearch_config(self) -> dict[str, Any]:
+        raw = self._setting("websearch", "")
+        return json.loads(raw) if raw else {"url": "", "anonymized": False}
+
+    def save_websearch_config(self, data: dict[str, Any]) -> dict[str, Any]:
+        from .deepsearch import validate_websearch_url
+
+        cfg = {"url": validate_websearch_url(str(data.get("url") or "")), "anonymized": bool(data.get("anonymized"))}
+        self._set_setting("websearch", json.dumps(cfg))
+        self.log(None, "Websuche eingerichtet" if cfg["url"] else "Websuche entfernt", cfg["url"] or "–")
+        return cfg
 
     def source_map(self) -> dict[str, Source]:
         return {s.key: s for s in self.all_sources()}
@@ -381,7 +440,7 @@ class Platform:
         except NotFound as exc:
             raise OpsecBlocked("Der für diesen Fall gewählte Netzausgang existiert nicht mehr. Bitte im OPSEC-Reiter neu wählen.") from exc
 
-    def case_http(self, case: dict[str, Any]) -> RecordingHttp:
+    def case_http(self, case: dict[str, Any], user_agent: str = "") -> RecordingHttp:
         lv = ops.level(case.get("opsec_level"))
         prof = self.case_profile(case)
         if lv.require_egress and prof.kind == "direkt":
@@ -389,7 +448,7 @@ class Platform:
                                "Anonymisierungs-Ausgang (Proxy/Tor) wählen – die Administration richtet ihn unter Verwaltung → OPSEC ein.")
         if prof.kind == "proxy":
             self.proxy_check(prof)
-        ua = prof.user_agent or (ops.NEUTRAL_UA if lv.neutral_user_agent else "")
+        ua = prof.user_agent or user_agent or (ops.NEUTRAL_UA if lv.neutral_user_agent else "")
         inner = self.http if (prof.kind == "direkt" and not ua) else self.http_factory(prof, ua)
         user = current_user.get()
         uname = user["username"] if user else "system"
@@ -1061,16 +1120,19 @@ class Platform:
         return plan
 
     def run_search(self, case_id: int, entity_id: int, source_keys: list[str] | None = None,
-                   only: tuple[str, str] | None = None, pivot: dict[str, Any] | None = None) -> dict[str, Any]:
+                   only: tuple[str, str] | None = None, pivot: dict[str, Any] | None = None,
+                   queries: list[tuple[str, str, str]] | None = None, user_agent: str = "") -> dict[str, Any]:
         """``only`` begrenzt die Suche auf eine Kennung (Art, normalisierter Wert); ``pivot`` hält fest, aus welchem
-        Treffer diese Folgesuche entstand (Herkunftskette)."""
+        Treffer diese Folgesuche entstand (Herkunftskette). ``queries``: fertige Abfrageliste (Quelle, Art, Wert) der
+        Tiefenrecherche – Varianten, die nicht als Kennung der Person gespeichert werden. ``user_agent``: wechselnde
+        Browserkennung je Suche (Tarnung)."""
         case = self.get_case(case_id)
         subject = self.get_entity(case_id, entity_id)
         lv = ops.level(case["opsec_level"])
         self.require_briefing(case)
         smap = self.source_map()
         keys_now = self.api_keys()
-        full_plan = self.plan_search(case_id, entity_id, source_keys, only)
+        full_plan = [q for q in queries if q[0] in smap] if queries is not None else self.plan_search(case_id, entity_id, source_keys, only)
         unavailable = [x for x in full_plan if self.source_unavailable(smap[x[0]], keys_now)]
         full_plan = [x for x in full_plan if x not in unavailable]
         expo = lambda k: "lokal" if smap[k].local else SOURCE_EXPOSURE.get(k, "plattform")  # noqa: E731
@@ -1082,7 +1144,7 @@ class Platform:
             raise Invalid("Keine passenden Identifikatoren für die gewählten Quellen. Bitte z. B. Name, Benutzername oder E-Mail ergänzen.")
         if not plan:
             raise OpsecBlocked(f"Alle gewählten Quellen überschreiten die für OPSEC-Stufe {lv.key} erlaubte Exposition.")
-        http = self.case_http(case)  # wirft OpsecBlocked, wenn der Ausgang fehlt oder nicht erreichbar ist
+        http = self.case_http(case, user_agent=user_agent)  # wirft OpsecBlocked, wenn der Ausgang fehlt oder nicht erreichbar ist
         from . import __version__
 
         # Konfigurations-Snapshot je Lauf (Muster aus SpiderFoot): macht nachvollziehbar, womit und worüber gesucht wurde

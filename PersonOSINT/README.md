@@ -28,7 +28,7 @@
 >
 > **Neu in 1.6 – mehr Quellen, Prüfung, Serverbetrieb:** 13 weitere frei zugängliche Quellen (GND, abgeordnetenwatch, Wikipedia,
 > französisches Firmenregister, ICIJ online, INTERPOL-Fahndung, FBI, Presse über GDELT, Crossref, DBLP, Keybase, Codeberg, Docker Hub) –
-> jetzt 35 Quellen. **„Alle Quellen prüfen“** zeigt mit einem Klick, welche Quellen auf diesem Rechner wirklich antworten
+> jetzt 37 Quellen. **„Alle Quellen prüfen“** zeigt mit einem Klick, welche Quellen auf diesem Rechner wirklich antworten
 > (`QUELLEN_PRUEFEN.bat`). **Serverbetrieb unter Windows** mit `START_PERSONOSINT_SERVER.bat`. Übersicht: [docs/QUELLEN.md](docs/QUELLEN.md).
 
 EagleEye PersonOSINT ist eine lokale OSINT-Plattform, die auf den Grundsätzen von EagleEye Build 380 aufbaut

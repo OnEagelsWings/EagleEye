@@ -10,7 +10,7 @@
   /* Aktionen, die Quellen im Internet abfragen – bei geschlossenem Netz fragt die Leiste nach, statt sie scheitern zu lassen. */
   const NEEDS_NET = [/^\/api\/cases\/\d+\/search$/, /^\/api\/cases\/\d+\/evidence$/, /^\/api\/cases\/\d+\/entities\/\d+\/pivots\/run$/,
     /^\/api\/cases\/\d+\/watches\/\d+\/run$/, /^\/api\/admin\/sources\/check$/, /^\/api\/admin\/sources\/[^/]+\/test$/,
-    /^\/api\/admin\/egress-profiles\/[^/]+\/test$/, /^\/api\/admin\/refdata\/[^/]+\/download$/];
+    /^\/api\/admin\/egress-profiles\/[^/]+\/test$/, /^\/api\/admin\/refdata\/[^/]+\/download$/, /^\/api\/cases\/\d+\/entities\/\d+\/deep\/start$/];
 
   async function call(method, url, body) {
     const opts = { method, headers: { "X-Requested-With": "EagleEye" }, credentials: "same-origin" };

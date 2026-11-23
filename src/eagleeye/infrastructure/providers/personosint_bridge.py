@@ -32,6 +32,7 @@ from .policy import canonicalize_public_url
 BRIDGED = (
     "username_presence", "gravatar", "interpol_yellow", "nominatim", "crtsh",
     "wikipedia", "fr_entreprises", "icij_online", "interpol_red", "fbi_wanted", "keybase", "codeberg", "dockerhub",
+    "fbi_missing", "gdelt_missing",
 )
 #: Bewusst nicht übernommen – mit Grund (wird in der Oberfläche und im Bericht angezeigt)
 EXCLUDED = {

@@ -100,7 +100,11 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 
-    for exc_type, status in ((NotFound, 404), (Invalid, 422), (Forbidden, 403), (ConflictError, 409), (BackupError, 422), (OpsecBlocked, 428)):
+    from .personas import STATUSES as PERSONA_STATUSES, PersonaError, Personas, generate as generate_persona
+
+    personas = Personas(p)
+    for exc_type, status in ((NotFound, 404), (Invalid, 422), (Forbidden, 403), (ConflictError, 409), (BackupError, 422), (OpsecBlocked, 428),
+                             (PersonaError, 422)):
         def _handler(_: Request, exc: Exception, status: int = status):
             return JSONResponse({"detail": str(exc)}, status_code=status)
         app.add_exception_handler(exc_type, _handler)
@@ -931,6 +935,102 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
         from . import pivot
 
         return pivot.run(p, cid, eid, str(payload.get("kind") or ""), str(payload.get("value") or ""), payload.get("sources") or None)
+
+    # ---------------------------------------------------------------- Tiefenrecherche
+    def _deep_opts(source: dict) -> dict:
+        def flag(key: str) -> bool:
+            return str(source.get(key, "")).lower() in {"1", "true", "ja", "on"} or source.get(key) is True
+        return {"depth": int(source.get("depth") or 2), "budget": int(source.get("budget") or 200),
+                "max_name_variants": int(source.get("max_name_variants") or 8), "guess_usernames": flag("guess_usernames"),
+                "rotate_identity": flag("rotate_identity"), "run_dorks": flag("run_dorks"), "missing": flag("missing"),
+                "follow_min_score": int(source.get("follow_min_score") or 70)}
+
+    @app.get("/api/cases/{cid}/entities/{eid}/deep/plan")
+    def deep_plan(cid: int, eid: int, request: Request, _: dict = READ) -> dict:
+        from . import deepsearch
+
+        p._entity(cid, eid)  # noqa: SLF001
+        return deepsearch.plan(p, cid, eid, _deep_opts(dict(request.query_params)))
+
+    @app.post("/api/cases/{cid}/entities/{eid}/deep/start")
+    def deep_start(cid: int, eid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:
+        from . import deepsearch
+
+        p._entity(cid, eid)  # noqa: SLF001
+        return deepsearch.start(p, cid, eid, _deep_opts(payload), current_user.get())
+
+    @app.get("/api/cases/{cid}/deep/{job_id}")
+    def deep_status(cid: int, job_id: str, _: dict = READ) -> dict:
+        from . import deepsearch
+
+        job = deepsearch.job(job_id)
+        if not job or job["case_id"] != cid:
+            raise NotFound("Tiefenrecherche nicht gefunden.")
+        return job
+
+    @app.post("/api/cases/{cid}/deep/{job_id}/cancel")
+    def deep_cancel(cid: int, job_id: str, _: dict = WRITE) -> dict:
+        from . import deepsearch
+
+        job = deepsearch.job(job_id)
+        if not job or job["case_id"] != cid:
+            raise NotFound("Tiefenrecherche nicht gefunden.")
+        deepsearch.cancel(job_id)
+        return {"ok": True}
+
+    @app.get("/api/admin/websearch")
+    def websearch_get(_: dict = Depends(admin_ok)) -> dict:
+        return {**p.websearch_config(), "tor_control": p.tor_control_config()}
+
+    @app.post("/api/admin/websearch")
+    def websearch_set(payload: dict = Body(...), _: dict = Depends(admin_ok)) -> dict:
+        try:
+            web = p.save_websearch_config(payload)
+        except ValueError as exc:
+            raise Invalid(str(exc)) from None
+        tor = p.save_tor_control(payload.get("tor_control") or {}) if "tor_control" in payload else p.tor_control_config()
+        return {**web, "tor_control": tor}
+
+    # ---------------------------------------------------------------- Legenden (Sockpuppets)
+    @app.get("/api/personas")
+    def personas_list(_: dict = Depends(user_ok)) -> dict:
+        return {"items": personas.list(), "email_pattern": personas.email_pattern(), "statuses": PERSONA_STATUSES}
+
+    @app.post("/api/personas/generate")
+    def personas_generate(payload: dict = Body(default={}), _: dict = Depends(user_ok)) -> dict:
+        return generate_persona(personas.email_pattern(), str(payload.get("gender") or ""))
+
+    @app.post("/api/personas/settings")
+    def personas_settings(payload: dict = Body(...), _: dict = Depends(user_ok)) -> dict:
+        return {"email_pattern": personas.set_email_pattern(str(payload.get("email_pattern") or ""))}
+
+    @app.post("/api/personas")
+    def personas_create(payload: dict = Body(...), user: dict = Depends(user_ok)) -> dict:
+        return personas.save(payload, user["username"])
+
+    @app.put("/api/personas/{pid}")
+    def personas_update(pid: int, payload: dict = Body(...), user: dict = Depends(user_ok)) -> dict:
+        return personas.save(payload, user["username"], pid)
+
+    @app.delete("/api/personas/{pid}")
+    def personas_delete(pid: int, _: dict = Depends(user_ok)) -> dict:
+        personas.delete(pid)
+        return {"ok": True}
+
+    @app.get("/api/personas/{pid}/secret")
+    def personas_secret(pid: int, _: dict = Depends(user_ok)) -> dict:
+        return {"secret": personas.secret(pid)}
+
+    @app.post("/api/personas/{pid}/use")
+    def personas_use(pid: int, payload: dict = Body(...), user: dict = Depends(user_ok)) -> dict:
+        case_id = int(payload.get("case_id") or 0) or None
+        if case_id:
+            p.require(case_id, "write")
+        return personas.use(pid, case_id, str(payload.get("purpose") or ""), user["username"])
+
+    @app.get("/api/cases/{cid}/personas")
+    def case_personas(cid: int, _: dict = READ) -> list[dict]:
+        return personas.for_case(cid)
 
     @app.post("/api/cases/{cid}/entities/{eid}/pivots/dismiss")
     def pivots_dismiss(cid: int, eid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:

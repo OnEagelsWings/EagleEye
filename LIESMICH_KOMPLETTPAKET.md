@@ -4,8 +4,8 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 
 | Auswahl | Was startet | Wofür |
 |---|---|---|
-| **V** | **EagleEye Vault** (empfohlen) | Ihre private Recherche-Station im Browser: verschlüsselt (Passphrase + Zwei-Faktor-App), nur auf diesem Rechner erreichbar, Internet nur, wenn Sie es für eine Recherche freigeben. Darin die volle PersonOSINT-Oberfläche. Anleitung: `PersonOSINT\docs\VAULT.md` |
-| 1 | **PersonOSINT** (Einzelplatz) | Person oder Firma suchen: 35 Datenquellen, Treffer prüfen, Verbindungen, Belege, Dossier in Word/PDF |
+| **V** | **EagleEye Vault** (empfohlen) | Ihre private Recherche-Station im Browser: verschlüsselt (Passphrase + Zwei-Faktor-App), nur auf diesem Rechner erreichbar, Internet nur, wenn Sie es für eine Recherche freigeben. Darin die volle PersonOSINT-Oberfläche mit **Tiefenrecherche** (automatische Varianten, Dorks, Folgespuren), **Vermisstenregistern** und **Tarnung** (Legenden, neue Netzidentität je Suche). Anleitungen: `PersonOSINT\docs\VAULT.md`, `PersonOSINT\docs\TIEFENRECHERCHE.md` |
+| 1 | **PersonOSINT** (Einzelplatz) | Person oder Firma suchen: 37 Datenquellen, Treffer prüfen, Verbindungen, Belege, Dossier in Word/PDF |
 | 2 | **PersonOSINT als Server** | wie 1, zusätzlich von anderen Rechnern im eigenen Netz erreichbar (Zwei-Faktor-Anmeldung Pflicht) |
 | 3 | **EagleEye-Fallakte** (Build 500) | Büro und Fallakte: Mandanten, Aufträge, Zeiten, Rechnungen, Datensicherung; Web-Belege, Dokumente, Rechercheplan mit Freigaben, Prüfregister, Bericht (Bedienung: `BETRIEBSHANDBUCH_BUERO.md`) |
 | 4 | **Quellen prüfen** | Zeigt, welche Datenquellen von diesem Rechner aus wirklich antworten |

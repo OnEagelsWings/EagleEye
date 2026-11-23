@@ -350,3 +350,28 @@ h4.src-head { margin: 1rem 0 .3rem; font-size: .8rem; text-transform: uppercase;
 .chain .step.s-identifier { background: #fef3c7; }
 .chain .arrow { color: var(--muted, #64748b); }
 .net-list { margin: .2rem 0 .6rem; padding-left: 1.1rem; font-size: .86rem; }
+
+/* Tiefenrecherche und Tarnung (deep.js) */
+.deep-intro p { margin-top: .2rem; }
+.deep-checks { display: grid; gap: .35rem; margin-top: .4rem; font-size: .92rem; }
+.deep-checks label { display: flex; gap: .5rem; align-items: baseline; }
+.chips .chip { background: #e0e7ff; color: #1e3a8a; border-radius: 999px; padding: .15rem .6rem; }
+.chips .chip-amber { background: #fef3c7; color: #78350f; }
+.dork-group { margin: 1rem 0 .3rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+.dork { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .6rem; align-items: center; padding: .45rem .3rem; border-bottom: 1px solid var(--line); }
+.dork.done { opacity: .55; }
+.dork-main code { display: block; font-size: .78rem; color: #475569; white-space: normal; word-break: break-word; margin-top: .15rem; }
+.dork-links { display: flex; flex-wrap: wrap; gap: .25rem; justify-content: flex-end; max-width: 380px; }
+.deep-job.running { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, .2); }
+.deep-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; text-align: center; margin: .4rem 0 .6rem; }
+.deep-stats b { font-size: 1.4rem; display: block; }
+.deep-stats span { font-size: .78rem; color: #64748b; }
+.meter-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.meter-bar i { display: block; height: 100%; background: linear-gradient(90deg, #2563eb, #facc15); transition: width .4s; }
+.deep-log { margin: .6rem 0 0; padding-left: 1.2rem; max-height: 260px; overflow: auto; }
+.note-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: .6rem .8rem; margin-bottom: .8rem; }
+.secret-box { white-space: pre-wrap; word-break: break-all; background: #0b1f38; color: #facc15; border-radius: 8px; padding: .8rem; user-select: all; }
+@media (max-width: 900px) { .dork { grid-template-columns: auto minmax(0, 1fr); } .dork-links { grid-column: 2; justify-content: flex-start; } .deep-stats { grid-template-columns: repeat(2, 1fr); } }
+.deep-checks input[type=checkbox], #ws-form input[type=checkbox] { width: auto !important; flex: none; margin: 0; }
+.deep-checks label { justify-content: flex-start; text-align: left; }
+#ws-form label:has(> input[type=checkbox]) { display: flex; gap: .5rem; align-items: center; }

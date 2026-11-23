@@ -34,6 +34,7 @@ PRODUCES: dict[str, tuple[str, ...]] = {
     "lobid_gnd": ("alias", "employer", "location"), "abgeordnetenwatch": ("employer",), "wikipedia": (), "fr_entreprises": ("employer", "location"),
     "icij_online": (), "interpol_red": (), "fbi_wanted": ("alias",), "gdelt_news": ("url",), "crossref": ("employer",), "dblp": ("employer",),
     "keybase": ("username", "url"), "codeberg": ("username", "url"), "dockerhub": ("username", "employer", "location"),
+    "fbi_missing": ("alias", "location"), "gdelt_missing": ("url",),
 }
 KIND_LABEL = {"name": "Name", "alias": "Alias", "email": "E-Mail", "phone": "Telefon", "username": "Benutzername", "url": "Webadresse",
               "location": "Ort/Adresse", "employer": "Arbeitgeber/Firma", "domain": "Domain"}
@@ -93,8 +94,9 @@ def _depths(p, case_id: int) -> dict[int, int]:
     return {s["id"]: int((s.get("pivot") or {}).get("depth") or 0) for s in p.db.all("SELECT id, pivot FROM searches WHERE case_id = ?", (case_id,))}
 
 
-def harvest(p, case_id: int, entity_id: int) -> list[dict[str, Any]]:
-    """Kennungen aus bestätigten Treffern und Aussagen einer Person – mit Herkunft und Tiefe."""
+def harvest(p, case_id: int, entity_id: int, min_score: int | None = None) -> list[dict[str, Any]]:
+    """Kennungen aus bestätigten Treffern und Aussagen einer Person – mit Herkunft und Tiefe.
+    ``min_score`` (nur Tiefenrecherche): zusätzlich noch ungeprüfte Treffer mit mindestens dieser Übereinstimmung."""
     depths = _depths(p, case_id)
     out: dict[tuple[str, str], dict[str, Any]] = {}
 
@@ -106,8 +108,12 @@ def harvest(p, case_id: int, entity_id: int) -> list[dict[str, Any]]:
         if key not in out or depth < out[key]["depth"]:
             out[key] = {"kind": kind, "kind_label": KIND_LABEL.get(kind, kind), "value": value, "normalized": key[1], "origin": origin, "depth": depth}
 
-    findings = p.db.all("SELECT id, search_id, source, title, url, category, data FROM findings WHERE case_id = ? AND entity_id = ? AND status = 'bestätigt'",
-                        (case_id, entity_id))
+    if min_score is None:
+        findings = p.db.all("SELECT id, search_id, source, title, url, category, data FROM findings WHERE case_id = ? AND entity_id = ? AND status = 'bestätigt'",
+                            (case_id, entity_id))
+    else:
+        findings = p.db.all("SELECT id, search_id, source, title, url, category, data FROM findings WHERE case_id = ? AND entity_id = ? "
+                            "AND (status = 'bestätigt' OR (status = 'neu' AND score >= ?))", (case_id, entity_id, int(min_score)))
     by_id = {f["id"]: f for f in findings}
     for f in findings:
         depth = depths.get(f["search_id"], 0) + 1
