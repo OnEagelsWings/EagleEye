@@ -12,9 +12,7 @@
 3. Starte `START_EAGLEEYE_PRO.bat`. Der Installer legt seine eigene,
    nicht-editierbare Python-Laufzeit `.eagleeye-runtime-500` an und verwendet
    die bereits mitgelieferten `wheelhouse/*.whl` **ohne Internetzugriff**.
-4. Verwende die bestehende externe Datenordnerauswahl. Wichtig: Der
-   Konfigurationspfad `EagleEye-490` bleibt **absichtlich** als
-   Kompatibilitätsanker erhalten, damit Fälle nicht unbemerkt verschwinden.
+4. Verwende die bestehende externe Datenordnerauswahl, aber wähle für Build 500 **einen neuen, leeren Arbeitsordner**, getrennt vom Programmordner und allen früheren Installationen. Die Standardkonfiguration verwendet `EagleEye-500` (nicht `EagleEye-490`); die neue Datenbank wird ausschließlich im neuen Arbeitsbereich angelegt. Eine Migration aus Build 398 ist weder vorgesehen noch erforderlich. Bereits vorhandene Datenordner und Datenbanken von Build 398 dürfen nicht ausgewählt, verändert oder überschrieben werden.
 5. Prüfe zuerst die Startdiagnose und arbeite in einer **synthetischen Testakte**.
    Erst nach eigener OPSEC-/Datenschutzprüfung und Restore-Abnahme sollten
    echte Mandatsdaten erwogen werden.

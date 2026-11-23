@@ -205,6 +205,15 @@ def test_build500_receipt_fingerprint_changes_with_wheel_manifest(tmp_path):
     folder.mkdir()
     manifest = folder / "MANIFEST-SHA256.json"
     manifest.write_text('{"fixture.whl":"' + "a" * 64 + '"}', encoding="utf-8")
+    # Fingerprinting intentionally requires a complete release tree.
+    # Supply inert fixtures for all mandatory source components.
+    for filename in ("INSTALL_EAGLEEYE_500.py", "pyproject.toml",
+                     "EAGLEEYE_PRO_458_0.py", "RELEASE_MANIFEST_BUILD_458_0.json"):
+        (tmp_path / filename).write_text("fixture", encoding="utf-8")
+    for dirname in ("src/eagleeye", "eagleeye_pro", "alembic_104_1"):
+        folder = tmp_path / dirname
+        folder.mkdir(parents=True)
+        (folder / "fixture.py").write_text("fixture", encoding="utf-8")
     before = installer._source_fingerprint(tmp_path)
     manifest.write_text('{"fixture.whl":"' + "b" * 64 + '"}', encoding="utf-8")
     assert installer._source_fingerprint(tmp_path) != before
@@ -231,7 +240,7 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
     git("add", "source.py")
     git("commit", "-m", "fixture")
     tracked.unlink()
-    with pytest.raises(ValueError, match="missing tracked source|clean tracked source tree"):
+    with pytest.raises(ValueError, match="clean tracked source|missing tracked source"):
         pack.build(tmp_path, tmp_path / "missing.zip")
 
     outside = tmp_path.parent / (tmp_path.name + "-outside.txt")
@@ -240,6 +249,38 @@ def test_release_pack_refuses_tracked_symlink_and_missing_source(tmp_path):
         os.symlink(outside, tracked)
     except (OSError, NotImplementedError):
         pytest.skip("Symlink creation unavailable on this host")
-    with pytest.raises(ValueError, match="tracked source symlink|clean tracked source tree"):
+    with pytest.raises(ValueError, match="clean tracked source|tracked source symlink"):
         pack.build(tmp_path, tmp_path / "linked.zip")
     assert not (tmp_path / "linked.zip").exists()
+
+
+def test_build500_runtime_probe_rejects_linked_installation_root(tmp_path):
+    """A symlinked release root must not reuse another installation runtime."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    actual = tmp_path / "release-original"
+    actual.mkdir()
+    alias = tmp_path / "release-alias"
+    try:
+        alias.symlink_to(actual, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Symlinks unavailable on this host")
+    assert installer._runtime_path_linked(alias)
+    assert installer._probe(alias)["reason"] == "runtime_link_forbidden"
+    with pytest.raises(RuntimeError, match="Linked runtime paths"):
+        installer._ensure_runtime(alias, quiet=True)
+    assert not (actual / installer.RUNTIME_DIR).exists()
+
+
+def test_build500_fingerprint_rejects_missing_critical_source(tmp_path):
+    """An incomplete release must not be fingerprinted as installable."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("build500_installer", ROOT / "INSTALL_EAGLEEYE_500.py")
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+    (tmp_path / "INSTALL_EAGLEEYE_500.py").write_text("incomplete", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="Missing or linked Build 500 source component"):
+        installer._source_fingerprint(tmp_path)

@@ -44,6 +44,11 @@ def _source_fingerprint(root: Path) -> str:
         root / "eagleeye_pro",
         root / "alembic_104_1",
     ]
+    # A partial or damaged release must never be accepted as a valid source fingerprint.
+    # Otherwise removing a critical source tree can leave an apparently valid receipt.
+    for required in roots:
+        if not required.exists() or required.is_symlink():
+            raise RuntimeError(f"Missing or linked Build 500 source component: {required.name}")
     files: list[Path] = []
     for item in roots:
         if item.is_symlink():
@@ -71,6 +76,10 @@ def _source_fingerprint(root: Path) -> str:
             current = current / part
             if current.is_symlink():
                 raise RuntimeError("Linked source paths are forbidden for Build 500")
+        # Shared inodes can mutate another installation despite distinct paths.
+        # Fingerprinting alone does not provide source-tree isolation.
+        if path.stat().st_nlink > 1:
+            raise RuntimeError("Shared hard-linked Build 500 source file is forbidden")
         rel = relative.as_posix().encode("utf-8")
         digest.update(len(rel).to_bytes(4, "big"))
         digest.update(rel)
@@ -93,6 +102,10 @@ def _read_receipt(root: Path) -> dict:
 
 def _runtime_path_linked(root: Path) -> bool:
     """Reject links at every runtime path component, not only its endpoints."""
+    # Reject a linked installation root before probing or reusing a runtime.
+    # Otherwise a launcher could silently execute another installation.
+    if root.is_symlink():
+        return True
     runtime = root / RUNTIME_DIR
     python = _runtime_python(root)
     current = runtime
@@ -214,6 +227,10 @@ def _verify_wheelhouse(root: Path) -> None:
         raise RuntimeError("Wheelhouse manifest invalid") from exc
     if not isinstance(expected, dict) or not expected:
         raise RuntimeError("Wheelhouse manifest empty")
+    # Hard links can alias a mutable wheel or manifest in another installation.
+    # Refuse shared inodes before pip consumes these supposedly sealed inputs.
+    if manifest.stat().st_nlink > 1:
+        raise RuntimeError("Shared hard-linked wheelhouse manifest is forbidden")
     if any(
         not isinstance(name, str)
         or not name.endswith(".whl")
@@ -229,7 +246,7 @@ def _verify_wheelhouse(root: Path) -> None:
     # archives, links or other payloads alongside the verified wheel set.
     entries = list(folder.iterdir())
     if any(
-        p.is_symlink() or not p.is_file()
+        p.is_symlink() or not p.is_file() or p.stat().st_nlink > 1
         or (p.name != manifest.name and p.name not in expected)
         for p in entries
     ):
@@ -242,6 +259,14 @@ def _verify_wheelhouse(root: Path) -> None:
     for name, path in wheels.items():
         if hashlib.sha256(path.read_bytes()).hexdigest() != expected[name]:
             raise RuntimeError("Wheel SHA-256 mismatch: " + name)
+
+
+def _reject_shared_installer_file(path: Path) -> None:
+    """Never overwrite a hard-linked receipt or pip log from another installation."""
+    if path.is_symlink():
+        raise RuntimeError("Linked installer file path is forbidden for Build 500")
+    if path.exists() and path.stat().st_nlink > 1:
+        raise RuntimeError("Shared hard-linked installer file is forbidden for Build 500")
 
 
 def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: bool = False) -> None:
@@ -257,8 +282,7 @@ def _install(root: Path, runtime_python: Path, *, quiet: bool = False, offline: 
     # Local, sealed wheels need neither a download cache nor eager .pyc builds.
     log_path = root / RUNTIME_DIR / "install-pip-500.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    if log_path.is_symlink():
-        raise RuntimeError("Linked installer log path is forbidden")
+    _reject_shared_installer_file(log_path)
     if not quiet:
         print(f"[EagleEye {BUILD}] Installationsprotokoll: {log_path}", flush=True)
     command = [str(runtime_python), "-m", "pip", "--log", str(log_path),
@@ -300,8 +324,10 @@ def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
         "offline_wheelhouse": (root / "wheelhouse").is_dir(),
     }
     temp = path.with_suffix(".tmp")
-    if _runtime_path_linked(root) or path.is_symlink() or temp.is_symlink():
+    if _runtime_path_linked(root):
         raise RuntimeError("Linked installer receipt paths are forbidden for Build 500")
+    _reject_shared_installer_file(path)
+    _reject_shared_installer_file(temp)
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     try:
         temp.chmod(0o600)
@@ -324,6 +350,12 @@ def main(argv=None) -> int:
         return 2
 
     root = _root()
+    # The sealed Windows wheelhouse contains CPython 3.12 wheels. Fail before
+    # creating or changing the runtime when invoked with an incompatible host.
+    # Linux/source installs remain governed by their own dependency resolution.
+    if os.name == "nt" and (args.offline or (root / "wheelhouse").exists()) and sys.version_info[:2] != (3, 12):
+        print("EagleEye Build 500 Windows offline installation requires Python 3.12.x.", file=sys.stderr)
+        return 2
     # Offline mode is an integrity contract, including --check and an already
     # installed runtime. Never report readiness for a tampered wheelhouse.
     # A bundled wheelhouse is part of the installation trust boundary even

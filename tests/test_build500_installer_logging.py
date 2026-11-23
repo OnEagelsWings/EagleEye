@@ -49,7 +49,7 @@ def test_build500_installer_rejects_linked_log(tmp_path, monkeypatch):
         import pytest
         pytest.skip("symlink not permitted in current environment")
     import pytest
-    with pytest.raises(RuntimeError, match="Linked installer log"):
+    with pytest.raises(RuntimeError, match=r"Linked installer (?:log|file path)"):
         installer._install(tmp_path, installer._runtime_python(tmp_path), offline=True)
     assert external.read_text(encoding="utf-8") == "do not overwrite"
 

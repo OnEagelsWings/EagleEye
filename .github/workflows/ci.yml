@@ -54,7 +54,7 @@ jobs:
       # Fail fast on the active Build-490 integration rather than historical
       # Build-486 exact-version contracts. Historical failures remain visible
       # in the mandatory full checkpoint below.
-      - name: Current legacy preflight (prior to Build 500)
+      - name: Current integrated journey preflight
         if: steps.cadence.outputs.full == 'true'
         run: pytest -q -x tests/test_build490_synthetic_journey.py
       - name: Full repository checkpoint regression
