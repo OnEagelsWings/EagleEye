@@ -65,13 +65,17 @@ def open_database(settings: Settings) -> Database:
 
 
 def create_app(data_dir: Path | str | None = None, http: Http | None = None, auto_geocode: bool = True,
-               settings: Settings | None = None, start_scheduler: bool = True) -> FastAPI:
+               settings: Settings | None = None, start_scheduler: bool = True, *,
+               db: Database | None = None, vault: Vault | None = None) -> FastAPI:
+    """Ohne ``db``/``vault``: klassischer Betrieb (Datenbankdatei + Schlüsseldatei im Datenordner).
+    Mit beiden: Vault-Betrieb – Datenbank im Arbeitsspeicher, Schlüssel ohne Datei (siehe ``vault_app``)."""
     settings = settings or Settings()
     if data_dir:
         settings.data_dir = Path(data_dir)
     settings.allowed_hosts = tuple(dict.fromkeys(settings.allowed_hosts + ("testserver",)))
-    vault = Vault(settings.resolved_key_file)
-    db = open_database(settings)
+    vault_mode = db is not None and vault is not None
+    vault = vault or Vault(settings.resolved_key_file)
+    db = db or open_database(settings)
     p = Platform(db, settings.data_dir, http=http, auto_geocode=auto_geocode and settings.auto_geocode, vault=vault)
     auth = Auth(db, vault, settings)
     app = FastAPI(title="EagleEye PersonOSINT", version=__version__, docs_url="/api/docs", redoc_url=None)
@@ -281,13 +285,15 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     def admin_system(_: dict = Depends(admin_ok)) -> dict:
         key = settings.resolved_key_file.resolve()
         warnings = []
-        if settings.data_dir.resolve() in key.parents:
+        if vault_mode:
+            key = "nur im Arbeitsspeicher (Vault)"
+        elif settings.data_dir.resolve() in key.parents:
             warnings.append("Die Schlüsseldatei liegt im Datenordner. Für den Serverbetrieb getrennt ablegen (EAGLEEYE_KEY_FILE).")
-        if db.dialect == "sqlite":
+        if db.dialect == "sqlite" and not vault_mode:
             warnings.append("SQLite ist für den Einzelplatz gedacht. Für Teams PostgreSQL verwenden (EAGLEEYE_DATABASE_URL).")
         if not settings.cookie_secure:
             warnings.append("Sitzungs-Cookies ohne „Secure“-Flag – im Netzwerkbetrieb HTTPS + EAGLEEYE_COOKIE_SECURE=1 setzen.")
-        if not settings.require_2fa:
+        if not settings.require_2fa and not vault_mode:
             warnings.append("Zwei-Faktor-Anmeldung ist nicht verpflichtend (EAGLEEYE_REQUIRE_2FA=0).")
         bdir = settings.resolved_backup_dir
         if bdir.exists() and not os.access(bdir, os.W_OK):

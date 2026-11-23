@@ -225,13 +225,25 @@ class Auth:
         if _ph.check_needs_rehash(user["password_hash"]):
             self.db.update("users", user["id"], {"password_hash": hash_password(password)})
         self.db.update("users", user["id"], {"failed_logins": 0, "locked_until": ""})
+        return self._new_session(user, ip, user_agent, mfa_passed=False), user
+
+    def _new_session(self, user: dict[str, Any], ip: str, user_agent: str, *, mfa_passed: bool) -> str:
         token = secrets.token_urlsafe(32)
         now = datetime.now(timezone.utc).replace(microsecond=0)
         self.db.insert("sessions", {"token_hash": _token_hash(token), "user_id": user["id"], "csrf_token": secrets.token_urlsafe(24),
-                                    "mfa_passed": 0, "created_at": now.isoformat(), "last_seen": now.isoformat(),
+                                    "mfa_passed": int(mfa_passed), "created_at": now.isoformat(), "last_seen": now.isoformat(),
                                     "expires_at": (now + timedelta(hours=self.settings.session_max_hours)).isoformat(),
                                     "ip": ip[:64], "user_agent": user_agent[:200]})
-        return token, user
+        return token
+
+    def vault_session(self, user_id: int, ip: str = "", user_agent: str = "") -> str:
+        """Vault-Betrieb: Der Inhaber hat sich mit Passphrase und Zwei-Faktor-Code am Vault ausgewiesen.
+        Alle früheren Sitzungen verfallen; es gibt genau eine neue."""
+        user = self.get_user(user_id)
+        if not user or not user["active"]:
+            raise AuthError("Inhaberkonto fehlt oder ist deaktiviert.", 403)
+        self.db.execute("DELETE FROM sessions")
+        return self._new_session(user, ip, user_agent, mfa_passed=True)
 
     def session(self, token: str | None) -> tuple[dict[str, Any], dict[str, Any]] | None:
         if not token:

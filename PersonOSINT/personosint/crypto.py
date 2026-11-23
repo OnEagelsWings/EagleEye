@@ -22,6 +22,14 @@ class Vault:
                 fh.write(key)
         self._f = Fernet(self.key_file.read_bytes().strip())
 
+    @classmethod
+    def from_key(cls, fernet_key: bytes) -> "Vault":
+        """Vault-Betrieb: Schlüssel nur im Arbeitsspeicher, keine Schlüsseldatei."""
+        obj = cls.__new__(cls)
+        obj.key_file = None
+        obj._f = Fernet(fernet_key)
+        return obj
+
     def encrypt(self, data: bytes) -> bytes:
         return MAGIC + self._f.encrypt(data)
 

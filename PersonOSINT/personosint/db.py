@@ -264,8 +264,11 @@ class ConflictError(Exception):
 class Database:
     """Thread-sichere Fassade über sqlite3 bzw. psycopg (eine Verbindung, serialisiert)."""
 
-    def __init__(self, url_or_path: Path | str, post_migrations: dict[int, Callable[["Database"], None]] | None = None):
+    def __init__(self, url_or_path: Path | str, post_migrations: dict[int, Callable[["Database"], None]] | None = None,
+                 initial: bytes | None = None):
         target = str(url_or_path)
+        #: Vault-Betrieb: Datenbestand, der direkt in eine Datenbank im Arbeitsspeicher geladen wird (nie auf die Platte)
+        self._initial = initial if target == ":memory:" else None
         self.dialect = "postgres" if target.startswith(("postgres://", "postgresql://")) else "sqlite"
         self.target = target
         self._lock = threading.RLock()
@@ -283,9 +286,37 @@ class Database:
             if self.target != ":memory:":
                 Path(self.target).parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(self.target, check_same_thread=False)
+            if self._initial:
+                raw = self._initial
+                if raw[:16] == b"SQLite format 3\x00" and raw[18:20] == b"\x02\x02":
+                    # Kopf einer WAL-Datenbank (Dateiversion 2): im Arbeitsspeicher gibt es keine WAL-Datei → Rollback-Modus (1)
+                    raw = raw[:18] + b"\x01\x01" + raw[20:]
+                self._conn.deserialize(raw)
+                self._initial = None
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA foreign_keys = ON")
-            self._conn.execute("PRAGMA journal_mode = WAL")
+            if self.target != ":memory:":
+                self._conn.execute("PRAGMA journal_mode = WAL")
+
+    # ------------------------------------------------------------------ Vault-Betrieb
+    def changes(self) -> int:
+        """Zähler aller Änderungen seit dem Öffnen (für das verschlüsselte Zwischenspeichern)."""
+        with self._lock:
+            return self._conn.total_changes if self.dialect == "sqlite" else 0
+
+    def serialize(self) -> bytes:
+        """Ganzer Datenbestand als Bytes – nur für SQLite im Arbeitsspeicher (Vault)."""
+        if self.dialect != "sqlite":
+            raise RuntimeError("Nur SQLite lässt sich serialisieren")
+        with self._lock:
+            return self._conn.serialize()
+
+    def close(self) -> None:
+        with self._lock:
+            try:
+                self._conn.close()
+            except Exception:  # noqa: BLE001
+                pass
 
     def _sql(self, sql: str) -> str:
         if self.dialect == "postgres":

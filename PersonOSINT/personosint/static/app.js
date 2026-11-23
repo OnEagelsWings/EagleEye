@@ -1118,7 +1118,8 @@
     const map = L.map("map", { zoomControl: true }).setView([51.16, 10.45], 6);
     state.map = map;
     if (state.meta.opsec_levels[ov.case.opsec_level].map_tiles || state.tilesOn === ov.case.id) {
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+      // Vault-Betrieb: Kacheln über den Server (Netzschalter, kein direkter Browserkontakt zu OSM)
+      L.tileLayer(window.EE_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     }
     const tb = $("#tiles-on");
     if (tb) tb.onclick = async () => {

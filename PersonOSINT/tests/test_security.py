@@ -221,5 +221,6 @@ def test_password_change_revokes_other_sessions_but_keeps_current(tmp_path):
         "old_password": ADMIN_PW, "new_password": "Neues!SicheresPasswort2026"})
     assert response.status_code == 200, response.text
     assert admin.get("/api/auth/state").json()["state"] == "ok"
-    assert other.get("/api/auth/state").json()["state"] != "ok"
+    revoked = other.get("/api/auth/state").json()
+    assert revoked["authenticated"] is False and revoked.get("state") != "ok"
     assert login(app, "admin", "Neues!SicheresPasswort2026").get("/api/auth/state").json()["state"] == "ok"

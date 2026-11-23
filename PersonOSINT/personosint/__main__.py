@@ -107,6 +107,75 @@ def cmd_serve(args) -> None:
                 forwarded_allow_ips=os.environ.get("EAGLEEYE_TRUSTED_PROXIES", "127.0.0.1"))
 
 
+def _vault_browser() -> str | None:
+    """Chromium-Browser für das abgeschottete Vault-Fenster (Edge, Chrome, Brave, Chromium)."""
+    import shutil
+
+    candidates = []
+    for base in (os.environ.get("PROGRAMFILES(X86)", ""), os.environ.get("PROGRAMFILES", ""), os.environ.get("LOCALAPPDATA", "")):
+        if base:
+            candidates += [os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"),
+                           os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"),
+                           os.path.join(base, "BraveSoftware", "Brave-Browser", "Application", "brave.exe")]
+    candidates += ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+                   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+    candidates += [shutil.which(n) or "" for n in ("microsoft-edge", "google-chrome", "chromium", "chromium-browser", "brave-browser")]
+    env = os.environ.get("EAGLEEYE_VAULT_BROWSER", "")
+    return next((c for c in [env] + candidates if c and os.path.isfile(c)), None)
+
+
+def cmd_vault(args) -> None:
+    """Vault-Betrieb: verschlüsselt, nur 127.0.0.1, Netz nur auf Befehl, eigenes Browserfenster mit Wegwerf-Profil."""
+    import shutil
+    import subprocess
+    import tempfile
+    import time as _time
+
+    import uvicorn
+
+    from .vault_app import create_vault_app, default_vault_dir
+
+    folder = Path(args.vault_dir) if args.vault_dir else default_vault_dir()
+    app = create_vault_app(folder)
+    url = f"http://127.0.0.1:{args.port}/"
+    print("EagleEye Vault")
+    print(f"  Adresse:      {url}   (nur von diesem Rechner erreichbar)")
+    print(f"  Vault-Ordner: {folder}")
+    print("  Netz:         geschlossen – öffnen Sie es in der Vault-Leiste nur für die Recherche.")
+    print("  Beenden:      Vault-Fenster schließen oder hier Strg+C. Beides sperrt den Vault.")
+    config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="warning", lifespan="on")
+    server = uvicorn.Server(config)
+
+    def launch() -> None:
+        browser = None if args.no_browser else _vault_browser()
+        if args.no_browser:
+            return
+        if not browser:
+            print("  Hinweis: Kein Edge/Chrome gefunden – öffne den Standardbrowser. Empfehlung: eigenes Profil nur für die Recherche.")
+            webbrowser.open(url)
+            return
+        profile = tempfile.mkdtemp(prefix="eagleeye-vault-browser-")
+        cmd = [browser, f"--user-data-dir={profile}", f"--app={url}", "--window-size=1440,920", "--no-first-run",
+               "--no-default-browser-check", "--disable-sync", "--disable-extensions", "--disable-background-networking",
+               "--disable-component-update", "--disable-default-apps", "--disable-domain-reliability", "--metrics-recording-only",
+               "--disable-features=Translate,AutofillServerCommunication,OptimizationHints,MediaRouter,InterestFeedContentSuggestions",
+               "--password-store=basic"]
+        started = _time.time()
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # noqa: S603 - fester Browserpfad
+        except OSError:
+            webbrowser.open(url)
+            return
+        proc.wait()
+        shutil.rmtree(profile, ignore_errors=True)
+        if _time.time() - started > 5 and not args.keep_running:
+            print("Vault-Fenster geschlossen – Vault wird gesperrt und beendet.")
+            server.should_exit = True
+
+    threading.Timer(1.0, launch).start()
+    server.run()
+
+
 def cmd_create_user(args) -> None:
     from .auth import ROLES
 
@@ -245,13 +314,18 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("verify-audit")
     cs = sub.add_parser("check-sources", help="alle Quellen mit ihrer Testabfrage prüfen (Internetverbindung nötig)")
     cs.add_argument("--out", default="", help="Prüfbericht als Markdown-Datei speichern")
+    va = sub.add_parser("vault", help="Vault-Betrieb: verschlüsselt, nur dieser Rechner, Netz nur auf Befehl")
+    va.add_argument("--vault-dir", default="", help="Vault-Ordner (Standard: %%LOCALAPPDATA%%\\EagleEye-Vault bzw. EAGLEEYE_VAULT_DIR)")
+    va.add_argument("--port", type=int, default=int(os.environ.get("EAGLEEYE_VAULT_PORT", "8377")))
+    va.add_argument("--no-browser", action="store_true")
+    va.add_argument("--keep-running", action="store_true", help="nach Schließen des Fensters weiterlaufen (gesperrt nach Untätigkeit)")
     ir = sub.add_parser("import-refdata", help="lokale Referenzdaten importieren (opensanctions | icij | eigene_liste)")
     ir.add_argument("name")
     ir.add_argument("file")
     args = parser.parse_args(argv)
     {None: cmd_serve, "serve": cmd_serve, "create-user": cmd_create_user, "reset-2fa": cmd_user_admin, "unlock": cmd_user_admin,
      "reset-password": cmd_user_admin, "backup": cmd_backup, "verify-backup": cmd_verify_backup, "restore": cmd_restore,
-     "verify-audit": cmd_verify_audit, "import-refdata": cmd_import_refdata, "check-sources": cmd_check_sources}[args.command](args)
+     "verify-audit": cmd_verify_audit, "import-refdata": cmd_import_refdata, "check-sources": cmd_check_sources, "vault": cmd_vault}[args.command](args)
 
 
 if __name__ == "__main__":

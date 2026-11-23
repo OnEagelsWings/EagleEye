@@ -249,12 +249,29 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
+class _GatedOpener:
+    """Vault-Netzschalter vor jedem Abruf – auch vor dem Weg über einen lokalen Proxy (Tor auf 127.0.0.1)."""
+
+    def __init__(self, inner: urllib.request.OpenerDirector):
+        self._inner = inner
+
+    def open(self, req, *args, **kwargs):  # noqa: ANN001
+        from .netgate import require_open
+
+        url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
+        require_open(urlsplit(url).hostname or url)
+        return self._inner.open(req, *args, **kwargs)
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+
 def build_opener(profile: EgressProfile) -> urllib.request.OpenerDirector:
     ctx = ssl.create_default_context()
     if profile.kind == "proxy":
         handler = _StrictProxyHandler({"http": profile.proxy_url, "https": profile.proxy_url})
-        return urllib.request.build_opener(handler, urllib.request.HTTPSHandler(context=ctx), _SafeRedirectHandler(resolve=False))
-    return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx), _SafeRedirectHandler(resolve=True))
+        return _GatedOpener(urllib.request.build_opener(handler, urllib.request.HTTPSHandler(context=ctx), _SafeRedirectHandler(resolve=False)))
+    return _GatedOpener(urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx), _SafeRedirectHandler(resolve=True)))
 
 
 def check_proxy_reachable(profile: EgressProfile, timeout: float = 4.0) -> None:
@@ -262,6 +279,12 @@ def check_proxy_reachable(profile: EgressProfile, timeout: float = 4.0) -> None:
     if profile.kind != "proxy":
         return
     parts = urlsplit(profile.proxy_url)
+    from .netgate import NetClosed, require_open
+
+    try:
+        require_open(f"Anonymisierungs-Ausgang {profile.name}")
+    except NetClosed as exc:
+        raise OpsecBlocked(str(exc)) from exc
     try:
         with socket.create_connection((parts.hostname, parts.port), timeout=timeout):
             pass
