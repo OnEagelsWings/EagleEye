@@ -76,7 +76,7 @@ def _source_fingerprint(root: Path) -> str:
             current = current / part
             if current.is_symlink():
                 raise RuntimeError("Linked source paths are forbidden for Build 500")
-        rel = relative.as_posix().encode("utf-8")
+        # Shared inodes can mutate another installation despite distinct paths.\n        # Fingerprinting alone does not provide source-tree isolation.\n        if path.stat().st_nlink > 1:\n            raise RuntimeError("Shared hard-linked Build 500 source file is forbidden")\n        rel = relative.as_posix().encode("utf-8")
         digest.update(len(rel).to_bytes(4, "big"))
         digest.update(rel)
         data = path.read_bytes()
