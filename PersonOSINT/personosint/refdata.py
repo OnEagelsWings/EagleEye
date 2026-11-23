@@ -5,11 +5,15 @@ Unterstützte Bestände:
   * OpenSanctions – „targets.simple.csv“ (Sanktionen, PEP, Strafverfolgung)
   * ICIJ Offshore Leaks – Gesamtdatei „full-oldb.*.zip“ (Panama/Paradise/Pandora Papers u. a.)
   * Eigene Referenzliste – beliebige CSV mit Spalte „name“ (z. B. eigene Beobachtungslisten)
+  * OffeneRegister – Gesamtabzug des deutschen Handelsregisters (Firmen und eingetragene Organe, Stand Ende 2018)
 """
 from __future__ import annotations
 
+import bz2
 import csv
+import gzip
 import io
+import json
 import os
 import tempfile
 import threading
@@ -37,6 +41,13 @@ DATASETS: dict[str, dict[str, Any]] = {
         "license": "ODbL 1.0 – Quellenangabe „ICIJ Offshore Leaks Database“ Pflicht; Nennung ist kein Beleg für Fehlverhalten",
         "description": "Offshore-Gesellschaften, Beteiligte und Vermittler aus Panama, Paradise, Pandora Papers u. a.",
         "file_hint": "full-oldb.*.zip (CSV-Paket)"},
+    "offeneregister": {
+        "label": "OffeneRegister (Handelsregister DE)", "format": "offeneregister_jsonl", "reliability": "B", "kinds": ("name", "employer"),
+        "url": "https://daten.offeneregister.de/de_companies_ocdata.jsonl.bz2",
+        "license": "Open Knowledge Foundation DE / OpenCorporates – Quellenangabe Pflicht; Lizenzbedingungen vor kommerzieller Nutzung prüfen",
+        "description": "Rund 5 Mio. deutsche Firmen mit eingetragenen Geschäftsführern, Vorständen, Prokuristen (Stand Ende 2018 – "
+                       "für aktuelle Angaben das Handelsregister selbst prüfen).",
+        "file_hint": "de_companies_ocdata.jsonl.bz2 (ca. 250 MB)"},
     "eigene_liste": {
         "label": "Eigene Referenzliste", "format": "custom_csv", "reliability": "C", "kinds": ("name",), "url": "",
         "license": "intern", "description": "Eigene CSV-Listen (Spalten: name; optional aliases, birth_date, country, category, note).",
@@ -116,6 +127,8 @@ class RefData:
                 records, links = self._import_records(name, self._read_opensanctions(path)), 0
             elif fmt == "icij_zip":
                 records, links = self._import_icij(name, path)
+            elif fmt == "offeneregister_jsonl":
+                records, links = self._import_offeneregister(name, path)
             else:
                 records, links = self._import_records(name, self._read_custom(path)), 0
             if not records:
@@ -239,6 +252,64 @@ class RefData:
             self._bulk(sql, batch)
         return n, links
 
+    @staticmethod
+    def _open_text(path: Path):
+        raw = open(path, "rb")
+        head = raw.read(3)
+        raw.close()
+        if head[:3] == b"BZh":
+            return bz2.open(path, "rt", encoding="utf-8", errors="replace")
+        if head[:2] == b"\x1f\x8b":
+            return gzip.open(path, "rt", encoding="utf-8", errors="replace")
+        return open(path, encoding="utf-8", errors="replace")
+
+    def _import_offeneregister(self, name: str, path: Path) -> tuple[int, int]:
+        """JSON-Lines im OpenCorporates-Format: je Zeile eine Firma mit Liste ``officers``."""
+        links: list[list[Any]] = []
+        nlinks = 0
+        sql = "INSERT INTO ref_links (dataset, src_ext, dst_ext, rel, data) VALUES (?, ?, ?, ?, ?)"
+
+        def records() -> Iterator[dict[str, Any]]:
+            nonlocal nlinks, links
+            with self._open_text(path) as fh:
+                for line in fh:
+                    try:
+                        c = json.loads(line)
+                    except ValueError:
+                        continue
+                    if not isinstance(c, dict) or not c.get("name"):
+                        continue
+                    cid = str(c.get("company_number") or c.get("id") or "")[:120]
+                    if not cid:
+                        continue
+                    attrs = c.get("all_attributes") or {}
+                    address = c.get("registered_address")
+                    address = address if isinstance(address, str) else " ".join(str(v) for v in (address or {}).values() if v)
+                    status = c.get("current_status") or ""
+                    yield {"ext_id": cid, "kind": "Company", "name": c["name"], "countries": "de",
+                           "data": {"status": status, "address": address[:300], "register": f"{attrs.get('_registerArt', '')} {attrs.get('_registerNummer', '')}".strip(),
+                                    "court": attrs.get("native_company_number", "")[:120] if isinstance(attrs.get("native_company_number"), str) else "",
+                                    "retrieved": str(c.get("retrieved_at") or "")[:10]}}
+                    for i, o in enumerate(c.get("officers") or []):
+                        if not isinstance(o, dict) or not o.get("name"):
+                            continue
+                        other = o.get("other_attributes") or {}
+                        oid = f"{cid}#{i}"
+                        yield {"ext_id": oid, "kind": "Officer", "name": str(o["name"]), "countries": "de",
+                               "data": {"company": c["name"], "company_number": cid, "position": o.get("position") or "", "start": o.get("start_date") or "",
+                                        "end": o.get("end_date") or "", "city": other.get("city") or "", "company_status": status,
+                                        "type": o.get("type") or ""}}
+                        links.append([name, oid, cid, (o.get("position") or "Organ")[:60],
+                                      json.dumps({"start": o.get("start_date") or "", "end": o.get("end_date") or ""}, ensure_ascii=False)])
+                        nlinks += 1
+                        if len(links) >= BATCH:
+                            self._bulk(sql, links)
+                            links = []
+
+        n = self._import_records(name, records())
+        self._bulk(sql, links)
+        return n, nlinks
+
     # ------------------------------------------------------------------ Herunterladen (über einen Netzausgang)
     def download_async(self, name: str, opener_factory: Callable[[], Any]) -> None:
         meta = DATASETS.get(name)
@@ -322,6 +393,39 @@ class RefData:
                 o["rdata"] = json.loads(o["rdata"] or "{}")
         return out
 
+    def _offeneregister_findings(self, kind: str, value: str) -> list[dict[str, Any]]:
+        out = []
+        if kind == "employer":
+            for r in self.search("offeneregister", value, ("Company",)):
+                d = r["data"] or {}
+                officers = self.db.all("SELECT name, data FROM ref_records WHERE dataset = 'offeneregister' AND kind = 'Officer' AND ext_id LIKE ? LIMIT 60",
+                                       (r["ext_id"] + "#%",))
+                claims = [claim("firmensitz", d.get("address") or "", "ort", subject=r["name"], subject_type="organisation"),
+                          claim("registriert_als", d.get("register") or r["ext_id"], subject=r["name"], subject_type="organisation"),
+                          claim("firmenstatus", d.get("status") or "", subject=r["name"], subject_type="organisation")]
+                for o in officers:
+                    od = o["data"] if isinstance(o["data"], dict) else json.loads(o["data"] or "{}")
+                    claims.append(claim("funktion_bei", r["name"], "organisation", od.get("start", ""), od.get("end", ""), subject=o["name"],
+                                        subject_type="person", rolle=od.get("position"), ort=od.get("city")))
+                out.append({"title": f"Handelsregister (OffeneRegister): {r['name']}", "url": f"https://offeneregister.de/company/{r['ext_id']}",
+                            "snippet": f"{d.get('register') or ''} · {d.get('address') or ''} · Status {d.get('status') or '–'} · {len(officers)} eingetragene Organe "
+                                       "(Stand 2018 – aktuellen Auszug prüfen)",
+                            "category": "Wirtschaft", "names": [], "locations": [d.get("address") or ""], "claims": [c for c in claims if c["object"]],
+                            "data": {"organisation": r["name"], "register": d.get("register"), "lokal": True}})
+            return out
+        for r in self.search("offeneregister", value, ("Officer",)):
+            d = r["data"] or {}
+            claims = [claim("funktion_bei", d.get("company") or "", "organisation", d.get("start", ""), d.get("end", ""), rolle=d.get("position"), ort=d.get("city"))]
+            if d.get("city"):
+                claims.append(claim("adresse", d["city"], "ort", quelle="Handelsregister (Stand 2018, nur Ort)"))
+            out.append({"title": f"Handelsregister (OffeneRegister): {r['name']} – {d.get('position') or 'Organ'} bei {d.get('company')}",
+                        "url": f"https://offeneregister.de/company/{d.get('company_number')}",
+                        "snippet": f"{d.get('position') or 'Organ'} · {d.get('city') or 'Ort unbekannt'} · {d.get('start') or '?'} – {d.get('end') or 'heute?'} · "
+                                   f"Firma {d.get('company_status') or ''} (Stand 2018 – aktuellen Auszug prüfen)",
+                        "category": "Wirtschaft", "names": [r["name"]], "locations": [d.get("city") or ""], "claims": [c for c in claims if c["object"]],
+                        "data": {"organisation": d.get("company"), "ort": d.get("city"), "lokal": True}})
+        return out
+
     # ------------------------------------------------------------------ Treffer im einheitlichen Format
     def findings(self, name: str, kind: str, value: str) -> list[dict[str, Any]]:
         from .connectors import opensanctions_finding
@@ -363,6 +467,8 @@ class RefData:
                             "category": "Risiko", "names": [r["name"]], "locations": [r["countries"]], "claims": claims,
                             "data": {"icij_node": r["ext_id"], "leaks": leaks, "lokal": True}})
             return out
+        if name == "offeneregister":
+            return self._offeneregister_findings(kind, value)
         out = []
         for r in self.search(name, value):
             d = r["data"] or {}

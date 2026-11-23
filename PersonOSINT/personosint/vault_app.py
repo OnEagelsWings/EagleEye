@@ -96,6 +96,7 @@ class VaultManager:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self.browsers = None  # Legenden-Browser, nur im geöffneten Zustand
+        self.refdb: Database | None = None
         self.gate.on_close.append(self._net_closed)
 
     def _net_closed(self, reason: str) -> None:
@@ -279,8 +280,10 @@ class VaultManager:
         settings = Settings(data_dir=files, require_2fa=False, cookie_secure=False, session_idle_minutes=24 * 60,
                             session_max_hours=24, backup_hour="", backup_dir=str(files / "backups"))
         settings.allowed_hosts = ("127.0.0.1", "localhost")
+        if self.refdb is None:
+            self.refdb = Database(files / "referenzdaten.sqlite3")  # nur öffentliche Datenbestände, bleibt über Sperren hinweg geöffnet
         self.inner = create_app(settings=settings, http=self.http, start_scheduler=False, db=db,
-                                vault=Vault.from_key(opened.files_key))
+                                vault=Vault.from_key(opened.files_key), refdata_db=self.refdb)
         self.db, self.opened = db, opened
         from .persona_browser import PersonaBrowsers, find_chromium
 

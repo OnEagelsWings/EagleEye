@@ -723,7 +723,7 @@
           <div id="g-list" class="${state.findingView === "groups" ? "" : "hidden"}"></div>
           <div class="row ${state.findingView === "groups" ? "hidden" : ""}" style="margin-bottom:.7rem">
             <input id="f-q" class="grow" type="search" placeholder="Treffer filtern …">
-            ${state.findingFilter === "neu" && counts.neu ? `<button class="btn btn-sm" id="f-bulk" title="Alle offenen Treffer mit Score unter 20 verwerfen">Schwache (< 20) verwerfen</button>` : ""}
+            ${state.findingFilter === "neu" && counts.neu ? `<button class="btn btn-sm" id="f-triage" title="Dubletten bündeln, vermutlich andere Personen markieren; mit lokaler KI zusätzlich je Treffer eine Einschätzung">🧹 Vorsortieren</button><button class="btn btn-sm" id="f-bulk" title="Alle offenen Treffer mit Score unter 20 verwerfen">Schwache (< 20) verwerfen</button>` : ""}
           </div>
           <div id="f-list" class="${state.findingView === "groups" ? "hidden" : ""}"></div>
         </div>
@@ -746,6 +746,17 @@
     };
     $$("[data-ff]", el).forEach((b) => b.onclick = () => { state.findingFilter = b.dataset.ff; renderCase(); });
     $("#f-manual").onclick = () => manualFinding(ov, persons);
+    const tri = $("#f-triage");
+    if (tri) tri.onclick = async () => {
+      if (!person) return toast("Bitte zuerst eine Person wählen.", "err");
+      const useAi = !!(state.meta.ai_enabled || (await api("GET", "/api/admin/ai").catch(() => ({}))).enabled);
+      tri.disabled = true; tri.innerHTML = '<span class="spinner dark"></span> sortiere …';
+      const r = await guard(() => api("POST", `/api/cases/${ov.case.id}/triage`, { entity_id: person.id, ai: useAi }));
+      const c = r.counts;
+      toast(`Vorsortiert: ${c.stark} stark · ${c.pruefen} prüfen · ${c.doppelt} Dubletten · ${c.andere_person} vermutlich andere Person`
+        + (r.ai_checked ? ` · KI: ${r.ai_checked} eingeschätzt` : "") + (r.ai_error ? " · KI: " + r.ai_error : ""), r.ai_error ? "err" : "ok");
+      state.triageSort = true; renderCase();
+    };
     const bulk = $("#f-bulk");
     if (bulk) bulk.onclick = async () => {
       const weak = findings.filter((f) => f.status === "neu" && f.score < 20);
@@ -756,7 +767,9 @@
     };
     const draw = () => {
       const q = ($("#f-q").value || "").toLowerCase();
-      const list = findings.filter((f) => (!state.findingFilter || f.status === state.findingFilter) && (!q || `${f.title} ${f.snippet} ${f.source}`.toLowerCase().includes(q)));
+      const rank = { stark: 0, pruefen: 1, undefined: 2, andere_person: 3, doppelt: 4 };
+      const list = findings.filter((f) => (!state.findingFilter || f.status === state.findingFilter) && (!q || `${f.title} ${f.snippet} ${f.source}`.toLowerCase().includes(q)))
+        .sort((a, b) => (state.triageSort ? (rank[((a.data || {})._triage || {}).verdict] - rank[((b.data || {})._triage || {}).verdict]) : 0) || b.score - a.score);
       $("#f-list").innerHTML = list.length ? list.map(findingCard).join("") :
         `<div class="empty"><div class="big">${state.findingFilter === "neu" && findings.length ? "✅" : "🔎"}</div>${state.findingFilter === "neu" && findings.length ? "Alle Treffer sind geprüft." : "Keine Treffer in dieser Ansicht."}</div>`;
       $$("[data-ev]", $("#f-list")).forEach((b) => b.onclick = async () => {
@@ -887,6 +900,14 @@
     }));
   }
 
+  function triageBadge(f) {
+    const t = (f.data || {})._triage;
+    if (!t || f.status !== "neu") return "";
+    const cls = { stark: "b-green", pruefen: "b-blue", doppelt: "b-grey", andere_person: "b-amber" }[t.verdict] || "b-grey";
+    const ki = t.ki ? ` <span class="badge ${t.ki.verdict === "passt" ? "b-green" : t.ki.verdict === "andere_person" ? "b-amber" : "b-grey"}" title="${esc(t.ki.model)}">🤖 ${esc(t.ki.label)}</span> <span class="small">${esc(t.ki.reason)}</span>` : "";
+    return `<div class="triage"><span class="badge ${cls}">🧹 ${esc(t.label)}</span> <span class="small muted">${esc((t.why || []).join(" · "))}</span>${ki}</div>`;
+  }
+
   function findingCard(f) {
     return `<div class="finding s-${esc(f.status)}" data-id="${f.id}">
       <div class="ft">
@@ -895,6 +916,7 @@
           <div class="title">${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${esc(f.title)} ↗</a>` : esc(f.title)}</div>
           <div class="small muted">${esc(f.source)} · ${esc(f.category)}${f.entity_label ? " · zu " + esc(f.entity_label) : ""}${f.query ? " · Suche: „" + esc(f.query) + "“" : ""} <span class="badge ${statusBadge(f.status)}">${esc(f.status)}</span></div>
           ${f.snippet ? `<div class="snip">${esc(f.snippet)}</div>` : ""}
+          ${triageBadge(f)}
           <ul class="reasons">${(f.reasons || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
           ${f.facts && f.facts.length ? `<details class="facts-box"><summary>📑 ${f.facts.length} Aussage(n) aus dieser Quelle</summary><table class="tbl small">
             ${f.facts.slice(0, 40).map((x) => `<tr><td>${esc(x.subject_label)}</td><td class="muted">${esc(x.predicate_label)}</td><td><b>${esc(x.object_label)}</b>${x.data && x.data.rolle ? ` <span class="muted">(${esc(x.data.rolle)})</span>` : ""} ${period(x.valid_from, x.valid_to)}</td></tr>`).join("")}

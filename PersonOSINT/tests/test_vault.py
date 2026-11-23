@@ -80,11 +80,16 @@ def test_setup_unlock_lock_and_nothing_readable_on_disk(vault):
     assert client.get("/vault/api/status").json()["unlocked"] is False
     assert client.get("/api/cases").status_code == 423
     # Auf der Platte: nirgends Klartext, keine Datenbank-, keine Schlüsseldatei
-    files = [p for p in folder.rglob("*") if p.is_file()]
+    # einzige unverschlüsselte Datei: öffentliche Referenzdaten (OpenSanctions, ICIJ, OffeneRegister) – ohne Falldaten
+    public = folder / "files" / "referenzdaten.sqlite3"
+    files = [p for p in folder.rglob("*") if p.is_file() and p != public and not p.name.startswith("referenzdaten.sqlite3")]
     assert files and not any(p.suffix in {".sqlite3", ".db", ".key"} for p in files)
     for path in files:
         data = path.read_bytes()
         assert SECRET_WORD.encode() not in data and b"SQLite format" not in data and b"Detektei Nord" not in data, path
+    for path in folder.rglob("referenzdaten.sqlite3*"):
+        data = path.read_bytes()
+        assert SECRET_WORD.encode() not in data and b"Detektei Nord" not in data, path
     # Wieder öffnen: falsche Passphrase, falscher Code, dann richtig
     assert client.post("/vault/api/unlock", json={"passphrase": PASS + "x", "code": "000000"}, headers=H).status_code == 401
     clock.now += 30

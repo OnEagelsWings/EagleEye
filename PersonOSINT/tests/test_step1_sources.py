@@ -68,7 +68,7 @@ def test_source_registry_and_keys(tmp_path):
             "lokal_opensanctions", "lokal_icij", "lokal_eigene_liste"} <= set(by)
     assert by["companies_house"]["requires_key"] and "Schlüssel" in by["companies_house"]["unavailable"]
     assert by["companies_house"]["reliability"] == "A" and by["lokal_icij"]["exposure"] == "lokal"
-    assert {d["name"] for d in reg["datasets"]} == {"opensanctions", "icij", "eigene_liste"}
+    assert {d["name"] for d in reg["datasets"]} == {"opensanctions", "icij", "eigene_liste", "offeneregister"}
     assert anna.get("/api/admin/sources").status_code == 403
     # Suche nur mit Schlüsselquelle ohne Schlüssel -> verständliche Meldung
     r = anna.post(f"/api/cases/{cid}/search", json={"entity_id": sid, "sources": ["companies_house"]})

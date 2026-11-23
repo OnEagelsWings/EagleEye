@@ -185,7 +185,8 @@ def _age(birth: str) -> int | None:
 
 
 class Platform:
-    def __init__(self, db: Database, data_dir: Path, http: Http | None = None, auto_geocode: bool = True, vault: Vault | None = None):
+    def __init__(self, db: Database, data_dir: Path, http: Http | None = None, auto_geocode: bool = True, vault: Vault | None = None,
+                 refdata_db: Database | None = None):
         self.db = db
         self.data_dir = Path(data_dir)
         self.http = http or Http()
@@ -194,7 +195,9 @@ class Platform:
         (self.data_dir / "photos").mkdir(parents=True, exist_ok=True)
         self._audit_lock = threading.Lock()
         self._presence: dict[int, dict[int, tuple[str, float, str]]] = {}
-        self.refdata = RefData(db, self.data_dir)
+        # Vault: öffentliche Massendaten (OpenSanctions, ICIJ, OffeneRegister) in eigener Datei – sie gehören nicht in die
+        # verschlüsselte Datenbank im Arbeitsspeicher (Gigabytes, bei jedem Zwischenspeichern neu verschlüsselt)
+        self.refdata = RefData(refdata_db or db, self.data_dir)
         #: erzeugt den HTTP-Client für ein Egress-Profil (in Tests austauschbar)
         self.http_factory = lambda profile, ua: Http(profile=profile, user_agent=ua)
         #: prüft vor jeder Abfrage, ob der Anonymisierungs-Ausgang erreichbar ist (fail closed)

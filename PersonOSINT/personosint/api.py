@@ -66,7 +66,7 @@ def open_database(settings: Settings) -> Database:
 
 def create_app(data_dir: Path | str | None = None, http: Http | None = None, auto_geocode: bool = True,
                settings: Settings | None = None, start_scheduler: bool = True, *,
-               db: Database | None = None, vault: Vault | None = None) -> FastAPI:
+               db: Database | None = None, vault: Vault | None = None, refdata_db: Database | None = None) -> FastAPI:
     """Ohne ``db``/``vault``: klassischer Betrieb (Datenbankdatei + Schlüsseldatei im Datenordner).
     Mit beiden: Vault-Betrieb – Datenbank im Arbeitsspeicher, Schlüssel ohne Datei (siehe ``vault_app``)."""
     settings = settings or Settings()
@@ -76,7 +76,7 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     vault_mode = db is not None and vault is not None
     vault = vault or Vault(settings.resolved_key_file)
     db = db or open_database(settings)
-    p = Platform(db, settings.data_dir, http=http, auto_geocode=auto_geocode and settings.auto_geocode, vault=vault)
+    p = Platform(db, settings.data_dir, http=http, auto_geocode=auto_geocode and settings.auto_geocode, vault=vault, refdata_db=refdata_db)
     auth = Auth(db, vault, settings)
     app = FastAPI(title="EagleEye PersonOSINT", version=__version__, docs_url="/api/docs", redoc_url=None)
     app.state.platform, app.state.auth, app.state.settings = p, auth, settings
@@ -1061,6 +1061,15 @@ def create_app(data_dir: Path | str | None = None, http: Http | None = None, aut
     @app.get("/api/cases/{cid}/findings")
     def findings(cid: int, status: str | None = None, entity_id: int | None = None, _: dict = READ) -> list[dict]:
         return p.list_findings(cid, status, entity_id)
+
+    @app.post("/api/cases/{cid}/triage")
+    def triage_findings(cid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:
+        """Offene Treffer vorsortieren (Regeln, auf Wunsch zusätzlich lokale KI) – markiert nur, entscheidet nichts."""
+        from . import triage
+
+        eid = int(payload.get("entity_id") or 0)
+        p._entity(cid, eid)  # noqa: SLF001
+        return triage.triage(p, cid, eid, bool(payload.get("ai")))
 
     @app.post("/api/cases/{cid}/findings", status_code=201)
     def manual_finding(cid: int, payload: dict = Body(...), _: dict = WRITE) -> dict:

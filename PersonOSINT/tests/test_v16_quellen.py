@@ -196,7 +196,7 @@ def test_new_sources_feed_search_facts_and_follow_up_suggestions(tmp_path):
     piv = {(i["kind"], i["value"]) for i in anna.get(f"/api/cases/{cid}/entities/{sid}/pivots").json()["items"]}
     assert ("employer", "Nordhafen Projekt GmbH") in piv                                            # die Firma aus dem Profil wird als Folgesuche vorgeschlagen
     meta = {s["key"]: s for s in anna.get("/api/meta").json()["sources"]}
-    assert meta["fr_entreprises"]["exposure"] == "passiv" and meta["keybase"]["exposure"] == "plattform" and len(meta) == 37              # 12 + 7 + 15 Online-Quellen, 3 lokale Bestände
+    assert meta["fr_entreprises"]["exposure"] == "passiv" and meta["keybase"]["exposure"] == "plattform" and len(meta) == 38              # 12 + 7 + 15 Online-Quellen, 4 lokale Bestände
 
 
 def test_check_all_sources_reports_what_really_answers(tmp_path):
