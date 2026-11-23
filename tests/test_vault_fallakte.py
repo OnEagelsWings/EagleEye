@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 
 from eagleeye.infrastructure.providers.personosint_bridge import _personosint
 
+for _dep in ("docx", "argon2", "segno"):  # PersonOSINT-Laufzeit; in reinen EagleEye-Umgebungen überspringen
+    pytest.importorskip(_dep)
 _personosint()
 from personosint import auth as auth_mod  # noqa: E402
 from personosint import netgate  # noqa: E402
@@ -17,7 +19,7 @@ from personosint.vault_app import create_fallakte_asgi, create_vault_app  # noqa
 
 FAST_KDF = {"name": "argon2id", "time_cost": 1, "memory_kib": 8192, "parallelism": 1}
 PASS = "Hafenlichter zählen sieben Möwen im Nebel"
-H = {"X-Requested-With": "EagleEye", "User-Agent": "VaultTest/1.0", "Accept-Language": "de-DE"}
+H = {"X-Requested-With": "EagleEye", "Accept-Language": "de-DE"}
 MARK = "Mandant-Quokka-Nordhafen-4711"
 
 

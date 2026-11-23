@@ -44,6 +44,12 @@ def _source_fingerprint(root: Path) -> str:
         root / "eagleeye_pro",
         root / "alembic_104_1",
     ]
+    # Links are reported first, so a linked component is never mistaken for a merely missing one.
+    for item in roots:
+        parents = [root.joinpath(*item.relative_to(root).parts[:n]) for n in range(1, len(item.relative_to(root).parts))]
+        if any(p.is_symlink() for p in parents) or item.is_symlink() or (
+                item.is_dir() and any(p.is_symlink() for p in item.rglob("*"))):
+            raise RuntimeError("Linked source paths are forbidden for Build 500")
     # A partial or damaged release must never be accepted as a valid source fingerprint.
     # Otherwise removing a critical source tree can leave an apparently valid receipt.
     for required in roots:
@@ -324,7 +330,7 @@ def _write_receipt(root: Path, *, fingerprint: str, probe: dict) -> Path:
         "offline_wheelhouse": (root / "wheelhouse").is_dir(),
     }
     temp = path.with_suffix(".tmp")
-    if _runtime_path_linked(root):
+    if _runtime_path_linked(root) or path.is_symlink() or temp.is_symlink():
         raise RuntimeError("Linked installer receipt paths are forbidden for Build 500")
     _reject_shared_installer_file(path)
     _reject_shared_installer_file(temp)
