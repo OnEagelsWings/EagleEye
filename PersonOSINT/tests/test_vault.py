@@ -263,6 +263,7 @@ def test_fallakte_lock_keeps_unsaved_work_and_recovers_it(tmp_path, monkeypatch)
     fv = fa.FallakteVault(store, crypto)
     fv.open()
     work = fv.workdir
+    assert (store / "pending.enc").is_file()  # schon beim Öffnen vermerkt (auch für einen Absturz)
     (work / "data").mkdir()
     (work / "data" / "beleg.txt").write_text("neuer Beleg", encoding="utf-8")
     real = fa.FallakteVault._snapshot
@@ -276,9 +277,9 @@ def test_fallakte_lock_keeps_unsaved_work_and_recovers_it(tmp_path, monkeypatch)
     monkeypatch.setattr(fa.FallakteVault, "_snapshot", staticmethod(real))
     again = fa.FallakteVault(store, crypto)
     again.open()
-    assert again.workdir == work and not (store / "pending.enc").exists() and not again.failed
+    assert again.workdir == work and not again.failed
     again.close()
-    assert not work.exists()
+    assert not work.exists() and not (store / "pending.enc").exists()  # erst nach vollständiger Sicherung entfernt
     third = fa.FallakteVault(store, crypto)
     third.open()
     assert (third.workdir / "data" / "beleg.txt").read_text(encoding="utf-8") == "neuer Beleg"
@@ -294,14 +295,45 @@ def test_fallakte_lock_keeps_work_when_encrypted_write_fails(tmp_path, monkeypat
     work = fv.workdir
     (work / "akte.txt").write_text("Stand 1", encoding="utf-8")
     real_encrypt = crypto.encrypt
-    calls = {"n": 0}
 
-    def full_disk(data):
-        calls["n"] += 1
-        if calls["n"] == 1:  # der Dateiinhalt scheitert, der spätere Vermerk gelingt
-            raise OSError(28, "No space left on device")
-        return real_encrypt(data)
+    def full_disk(data):  # Datenträger voll: ab jetzt scheitert jedes Schreiben, auch ein Vermerk
+        raise OSError(28, "No space left on device")
     monkeypatch.setattr(crypto, "encrypt", full_disk)
     with pytest.raises(fa.FallakteSyncError, match="OSError"):
         fv.close()
     assert (work / "akte.txt").is_file() and (store / "pending.enc").is_file()
+    monkeypatch.setattr(crypto, "encrypt", real_encrypt)  # wieder Platz: das nächste Öffnen übernimmt den Ordner
+    again = fa.FallakteVault(store, crypto)
+    again.open()
+    assert again.workdir == work
+    again.close()
+    third = fa.FallakteVault(store, crypto)
+    third.open()
+    assert (third.workdir / "akte.txt").read_text(encoding="utf-8") == "Stand 1"
+    third.close()
+
+
+def test_fallakte_recovery_survives_failed_application_start(tmp_path, monkeypatch):
+    _fake_eagleeye(monkeypatch)
+    crypto = Vault.from_key(Fernet.generate_key())
+    store = tmp_path / "fallakte"
+    fv = fa.FallakteVault(store, crypto)
+    fv.open()
+    work = fv.workdir
+    (work / "akte.txt").write_text("ungesichert", encoding="utf-8")
+    fv.app = None  # Absturz: kein Schließen, der Arbeitsordner bleibt liegen
+    module = sys.modules["eagleeye.interfaces.web.app500"]
+    real_factory = module.create_workspace_app500
+
+    def broken(base_dir):
+        raise RuntimeError("Start fehlgeschlagen")
+    monkeypatch.setattr(module, "create_workspace_app500", broken)
+    with pytest.raises(RuntimeError):
+        fa.FallakteVault(store, crypto).open()
+    assert (store / "pending.enc").is_file() and work.is_dir()  # nicht verwaist: der Vermerk bleibt
+    monkeypatch.setattr(module, "create_workspace_app500", real_factory)
+    again = fa.FallakteVault(store, crypto)
+    again.open()
+    assert again.workdir == work and (work / "akte.txt").read_text(encoding="utf-8") == "ungesichert"
+    again.close()
+    assert not work.exists() and not (store / "pending.enc").exists()

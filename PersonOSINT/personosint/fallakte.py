@@ -10,9 +10,10 @@ Stellen direkt als Datei. Sie läuft deshalb nicht im Arbeitsspeicher wie Person
 * **Während der Arbeit** werden Änderungen jede Minute verschlüsselt zurückgeschrieben (Datenbanken als konsistente
   Momentaufnahme).
 * **Beim Sperren** wird ein letztes Mal gesichert und der Arbeitsordner gelöscht – aber nur, wenn wirklich jede Datei
-  gesichert ist. Gelingt das nicht (Lesefehler, voller Datenträger), bleibt der Arbeitsordner erhalten; sein Pfad steht
-  verschlüsselt im Vault (``pending.enc``), und beim nächsten Öffnen wird er übernommen und nachgesichert. So geht keine
-  Änderung verloren.
+  gesichert ist. Der Pfad des Arbeitsordners steht schon **beim Öffnen** verschlüsselt im Vault (``pending.enc``) und
+  wird erst nach einem vollständig gesicherten Schließen entfernt. Scheitert die letzte Sicherung (Lesefehler, voller
+  Datenträger) oder stürzt der Rechner ab, wird der Arbeitsordner beim nächsten Öffnen übernommen und nachgesichert –
+  ohne dass dafür im Fehlerfall noch etwas geschrieben werden muss.
 
 Ehrliche Grenze: Solange der Vault offen ist, liegen die Fallakten-Dateien entschlüsselt im Arbeitsordner. Dagegen
 schützt die Laufwerksverschlüsselung (BitLocker). Auf SSDs ist auch gelöschter Inhalt nicht sicher entfernt.
@@ -127,23 +128,22 @@ class FallakteVault:
             self._manifest = self._load_manifest()
             pending = self._pending_workdir()
             if pending is not None:
-                # Beim letzten Sperren nicht vollständig gesichert: dieser Ordner enthält den neuesten Stand.
+                # Letztes Schließen nicht vollständig gesichert (oder Absturz): dieser Ordner hat den neuesten Stand.
+                # Der Vermerk bleibt, bis ein späteres Schließen alles gesichert hat.
                 self.workdir = pending
                 try:
                     self.sync()
-                    if not self.failed:
-                        (self.store / "pending.enc").unlink(missing_ok=True)
-                except Exception:  # noqa: BLE001 - Vermerk bleibt; die Daten liegen weiter im Arbeitsordner
+                except Exception:  # noqa: BLE001 - die Daten liegen weiter im Arbeitsordner
                     pass
                 try:
                     from eagleeye.interfaces.web.app500 import create_workspace_app500
 
                     self.app = create_workspace_app500(base_dir=pending)
                 except Exception:
-                    self.workdir = None
+                    self.workdir = None  # Vermerk bleibt: nächster Versuch übernimmt denselben Ordner
                     raise
                 return self.app
-            (self.store / "pending.enc").unlink(missing_ok=True)
+            (self.store / "pending.enc").unlink(missing_ok=True)  # Vermerk auf einen nicht mehr vorhandenen Ordner
             work = Path(tempfile.mkdtemp(prefix="eagleeye-fallakte-"))
             try:
                 for rel, meta in self._manifest.items():
@@ -152,11 +152,14 @@ class FallakteVault:
                         continue
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(self.crypto.decrypt((self.store / meta["blob"]).read_bytes()))
+                # Vorab vermerken, solange noch geschrieben werden kann – nicht erst, wenn eine Sicherung scheitert.
+                self._remember_pending(work)
                 from eagleeye.interfaces.web.app500 import create_workspace_app500
 
                 self.app = create_workspace_app500(base_dir=work)
             except Exception:
                 shutil.rmtree(work, ignore_errors=True)
+                (self.store / "pending.enc").unlink(missing_ok=True)
                 raise
             self.workdir = work
             return self.app
@@ -237,10 +240,7 @@ class FallakteVault:
                 shutil.rmtree(work, ignore_errors=True)
                 (self.store / "pending.enc").unlink(missing_ok=True)
                 return
-            try:
-                self._remember_pending(work)
-            except Exception:  # noqa: BLE001 - Vermerk nicht schreibbar: Ordner bleibt trotzdem liegen
-                pass
+            # Der Vermerk wurde schon beim Öffnen geschrieben und bleibt stehen; hier ist nichts mehr zu schreiben.
             raise FallakteSyncError("Die Fallakte konnte beim Sperren nicht vollständig gesichert werden (" + problem + "). "
                                     "Der Arbeitsordner bleibt erhalten und wird beim nächsten Öffnen nachgesichert: " + str(work))
 
