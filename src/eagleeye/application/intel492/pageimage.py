@@ -299,6 +299,7 @@ class _WebSocket:
         header = b"\x81" + (bytes([0x80 | n]) if n < 126 else
                             b"\xfe" + struct.pack(">H", n) if n < 65536 else b"\xff" + struct.pack(">Q", n))
         masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+        self.sock.settimeout(30)  # recv() may have left a very short timeout behind
         self.sock.sendall(header + mask + masked)
 
     def recv(self, wait: float) -> str | None:
@@ -499,7 +500,9 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
                 process = _launch(browser, profile, proxy.port)
             except OSError as exc:
                 raise ImageError(f"Browser konnte nicht gestartet werden ({type(exc).__name__}).") from None
-            ws = _WebSocket(_devtools_url(profile, process, deadline), timeout=10)
+            # A cold browser start on a busy machine can take longer than a few seconds to answer the
+            # DevTools handshake; it may use the remaining time budget.
+            ws = _WebSocket(_devtools_url(profile, process, deadline), timeout=max(5.0, deadline - time.monotonic()))
             tools = _DevTools(ws, deadline, admitted)
             version = tools.call("Browser.getVersion")
             tools.call("Browser.setDownloadBehavior", {"behavior": "deny"})
@@ -550,6 +553,8 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
                     "browser": str(version.get("product", "Browser"))[:120],
                     "hosts": sorted(proxy.hosts), "blocked": list(proxy.blocked), "requests": tools.requests,
                     "background_refused": len(proxy.background)}
+    except TimeoutError:
+        raise ImageError("Der Browser hat nicht rechtzeitig geantwortet. Bitte noch einmal versuchen.") from None
     except (OSError, ValueError, KeyError) as exc:
         raise ImageError(f"Seitenbild nicht möglich ({type(exc).__name__}).") from None
     finally:
