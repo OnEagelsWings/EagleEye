@@ -161,6 +161,17 @@ class DesktopWorkflow:
             return []
         return AuditLedger(self.audit, read_key(self.key_path)).verify()
 
+    def audit_remote_status(self):
+        """Explicitly verify an independent PRIVATE GitHub checkpoint."""
+        from audit_anchor import verify_remote_anchor
+        return verify_remote_anchor(AuditLedger(self.audit, read_key(self.key_path)))
+
+    def anchor_audit(self, confirmation):
+        """Explicitly publish only an audit-head checkpoint (no records)."""
+        from audit_anchor import publish_remote_anchor
+        return publish_remote_anchor(
+            AuditLedger(self.audit, read_key(self.key_path)), confirmation)
+
     def publish_outgoing(self, filename, receipt):
         raw, record = self._raw_outgoing(filename)
         key = read_key(self.key_path)
