@@ -26,9 +26,9 @@ def default_runtime_root() -> Path:
         return parent / "EagleEye-500" / "workspace"
     if os.name == "nt":
         parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
-        return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
+        return parent / ("EagleEye-500" if str(BUILD).split(".", 1)[0] == "500" else "EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
     parent = Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))
-    return parent / ("eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
+    return parent / ("eagleeye-500" if str(BUILD).split(".", 1)[0] == "500" else "eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,15 +78,32 @@ class RuntimePaths:
                 candidate = Path(str(target_db) + suffix)
                 if candidate.exists() and candidate.stat().st_nlink > 1:
                     raise ValueError("Internal release database files cannot be hard linked")
+            # Reject directories, devices and named pipes before creating any
+            # workspace state. SQLite must only open regular database files.
+            for suffix in ("", "-wal", "-shm"):
+                entry = Path(str(target_db) + suffix)
+                if entry.exists() and not entry.is_file():
+                    raise ValueError("Internal release database and sidecars must be regular files")
 
-        if db_path is not None and _internal_release_build():
-            # SQLite can write to WAL/SHM siblings even when the main DB is safe.
-            # Reject redirected sidecars before creating any workspace folders.
-            candidate = Path(db_path)
+        if _internal_release_build():
+            # The implicit default database needs the same protection as an
+            # explicitly selected path. Otherwise a pre-existing symlink at
+            # data/eagleeye.db (or its WAL/SHM siblings) could redirect writes
+            # into an unrelated or legacy workspace before initialization.
+            candidate = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
             if any(Path(str(candidate) + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
                 raise ValueError("Internal release database cannot contain symbolic links (including WAL/SHM sidecars)")
 
-        if db_path is not None and _internal_release_build() and Path(db_path).name in {
+        if _internal_release_build():
+            # A hard-linked SQLite file can alias a legacy store without any
+            # symlink or path escape. Reject it before workspace initialization.
+            candidate_db = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
+            for suffix in ("", "-wal", "-shm"):
+                candidate_file = Path(str(candidate_db) + suffix)
+                if candidate_file.exists() and candidate_file.stat().st_nlink > 1:
+                    raise ValueError("Internal release database and sidecars cannot be hard-linked")
+
+        if db_path is not None and _internal_release_build() and Path(db_path).name.casefold() in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
             "eagleeye_pro_95_0.db-shm",
         }:

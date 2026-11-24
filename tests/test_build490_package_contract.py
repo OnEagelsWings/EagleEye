@@ -32,3 +32,28 @@ def test_normal_launchers_select_isolated_install():
         assert "EAGLEEYE_DATA_DIR=" not in launcher
         assert "INSTALL_EAGLEEYE_487.py" not in launcher
         assert "INSTALL_EAGLEEYE_398.py" not in launcher
+
+
+def test_installer_rejects_runtime_symlink_without_touching_legacy(tmp_path):
+    import importlib.util
+    import pytest
+
+    spec = importlib.util.spec_from_file_location(
+        "eagleeye_installer_490", ROOT / "INSTALL_EAGLEEYE_490.py"
+    )
+    installer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installer)
+
+    legacy = tmp_path / "legacy-install"
+    legacy.mkdir()
+    marker = legacy / "keep-existing-data.txt"
+    marker.write_text("untouched", encoding="utf-8")
+    alias = tmp_path / installer.RUNTIME_DIR
+    try:
+        alias.symlink_to(legacy, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory symlinks unavailable on this runner")
+    with pytest.raises(RuntimeError, match="symlinked"):
+        installer._ensure_runtime(tmp_path, quiet=True)
+    assert alias.is_symlink()
+    assert marker.read_text(encoding="utf-8") == "untouched"
