@@ -1,4 +1,4 @@
-# EagleEye – Komplettpaket (Stand 23. Nov. 2026)
+# EagleEye – Komplettpaket (Gesamtversion, Stand 24. Nov. 2026)
 
 Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 
@@ -9,6 +9,8 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 | 2 | **PersonOSINT als Server** | wie 1, zusätzlich von anderen Rechnern im eigenen Netz erreichbar (Zwei-Faktor-Anmeldung Pflicht) |
 | 3 | **EagleEye-Fallakte** (Build 500) | Büro und Fallakte: Mandanten, Aufträge, Zeiten, Rechnungen, Datensicherung; Web-Belege, Dokumente, Rechercheplan mit Freigaben, Prüfregister, Bericht (Bedienung: `BETRIEBSHANDBUCH_BUERO.md`) |
 | 4 | **Quellen prüfen** | Zeigt, welche Datenquellen von diesem Rechner aus wirklich antworten |
+| 6 | **Forschungs-Brücke** (Vorschau) | Ausschließlich öffentliche wissenschaftliche, historische, technische und institutionelle Sachthemen über den privaten GitHub-Austauschbranch prüfen und mit ausdrücklicher Freigabe versenden. **Keine Fallakten oder Personendaten.** |
+| 7 | **Analyse-Arbeitsplatz** (lokal) | Dateien auf diesem Rechner auswerten, ohne Upload: Metadaten (ExifTool), Texterkennung (OCRmyPDF), Video-Einzelbilder (FFmpeg), Volltextsuche (Recoll), Benutzernamen (Sherlock), Datenträgerspuren (The Sleuth Kit) sowie TShark, ZAP-Passivprüfung, Gitleaks, YARA, Nmap-Berichtsvergleich und Lynis – je nachdem, was installiert ist. Den Befund übernehmen Sie in der Fallakte unter **Auswertung → Analysewerkzeuge** als Quelldokument (Anleitung: `tools\analysis\README.txt`). |
 
 ## Voraussetzungen
 
@@ -38,6 +40,14 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 | PersonOSINT → EagleEye-Fallakte | In PersonOSINT: *Dossier & Export → „Übergabe an EagleEye“*. Die Dateien in der Fallakte unter „PersonOSINT-Quellen importieren“ einlesen. |
 | EagleEye-Fallakte → PersonOSINT | In der Fallakte den Graphen im FollowTheMoney-Format exportieren, in PersonOSINT unter *Verbindungen → „FollowTheMoney einlesen“* laden. |
 | **PersonOSINT in der Fallakte** (neu) | Ohne Umweg: In der Fallakte unter *Recherche → Quellen & Personen* stehen 13 zusätzliche Quellen des PersonOSINT-Motors (Benutzernamen-Check auf 13 Plattformen, Keybase, Codeberg, Docker Hub, Gravatar, crt.sh, Wikipedia, Nominatim, Firmenregister Frankreich, ICIJ Offshore Leaks, INTERPOL, FBI). Sie laufen über denselben Freigabeweg wie alle anderen Quellen. Die Auswertung – Widersprüche, Warnhinweise, Querbezüge, Bewertung jeder Aussage – steht unter *Auswertung → Personenanalyse*. Beschreibung: `docs\PERSONOSINT_IN_EAGLEEYE.md`. |
+
+## Forschungs-Brücke (eigene, vom Ermittlungsbereich getrennte Oberfläche)
+
+`START_HIER.bat` → **6** öffnet den lokalen Forschungsarbeitsplatz über `tools\\research_exchange\\START_RESEARCH_BRIDGE_WINDOWS.cmd`. Der Erststart richtet ausschließlich einen lokalen Arbeitsbereich unter `%LOCALAPPDATA%\\EagleEyeResearchBridge` ein und schützt den Signaturschlüssel mit Windows DPAPI. Vorhandene Schlüssel und Dateien werden nicht überschrieben. Das Modul benötigt Python mit Tkinter, Git sowie den vorhandenen Zugriff auf den **privaten** MichaIntel-Zweig `research-exchange`; es installiert keine kostenpflichtigen Dienste.
+
+In der Forschungs-Brücke führt eine Schaltfläche zunächst eine reine Git-Metadatenabfrage aus. Nach Auswahl einer konkreten ID kann der betreffende JSON-Datensatz geprüft und lokal freigegeben oder zurückgestellt werden. Neue Ausgänge brauchen eine Vorschau, den exakten Bestätigungssatz und eine zweite bewusste Veröffentlichungsfreigabe. Status und HMAC-verkettete Prüfereignisse sind lokal einsehbar. Für die integrative technische Abnahme wurde ein tatsächlich erfolgreicher bidirektionaler Austausch mit **zwei synthetischen** Datensätzen durchgeführt. **Keine Forschungsdaten werden automatisch als EagleEye-Beweismittel übernommen.**
+
+Die Forschungs-Brücke bleibt bis zur gemeinsamen Windows- und Security-Abnahme ein Entwicklungsmodul, kein freigegebenes 1.0-Release. Ausführliche Hinweise: `tools\\research_exchange\\README.md`.
 
 ## Ehrlicher Stand
 

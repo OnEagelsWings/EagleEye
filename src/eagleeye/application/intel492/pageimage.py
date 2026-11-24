@@ -517,6 +517,18 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
             if navigated.get("errorText"):
                 raise ImageError("Die Seite ließ sich im Browser nicht laden (" + str(navigated["errorText"])[:80] + ").")
             complete = tools.wait_event("Page.loadEventFired", session, min(deadline - 8, time.monotonic() + LOAD_TIMEOUT))
+            if not complete:
+                # Busy CI runners occasionally lose the load-event notification even
+                # after the final resource finishes. The browser DOM readiness state
+                # is an independent completion signal; an image still loading (the
+                # intentionally slow-page test) remains document.readyState=loading.
+                try:
+                    ready = tools.call("Runtime.evaluate",
+                                       {"expression": "document.readyState === 'complete'",
+                                        "returnByValue": True}, session)
+                    complete = ready.get("result", {}).get("value") is True
+                except (ImageError, OSError, KeyError, ValueError):
+                    pass  # Conservative: leave incomplete when status is unknown.
             tools.pause(SETTLE)
             metrics = tools.call("Page.getLayoutMetrics", session=session)
             size = metrics.get("cssContentSize") or metrics.get("contentSize") or {}

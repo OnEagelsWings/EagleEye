@@ -142,6 +142,10 @@ def _ensure_runtime(root: Path, *, quiet: bool = False) -> Path:
     if runtime_python.is_file():
         return runtime_python
     runtime_dir = root / RUNTIME_DIR
+    # Never follow or replace a runtime alias. A crafted symlink/junction
+    # must not let a fresh installation affect an older EagleEye install.
+    if runtime_dir.is_symlink():
+        raise RuntimeError("refusing a symlinked EagleEye runtime directory")
     if runtime_dir.exists():
         shutil.rmtree(runtime_dir)
     if not quiet:

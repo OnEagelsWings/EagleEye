@@ -49,3 +49,17 @@ def test_current_build_explicit_database_rejects_in_workspace_parent_alias(tmp_p
         )
     assert not (actual / "cases.db").exists()
     assert not (workspace / "reports").exists()
+
+
+@pytest.mark.parametrize("suffix", ["", "-wal", "-shm"])
+def test_current_build_rejects_nonfile_sqlite_targets_before_workspace_creation(tmp_path, monkeypatch, suffix):
+    monkeypatch.setattr(paths, "BUILD", "490")
+    workspace = tmp_path / "internal"
+    install = tmp_path / "app"
+    install.mkdir()
+    target = workspace / "data" / ("eagleeye.db" + suffix)
+    target.mkdir(parents=True)
+    with pytest.raises(ValueError, match="must be regular files"):
+        paths.RuntimePaths.resolve(install_dir=install, base_dir=workspace)
+    assert target.is_dir()
+    assert not (workspace / "reports").exists()
