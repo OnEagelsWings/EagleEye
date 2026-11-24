@@ -107,6 +107,8 @@ oder entfällt mit Grund – so ist für den Mandanten nachvollziehbar, was gepr
    **Schutzklasse** versehen: offen, intern, besonders schutzwürdig (Art. 9/10 DSGVO).
 4. Befunde prüfen (selbst oder durch ein zweites Konto).
 5. Quellenunabhängigkeit, Entitäten-Abgleich und Netzwerkanalyse nutzen.
+6. Dateien lokal auswerten (Metadaten, Texterkennung, Video, Datenträgerspuren): im Startmenü **7 Analyse-Arbeitsplatz**,
+   den Befund danach in der Fallakte unter **Auswertung → Analysewerkzeuge** als Quelldokument übernehmen.
 
 Suchbegriffe (Namen) werden in Formularen übertragen, nicht in der Adresszeile – sie
 landen nicht im Browserverlauf.
