@@ -74,16 +74,17 @@ class RuntimePaths:
             # A hard link can alias an old installation without appearing as a
             # symlink. SQLite may modify the linked inode or its WAL sidecars.
             target_db = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
-            for suffix in ("", "-wal", "-shm"):
-                candidate = Path(str(target_db) + suffix)
-                if candidate.exists() and candidate.stat().st_nlink > 1:
-                    raise ValueError("Internal release database files cannot be hard linked")
             # Reject directories, devices and named pipes before creating any
             # workspace state. SQLite must only open regular database files.
             for suffix in ("", "-wal", "-shm"):
                 entry = Path(str(target_db) + suffix)
                 if entry.exists() and not entry.is_file():
                     raise ValueError("Internal release database and sidecars must be regular files")
+            for suffix in ("", "-wal", "-shm"):
+                candidate = Path(str(target_db) + suffix)
+                if candidate.is_file() and candidate.stat().st_nlink > 1:
+                    raise ValueError("Internal release database files cannot be hard linked "
+                                     "(hard-linked database and sidecars are rejected)")
 
         if _internal_release_build():
             # The implicit default database needs the same protection as an
