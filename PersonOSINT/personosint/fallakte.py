@@ -9,7 +9,11 @@ Stellen direkt als Datei. Sie läuft deshalb nicht im Arbeitsspeicher wie Person
   gestartet – damit gilt der Netzschalter des Vaults auch für sie.
 * **Während der Arbeit** werden Änderungen jede Minute verschlüsselt zurückgeschrieben (Datenbanken als konsistente
   Momentaufnahme).
-* **Beim Sperren** wird ein letztes Mal gesichert und der Arbeitsordner gelöscht.
+* **Beim Sperren** wird ein letztes Mal gesichert und der Arbeitsordner gelöscht – aber nur, wenn wirklich jede Datei
+  gesichert ist. Der Pfad des Arbeitsordners steht schon **beim Öffnen** verschlüsselt im Vault (``pending.enc``) und
+  wird erst nach einem vollständig gesicherten Schließen entfernt. Scheitert die letzte Sicherung (Lesefehler, voller
+  Datenträger) oder stürzt der Rechner ab, wird der Arbeitsordner beim nächsten Öffnen übernommen und nachgesichert –
+  ohne dass dafür im Fehlerfall noch etwas geschrieben werden muss.
 
 Ehrliche Grenze: Solange der Vault offen ist, liegen die Fallakten-Dateien entschlüsselt im Arbeitsordner. Dagegen
 schützt die Laufwerksverschlüsselung (BitLocker). Auf SSDs ist auch gelöschter Inhalt nicht sicher entfernt.
@@ -30,6 +34,11 @@ from pathlib import Path
 from typing import Any
 
 SKIP_SUFFIXES = ("-wal", "-shm", "-journal", ".lock")
+READ_ATTEMPTS = 3
+
+
+class FallakteSyncError(RuntimeError):
+    """Nicht alle Dateien der Fallakte konnten verschlüsselt gesichert werden; der Arbeitsordner bleibt erhalten."""
 SQLITE_MAGIC = b"SQLite format 3\x00"
 COOKIE, CSRF_COOKIE = "ee_auth_session", "ee_auth_csrf"
 
@@ -57,6 +66,7 @@ class FallakteVault:
         self._manifest: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
         self.last_sync = 0.0
+        self.failed: list[str] = []
 
     # ------------------------------------------------------------------ verschlüsselter Speicher
     def _load_manifest(self) -> dict[str, dict[str, Any]]:
@@ -70,6 +80,23 @@ class FallakteVault:
         tmp = self.store / "manifest.enc.tmp"
         tmp.write_bytes(self.crypto.encrypt(json.dumps(self._manifest).encode("utf-8")))
         os.replace(tmp, self.store / "manifest.enc")
+
+    def _remember_pending(self, work: Path) -> None:
+        """Arbeitsordner mit nicht gesicherten Änderungen für das nächste Öffnen vormerken (Pfad verschlüsselt)."""
+        self.store.mkdir(parents=True, exist_ok=True)
+        tmp = self.store / "pending.enc.tmp"
+        tmp.write_bytes(self.crypto.encrypt(str(work).encode("utf-8")))
+        os.replace(tmp, self.store / "pending.enc")
+
+    def _pending_workdir(self) -> Path | None:
+        marker = self.store / "pending.enc"
+        if not marker.is_file():
+            return None
+        try:
+            work = Path(self.crypto.decrypt(marker.read_bytes()).decode("utf-8"))
+        except Exception:  # noqa: BLE001 - beschädigter Vermerk: lieber den gesicherten Stand öffnen
+            return None
+        return work if work.is_dir() else None
 
     @staticmethod
     def _snapshot(path: Path) -> bytes:
@@ -99,6 +126,24 @@ class FallakteVault:
             if self.app is not None:
                 return self.app
             self._manifest = self._load_manifest()
+            pending = self._pending_workdir()
+            if pending is not None:
+                # Letztes Schließen nicht vollständig gesichert (oder Absturz): dieser Ordner hat den neuesten Stand.
+                # Der Vermerk bleibt, bis ein späteres Schließen alles gesichert hat.
+                self.workdir = pending
+                try:
+                    self.sync()
+                except Exception:  # noqa: BLE001 - die Daten liegen weiter im Arbeitsordner
+                    pass
+                try:
+                    from eagleeye.interfaces.web.app500 import create_workspace_app500
+
+                    self.app = create_workspace_app500(base_dir=pending)
+                except Exception:
+                    self.workdir = None  # Vermerk bleibt: nächster Versuch übernimmt denselben Ordner
+                    raise
+                return self.app
+            (self.store / "pending.enc").unlink(missing_ok=True)  # Vermerk auf einen nicht mehr vorhandenen Ordner
             work = Path(tempfile.mkdtemp(prefix="eagleeye-fallakte-"))
             try:
                 for rel, meta in self._manifest.items():
@@ -107,30 +152,44 @@ class FallakteVault:
                         continue
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(self.crypto.decrypt((self.store / meta["blob"]).read_bytes()))
+                # Vorab vermerken, solange noch geschrieben werden kann – nicht erst, wenn eine Sicherung scheitert.
+                self._remember_pending(work)
                 from eagleeye.interfaces.web.app500 import create_workspace_app500
 
                 self.app = create_workspace_app500(base_dir=work)
             except Exception:
                 shutil.rmtree(work, ignore_errors=True)
+                (self.store / "pending.enc").unlink(missing_ok=True)
                 raise
             self.workdir = work
             return self.app
 
     def sync(self) -> int:
-        """Geänderte Dateien verschlüsselt zurückschreiben. Gibt die Zahl geschriebener Dateien zurück."""
+        """Geänderte Dateien verschlüsselt zurückschreiben. Gibt die Zahl geschriebener Dateien zurück.
+
+        Dateien, die sich auch nach mehreren Versuchen nicht lesen lassen, stehen danach in ``self.failed``;
+        ihr zuletzt gesicherter Stand bleibt im Vault unverändert.
+        """
         with self._lock:
             if not self.workdir:
                 return 0
             written = 0
             seen = set()
+            failed: list[str] = []
             for path in sorted(self.workdir.rglob("*")):
                 if not path.is_file() or path.name.endswith(SKIP_SUFFIXES):
                     continue
                 rel = path.relative_to(self.workdir).as_posix()
                 seen.add(rel)
-                try:
-                    data = self._snapshot(path)
-                except (OSError, sqlite3.Error):
+                data = None
+                for attempt in range(READ_ATTEMPTS):
+                    try:
+                        data = self._snapshot(path)
+                        break
+                    except (OSError, sqlite3.Error):
+                        time.sleep(0.2 * (attempt + 1))
+                if data is None:
+                    failed.append(rel)
                     continue
                 digest = hashlib.sha256(data).hexdigest()
                 meta = self._manifest.get(rel)
@@ -148,25 +207,42 @@ class FallakteVault:
                 written += 1
             if written:
                 self._save_manifest()
+            self.failed = failed
             self.last_sync = time.time()
             return written
 
     def close(self) -> None:
+        """Letzte Sicherung, dann Arbeitsordner löschen – nur wenn jede Datei gesichert ist.
+
+        Sonst bleibt der Arbeitsordner erhalten, wird für das nächste Öffnen vorgemerkt und ``FallakteSyncError``
+        gemeldet. Die Fallakte ist danach in jedem Fall geschlossen.
+        """
         with self._lock:
             if not self.workdir:
                 return
+            work = self.workdir
+            ctx = getattr(getattr(self.app, "state", None), "context", None)
+            if ctx is not None and hasattr(ctx, "close"):
+                try:
+                    ctx.close()  # keine Schreibvorgänge mehr während der letzten Sicherung
+                except Exception:  # noqa: BLE001
+                    pass
+            self.app = None
+            problem = ""
             try:
                 self.sync()
-            finally:
-                ctx = getattr(getattr(self.app, "state", None), "context", None)
-                if ctx is not None and hasattr(ctx, "close"):
-                    try:
-                        ctx.close()
-                    except Exception:  # noqa: BLE001
-                        pass
-                shutil.rmtree(self.workdir, ignore_errors=True)
-                self.app = None
-                self.workdir = None
+                if self.failed:
+                    problem = "nicht lesbar: " + ", ".join(self.failed[:5])
+            except Exception as exc:  # noqa: BLE001 - z. B. Datenträger voll
+                problem = f"{type(exc).__name__}: {exc}"[:300]
+            self.workdir = None
+            if not problem:
+                shutil.rmtree(work, ignore_errors=True)
+                (self.store / "pending.enc").unlink(missing_ok=True)
+                return
+            # Der Vermerk wurde schon beim Öffnen geschrieben und bleibt stehen; hier ist nichts mehr zu schreiben.
+            raise FallakteSyncError("Die Fallakte konnte beim Sperren nicht vollständig gesichert werden (" + problem + "). "
+                                    "Der Arbeitsordner bleibt erhalten und wird beim nächsten Öffnen nachgesichert: " + str(work))
 
     # ------------------------------------------------------------------ eine Anmeldung
     def single_sign_on(self, owner: dict[str, Any], display_name: str, headers: dict[str, str], client_host: str) -> tuple[str, str, int]:
@@ -188,4 +264,4 @@ class FallakteVault:
         return issued.token, issued.csrf_token, int(issued.max_age)
 
 
-__all__ = ["FallakteVault", "available", "fingerprint", "COOKIE", "CSRF_COOKIE"]
+__all__ = ["FallakteVault", "FallakteSyncError", "available", "fingerprint", "COOKIE", "CSRF_COOKIE"]

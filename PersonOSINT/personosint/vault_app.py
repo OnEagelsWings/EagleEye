@@ -72,6 +72,37 @@ def _blank_tile(text: str) -> bytes:
     return buf.getvalue()
 
 
+
+FERNET_PREFIX = "gAAAAA"  # Fernet-Token (Version 0x80) beginnen base64-kodiert immer so
+
+
+def _reencrypt_secrets(conn: sqlite3.Connection, old: Vault, new: Vault) -> int:
+    """Alle mit dem alten Schlüssel verschlüsselten Textwerte der Datenbank mit dem neuen verschlüsseln.
+
+    Erfasst jede Tabelle und Spalte (auch künftige verschlüsselte Felder): Ein Wert gilt als Geheimnis, wenn er ein
+    Fernet-Token ist und sich mit dem alten Schlüssel öffnen lässt. Andere Werte bleiben unverändert.
+    """
+    changed = 0
+    tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+    for table in tables:
+        quoted = '"' + table.replace('"', '""') + '"'
+        columns = [r[1] for r in conn.execute(f"PRAGMA table_info({quoted})") if str(r[2]).upper() in ("TEXT", "")]
+        for column in columns:
+            col = '"' + column.replace('"', '""') + '"'
+            try:
+                rows = conn.execute(f"SELECT rowid, {col} FROM {quoted} WHERE {col} LIKE ?", (FERNET_PREFIX + "%",)).fetchall()
+            except sqlite3.OperationalError:  # Tabelle ohne rowid
+                continue
+            for rowid, value in rows:
+                try:
+                    plain = old.decrypt_text(value)
+                except ValueError:
+                    continue  # kein Geheimnis dieses Schlüssels
+                conn.execute(f"UPDATE {quoted} SET {col}=? WHERE rowid=?", (new.encrypt_text(plain), rowid))
+                changed += 1
+    conn.commit()
+    return changed
+
 class VaultManager:
     """Zustand des Vaults: gesperrt oder geöffnet (dann mit innerer Anwendung, Datenbank, Speicher-Thread)."""
 
@@ -227,10 +258,15 @@ class VaultManager:
         if not self.classic_available():
             raise VaultError("Keine bisherigen PersonOSINT-Daten gefunden.")
         # normal öffnen (WAL-Datenbanken lassen sich nur mit Schreibzugriff auf die -shm-Datei konsistent lesen); es wird nur gelesen
+        old = Vault(self.classic_dir / "secret.key")
+        new = Vault.from_key(opened.files_key)
         src = sqlite3.connect(str(src_db))
         mem = sqlite3.connect(":memory:")
         try:
             src.backup(mem)
+            # Geheimnisse in der Datenbank (Zwei-Faktor, API-Schlüssel, Netzausgänge, Tor-Steuerung, Legenden-Zugänge)
+            # sind mit dem bisherigen Schlüssel verschlüsselt; im Vault gilt der neue.
+            reencrypted = _reencrypt_secrets(mem, old, new)
             raw = mem.serialize()
             owner_id = mem.execute("SELECT id FROM users WHERE role = 'admin' AND active = 1 ORDER BY id LIMIT 1").fetchone()
             cases = mem.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
@@ -239,8 +275,7 @@ class VaultManager:
             mem.close()
         if not owner_id:
             raise VaultError("In den bisherigen Daten gibt es kein aktives Administrationskonto.")
-        old = Vault(self.classic_dir / "secret.key")
-        new = Vault.from_key(opened.files_key)
+        log.info("Übernahme: %d verschlüsselte Datenbankwerte auf den Vault-Schlüssel umgestellt", reencrypted)
         for folder in ("photos", "evidence"):
             source = self.classic_dir / folder
             if not source.is_dir():
@@ -332,9 +367,11 @@ class VaultManager:
                 self.browsers.close_all()  # Profile verschlüsseln, solange der Schlüssel noch da ist
             if self.fallakte:
                 try:
-                    self.fallakte.close()  # letzte Sicherung, Arbeitsordner löschen
+                    self.fallakte.close()  # letzte Sicherung; Arbeitsordner nur bei vollständiger Sicherung löschen
                 except Exception:  # noqa: BLE001 - Sperren darf nie scheitern
                     log.exception("Fallakte konnte beim Sperren nicht vollständig gesichert werden")
+                    reason += (" – Achtung: Die Fallakte war nicht vollständig gesichert. Ihre Arbeitsdateien sind "
+                               "erhalten und werden beim nächsten Öffnen der Fallakte nachgesichert.")
             try:
                 self.save(force=True)
             finally:
