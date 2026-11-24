@@ -4,8 +4,10 @@ from eagleeye.interfaces.web.app478 import create_workspace_app478
 from test_build471_local_ai import workspace
 from test_build478_findings import csrf_session
 
-pytestmark = pytest.mark.parametrize("workspace", [create_workspace_app478], indirect=True)
+from eagleeye.interfaces.web.server import create_workspace_app
 
+
+@pytest.mark.parametrize("workspace", [create_workspace_app478], indirect=True)
 def test_local_analysis_handoff_and_case_document(workspace):
     _, client, _, case_id, *_ = workspace
     csrf_session(workspace)
@@ -21,3 +23,14 @@ def test_local_analysis_handoff_and_case_document(workspace):
     assert "Lokaler Analysebefund" in client.get(f"/api/build458/cases/{case_id}/documents").text
     client.cookies.clear()
     assert client.get("/workbench/analysis-tools",params={"case_id":case_id}).status_code == 401
+
+
+@pytest.mark.parametrize("workspace", [create_workspace_app], indirect=True)
+def test_analysis_tools_reachable_from_current_desktop_menu(workspace):
+    """Gesamtversion: the page is part of the current Build-500 desktop navigation."""
+    _, client, _, case_id, *_ = workspace
+    csrf_session(workspace)
+    page = client.get("/workbench/analysis-tools", params={"case_id": case_id})
+    assert page.status_code == 200 and "Analysewerkzeuge" in page.text
+    flow = client.get("/workbench", params={"case_id": case_id}).text
+    assert "/workbench/analysis-tools?case_id=" in flow and ">Analysewerkzeuge<" in flow

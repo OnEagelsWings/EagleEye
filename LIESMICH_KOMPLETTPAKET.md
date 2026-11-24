@@ -1,4 +1,4 @@
-# EagleEye – Komplettpaket (Stand 23. Nov. 2026)
+# EagleEye – Komplettpaket (Gesamtversion, Stand 24. Nov. 2026)
 
 Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 
@@ -10,6 +10,7 @@ Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 | 3 | **EagleEye-Fallakte** (Build 500) | Büro und Fallakte: Mandanten, Aufträge, Zeiten, Rechnungen, Datensicherung; Web-Belege, Dokumente, Rechercheplan mit Freigaben, Prüfregister, Bericht (Bedienung: `BETRIEBSHANDBUCH_BUERO.md`) |
 | 4 | **Quellen prüfen** | Zeigt, welche Datenquellen von diesem Rechner aus wirklich antworten |
 | 6 | **Forschungs-Brücke** (Vorschau) | Ausschließlich öffentliche wissenschaftliche, historische, technische und institutionelle Sachthemen über den privaten GitHub-Austauschbranch prüfen und mit ausdrücklicher Freigabe versenden. **Keine Fallakten oder Personendaten.** |
+| 7 | **Analyse-Arbeitsplatz** (lokal) | Dateien auf diesem Rechner auswerten, ohne Upload: Metadaten (ExifTool), Texterkennung (OCRmyPDF), Video-Einzelbilder (FFmpeg), Volltextsuche (Recoll), Benutzernamen (Sherlock), Datenträgerspuren (The Sleuth Kit) sowie TShark, ZAP-Passivprüfung, Gitleaks, YARA, Nmap-Berichtsvergleich und Lynis – je nachdem, was installiert ist. Den Befund übernehmen Sie in der Fallakte unter **Auswertung → Analysewerkzeuge** als Quelldokument (Anleitung: `tools\analysis\README.txt`). |
 
 ## Voraussetzungen
 

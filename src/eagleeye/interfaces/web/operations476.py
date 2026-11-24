@@ -106,6 +106,7 @@ MENU = [
     ("Auswertung", "Personenanalyse", "/workbench/personanalyse", True, None),
     ("Auswertung", "Quellenfamilien", "/workbench/intel/lineage", True, None),
     ("Auswertung", "Netzwerk", "/workbench/intel/network", True, None),
+    ("Auswertung", "Analysewerkzeuge", "/workbench/analysis-tools", True, None),
     ("Bericht", "Arbeitsbericht & Prüfung", "/workbench/report", True, None),
     ("Weitere", "Alle Werkzeuge", "/workbench/expert", True, None),
     ("Weitere", "Klassische Fallübersicht", "/", True, None),

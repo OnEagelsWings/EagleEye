@@ -15,11 +15,13 @@ echo    3   EagleEye-Fallakte starten  Beweissicherung, Pruefablaeufe, Recherche
 echo    4   Quellen pruefen            zeigt, welche Datenquellen von diesem Rechner aus antworten
 echo    5   Anleitung oeffnen
 echo    6   Forschungs-Bruecke        oeffentliche Sachthemen, mit manueller Freigabe
+echo    7   Analyse-Arbeitsplatz      Metadaten, Texterkennung, Video, Spuren in Dateien (lokal, ohne Upload)
 echo    0   Beenden
 echo.
 rem CHOICE accepts only the listed keys; do not interpolate untrusted console input into CMD commands.
-choice /c V1234560 /n /m "   Auswahl (V, 1-6, 0=Beenden): "
-if errorlevel 8 exit /b 0
+choice /c V12345670 /n /m "   Auswahl (V, 1-7, 0=Beenden): "
+if errorlevel 9 exit /b 0
+if errorlevel 8 goto action7
 if errorlevel 7 goto action6
 if errorlevel 6 goto action5
 if errorlevel 5 goto action4
@@ -30,6 +32,9 @@ if errorlevel 1 goto actionV
 goto menu
 :actionV
 start "EagleEye Vault" cmd /k "PersonOSINT\START_VAULT.bat"
+goto menu
+:action7
+start "EagleEye Analyse" cmd /k "tools\analysis\EagleEye-Analyse.cmd"
 goto menu
 :action6
 start "Research Bridge" cmd /k "tools\research_exchange\START_RESEARCH_BRIDGE_WINDOWS.cmd"
