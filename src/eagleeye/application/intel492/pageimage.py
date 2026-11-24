@@ -40,7 +40,8 @@ MAX_HEIGHT = 12000
 MAX_PNG = 30 * 1024 * 1024
 MAX_TRAFFIC = 80 * 1024 * 1024
 MAX_CONNECTIONS = 400
-LOAD_TIMEOUT = 25.0
+LOAD_TIMEOUT = 25.0     # page load, counted from navigation – a slow browser start does not shorten it
+CAPTURE_BUDGET = 20.0   # layout metrics and screenshot after loading
 SETTLE = 1.5
 _ONE_AT_A_TIME = threading.Lock()
 WAITED_EVENTS = {"Page.loadEventFired"}
@@ -519,7 +520,11 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
             navigated = tools.call("Page.navigate", {"url": url}, session)
             if navigated.get("errorText"):
                 raise ImageError("Die Seite ließ sich im Browser nicht laden (" + str(navigated["errorText"])[:80] + ").")
-            complete = tools.wait_event("Page.loadEventFired", session, min(deadline - 8, time.monotonic() + LOAD_TIMEOUT))
+            # The start-up budget (``timeout``) covers browser start and DevTools handshake. Loading and capturing
+            # get their own time from here on, so a cold browser start never shortens the page load.
+            load_until = time.monotonic() + LOAD_TIMEOUT
+            tools.deadline = max(tools.deadline, load_until + CAPTURE_BUDGET)
+            complete = tools.wait_event("Page.loadEventFired", session, load_until)
             if not complete:
                 # Busy CI runners occasionally lose the load-event notification even
                 # after the final resource finishes. The browser DOM readiness state
