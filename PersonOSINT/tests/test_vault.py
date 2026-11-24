@@ -213,3 +213,95 @@ def test_existing_personosint_data_is_taken_over_encrypted(tmp_path, monkeypatch
     finally:
         app.manager.lock("Testende")
         netgate.uninstall()
+
+
+def test_classic_import_keeps_encrypted_database_secrets(tmp_path, monkeypatch):
+    """API-Schlüssel und Netzausgänge der bisherigen Installation sind nach der Übernahme lesbar (neuer Schlüssel)."""
+    clock = Clock()
+    monkeypatch.setattr(auth_mod.time, "time", clock)
+    classic = tmp_path / "bisher"
+    old_app = build_app(classic)
+    setup_admin(old_app)
+    old_app.state.platform.set_api_key("companies_house", "ch-geheim-4711")
+    raw_before = old_app.state.platform._setting("api_keys")  # noqa: SLF001
+    app = create_vault_app(tmp_path / "vault", http=FakeHttp({}), kdf=FAST_KDF, classic_dir=classic, background=False)
+    client = TestClient(app, base_url="http://127.0.0.1")
+    try:
+        secret = client.post("/vault/api/setup/begin", json={"display_name": "Detektei Nord", "passphrase": PASS, "passphrase2": PASS},
+                             headers=H).json()["secret"]
+        done = client.post("/vault/api/setup/finish", json={"code": totp_code(secret, clock.now), "import_classic": True}, headers=H).json()
+        assert done["imported"]
+        platform = app.manager.inner.state.platform
+        assert platform.api_keys() == {"companies_house": "ch-geheim-4711"}
+        assert platform._setting("api_keys") != raw_before  # noqa: SLF001 - neu verschlüsselt, nicht kopiert
+    finally:
+        app.manager.lock("Testende")
+        netgate.uninstall()
+
+
+# ---------------------------------------------------------------- Fallakte im Vault: kein Datenverlust beim Sperren
+import sys  # noqa: E402
+import types  # noqa: E402
+
+from personosint import fallakte as fa  # noqa: E402
+from personosint.crypto import Fernet, Vault  # noqa: E402
+
+
+def _fake_eagleeye(monkeypatch):
+    """open() startet die Fallakte; hier genügt ein Platzhalter (EagleEye ist in dieser Umgebung nicht installiert)."""
+    module = types.ModuleType("eagleeye.interfaces.web.app500")
+    module.create_workspace_app500 = lambda base_dir: types.SimpleNamespace(state=types.SimpleNamespace(context=None), base=base_dir)
+    for name in ("eagleeye", "eagleeye.interfaces", "eagleeye.interfaces.web"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    monkeypatch.setitem(sys.modules, "eagleeye.interfaces.web.app500", module)
+
+
+def test_fallakte_lock_keeps_unsaved_work_and_recovers_it(tmp_path, monkeypatch):
+    _fake_eagleeye(monkeypatch)
+    crypto = Vault.from_key(Fernet.generate_key())
+    store = tmp_path / "vault-files" / "fallakte"
+    fv = fa.FallakteVault(store, crypto)
+    fv.open()
+    work = fv.workdir
+    (work / "data").mkdir()
+    (work / "data" / "beleg.txt").write_text("neuer Beleg", encoding="utf-8")
+    real = fa.FallakteVault._snapshot
+    monkeypatch.setattr(fa, "READ_ATTEMPTS", 1)
+    monkeypatch.setattr(fa.FallakteVault, "_snapshot", staticmethod(lambda path: (_ for _ in ()).throw(OSError("gesperrt"))))
+    with pytest.raises(fa.FallakteSyncError, match="nachgesichert"):
+        fv.close()
+    assert not fv.is_open and (work / "data" / "beleg.txt").read_text(encoding="utf-8") == "neuer Beleg"
+    assert (store / "pending.enc").is_file() and str(work).encode() not in (store / "pending.enc").read_bytes()
+    # Nächstes Öffnen (z. B. nach dem Entsperren): derselbe Ordner wird übernommen und nachgesichert.
+    monkeypatch.setattr(fa.FallakteVault, "_snapshot", staticmethod(real))
+    again = fa.FallakteVault(store, crypto)
+    again.open()
+    assert again.workdir == work and not (store / "pending.enc").exists() and not again.failed
+    again.close()
+    assert not work.exists()
+    third = fa.FallakteVault(store, crypto)
+    third.open()
+    assert (third.workdir / "data" / "beleg.txt").read_text(encoding="utf-8") == "neuer Beleg"
+    third.close()
+
+
+def test_fallakte_lock_keeps_work_when_encrypted_write_fails(tmp_path, monkeypatch):
+    _fake_eagleeye(monkeypatch)
+    crypto = Vault.from_key(Fernet.generate_key())
+    store = tmp_path / "fallakte"
+    fv = fa.FallakteVault(store, crypto)
+    fv.open()
+    work = fv.workdir
+    (work / "akte.txt").write_text("Stand 1", encoding="utf-8")
+    real_encrypt = crypto.encrypt
+    calls = {"n": 0}
+
+    def full_disk(data):
+        calls["n"] += 1
+        if calls["n"] == 1:  # der Dateiinhalt scheitert, der spätere Vermerk gelingt
+            raise OSError(28, "No space left on device")
+        return real_encrypt(data)
+    monkeypatch.setattr(crypto, "encrypt", full_disk)
+    with pytest.raises(fa.FallakteSyncError, match="OSError"):
+        fv.close()
+    assert (work / "akte.txt").is_file() and (store / "pending.enc").is_file()
