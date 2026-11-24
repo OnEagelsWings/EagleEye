@@ -177,6 +177,7 @@ def page(title, case_id, body, build):
        '<a href="'+link('/workbench')+'">Arbeitsablauf</a>'
        '<a href="'+link('/documents458')+'">Dokumente &amp; Quellen</a>'
        '<a href="'+link('/entities462')+'">Entitäten</a>'
+       '<a href="'+link('/workbench/analysis-tools')+'">Analysewerkzeuge</a>'
        '<a href="'+link('/workbench/expert')+'">Expertenwerkzeuge</a>'
        '<a href="'+link('/workbench/bridge481')+'">Quelle → Evidence</a>' + ('<a href="'+link('/workbench/sources487')+'">Quellenzuordnung</a>' if int(str(build).split(".")[0]) >= 487 else '') + ('<a href="'+link('/workbench/entities488')+'">Entity-Prüfung</a>' if int(str(build).split(".")[0]) >= 488 else '') + '</nav></header><main><h1>'+escape(title)+'</h1>'
        +body+'<p class="warn"><strong>Entwicklungsstand: keine Produktivfreigabe.</strong>'
@@ -404,3 +405,5 @@ def attach_workbench(app, workspace_build):
     # competing simplified claims/dossier system.
     from .tool_center477 import attach_tool_center
     attach_tool_center(app, workspace_build)
+    from .analysis_tools import attach_analysis_tools
+    attach_analysis_tools(app, workspace_build)
