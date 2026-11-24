@@ -37,6 +37,11 @@ def _source_fingerprint(root: Path) -> str:
     roots = [
         root / "INSTALL_EAGLEEYE_500.py",
         root / "pyproject.toml",
+        # Launchers and diagnostics are executable entry points, not optional docs.
+        # A modified launcher must invalidate the installed-source receipt.
+        root / "START_EAGLEEYE_PRO.bat",
+        root / "START_EAGLEEYE_PRO.sh",
+        root / "EAGLEEYE_INSTALL_DIAGNOSE_500.bat",
         root / "wheelhouse" / "MANIFEST-SHA256.json",
         root / "EAGLEEYE_PRO_458_0.py",
         root / "RELEASE_MANIFEST_BUILD_458_0.json",

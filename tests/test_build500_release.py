@@ -208,6 +208,8 @@ def test_build500_receipt_fingerprint_changes_with_wheel_manifest(tmp_path):
     # Fingerprinting intentionally requires a complete release tree.
     # Supply inert fixtures for all mandatory source components.
     for filename in ("INSTALL_EAGLEEYE_500.py", "pyproject.toml",
+                     "START_EAGLEEYE_PRO.bat", "START_EAGLEEYE_PRO.sh",
+                     "EAGLEEYE_INSTALL_DIAGNOSE_500.bat",
                      "EAGLEEYE_PRO_458_0.py", "RELEASE_MANIFEST_BUILD_458_0.json"):
         (tmp_path / filename).write_text("fixture", encoding="utf-8")
     for dirname in ("src/eagleeye", "eagleeye_pro", "alembic_104_1"):
