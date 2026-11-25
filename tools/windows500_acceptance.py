@@ -13,6 +13,12 @@ import tempfile
 import time
 import urllib.request
 
+# Layout under test: the ZIP release (private venv) or the installed package (--installed).
+RUNTIME_DIR = ".eagleeye-runtime-500"
+INTERPRETER = ("Scripts", "python.exe")
+LAUNCHER = ("eagleeye.bootstrap.desktop476",)
+
+
 def _windows_job_for_process(proc):
     """Own the launcher and its descendants, including a detached web server."""
     from ctypes import wintypes
@@ -90,9 +96,9 @@ def _windows_installed_runtime_pids(install):
     # A Windows venv launcher may resolve to the base interpreter in CIM.
     # Match the exact private python.exe command prefix as well as its image
     # path; never match a generic install directory or unrelated Python.
-    runtime_path = (install / ".eagleeye-runtime-500").resolve()
+    runtime_path = (install / RUNTIME_DIR).resolve()
     runtime = str(runtime_path).lower().replace("'", "''")
-    interpreter = str(runtime_path / "Scripts" / "python.exe").lower().replace("'", "''")
+    interpreter = str(runtime_path.joinpath(*INTERPRETER)).lower().replace("'", "''")
     script = (
         "$root='" + runtime + "';$py='" + interpreter + "';"
         "Get-CimInstance Win32_Process | Where-Object {"
@@ -128,7 +134,7 @@ def _windows_workspace_workers(root, install):
     be selected for termination.
     """
     workspace = str(root.resolve()).lower().replace("'", "''")
-    runtime = str((install / ".eagleeye-runtime-500").resolve()).lower().replace("'", "''")
+    runtime = str((install / RUNTIME_DIR).resolve()).lower().replace("'", "''")
     script = (
         "$ws='" + workspace + "';$rt='" + runtime + "';"
         "Get-CimInstance Win32_Process | Where-Object {"
@@ -219,8 +225,11 @@ def _check(root,install,python):
     env=dict(os.environ, EAGLEEYE_DATA_DIR=str(root),
              EAGLEEYE_SETTINGS_DIR=str(root.parent/"config"),
              EAGLEEYE_BROWSER="none")
-    command=[str(python),"-I","-m","eagleeye.bootstrap.desktop476",
-             "--install-root",str(install),"--no-browser"]
+    if LAUNCHER[0] == "eagleeye.bootstrap.desktop476":
+        command=[str(python),"-I","-m","eagleeye.bootstrap.desktop476",
+                 "--install-root",str(install),"--no-browser"]
+    else:  # the installed Start-menu entry derives the program folder from its own runtime
+        command=[str(python),"-I","-m",*LAUNCHER,"--no-browser"]
     # A PIPE can fill during a verbose first start and deadlock the launcher.
     # Keep the output in a private file so health polling and shutdown progress.
     log = tempfile.TemporaryFile(mode="w+t", encoding="utf-8")
@@ -377,10 +386,20 @@ def _check(root,install,python):
                     time.sleep(0.2)
         log.close()
 
-def main():
+def main(argv=None):
+    global RUNTIME_DIR, INTERPRETER, LAUNCHER
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--installed",type=Path,help="program folder of the installed package (Start-menu launcher)")
+    args=parser.parse_args(argv)
     if os.name!="nt":raise SystemExit("Windows acceptance runs on Windows runner only")
-    install=Path(__file__).resolve().parents[1]
-    python=install/".eagleeye-runtime-500"/"Scripts"/"python.exe"
+    if args.installed:
+        install=args.installed.resolve()
+        RUNTIME_DIR, INTERPRETER = "runtime", ("python.exe",)
+        LAUNCHER = ("eagleeye.bootstrap.windows_start", "fallakte")
+    else:
+        install=Path(__file__).resolve().parents[1]
+    python=(install/RUNTIME_DIR).joinpath(*INTERPRETER)
     if not python.is_file():raise RuntimeError("Installed runtime missing")
     with tempfile.TemporaryDirectory(prefix="eagleeye-500-smoke-") as td:
         root=Path(td)/"workspace";root.mkdir()

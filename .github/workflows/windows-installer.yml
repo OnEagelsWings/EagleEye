@@ -1,0 +1,217 @@
+name: EagleEye Windows-Installer
+
+# Baut EagleEye-Setup-<Version>.exe mit eingebautem Python (auf dem Zielrechner muss nichts
+# vorinstalliert sein), installiert es auf einem frischen Windows-Rechner, startet es, prüft
+# Neustart und Datenerhalt, aktualisiert und deinstalliert es wieder.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'packaging/windows/**'
+      - 'src/eagleeye/bootstrap/windows_start.py'
+      - 'tools/windows500_acceptance.py'
+      - 'tests/test_windows_package.py'
+      - '.github/workflows/windows-installer.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Versionen festlegen
+        id: v
+        run: |
+          $py = python -c "import platform; print(platform.python_version())"
+          $build = (Select-String -Path eagleeye_pro/version.py -Pattern '^BUILD = "(.+)"').Matches[0].Groups[1].Value
+          "python=$py" >> $env:GITHUB_OUTPUT
+          "app=$build.${{ github.run_number }}" >> $env:GITHUB_OUTPUT
+          Write-Host "Python $py | EagleEye $build.${{ github.run_number }}"
+
+      - name: Tests der aktuellen Funktionen mit genau den Bibliotheken des Pakets
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r packaging/windows/requirements-windows.lock
+          python -m pip install --disable-pip-version-check --no-deps -e .
+          python -m pip install --disable-pip-version-check "pytest>=9.0" "httpx>=0.28,<1" "hypothesis>=6.0"
+          python -m pytest -q -p no:cacheprovider tests/test_windows_package.py tests/test_buero_service.py tests/test_buero_web.py tests/test_buero_report.py tests/test_buero_deletion.py tests/test_buero_gate.py tests/test_buero_checklists.py tests/test_buero_backup.py tests/test_buero_billing.py tests/test_intel_timestamps.py tests/test_intel_evidence.py tests/test_build492_intel.py tests/test_build500_release.py tests/test_build490_server_selection.py tests/test_build490_synthetic_journey.py
+          Push-Location PersonOSINT
+          python -m pytest -q -p no:cacheprovider
+          Pop-Location
+
+      - name: Offizielles Python (eingebettete Fassung) laden und Signaturen prüfen
+        id: embed
+        run: |
+          $v = '${{ steps.v.outputs.python }}'
+          New-Item -ItemType Directory -Force build | Out-Null
+          Invoke-WebRequest "https://www.python.org/ftp/python/$v/python-$v-embed-amd64.zip" -OutFile build/python-embed.zip
+          $sha = (Get-FileHash build/python-embed.zip -Algorithm SHA256).Hash.ToLower()
+          "sha256=$sha" >> $env:GITHUB_OUTPUT
+          Write-Host "python-$v-embed-amd64.zip SHA-256 $sha"
+          Expand-Archive build/python-embed.zip build/stage/runtime
+          $bad = @()
+          foreach ($f in Get-ChildItem build/stage/runtime -Recurse -Include *.exe,*.dll,*.pyd) {
+            $s = Get-AuthenticodeSignature $f.FullName
+            $who = "$($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid' -or ($who -notmatch 'O=Python Software Foundation' -and $who -notmatch 'O=Microsoft Corporation')) { $bad += "$($f.Name): $($s.Status) $who" }
+          }
+          if ($bad) { $bad; throw "Python-Laufzeit nicht durchgehend gültig signiert" }
+          Write-Host "Alle Programmdateien der Laufzeit gültig signiert (Python Software Foundation / Microsoft)."
+
+      - name: Laufzeit vorbereiten (tkinter aus derselben Version, isolierter Importpfad)
+        run: |
+          python packaging/windows/build_stage.py runtime --runtime build/stage/runtime
+          foreach ($f in Get-ChildItem build/stage/runtime -Include _tkinter.pyd,tcl*.dll,tk*.dll -Recurse) {
+            $s = Get-AuthenticodeSignature $f.FullName
+            if ($s.Status -ne 'Valid' -or "$($s.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "tkinter-Datei nicht gültig signiert: $($f.Name)" }
+          }
+
+      - name: Bibliotheken nur aus der Sperrliste (feste Versionen, SHA-256 Pflicht, nur fertige Pakete)
+        run: |
+          $site = 'build/stage/runtime/Lib/site-packages'
+          python -m pip install --disable-pip-version-check --no-cache-dir --only-binary=:all: --require-hashes --no-deps --target $site -r packaging/windows/requirements-windows.lock
+          python -m pip wheel --disable-pip-version-check --no-deps -w build/wheel .
+          python -m pip install --disable-pip-version-check --no-deps --no-index --target $site (Get-ChildItem build/wheel/*.whl).FullName
+
+      - name: Werkzeuge, Anleitungen, Vorübersetzung, Manifest
+        run: |
+          python packaging/windows/build_stage.py assemble --stage build/stage
+          # Vorübersetzt mit dem eingebauten Python: der Programmordner bleibt schreibgeschützt und startet trotzdem schnell.
+          & build/stage/runtime/python.exe -I -m compileall -q -j 0 --invalidation-mode unchecked-hash build/stage/runtime/Lib build/stage/tools
+          if ($LASTEXITCODE) { Write-Host "Hinweis: einzelne Dateien ließen sich nicht vorübersetzen (werden dann beim Start übersetzt)." }
+          python packaging/windows/build_stage.py manifest --stage build/stage --version ${{ steps.v.outputs.app }} --commit ${{ github.sha }} --embed-sha256 ${{ steps.embed.outputs.sha256 }} --python ${{ steps.v.outputs.python }}
+          "{0:N0} MB im Paket" -f ((Get-ChildItem build/stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+
+      - name: Installationsprogramm bauen (Inno Setup)
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc /Qp "/DAppVersion=${{ steps.v.outputs.app }}" "/DStageDir=$PWD\build\stage" "/DOutputDir=$PWD\build\out" packaging/windows/EagleEye.iss
+          if ($LASTEXITCODE) { throw "ISCC fehlgeschlagen" }
+          $setup = Get-Item build/out/EagleEye-Setup-*.exe
+          (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower() + "  " + $setup.Name | Set-Content -Encoding ascii "$($setup.FullName).sha256"
+          Copy-Item build/stage/MANIFEST-SHA256.json build/out/
+          Get-Content "$($setup.FullName).sha256"
+
+      - name: Probeinstallation (still, für alle Benutzer)
+        run: |
+          $setup = (Get-Item build/out/EagleEye-Setup-*.exe).FullName
+          $p = Start-Process -Wait -PassThru -FilePath $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=build\install-1.log'
+          if ($p.ExitCode) { Get-Content build/install-1.log -Tail 40; throw "Installation fehlgeschlagen ($($p.ExitCode))" }
+          $app = "$env:ProgramFiles\EagleEye"
+          foreach ($need in 'runtime\python.exe','runtime\python314._pth','runtime\tcl','runtime\alembic_104_1\env.py','tools\research_exchange\desktop_ui.py','tools\analysis\bridge.py','docs\LIESMICH.md','MANIFEST-SHA256.json','unins000.exe') {
+            if (-not (Test-Path (Join-Path $app $need))) { throw "fehlt nach Installation: $need" }
+          }
+
+      - name: Isolierung, Bibliotheken, tkinter, Startmenü
+        run: |
+          $app = "$env:ProgramFiles\EagleEye"; $py = "$app\runtime\python.exe"
+          $env:PYTHONPATH = 'C:\nicht-vorhanden'; $env:PYTHONHOME = 'C:\nicht-vorhanden'
+          & $py -I -c "import sys, site; assert not any('nicht-vorhanden' in p for p in sys.path), sys.path; assert all(p.lower().startswith(sys.prefix.lower()) for p in sys.path if p), sys.path; assert not site.ENABLE_USER_SITE; print('Importpfad nur im Programmordner:', sys.path)"
+          if ($LASTEXITCODE) { throw "Laufzeit nicht isoliert" }
+          Remove-Item Env:PYTHONPATH, Env:PYTHONHOME
+          & $py -I -c "import eagleeye.interfaces.web.app500, eagleeye.bootstrap.windows_start, personosint.vault_app, personosint.fallakte as f, tkinter, fitz, cv2, numpy, cryptography, docx, segno, pypdfium2, psycopg; assert f.available(); print('Tcl/Tk', tkinter.Tcl().eval('info patchlevel'))"
+          if ($LASTEXITCODE) { throw "Importprüfung fehlgeschlagen" }
+          $menu = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\EagleEye"
+          $shell = New-Object -ComObject WScript.Shell
+          $expected = @{ 'EagleEye Fallakte' = 'fallakte'; 'EagleEye Vault (empfohlen)' = 'vault'; 'PersonOSINT' = 'personosint'; 'PersonOSINT als Server' = 'personosint-server'; 'Quellen prüfen' = 'quellen'; 'Analyse-Arbeitsplatz' = 'analyse'; 'Forschungs-Brücke' = 'forschung'; 'Werkzeuge\Arbeitsordner wählen' = 'datenordner'; 'Werkzeuge\Startdiagnose' = 'diagnose' }
+          foreach ($name in $expected.Keys) {
+            $lnk = $shell.CreateShortcut("$menu\$name.lnk")
+            if ($lnk.TargetPath -ne $py -or $lnk.Arguments -ne "-I -m eagleeye.bootstrap.windows_start $($expected[$name])") { throw "Startmenü-Eintrag falsch: $name -> $($lnk.TargetPath) $($lnk.Arguments)" }
+          }
+          Write-Host "Startmenü: $($expected.Count) Einträge zeigen auf die eingebaute Laufzeit."
+
+      - name: Fallakte über den Startmenü-Starter (Start, Erreichbarkeit, Neustart, Datenerhalt)
+        run: python tools/windows500_acceptance.py --installed "$env:ProgramFiles\EagleEye"
+
+      - name: Weitere Starter (Diagnose, Forschungs-Brücke einrichten, Analyse, Vault)
+        run: |
+          $app = "$env:ProgramFiles\EagleEye"; $py = "$app\runtime\python.exe"
+          $ws = Join-Path $env:RUNNER_TEMP 'ee-diagnose'
+          $env:EAGLEEYE_DATA_DIR = "$ws\workspace"; $env:EAGLEEYE_SETTINGS_DIR = "$ws\config"
+          New-Item -ItemType Directory -Force "$ws\workspace" | Out-Null
+          & $py -I -m eagleeye.bootstrap.windows_start diagnose
+          if ($LASTEXITCODE) { throw "Startdiagnose fehlgeschlagen" }
+          Remove-Item Env:EAGLEEYE_DATA_DIR, Env:EAGLEEYE_SETTINGS_DIR
+          & $py -I -m eagleeye.bootstrap.windows_start skript "$app\tools\research_exchange\install_local.py" --init
+          if ($LASTEXITCODE) { throw "Forschungs-Brücke: Einrichtung fehlgeschlagen" }
+          & $py -I -m eagleeye.bootstrap.windows_start skript "$app\tools\analysis\bridge.py" --help
+          if ($LASTEXITCODE) { throw "Analyse-Arbeitsplatz startet nicht" }
+          $vault = Start-Process -PassThru -FilePath $py -ArgumentList '-I','-m','eagleeye.bootstrap.windows_start','vault','--no-browser','--port','8399','--vault-dir',"$env:RUNNER_TEMP\ee-vault" -RedirectStandardOutput "$env:RUNNER_TEMP\vault.log" -RedirectStandardError "$env:RUNNER_TEMP\vault.err"
+          $ok = $false
+          for ($i = 0; $i -lt 90 -and -not $ok; $i++) {
+            Start-Sleep -Seconds 1
+            try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://127.0.0.1:8399/; $ok = $r.StatusCode -lt 500 } catch { if ($_.Exception.Response) { $ok = [int]$_.Exception.Response.StatusCode -lt 500 } }
+          }
+          Stop-Process -Id $vault.Id -Force -ErrorAction SilentlyContinue
+          Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*windows_start*vault*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+          if (-not $ok) { Get-Content "$env:RUNNER_TEMP\vault.log","$env:RUNNER_TEMP\vault.err" -ErrorAction SilentlyContinue; throw "Vault antwortet nicht" }
+          Write-Host "Vault startet aus dem installierten Paket und antwortet."
+
+      - name: Büro-Signierung mit Wegwerf-Zertifikat (Skripte aus packaging/windows/signing)
+        run: |
+          New-Item -ItemType Directory -Force build/signed | Out-Null
+          Copy-Item build/out/EagleEye-Setup-*.exe, build/out/EagleEye-Setup-*.exe.sha256 build/signed/
+          $cer = Join-Path $env:RUNNER_TEMP 'test.cer'
+          & packaging/windows/signing/Buero-Zertifikat-erstellen.ps1 -Name 'CI Test' -Jahre 1 -Ausgabe $cer
+          $thumb = (Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object Subject -eq 'CN=CI Test - EagleEye intern').Thumbprint
+          if (-not $thumb) { throw "Büro-Zertifikat wurde nicht erzeugt" }
+          $exported = $true
+          try { Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$thumb" -FilePath "$env:RUNNER_TEMP\x.pfx" -Password (ConvertTo-SecureString 'x' -AsPlainText -Force) -ErrorAction Stop | Out-Null } catch { $exported = $false }
+          if ($exported) { throw "Der private Schlüssel ließ sich exportieren" }
+          & packaging/windows/signing/Buero-Zertifikat-vertrauen.ps1 -Zertifikat $cer -Fingerabdruck $thumb
+          $setup = (Get-Item build/signed/EagleEye-Setup-*.exe).FullName
+          & packaging/windows/signing/Setup-signieren.ps1 -Setup $setup
+          $sig = Get-AuthenticodeSignature $setup
+          if ($sig.Status -ne 'Valid' -or -not $sig.TimeStamperCertificate) { throw "Signatur ungültig: $($sig.Status) $($sig.StatusMessage)" }
+          Set-Content -Encoding ascii "$setup.sha256" ('0' * 64 + '  manipuliert')
+          $refused = $false
+          try { & packaging/windows/signing/Setup-signieren.ps1 -Setup $setup } catch { $refused = $true }
+          if (-not $refused) { throw "Signierskript hat eine falsche Prüfsumme nicht erkannt" }
+
+      - name: Update mit dem signierten Setup über die bestehende Installation, Daten bleiben
+        run: |
+          $marker = "$env:LOCALAPPDATA\EagleEye-500\installer-test.txt"
+          New-Item -ItemType Directory -Force (Split-Path $marker) | Out-Null
+          Set-Content $marker 'Falldaten bleiben'
+          $setup = (Get-Item build/signed/EagleEye-Setup-*.exe).FullName
+          $p = Start-Process -Wait -PassThru -FilePath $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=build\install-2.log'
+          if ($p.ExitCode) { throw "Update fehlgeschlagen ($($p.ExitCode))" }
+          if ((Get-Content $marker) -ne 'Falldaten bleiben') { throw "Update hat Benutzerdaten verändert" }
+          python tools/windows500_acceptance.py --installed "$env:ProgramFiles\EagleEye"
+
+      - name: Deinstallation, Daten bleiben erhalten
+        run: |
+          $app = "$env:ProgramFiles\EagleEye"
+          $p = Start-Process -Wait -PassThru -FilePath "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+          for ($i = 0; $i -lt 120 -and (Test-Path "$app\runtime"); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path "$app\runtime") { throw "Programmordner nach Deinstallation nicht entfernt" }
+          if (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\EagleEye\EagleEye Fallakte.lnk") { throw "Startmenü nicht entfernt" }
+          if ((Get-Content "$env:LOCALAPPDATA\EagleEye-500\installer-test.txt") -ne 'Falldaten bleiben') { throw "Deinstallation hat Benutzerdaten entfernt" }
+          Write-Host "Deinstalliert; Benutzerdaten unverändert."
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EagleEye-Windows-Setup-${{ steps.v.outputs.app }}
+          path: |
+            build/out/
+            build/install-*.log
+          if-no-files-found: warn
+          retention-days: 30

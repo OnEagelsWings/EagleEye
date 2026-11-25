@@ -1,0 +1,38 @@
+# EagleEye für Windows: alle Laufzeit-Bibliotheken (Fallakte, Vault, PersonOSINT).
+# Daraus wird requirements-windows.lock mit festen Versionen und SHA-256-Prüfsummen erzeugt:
+#   uv pip compile packaging/windows/requirements-windows.in --python-version 3.14 \
+#     --python-platform x86_64-pc-windows-msvc --generate-hashes --exclude-newer <heute minus 7 Tage> \
+#     --no-header -o packaging/windows/requirements-windows.lock
+# Die Woche Wartezeit (--exclude-newer) hält frisch veröffentlichte, womöglich kompromittierte
+# Paketversionen aus dem Paket heraus. Die Fallakte-Liste muss mit pyproject.toml übereinstimmen
+# (geprüft in tests/test_windows_package.py).
+# Fallakte (aus pyproject.toml)
+pydantic>=2.10,<3
+idna>=3.7,<4
+SQLAlchemy>=2.0,<3
+alembic>=1.14,<2
+fastapi>=0.165,<1
+starlette>=1.6,<2
+uvicorn>=0.34,<1
+cryptography>=50.0.2,<51
+Pillow>=13,<14
+opencv-python-headless>=4.10,<5
+reportlab>=4,<5
+argon2-cffi>=25.1,<26
+python-multipart>=0.0.20,<1
+PyMuPDF>=1.25,<2
+pypdf>=5,<7
+pdfplumber>=0.11,<1
+pytesseract>=0.3.13,<1
+trafilatura>=2.0,<3
+warcio>=1.7,<2
+certifi>=2024.2
+numpy>=1.26,<3
+rapidfuzz>=3.9,<4
+anyascii>=0.3.2,<1
+networkx>=3.3,<4
+# PersonOSINT und Vault (aus PersonOSINT/requirements.txt, ohne Testwerkzeuge)
+python-docx>=1.1,<2
+segno>=1.6,<2
+pypdfium2>=4.30,<6
+psycopg[binary]>=3.2,<4
