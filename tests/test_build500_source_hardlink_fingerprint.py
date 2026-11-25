@@ -23,7 +23,7 @@ def test_source_fingerprint_rejects_hardlinked_manifest(tmp_path: Path) -> None:
     for relative in (
         "INSTALL_EAGLEEYE_500.py", "pyproject.toml",
         "wheelhouse/MANIFEST-SHA256.json", "EAGLEEYE_PRO_458_0.py",
-        "RELEASE_MANIFEST_BUILD_458_0.json",
+        "RELEASE_MANIFEST_BUILD_458_0.json", "START_EAGLEEYE_PRO.bat", "START_EAGLEEYE_PRO.sh", "EAGLEEYE_INSTALL_DIAGNOSE_500.bat",
     ):
         target = root / relative
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -11,6 +11,10 @@ from fastapi.responses import HTMLResponse,RedirectResponse
 from .operations476 import case_access,page
 from .app364 import CSRF_COOKIE
 
+REVIEW_LABELS={'unreviewed':'ungeprüft','reviewed_self':'selbst geprüft','reviewed_second_account':'von einem zweiten Konto geprüft',
+       'needs_rework':'Überarbeitung nötig','rejected':'verworfen'}
+SOURCE_LABELS={'snapshot_match':'Quelle unverändert','changed':'Quelle verändert','missing':'Quelle nicht mehr verfügbar',
+       'extraction_rejected':'Extraktion verworfen'}
 KINDS={'research_note':'Arbeitsnotiz','observation':'Beobachtung','hypothesis':'Hypothese',
        'counterevidence':'Gegenbeleg','uncertainty':'Unsicherheit / offene Frage'}
 BASE_COLUMNS=('finding_id','case_id','document_id','anchor_id','title','interpretation',
@@ -100,7 +104,10 @@ async def bounded_form(request,max_bytes=40000):
         if len(data)+len(chunk)>max_bytes:raise HTTPException(413,'Formular zu groß.')
         data.extend(chunk)
     async def receive():return {'type':'http.request','body':bytes(data),'more_body':False}
-    form=await Request(request.scope,receive=receive).form(max_fields=10,max_files=0,max_part_size=12000)
+    # starlette>=1.0 wendet max_part_size auch auf urlencodierte Felder an (gemessen in %-kodierten Bytes).
+    # Dort begrenzt bereits max_bytes den ganzen Körper; die 12-KB-Grenze bleibt wie bisher für Mehrteil-Formulare.
+    multipart=request.headers.get('content-type','').lower().startswith('multipart/')
+    form=await Request(request.scope,receive=receive).form(max_fields=10,max_files=0,max_part_size=12000 if multipart else max(max_bytes,12000))
     if len(form.multi_items())>10:raise HTTPException(413,'Zu viele Formularfelder.')
     return form
 
@@ -160,11 +167,13 @@ def attach_findings(app,build):
         form+='<form method="post"><input type="hidden" name="case_id" value="'+escape(case_id,quote=True)+'"><input type="hidden" name="csrf" value="'+token+'">'
         form+='<label>Originalfundstelle<select name="anchor_ref" required>'+(''.join(choices) or '<option value="">Zuerst ein lesbares Dokument importieren</option>')+'</select></label>'
         form+='<label>Einordnung<select name="kind">'+''.join('<option value="'+k+'">'+v+'</option>' for k,v in KINDS.items())+'</select></label>'
+        extra_field=getattr(app.state,'finding_form_extra',None)  # later builds: protection class
+        if extra_field:form+=extra_field()
         form+='<label>Kurzbezeichnung<input name="title" required minlength="4" maxlength="180"></label><label>Eigene Beobachtung, Unsicherheit oder Gegenbeleg<textarea name="interpretation" required minlength="10" maxlength="2400" rows="5"></textarea></label><button>Mit Quelle als Arbeitsbefund speichern</button></form></section>'
         if 'research.run' not in ctx.team_governance_359.effective_capabilities(user,case_id):
             form='<p>Du kannst die Arbeitsbefunde lesen. Zum Anlegen ist eine Rechercheberechtigung in diesem Fall erforderlich.</p>'
         rows=notes_for_case(app,case_id,offset=offset,limit=50)
-        items=''.join('<article class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(KINDS.get(row['kind'],'Arbeitsnotiz'))+' · '+escape(row['interpretation'])+'</p><blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape('/documents458?'+urlencode({'case_id':case_id,'document_id':row['document_id'],'anchor_id':row['anchor_id']})+'#anchor-'+row['anchor_id'],quote=True)+'">Originalfundstelle öffnen</a><p>Status: '+escape(row['review_state'])+' · '+escape(row['created_by'])+'</p></article>' for row in rows)
+        items=''.join('<article class="card"><h2>'+escape(row['title'])+'</h2><p>'+escape(KINDS.get(row['kind'],'Arbeitsnotiz'))+' · '+escape(row['interpretation'])+'</p><blockquote>'+escape(row['source_excerpt'])+'</blockquote><a href="'+escape('/documents458?'+urlencode({'case_id':case_id,'document_id':row['document_id'],'anchor_id':row['anchor_id']})+'#anchor-'+row['anchor_id'],quote=True)+'">Originalfundstelle öffnen</a><p>Status: '+escape(REVIEW_LABELS.get(row['review_state'],row['review_state']))+' <small>('+escape(row['review_state'])+')</small> · '+escape(row['created_by'])+'</p></article>' for row in rows)
         nav=''
         for value,label in ((max(0,offset-50),'Neuere Arbeitsbefunde'),(offset+50,'Ältere Arbeitsbefunde')):
             if (offset>0 and value<offset) or (len(rows)==50 and value>offset):nav+='<a href="'+escape('/workbench/findings?'+urlencode({'case_id':case_id,'offset':value,'document_id':document_id}),quote=True)+'">'+label+'</a> '
@@ -188,6 +197,8 @@ def attach_findings(app,build):
             source_url=doc['source_url'],created_by=user['username'],created_at=datetime.now(timezone.utc).isoformat(),
             review_state='unreviewed',review_reason='',reviewed_by='',kind=kind,anchor_hash=anchor['record_hash'],legacy_imported=0)
         row['record_hash']=finding_hash(row);columns=BASE_COLUMNS+('record_hash',)
+        created_hook=getattr(app.state,'finding_created_hook',None)
+        if created_hook:created_hook.validate(form)
         with notes_db(app) as db:
             ctx.document_intelligence_458._identity(user,case_id,'research.run',case_id)
             current,_,current_anchor=get_anchor(ctx,user,case_id,doc_id,anchor_id)
@@ -195,4 +206,5 @@ def attach_findings(app,build):
             db.execute(INSERT_FINDING_SQL,tuple(row[k] for k in columns))
             ctx.audit.log('human_finding_created_478','finding',row['finding_id'],case_id,
                 {'actor':user['username'],'document_id':doc_id,'anchor_hash':row['anchor_hash'],'claims_created':0})
+            if created_hook:created_hook(user,case_id,row,form)
         return RedirectResponse('/workbench/findings?'+urlencode({'case_id':case_id,'document_id':doc_id}),status_code=303)

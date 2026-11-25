@@ -4,6 +4,13 @@ import pytest
 from eagleeye.interfaces.web.app495 import create_workspace_app495
 from eagleeye.interfaces.web.personosint495 import external_links
 from test_build471_local_ai import workspace  # noqa: F401
+from test_public_sources501 import token
+
+
+def search(client, workspace, case_id, kind, term):
+    """Suchbegriffe werden gepostet (seit fe98ba7): Namen stehen nie in Adresszeile oder Verlauf."""
+    return client.post("/workbench/personosint495",
+                       data={"case_id": case_id, "kind": kind, "term": term, "csrf": token(workspace)})
 
 ws = pytest.mark.parametrize("workspace", [create_workspace_app495], indirect=True)
 
@@ -30,8 +37,10 @@ def test_source_catalog_is_explicit_manual_network_only():
 @ws
 def test_person_osint_uses_existing_case_auth_and_full_pipeline(workspace):
     app, client, user, case_id, *_ = workspace
-    response = client.get("/workbench/personosint495",
-                          params={"case_id":case_id, "kind":"person", "term":"Müller, Max"})
+    legacy = client.get("/workbench/personosint495",
+                        params={"case_id":case_id, "kind":"person", "term":"Müller, Max"})
+    assert legacy.status_code == 200 and "M%C3%BCller" not in legacy.text   # GET ?term= wird ignoriert
+    response = search(client, workspace, case_id, "person", "Müller, Max")
     assert response.status_code == 200
     assert "PersonOSINT Intelligence" in response.text
     assert "github.com" in response.text
@@ -68,8 +77,7 @@ def test_manual_research_survives_optional_provider_catalog_failure(workspace, m
         raise RuntimeError("sensitive registry backend failure")
 
     monkeypatch.setattr(registry, "list_providers", unavailable)
-    response = client.get("/workbench/personosint495",
-                          params={"case_id": case_id, "kind": "person", "term": "Müller"})
+    response = search(client, workspace, case_id, "person", "Müller")
     assert response.status_code == 200
     assert "M%C3%BCller" in response.text
     assert "sensitive registry backend failure" not in response.text

@@ -656,7 +656,62 @@ def test_build490_rejects_in_workspace_evidence_alias(monkeypatch, tmp_path):
         evidence.symlink_to(other, target_is_directory=True)
     except (OSError, NotImplementedError):
         pytest.skip("Directory symlinks are not supported by this test environment")
-    with pytest.raises(ValueError, match="module directories cannot be symbolic links"):
+    # Seit der Zusammenführung mit dem Build-490-Strang prüft paths.py auch Zwischenverzeichnisse ("cannot traverse");
+    # beide Formulierungen bedeuten dieselbe Ablehnung.
+    with pytest.raises(ValueError, match="module directories cannot (be|traverse) symbolic links"):
         RuntimePaths.resolve(install_dir=tmp_path / "install", base_dir=root)
     assert evidence.is_symlink()
     assert not (root / "data" / "eagleeye.db").exists()
+
+
+def test_internal_release_rejects_hardlinked_database_and_wal(monkeypatch, tmp_path):
+    """An in-workspace hard link must not alias an old SQLite database."""
+    import os
+    import pytest
+    from eagleeye.bootstrap import paths
+
+    monkeypatch.setattr(paths, "BUILD", "490.0")
+    root = tmp_path / "internal"
+    data = root / "data"
+    data.mkdir(parents=True)
+    old = tmp_path / "legacy398.db"
+    old.write_bytes(b"legacy unchanged")
+    for suffix in ("", "-wal", "-shm"):
+        alias = data / ("eagleeye.db" + suffix)
+        try:
+            os.link(old, alias)
+        except OSError as exc:
+            pytest.skip(f"Filesystem does not support hard links: {exc}")
+        with pytest.raises(ValueError, match="hard-linked"):
+            paths.RuntimePaths.resolve(
+                install_dir=tmp_path / "install", base_dir=root
+            )
+        alias.unlink()
+    assert old.read_bytes() == b"legacy unchanged"
+    assert not (root / "reports").exists()
+
+
+def test_internal_workspace_picker_rejects_redirected_graph_and_dossier_stores(monkeypatch, tmp_path):
+    """Reject a redirected evidence/graph/export directory before saving workspace.json."""
+    import pytest
+
+    monkeypatch.setattr(desktop476, "BUILD", "490.0")
+    monkeypatch.setenv("EAGLEEYE_SETTINGS_DIR", str(tmp_path / "settings"))
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    for relative in (
+        "data/interactive_graph_workspace_103",
+        "data/canonical_artifacts_103_1",
+        "data/evidence_preservation_121",
+        "reports/casefile_pro_90",
+    ):
+        root = tmp_path / ("workspace-" + relative.replace("/", "-"))
+        target = root / relative
+        target.parent.mkdir(parents=True)
+        try:
+            target.symlink_to(outside, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("Directory symlinks unavailable on this runner")
+        with pytest.raises(ValueError, match="umgeleitete Datenverzeichnisse"):
+            desktop476.remember_workspace(root)
+        assert not (tmp_path / "settings" / "workspace.json").exists()

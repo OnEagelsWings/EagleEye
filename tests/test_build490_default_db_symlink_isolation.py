@@ -27,3 +27,39 @@ def test_internal_default_database_symlink_cannot_escape_workspace(tmp_path, mon
 
     assert legacy.read_bytes() == b"legacy data must remain untouched"
     assert not (workspace / "reports").exists()
+
+
+def test_current_build_explicit_database_rejects_in_workspace_parent_alias(tmp_path, monkeypatch):
+    """A symlinked parent must not silently alias a second case database."""
+    monkeypatch.setattr(paths, "BUILD", "490")
+    workspace = tmp_path / "internal"
+    install = tmp_path / "app"
+    install.mkdir()
+    actual = workspace / "data" / "actual"
+    actual.mkdir(parents=True)
+    alias = workspace / "data" / "alias"
+    try:
+        alias.symlink_to(actual, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Symlinks are unavailable in this environment")
+    target = alias / "cases.db"
+    with pytest.raises(ValueError, match="cannot (traverse symbolic links|be a symbolic link)"):
+        paths.RuntimePaths.resolve(
+            install_dir=install, base_dir=workspace, db_path=target
+        )
+    assert not (actual / "cases.db").exists()
+    assert not (workspace / "reports").exists()
+
+
+@pytest.mark.parametrize("suffix", ["", "-wal", "-shm"])
+def test_current_build_rejects_nonfile_sqlite_targets_before_workspace_creation(tmp_path, monkeypatch, suffix):
+    monkeypatch.setattr(paths, "BUILD", "490")
+    workspace = tmp_path / "internal"
+    install = tmp_path / "app"
+    install.mkdir()
+    target = workspace / "data" / ("eagleeye.db" + suffix)
+    target.mkdir(parents=True)
+    with pytest.raises(ValueError, match="must be regular files"):
+        paths.RuntimePaths.resolve(install_dir=install, base_dir=workspace)
+    assert target.is_dir()
+    assert not (workspace / "reports").exists()

@@ -115,14 +115,18 @@ class PersistentJobEngine:
             return self.db.all("SELECT * FROM phase15_jobs WHERE case_id=? ORDER BY priority ASC,created_at ASC LIMIT ?", (str(case_id), n))
         return self.db.all("SELECT * FROM phase15_jobs ORDER BY created_at DESC LIMIT ?", (n,))
 
-    def claim(self, *, worker_id: str, lease_seconds: int = 120) -> dict[str, Any] | None:
+    def claim(self, *, worker_id: str, lease_seconds: int = 120, job_types: list[str] | None = None) -> dict[str, Any] | None:
+        """Claim the next queued job. ``job_types`` restricts a specialised worker to its own
+        job types, so it never takes work it cannot execute; None keeps the original behaviour."""
         now = _now_dt()
         now_s = now.isoformat(timespec="seconds")
         expiry = (now + timedelta(seconds=max(30, min(int(lease_seconds), 3600)))).isoformat(timespec="seconds")
         with self.db.transaction(immediate=True):
             # Recover expired leases without losing attempt history.
             self.db.execute("UPDATE phase15_jobs SET status='queued',lease_owner='',lease_expires_at='',updated_at=? WHERE status='running' AND lease_expires_at<>'' AND lease_expires_at<?", (now_s, now_s))
-            row = self.db.one("SELECT job_id FROM phase15_jobs WHERE status='queued' AND available_at<=? ORDER BY priority ASC,created_at ASC LIMIT 1", (now_s,))
+            types = [str(t)[:120] for t in (job_types or [])]
+            type_filter = (" AND job_type IN (" + ",".join("?" for _ in types) + ")") if types else ""
+            row = self.db.one("SELECT job_id FROM phase15_jobs WHERE status='queued' AND available_at<=?" + type_filter + " ORDER BY priority ASC,created_at ASC LIMIT 1", (now_s, *types))
             if not row:
                 return None
             cur = self.db.execute("UPDATE phase15_jobs SET status='running',attempts=attempts+1,lease_owner=?,lease_expires_at=?,updated_at=? WHERE job_id=? AND status='queued'", (str(worker_id)[:120], expiry, now_s, row["job_id"]))

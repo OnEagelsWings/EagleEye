@@ -123,8 +123,19 @@ def _promote_reviewed_document(ctx, user, case_id, document_id, rationale):
         return {"observation_id": row["observation_id"],
                 "evidence_id": row["evidence_id"], "already_linked": True}
     doc, raw, anchors = _reviewed_bytes(ctx, user, case_id, document_id)
-    # No remote access: the optional source URL remains user-supplied metadata.
+    # No remote access: the optional source URL remains user-supplied metadata,
+    # unless a later build captured the document itself (WARC-backed web capture).
     url = str(doc.get("source_url") or "")
+    web_capture = None
+    hook = getattr(ctx, "document_web_provenance", None)
+    if hook is not None:
+        try:
+            web_capture = hook(case_id, document_id)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
+        if web_capture is not None and not web_capture.get("integrity_verified"):
+            raise HTTPException(409, "Die gesicherte WARC-Datei dieses Web-Belegs ist nicht mehr unverändert. "
+                                     "Übernahme als Evidence verweigert.")
     # The 421 registry is intentionally GLOBAL and listable after login.
     # It must NEVER contain case-scoped titles, original URLs or document IDs.
     # Those fields belong only in the ACL-protected acquisition event below.
@@ -151,10 +162,11 @@ def _promote_reviewed_document(ctx, user, case_id, document_id, rationale):
             "document_sha256": doc["document_sha256"],
             "anchor_ids": [a["anchor_id"] for a in anchors[:3200]],
             "human_rationale": rationale,
-            "source_url_user_supplied_unverified": bool(url),
+            "source_url_user_supplied_unverified": bool(url) and web_capture is None,
             "network_fetch_performed": False,
             "document_extraction_reviewed_by": doc.get("review_by", ""),
             "promoted_from": "build458_reviewed_document",
+            **({"web_capture": web_capture} if web_capture is not None else {}),
         },
         usage={"public_or_lawfully_held": True, "truth_determined": False,
                "review_required": True},

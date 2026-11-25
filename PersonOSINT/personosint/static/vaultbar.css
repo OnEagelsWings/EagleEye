@@ -1,0 +1,42 @@
+/* Vault-Leiste über der Anwendung */
+.vb { flex: none; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #071426; color: #e2e8f0;
+  font: 14px/1.2 "Segoe UI", system-ui, sans-serif; border-bottom: 1px solid #1e3a5f; z-index: 1600; position: relative; }
+.vb b { color: #fff; }
+.vb .vb-brand { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.vb .vb-brand svg { width: 20px; height: 20px; }
+.vb .vb-sep { width: 1px; height: 22px; background: #1e3a5f; }
+.vb .vb-net { display: flex; align-items: center; gap: 8px; }
+.vb .vb-pill { border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 12.5px; letter-spacing: .2px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.vb .vb-pill.off { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+.vb .vb-pill.on { background: #facc15; color: #0b1f38; animation: vb-pulse 2.4s infinite; }
+@keyframes vb-pulse { 50% { box-shadow: 0 0 0 4px rgba(250, 204, 21, .25); } }
+.vb button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 5px 11px; cursor: pointer; background: #1e3a5f; color: #fff; white-space: nowrap; }
+.vb button:hover { background: #26497a; }
+.vb button.vb-open { background: #facc15; color: #0b1f38; }
+.vb button.vb-lock { background: #dc2626; }
+.vb button.vb-lock:hover { background: #b91c1c; }
+.vb .vb-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.vb .vb-muted { color: #94a3b8; font-size: 12.5px; white-space: nowrap; }
+.vb .vb-saved.dirty { color: #facc15; }
+.vb-modal-bg { position: fixed; inset: 0; background: rgba(7, 20, 38, .6); display: grid; place-items: center; z-index: 2500; padding: 16px; }
+.vb-modal { background: #fff; color: #0f172a; border-radius: 14px; width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+.vb-modal h2 { margin: 0; font-size: 1.15rem; padding: 16px 18px 0; }
+.vb-modal .vb-body { padding: 10px 18px; }
+.vb-modal .vb-foot { padding: 10px 18px 16px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.vb-modal button { font: inherit; font-weight: 600; border: 0; border-radius: 9px; padding: 9px 15px; cursor: pointer; background: #e2e8f0; }
+.vb-modal button.primary { background: #12305a; color: #fff; }
+.vb-modal button.gold { background: #facc15; color: #0b1f38; }
+.vb-modal label { display: block; margin: 8px 0; font-weight: 600; font-size: 14px; }
+.vb-modal input, .vb-modal select { width: 100%; font: inherit; padding: 8px 10px; border: 1.5px solid #dbe3ee; border-radius: 9px; margin-top: 4px; font-weight: 400; }
+.vb-modal .vb-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.vb-modal .vb-choices button.sel { background: #12305a; color: #fff; }
+.vb-modal .vb-note { background: #f1f5f9; border-radius: 9px; padding: 9px 11px; font-size: 13.5px; margin: 8px 0; }
+.vb-modal .vb-note.warn { background: #fffbeb; border: 1px solid #fde68a; }
+.vb-modal .vb-err { background: #fef2f2; color: #991b1b; border-radius: 9px; padding: 8px 11px; font-size: 13.5px; margin: 8px 0; }
+.vb-modal table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vb-modal td, .vb-modal th { text-align: left; padding: 5px 6px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+.vb-modal .ok { color: #15803d; font-weight: 700; } .vb-modal .no { color: #b91c1c; font-weight: 700; }
+.vb-modal .vb-rk { font: 700 1.1rem/1.5 ui-monospace, Consolas, monospace; background: #0b1f38; color: #facc15; border-radius: 10px; padding: 12px; text-align: center; user-select: all; }
+@media (max-width: 860px) { .vb .vb-hide-sm { display: none; } }
+@media (max-width: 900px) { body.has-vb .sidebar { top: 96px !important; } }

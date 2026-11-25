@@ -53,6 +53,18 @@ def attach_public_sources501(app, build):
     @app.get(PATH, response_class=HTMLResponse)
     def workbench(request: Request, case_id: str = "", kind: str = "topic", term: str = "", plan_id: str = ""):
         user, _ = case_access(app, request, case_id)
+        return render(request, user, case_id, kind, term, plan_id)
+
+    # Posted filter: search terms (often names) stay out of the address bar and history.
+    @app.post(PATH + "/filter", response_class=HTMLResponse)
+    async def workbench_filter(request: Request):
+        form = await bounded_form(request, max_bytes=4096)
+        case_id = str(form.get("case_id") or "")
+        user, _ = case_access(app, request, case_id)
+        verify_post(app, request, user, form.get("csrf", ""))
+        return render(request, user, case_id, str(form.get("kind") or "topic"), str(form.get("term") or ""), "")
+
+    def render(request, user, case_id, kind, term, plan_id):
         try:
             rows = sources.catalog(ctx, kind, term)
         except ValueError as exc:
@@ -64,8 +76,8 @@ def attach_public_sources501(app, build):
         body = ('<p>Öffentliche Quellen nach Thema, Person, Unternehmen, Benutzername, Webadresse oder Ort auswählen. '
                 'Die Auswahl und die Vorbereitung eines Suchpakets lösen keine externen Abfragen aus.</p>'
                 '<p>Treffer bleiben ungeprüfte Hinweise. Bei Personen sind Namensvarianten, Kennungen, '
-                'beruflicher Kontext und zeitliche Gültigkeit am Original abzugleichen.</p>'
-                '<form method="get" action="' + PATH + '">' + _hidden("case_id", case_id) +
+                'beruflicher Kontext und zeitliche Gültigkeit am Original abzugleichen.</p>' +
+                _form(PATH + "/filter", request, case_id) +
                 '<label>Rechercheart<select name="kind">' + options + '</select></label>'
                 '<label>Suchbegriff<input name="term" maxlength="190" value="' + escape(term, quote=True) +
                 '"></label><button>Passende Quellen anzeigen</button></form>')

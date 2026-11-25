@@ -85,35 +85,50 @@ def tesseract_page(image) -> list[dict]:
             for _, g in sorted(groups.items())]
 
 
-def analyse_pdf(raw: bytes, *, ocr_pages: list[int], ocr_engine=None) -> dict:
-    """Pure analysis: table, heading and OCR candidates per page (no persistence)."""
+class Cancelled(Exception):
+    """The user stopped the run; nothing has been written."""
+
+
+def analyse_pdf(raw: bytes, *, ocr_pages: list[int], ocr_engine=None, structure: bool = True,
+                progress=None, should_stop=None) -> dict:
+    """Pure analysis: table, heading and OCR candidates per page (no persistence).
+
+    ``structure=False`` runs the OCR pass only. ``progress(done, total)`` is called after each
+    page; ``should_stop()`` is asked before each page and aborts with ``Cancelled``.
+    """
     import fitz
 
     doc = fitz.open(stream=raw, filetype="pdf")
     items, confidences, ocr_done = [], [], []
     try:
-        sizes = []
-        for page in doc:
-            for block in page.get_text("dict").get("blocks", []):
-                for line in block.get("lines", []):
-                    for span in line.get("spans", []):
-                        if span.get("text", "").strip():
-                            sizes.append(round(float(span.get("size", 0)), 1))
-        body = statistics.median(sizes) if sizes else 0
+        body = 0
+        if structure:
+            sizes = []
+            for page in doc:
+                for block in page.get_text("dict").get("blocks", []):
+                    for line in block.get("lines", []):
+                        for span in line.get("spans", []):
+                            if span.get("text", "").strip():
+                                sizes.append(round(float(span.get("size", 0)), 1))
+            body = statistics.median(sizes) if sizes else 0
+        total = len(doc)
         for index, page in enumerate(doc):
+            if should_stop is not None and should_stop():
+                raise Cancelled()
             number = index + 1
-            try:
-                tables = page.find_tables().tables
-            except Exception:
-                tables = []
-            for table in tables:
-                rows = [" | ".join(_clean(c, 300) for c in row if c is not None) for row in (table.extract() or [])]
-                text = _clean(" ; ".join(r for r in rows if r.strip()))
-                if len(text) >= 8:
-                    items.append({"page_number": number, "anchor_kind": "table", "text_excerpt": text,
-                                  "bbox": [round(float(v), 2) for v in table.bbox],
-                                  "extraction_method": "pymupdf_table"})
-            if body:
+            if structure:
+                try:
+                    tables = page.find_tables().tables
+                except Exception:
+                    tables = []
+                for table in tables:
+                    rows = [" | ".join(_clean(c, 300) for c in row if c is not None) for row in (table.extract() or [])]
+                    text = _clean(" ; ".join(r for r in rows if r.strip()))
+                    if len(text) >= 8:
+                        items.append({"page_number": number, "anchor_kind": "table", "text_excerpt": text,
+                                      "bbox": [round(float(v), 2) for v in table.bbox],
+                                      "extraction_method": "pymupdf_table"})
+            if structure and body:
                 for block in page.get_text("dict").get("blocks", []):
                     for line in block.get("lines", []):
                         spans = [s for s in line.get("spans", []) if s.get("text", "").strip()]
@@ -143,13 +158,33 @@ def analyse_pdf(raw: bytes, *, ocr_pages: list[int], ocr_engine=None) -> dict:
                 ocr_done.append(number)
             if len(items) > MAX_NEW_ANCHORS:
                 raise ValueError("Zu viele neue Anker für eine automatische Ergänzung.")
+            if progress is not None:
+                progress(number, total)
     finally:
         doc.close()
     return {"items": items, "ocr_pages": ocr_done,
             "ocr_mean_confidence": round(statistics.fmean(confidences), 1) if confidences else None}
 
 
-def enrich_document(ctx, *, identity: dict, document_id: str, ocr_engine=None, engine_name: str = "") -> dict:
+def enrichment_for(ctx, document_id: str) -> dict | None:
+    row = ctx.db.one("SELECT * FROM document_enrichment_492 WHERE document_id=?", (document_id,))
+    return dict(row) if row else None
+
+
+def pending_work(doc: dict, enrichment: dict | None, ocr_ready: bool) -> str:
+    """What a run would do for this document: "full", "ocr" or "" (nothing left)."""
+    if doc["media_type"] != "application/pdf" or doc["state"] != "review_required":
+        return ""
+    if enrichment is None:
+        return "full"
+    if not enrichment["ocr_engine"] and doc["ocr_required"] and ocr_ready:
+        return "ocr"  # first run had no text recognition installed
+    return ""
+
+
+def enrich_document(ctx, *, identity: dict, document_id: str, ocr_engine=None, engine_name: str = "",
+                    progress=None, should_stop=None) -> dict:
+    """Add structure and OCR anchors. A second run is allowed only to catch up on OCR."""
     service = ctx.document_intelligence_458
     doc = service._document(document_id)
     service._identity(identity, doc["case_id"], "research.run", document_id)
@@ -159,17 +194,21 @@ def enrich_document(ctx, *, identity: dict, document_id: str, ocr_engine=None, e
         raise ValueError("Das Dokument wurde bereits geprüft. Anker lassen sich nur vor der Extraktionsprüfung ergänzen.")
     if doc["record_hash"] != service._rh(doc) or not service._payload_current(doc):
         raise ValueError("Originalbeleg wurde verändert oder ist nicht verfügbar.")
-    if ctx.db.one("SELECT 1 FROM document_enrichment_492 WHERE document_id=?", (document_id,)):
+    previous = enrichment_for(ctx, document_id)
+    if previous is not None and _hash(previous) != previous["record_hash"]:
+        raise ValueError("Der Nachweis der bisherigen Ergänzung wurde verändert.")
+    mode = pending_work(doc, previous, ocr_engine is not None)
+    if not mode:
         raise ValueError("Für dieses Dokument wurden die Anker bereits ergänzt.")
     raw = (service.root / doc["stored_relpath"]).read_bytes()
     existing = service.anchors(identity=identity, document_id=document_id)["anchors"]
     text_pages = {a["page_number"] for a in existing if a["extraction_method"] == "native_pdf_text"}
     ocr_pages = [p for p in range(1, int(doc["page_count"]) + 1) if p not in text_pages]
-    result = analyse_pdf(raw, ocr_pages=ocr_pages, ocr_engine=ocr_engine)
+    result = analyse_pdf(raw, ocr_pages=ocr_pages, ocr_engine=ocr_engine, structure=mode == "full",
+                         progress=progress, should_stop=should_stop)
     counts = {"table": 0, "heading": 0, "ocr_paragraph": 0}
     with ctx.db.transaction(immediate=True):
-        current = service._document(document_id)
-        if current != doc:
+        if service._document(document_id) != doc or enrichment_for(ctx, document_id) != previous:
             raise ValueError("Dokument wurde während der Ergänzung verändert.")
         ordinals: dict[tuple, int] = {}
         for item in result["items"]:
@@ -188,19 +227,24 @@ def enrich_document(ctx, *, identity: dict, document_id: str, ocr_engine=None, e
             ctx.db.execute("INSERT INTO phase20_document_anchor_458 VALUES(" + ",".join("?" for _ in anchor) + ")",
                            tuple(anchor.values()))
             counts[item["anchor_kind"]] += 1
-        row = {"document_id": document_id, "case_id": doc["case_id"], "document_sha256": doc["document_sha256"],
-               "tables": counts["table"], "headings": counts["heading"], "ocr_paragraphs": counts["ocr_paragraph"],
-               "ocr_pages": json.dumps(result["ocr_pages"]), "ocr_mean_confidence": result["ocr_mean_confidence"],
-               "ocr_engine": engine_name if ocr_engine is not None else "",
-               "created_by": str(identity["username"]), "created_at": _now()}
-        row["record_hash"] = _hash(row)
-        ctx.db.execute("INSERT INTO document_enrichment_492 VALUES(" + ",".join("?" for _ in row) + ")",
-                       tuple(row.values()))
-        ctx.audit.log("document_structure_enriched_492", "document", document_id, doc["case_id"],
-                      {**counts, "ocr_pages": result["ocr_pages"], "review_still_required": True})
-    return {**row, "pages_without_text": ocr_pages, "ocr_skipped": bool(ocr_pages) and ocr_engine is None}
-
-
-def enrichment_for(ctx, document_id: str) -> dict | None:
-    row = ctx.db.one("SELECT * FROM document_enrichment_492 WHERE document_id=?", (document_id,))
-    return dict(row) if row else None
+        used_engine = engine_name if ocr_engine is not None else ""
+        if mode == "full":
+            row = {"document_id": document_id, "case_id": doc["case_id"], "document_sha256": doc["document_sha256"],
+                   "tables": counts["table"], "headings": counts["heading"], "ocr_paragraphs": counts["ocr_paragraph"],
+                   "ocr_pages": json.dumps(result["ocr_pages"]), "ocr_mean_confidence": result["ocr_mean_confidence"],
+                   "ocr_engine": used_engine, "created_by": str(identity["username"]), "created_at": _now()}
+            row["record_hash"] = _hash(row)
+            ctx.db.execute("INSERT INTO document_enrichment_492 VALUES(" + ",".join("?" for _ in row) + ")",
+                           tuple(row.values()))
+        else:
+            row = {**previous, "ocr_paragraphs": counts["ocr_paragraph"], "ocr_pages": json.dumps(result["ocr_pages"]),
+                   "ocr_mean_confidence": result["ocr_mean_confidence"], "ocr_engine": used_engine}
+            row["record_hash"] = _hash(row)
+            ctx.db.execute("UPDATE document_enrichment_492 SET ocr_paragraphs=?,ocr_pages=?,ocr_mean_confidence=?,"
+                           "ocr_engine=?,record_hash=? WHERE document_id=?",
+                           (row["ocr_paragraphs"], row["ocr_pages"], row["ocr_mean_confidence"], row["ocr_engine"],
+                            row["record_hash"], document_id))
+        ctx.audit.log("document_structure_enriched_492" if mode == "full" else "document_ocr_added_492",
+                      "document", document_id, doc["case_id"],
+                      {**counts, "ocr_pages": result["ocr_pages"], "pass": mode, "review_still_required": True})
+    return {**row, "mode": mode, "pages_without_text": ocr_pages, "ocr_skipped": bool(ocr_pages) and ocr_engine is None}

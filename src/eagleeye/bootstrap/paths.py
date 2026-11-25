@@ -26,9 +26,9 @@ def default_runtime_root() -> Path:
         return parent / "EagleEye-500" / "workspace"
     if os.name == "nt":
         parent = Path(os.environ.get("LOCALAPPDATA", str(Path.home()/"AppData"/"Local")))
-        return parent / ("EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
+        return parent / ("EagleEye-500" if str(BUILD).split(".", 1)[0] == "500" else "EagleEye-Internal" if _internal_release_build() else "EagleEye") / "Spearhead"
     parent = Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local"/"share")))
-    return parent / ("eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
+    return parent / ("eagleeye-500" if str(BUILD).split(".", 1)[0] == "500" else "eagleeye-internal" if _internal_release_build() else "eagleeye-spearhead")
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,19 +74,37 @@ class RuntimePaths:
             # A hard link can alias an old installation without appearing as a
             # symlink. SQLite may modify the linked inode or its WAL sidecars.
             target_db = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
+            # Reject directories, devices and named pipes before creating any
+            # workspace state. SQLite must only open regular database files.
+            for suffix in ("", "-wal", "-shm"):
+                entry = Path(str(target_db) + suffix)
+                if entry.exists() and not entry.is_file():
+                    raise ValueError("Internal release database and sidecars must be regular files")
             for suffix in ("", "-wal", "-shm"):
                 candidate = Path(str(target_db) + suffix)
-                if candidate.exists() and candidate.stat().st_nlink > 1:
-                    raise ValueError("Internal release database files cannot be hard linked")
+                if candidate.is_file() and candidate.stat().st_nlink > 1:
+                    raise ValueError("Internal release database files cannot be hard linked "
+                                     "(hard-linked database and sidecars are rejected)")
 
-        if db_path is not None and _internal_release_build():
-            # SQLite can write to WAL/SHM siblings even when the main DB is safe.
-            # Reject redirected sidecars before creating any workspace folders.
-            candidate = Path(db_path)
+        if _internal_release_build():
+            # The implicit default database needs the same protection as an
+            # explicitly selected path. Otherwise a pre-existing symlink at
+            # data/eagleeye.db (or its WAL/SHM siblings) could redirect writes
+            # into an unrelated or legacy workspace before initialization.
+            candidate = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
             if any(Path(str(candidate) + suffix).is_symlink() for suffix in ("", "-wal", "-shm")):
                 raise ValueError("Internal release database cannot contain symbolic links (including WAL/SHM sidecars)")
 
-        if db_path is not None and _internal_release_build() and Path(db_path).name in {
+        if _internal_release_build():
+            # A hard-linked SQLite file can alias a legacy store without any
+            # symlink or path escape. Reject it before workspace initialization.
+            candidate_db = Path(db_path) if db_path is not None else runtime_root / "data" / "eagleeye.db"
+            for suffix in ("", "-wal", "-shm"):
+                candidate_file = Path(str(candidate_db) + suffix)
+                if candidate_file.exists() and candidate_file.stat().st_nlink > 1:
+                    raise ValueError("Internal release database and sidecars cannot be hard-linked")
+
+        if db_path is not None and _internal_release_build() and Path(db_path).name.casefold() in {
             "eagleeye_pro_95_0.db", "eagleeye_pro_95_0.db-wal",
             "eagleeye_pro_95_0.db-shm",
         }:
@@ -107,6 +125,16 @@ class RuntimePaths:
             workspace = runtime_root.resolve()
             if not chosen.is_relative_to(workspace) or chosen == workspace:
                 raise ValueError("Internal release database must stay inside its workspace")
+            # Reject aliases between the workspace and explicit database.
+            # Even in-workspace aliases can silently merge separate case stores.
+            raw_candidate = Path(db_path).absolute()
+            raw_workspace = runtime_root.absolute()
+            if raw_candidate.is_relative_to(raw_workspace):
+                cursor = raw_workspace
+                for component in raw_candidate.relative_to(raw_workspace).parts:
+                    cursor = cursor / component
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release database path cannot traverse symbolic links")
             installation = Path(install_dir).resolve()
             if chosen.is_relative_to(installation):
                 raise ValueError("Internal release database must be separate from installation")
@@ -164,8 +192,13 @@ class RuntimePaths:
             for directory in values.values():
                 # Even an in-workspace alias can merge distinct module stores,
                 # compromising evidence provenance and backup isolation.
-                if directory.is_symlink():
-                    raise ValueError("Internal release module directories cannot be symbolic links")
+                # Check intermediate components too: a nested in-workspace
+                # alias can merge two independent stores without escaping root.
+                cursor = workspace
+                for component in directory.relative_to(runtime_root).parts:
+                    cursor = cursor / component
+                    if cursor.is_symlink():
+                        raise ValueError("Internal release module directories cannot traverse symbolic links")
                 target = directory.resolve()
                 if not target.is_relative_to(workspace):
                     raise ValueError("Internal release module directories must stay inside the workspace")

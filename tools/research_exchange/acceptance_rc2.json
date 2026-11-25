@@ -1,0 +1,52 @@
+{
+    "app_id":  "eagleeye-public-research-bridge",
+    "version":  "1.0.0-rc2",
+    "source_commit":  "991753fc5faac703263eea8852c61c0d2be56ba2",
+    "archive_sha256":  "e8974769d0ed9814dd448eddaa7a4f9856f8ad7eecc0edd2d174478253d5de82",
+    "archive_bytes":  12770165,
+    "architecture":  "windows-x64",
+    "distribution":  "unsigned-internal-preview",
+    "tests":  {
+                  "windows_local_regression":  "104 tests: 90 passed, 14 skipped, 0 failed, Exit 0, Windows DoMi313 integration checkout (including gate tests)",
+                  "native_windows_packaging":  "4 packaging test cases passed; idempotent install/update/rollback/uninstall, tamper rejection",
+                  "frozen_standalone_executable":  "PyInstaller onedir on Windows with tkinter, self-test exit 0",
+                  "real_archive_validation":  "RC2 ZIP extracted; 993 payload file hashes checked, installed and reinstalled; self-test exit 0",
+                  "uninstall":  "RC2 temporary installation removed; DPAPI key preserved",
+                  "real_user_update":  "RC1→RC2 installed under LocalAppData\\Programs; rollback to RC1 and return to RC2 passed; desktop shortcut target verified",
+                  "live_git_exchange":  "synthetic private GitHub research-exchange two-way and ChatGPT→GitHub→Windows inbound, verified earlier",
+                  "github_regression":  "GitHub Research exchange regression run 44793826307: Windows and Linux jobs succeeded on RC2 source commit 991753f",
+                  "overall_eagleeye_ci":  "FAILED on integration SHA d81d782: 1 failed / 2127 passed / 4 skipped / 118 deselected. Pre-existing pageimage Linux CI failure test_intel_pageimage.py::test_page_image_is_taken_and_internal_requests_are_blocked (result complete=False); run 44795228665."
+              },
+    "checks":  {
+                   "synthetic_private_roundtrip":  "passed",
+                   "chatgpt_to_eagleeye":  "passed",
+                   "windows_regression":  "passed",
+                   "linux_regression":  "passed",
+                   "windows_frozen_gui_smoke":  "passed",
+                   "package_sha256":  "passed",
+                   "install_update_rollback_uninstall":  "passed",
+                   "eagleeye_ci":  "failed",
+                   "gui_user_acceptance":  "passed",
+                   "audit_independent_anchor":  "pending",
+                   "code_signing_or_risk_approval":  "pending",
+                   "integration_owner_approval":  "pending",
+                   "release_owner_approval":  "passed"
+               },
+    "scope":  "public non-personal scientific, historical, technical and institutional research only",
+    "important":  "This JSON is a release gate record, not authorization to merge, sign, distribute or publish.",
+    "pending_requirements":  [
+                                 "Fix and re-run full EagleEye CI on PR #100 head; pageimage completeness assertion is failing",
+                                 "Create independently verifiable external audit tip checkpoint and validate tamper/restart scenarios",
+                                 "Obtain code signing or informed explicit acknowledgement of unsigned internal Windows executable risk",
+                                 "Obtain PR #94 integration owner review prior to merge",
+                                 "Record final gate after all outstanding checks and before creating any tag or release"
+                             ],
+    "human_acceptance":  {
+                             "date":  "2026-11-20",
+                             "source":  "User explicit statement in ChatGPT conversation",
+                             "summary":  "User reports application functions as far as observed and explicitly authorizes release",
+                             "scope":  "End-user functional acceptance and release-owner intent only",
+                             "limitations":  "Not an acceptance of unsigned execution risk, missing independently anchored audit, unpassed CI, nor third-party integration review",
+                             "merges_or_public_releases_authorized_without_gates":  false
+                         }
+}

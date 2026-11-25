@@ -205,7 +205,7 @@ def main(argv=None):
             window=tkinter.Tk();window.withdraw()
             try:
                 selected=(filedialog.asksaveasfilename(title='Eigene Sicherung außerhalb des Arbeitsordners speichern',defaultextension='.zip')
-                    if args.backup else filedialog.askopenfilename(title='Eigene vertrauenswürdige EagleEye-Sicherung wählen',filetypes=[('ZIP','*.zip')]))
+                    if args.backup else filedialog.askopenfilename(title='Eigene vertrauenswürdige EagleEye-Sicherung wählen',filetypes=[('EagleEye-Sicherung','*.eebak *.zip'),('Verschlüsselte Sicherung','*.eebak'),('ZIP','*.zip')]))
             finally:window.destroy()
             if not selected:return 0
             archive=local_path(selected)
@@ -220,7 +220,12 @@ def main(argv=None):
                 finally:window.destroy()
                 if not selected:return 0
                 target=local_path(selected)/('EagleEye-Restore-'+datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+secrets.token_hex(3))
-            result=restore_backup(archive,target)
+            from . import securebackup
+            if securebackup.is_encrypted(archive):
+                # Encrypted backup made from inside the app: ask for its password on the console.
+                result=securebackup.restore(archive,securebackup.ask_password(),target)
+            else:
+                result=restore_backup(archive,target)
             if not args.target:remember_workspace(target)
             result['workspace_directory']=str(target)
         print(json.dumps(result,ensure_ascii=False,indent=2));return 0
