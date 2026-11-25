@@ -69,6 +69,31 @@ class EntityRegistry461:
             )
         return {"id": item_id, "case_id": case_id, "kind": kind, "label": label, "notes": notes}
 
+    def upsert_unverified_external_candidate(self, *, case_id: str, entity_id: str,
+                                             kind: str, label: str, notes: str) -> dict:
+        """Deterministic, idempotent external candidate. No graph relations created."""
+        import re
+        case_id = self._required(case_id, "case_id", 128)
+        if not re.fullmatch(r"po499_[0-9a-f]{32}", entity_id):
+            raise ValueError("Invalid external candidate identifier")
+        if kind not in KINDS:
+            raise ValueError("Unsupported candidate kind")
+        label = self._required(label, "label")
+        notes = self._required(notes, "notes", 10000)
+        with self.db:
+            self.db.execute(
+                "INSERT OR IGNORE INTO entity461(id,case_id,kind,label,notes) VALUES(?,?,?,?,?)",
+                (entity_id,case_id,kind,label,notes)
+            )
+            current = self.db.execute(
+                "SELECT id,case_id,kind,label,notes FROM entity461 WHERE id=?",
+                (entity_id,)
+            ).fetchone()
+            if not current or tuple(current)!=(entity_id,case_id,kind,label,notes):
+                raise ValueError("Existing external graph entry differs: manual recovery needed")
+        return {"id":entity_id,"case_id":case_id,"kind":kind,"label":label,
+                "notes":notes,"identity_confirmed":False,"relations_created":0}
+
     def create_relation(
         self, *, case_id: str, source_id: str, target_id: str,
         predicate: str, source_refs: list[str], state: str = "hypothesis",

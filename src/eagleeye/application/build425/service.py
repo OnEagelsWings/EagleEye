@@ -1,4 +1,5 @@
 from eagleeye_pro.version import BUILD as RUNTIME_BUILD,SCHEMA_VERSION
+from eagleeye_pro.version import historical_schema_compatible
 class Build425CrawlerCoreService:
  BUILD='425.0'
  def __init__(self,db,audit,*,build424,crawler425,actor='local-analyst'):self.db=db;self.audit=audit;self.build424=build424;self.crawler425=crawler425;self.actor=actor
@@ -10,4 +11,4 @@ class Build425CrawlerCoreService:
  def create_crawl_task(self,**kw):return self.crawler425.create_task(**kw)
  def accept_retrieval(self,**kw):return self.crawler425.accept_retrieval(**kw)
  def crawler_status(self):
-  s=self.crawler425.status();return {**s,'version_coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':5,'production_release_ready':False}
+  s=self.crawler425.status();return {**s,'version_coherent':historical_schema_compatible(RUNTIME_BUILD, SCHEMA_VERSION, self.BUILD) and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]),'phase':19,'phase19_builds_completed':5,'production_release_ready':False}

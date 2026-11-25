@@ -62,7 +62,9 @@ def create_workspace_app471(*, base_dir=None, workspace_build="471.0", questions
         async def receive_form():
             return {"type": "http.request", "body": bytes(data), "more_body": False}
         form_request = Request(request.scope, receive=receive_form)
-        form = await form_request.form(max_fields=64, max_files=0, max_part_size=8000)
+        # starlette>=1.0: max_part_size gilt auch für urlencodierte Felder (in %-kodierten Bytes); dort begrenzt max_bytes.
+        multipart = request.headers.get("content-type", "").lower().startswith("multipart/")
+        form = await form_request.form(max_fields=64, max_files=0, max_part_size=8000 if multipart else max(max_bytes, 8000))
         if len(form.multi_items()) > 64:
             raise HTTPException(413, "Zu viele Formularfelder.")
         case_id = str(form.get("case_id", ""))

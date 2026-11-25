@@ -1,0 +1,27 @@
+name: EagleEye Build 483 Focused Windows/Linux Case Workflow
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    # Version-pinned Build 483 installer/manifest gates run only on their release branch.
+    # Build 484 runs its own full Windows/Linux acceptance and inherited 483 tests.
+    if: github.head_ref == 'build-483-search-findings-queue' || github.ref_name == 'build-483-search-findings-queue'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest,ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[test]'
+      - name: Case, evidence, legacy image/Dork and new lead security
+        run: python -m pytest -q tests/test_build483_operator.py tests/test_build482_operator.py tests/test_build481_evidence_bridge.py
+      - name: Python package and version coherence
+        run: python -c "from eagleeye.interfaces.web.app483 import create_workspace_app483; from eagleeye_pro.version import BUILD; assert BUILD=='483.0'"

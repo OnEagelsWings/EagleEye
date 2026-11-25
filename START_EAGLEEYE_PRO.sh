@@ -8,8 +8,10 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
   exit 1
 }
 
-"$PYTHON_BIN" INSTALL_EAGLEEYE_478.py
-RUNTIME_PY=".eagleeye-runtime/bin/python"
+# Use XDG-based, persistent external settings/workspace from desktop476.
+# Do not redirect case data into the upgradeable installation tree.
+"$PYTHON_BIN" INSTALL_EAGLEEYE_500.py
+RUNTIME_PY=".eagleeye-runtime-500/bin/python"
 if [ ! -x "$RUNTIME_PY" ]; then
   echo "EagleEye runtime is missing after installation." >&2
   exit 1

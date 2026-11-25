@@ -2,11 +2,11 @@
 pydantic>=2.10,<3
 SQLAlchemy>=2.0,<3
 alembic>=1.14,<2
-fastapi>=0.128,<1
-starlette>=0.50,<0.51
+fastapi>=0.165,<1
+starlette>=1.6,<2
 uvicorn>=0.34,<1
-cryptography>=46.0,<47
-Pillow>=12.0,<13
+cryptography>=50.0.2,<51
+Pillow>=13,<14
 opencv-python-headless>=4.10,<5
 reportlab>=4,<5
 argon2-cffi>=25.1,<26
@@ -15,3 +15,10 @@ PyMuPDF>=1.26,<2
 pypdf>=5.9,<7
 pdfplumber>=0.11,<1
 pytesseract>=0.3.13,<1
+# Build 492 evidence capture and analysis
+trafilatura>=2.0,<3
+warcio>=1.7,<2
+numpy>=1.26,<3
+rapidfuzz>=3.9,<4
+anyascii>=0.3.2,<1
+networkx>=3.3,<4

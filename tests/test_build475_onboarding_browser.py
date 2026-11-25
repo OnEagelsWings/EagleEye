@@ -8,7 +8,7 @@ import uvicorn
 from eagleeye.interfaces.web.app475 import create_workspace_app475
 
 
-def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=False):
+def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=False,report=False,dorks_images=False):
     sync=pytest.importorskip('playwright.sync_api')
     app=factory(base_dir=tmp_path);ctx=app.state.context
     with socket.socket() as sock:
@@ -69,6 +69,32 @@ def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=Fals
                 page.goto(base+'/workbench/expert?'+urlencode({'case_id':case_url.split('case_id=')[1]}))
                 page.set_viewport_size({'width':390,'height':844})
                 assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
+            if dorks_images:
+                cid=case_url.split('case_id=',1)[1].split('&',1)[0]
+                page.goto(base+'/workbench/dorks482?'+urlencode({'case_id':cid}))
+                page.get_by_role('heading',name='Dork-Recherche und öffentliche Suchlinks').wait_for()
+                page.locator('[name=topic]').fill('Example public documentation')
+                page.locator('[name=domain]').fill('example.org')
+                page.get_by_role('button',name='Dorks erzeugen').click()
+                page.get_by_text('Im Suchdienst öffnen',exact=True).first.wait_for()
+                assert 'site:example.org' in page.locator('main').inner_text()
+                page.goto(base+'/workbench/images482?'+urlencode({'case_id':cid}))
+                page.get_by_role('heading',name='Bildakte und lokale Metadatenprüfung').wait_for()
+                from PIL import Image
+                image=tmp_path/'public-illustration.png'
+                Image.new('RGB',(32,24),(190,210,230)).save(image)
+                page.locator('input[name=image]').set_input_files(image)
+                with page.expect_response(lambda r:r.request.method=='POST' and '/workbench/images482' in r.url) as stored:
+                    page.get_by_role('button',name='Lokal prüfen und sichern').click()
+                assert stored.value.status==303,(stored.value.status,stored.value.text()[:500])
+                page.get_by_text('Technische Bildprüfung und Metadaten').first.wait_for()
+                page.reload()
+                assert 'Bildobjekt' in page.locator('main').inner_text()
+                page.goto(base+'/graph464?'+urlencode({'case_id':cid}))
+                page.get_by_role('img',name='Anklickbarer Beziehungsgraph').wait_for()
+                page.goto(base+'/workbench/images482?'+urlencode({'case_id':cid}))
+                page.set_viewport_size({'width':390,'height':844})
+                assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             if findings:
                 page.goto(case_url)
                 page.get_by_role('link',name='Geführte Recherche',exact=True).click()
@@ -82,6 +108,22 @@ def run_onboarding(factory,tmp_path,*,inventory=False,expert=False,findings=Fals
                 page.get_by_role('heading',name='Documentation use hypothesis',exact=True).wait_for()
                 page.reload()
                 page.get_by_role('heading',name='Documentation use hypothesis',exact=True).wait_for()
+            if report:
+                page.goto(case_url)
+                page.get_by_role('link',name='Geführte Recherche',exact=True).click()
+                page.locator('a[href^="/workbench/report?"]').click()
+                page.locator('[name=reason]').fill('Original excerpt checked; independent corroboration still pending.')
+                with page.expect_response(lambda r:r.request.method=='POST' and '/report/review' in r.url) as reviewed:
+                    page.get_by_role('button',name='Prüfentscheidung speichern',exact=True).click()
+                assert reviewed.value.status==303
+                assert 'reviewed_self' in page.locator('main').inner_text()
+                with page.expect_download() as download:
+                    page.get_by_role('link',name='Arbeitsbericht als Markdown herunterladen →',exact=True).click()
+                assert download.value.suggested_filename.endswith('_Arbeitsbericht.md')
+                content=__import__('pathlib').Path(download.value.path()).read_text(encoding='utf-8')
+                assert 'Documentation use hypothesis' in content and 'reviewed_self' in content
+                page.set_viewport_size({'width':390,'height':844})
+                assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             page.goto(base+'/new-case');page.set_viewport_size({'width':390,'height':844})
             assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
             assert page.locator('[name=title]').is_visible()

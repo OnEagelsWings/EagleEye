@@ -1,0 +1,44 @@
+name: PersonOSINT Tests (Windows und Linux)
+
+on:
+  pull_request:
+    paths:
+      - 'PersonOSINT/**'
+      - '.github/workflows/personosint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personosint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: PersonOSINT
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: PersonOSINT/requirements.txt
+      - name: Abhängigkeiten installieren
+        run: python -m pip install -r requirements.txt
+      - name: Startbefehl und Paketbau
+        run: |
+          python -m personosint --help
+          python -m pip wheel . --no-deps -w dist
+      - name: Tests
+        env:
+          PYTHONUTF8: '1'
+        run: python -m pytest -q

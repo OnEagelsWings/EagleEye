@@ -1,0 +1,177 @@
+# Prüfung Build 493–500 und Übergabe an die ChatGPT-Linie
+
+Antwort auf `CLAUDE_INTEGRATION_HANDOFF.md`. Stand: 12. Nov. 2026.
+Geprüft: `release/build500-internal-rc1` bis `e8507bb` (ChatGPT), `claude/spiderfoot-reverse-engineering-dn8lpd`
+bis `46a249a` (zweiter Claude-Chat, Härtung Build 492) und PersonOSINT 1.5.
+
+**Gemeinsamer Branch mit allem:** `claude/osint-platform-person-search-r875rx`
+= `main` + Builds 479–492 (gehärtet) + Builds 493–500 + `PersonOSINT/` 1.5. Alle drei Linien ließen sich
+ohne Textkonflikt zusammenführen.
+
+## 1. Was nachgeprüft wurde (Ergebnisse, nicht Annahmen)
+
+| Prüfung | Ergebnis |
+|---|---|
+| GitHub Actions auf `e8507bb` | alle 13 gelaufenen Prüfungen grün, auch `windows-offline-release` (war bis `2cc6d1d` elfmal rot) |
+| Volle Regression (`tools/run_checkpoint_regression480.py`) auf `2cc6d1d`, Linux, Python 3.13 | **1896 bestanden**, 3 übersprungen, 118 bewusst ausgeschlossen, 11 min |
+| Gezielte Tests Build 492 + 493–500 auf dem **zusammengeführten** Stand | 113 bestanden |
+| Volle Regression auf dem **zusammengeführten** Stand (Build 500 + gehärtetes 492 + Fix zu Befund 3), Linux, Python 3.13 | **1951 bestanden**, 3 übersprungen, 118 bewusst ausgeschlossen, 12 min |
+| Volle Regression nach Übernahme von Build 501 (öffentliche Quellen) und der 492-Konvergenz (`db5d6d1`) | **1976 bestanden**, 3 übersprungen, 118 ausgeschlossen |
+| PersonOSINT 1.6 | 107 Tests bestanden (SQLite und PostgreSQL), Browser-Abnahme der neuen Oberfläche ohne Fehler |
+| Quellen live | Aus der Entwicklungsumgebung sind nur GitHub, GitLab und Docker Hub erreichbar; diese antworten im erwarteten Format. Alle anderen Quellen beider Seiten sind live nicht bestätigt. |
+| Abhängigkeiten von Build 500 (`pip-audit` auf der installierten Umgebung) | **57 bekannte Lücken** in 3 Paketen, siehe Befund 2 |
+
+## 2. Befunde zu Build 493–500
+
+Sortiert nach Gewicht. „Behoben“ heißt: im gemeinsamen Branch geändert und getestet.
+
+| # | Befund | Stelle | Empfehlung / Stand |
+|---|---|---|---|
+| 1 | **Volle Regression für Build 500 abgeschaltet.** `full = (build_number % 5 == 0 and build_number < 500)` – ausgerechnet der Freigabekandidat läuft in `ci.yml` nur mit dem gezielten Teil. | `.github/workflows/ci.yml` Zeile 39 | Bedingung `and build_number < 500` entfernen. Die volle Suite ist lokal grün (1896 Tests, 11 min), es gibt also keinen Grund für die Ausnahme. **Offen** – bewusst nicht von mir geändert, weil es eure Freigaberegel ist. |
+| 2 | **Festgeschriebene Versionen mit bekannten Lücken:** `Pillow<13` (40 Meldungen), `starlette<0.51` (10), `cryptography<47` (7). | `pyproject.toml` | Obergrenzen anheben (`Pillow>=13`, aktuelle Starlette/cryptography), volle Regression laufen lassen. PersonOSINT nutzt bereits Pillow 13. **Erledigt am 20. Nov.** (siehe Nachtrag 3) |
+| 3 | **Transfer bleibt nach Abbruch hängen.** Wiederholung mit anders formulierter Begründung → `Existing external graph entry differs`; bei Abbruch vor dem Graph-Schreiben weichen Journal und Graph-Notiz voneinander ab. | `src/eagleeye/application/transfer499.py` | **Behoben:** bei Wiederholung gilt die beim Vormerken protokollierte Begründung. Test: `tests/test_build499_transfer_retry.py` (2 Fälle). |
+| 4 | **Kein Vier-Augen-Prinzip bei der Planfreigabe.** Wer `research.run` und `source.review` hat, gibt den eigenen Plan frei (nachgestellt: `created_by == reviewed_by`). Der eigene Test `test_build496_plan.py` tut genau das. | `plan496.review_plan` | Entscheidung des Betreibers: Für den Einzelplatz in Ordnung, für Teambetrieb `created_by != reviewer` erzwingen (schaltbar). **Offen.** |
+| 5 | **PersonOSINT ist in Build 500 nicht enthalten.** 493 übernimmt Links, 494 Namen, 495 ist eine Seite mit elf festen Suchlinks. Quellen-Anbindungen, Aussagenmodell, Bewertung, Dossier-Vorlagen, Netzausgänge, Teambetrieb fehlen. Paketname `eagleeye-personosint-pro` und Seitentitel „PersonOSINT Intelligence“ versprechen mehr. | 493–495 | Siehe Vorschlag in Abschnitt 4. |
+| 6 | **Übernahme lehnt größere Fälle ganz ab** (> 50 Fundstellen oder > 150 Einträge), PersonOSINT 1.4 konnte nicht geteilt exportieren. | `personosint493.py`, `personosint494.py` | **Behoben auf PersonOSINT-Seite:** „🔁 Übergabe an EagleEye“ erzeugt passend geteilte Dateien (`PersonOSINT/personosint/bridge.py`), gegen eure Parser getestet. Besser zusätzlich bei euch: Teilmengen-Übernahme statt Ablehnung. |
+| 7 | **Fehlgeschlagener Provider-Lauf verbraucht den Planschritt endgültig**, freigegebene Pläne sind unveränderlich → nach einem Zeitüberlauf neuer Plan + neue Freigabe. | `execution497.run_step` | Fehler **vor** dem ersten Netzaufruf (Freigabe ungültig, Provider aus) nicht als „verbraucht“ werten; für echte Netzfehler eine protokollierte „erneut freigeben“-Aktion. **Offen.** |
+| 8 | **„Tamper-Hash“ ist kein Manipulationsschutz.** `record_hash` = SHA-256 ohne Schlüssel in derselben Zeile; wer die Datenbank ändern kann, rechnet ihn neu. | 494, 496–499 | Als Schutz vor Beschädigung benennen oder mit dem Audit-Protokoll verketten (PersonOSINT: Hash-Kette, `service.seal_audit_chain`). **Offen.** |
+| 9 | **Suchbegriff in der Adresszeile** (`/workbench/personosint495?term=…`) → Namen der Zielperson in Verlauf und Server-Log. | `web/personosint495.py` | Formular per POST oder Begriff nur im Browser zu Links zusammensetzen. **Offen.** |
+| 10 | **Offline-Paket nur für Python 3.12 unter Windows; Manifest unsigniert.** Prüfsummen liegen im selben Ordner wie die Räder – Schutz vor Beschädigung, nicht vor Austausch. | `INSTALL_EAGLEEYE_500.py`, `tools/pack500.py` | In der Anleitung klar sagen; für echte Echtheit das Manifest signieren (siehe Obsidian-Analyse, signiertes Update-Paket). **Offen.** |
+| 11 | **PyMuPDF (AGPL) bleibt Pflichtabhängigkeit** – der Lizenzbefund aus `docs/OSINT_TOOL_AUSWAHL.md` ist nicht gelöst. | `pyproject.toml` | Bei Weitergabe an Dritte relevant. PersonOSINT 1.5 kommt ohne aus (`pypdf` + `pypdfium2`). **Offen.** |
+| 12 | 144 Commits, oft ein Commit je Datei mit gleicher Nachricht – Zwischenstände sind nicht lauffähig, Fehlersuche per `git bisect` kaum möglich. | Historie | Beim Zusammenführen nach `main` zusammenfassen (Squash je Build). |
+
+**Gut gelöst und so übernommen:** durchgängige Fallprüfung auf Dienstebene (nicht nur an der HTTP-Kante),
+CSRF, begrenzte Uploads, alles in Transaktionen, KI-Antworten streng gegen ein Schema geprüft und nie
+ausgeführt, Live-Abfragen nur mit eigener Freigabe, ehrliche „HOLD“-Kennzeichnung in den Notizen, und die
+Härtung des Installers gegen verlinkte Pfade.
+
+## 3. Was im gemeinsamen Branch neu ist (PersonOSINT 1.5)
+
+Die Fähigkeiten aus Build 492 und die Muster aus der SpiderFoot-/Obsidian-Analyse sind in PersonOSINT
+eingebaut und nutzbar:
+
+| Fähigkeit | Modul (`PersonOSINT/personosint/`) |
+|---|---|
+| Web-Belege als WARC mit Wiedergabeprüfung, Haupttext, frühere Fassungen | `webarchive.py`, `evidence.py` |
+| Dokumente (PDF, Word, Scan, E-Mail) mit Texterkennung – ohne PyMuPDF | `documents.py` |
+| Quellfamilien / unabhängige Ursprünge, wirkt auf die Bewertung | `lineage.py`, `analysis.py` |
+| Begründeter Namensabgleich über Schriften (Prüfsatz: 0,93 / 0,93) | `namematch.py` |
+| Netzwerkanalyse, GEXF/FollowTheMoney/Canvas/Obsidian, FtM-Import | `network.py` |
+| Folgesuchen mit Freigabe, Tiefengrenze, Herkunftskette; Snapshot je Suchlauf | `pivot.py`, `service.run_search` |
+| Deklarative Korrelationsregeln als Prüfhinweise | `correlation.py` |
+| Übergabe an eure Übernahme 493/494 | `bridge.py` |
+
+PersonOSINT ist jetzt als Paket installierbar (`PersonOSINT/pyproject.toml`, `pip install ./PersonOSINT`).
+Das ist die Voraussetzung für den folgenden Vorschlag.
+
+## 4. Vorschlag: eine Plattform statt zwei – PersonOSINT wird die Recherche-Bibliothek von EagleEye
+
+Eure Architekturregel („EIN Fall, EINE Akte, kein zweiter Server“) ist richtig. Der günstigste Weg dorthin ist
+nicht, PersonOSINT in EagleEye nachzubauen, sondern seine **reinen Rechenmodule als Bibliothek** zu nutzen.
+Sie arbeiten auf einfachen Listen und Wörterbüchern und kennen weder die PersonOSINT-Datenbank noch dessen Anmeldung:
+
+| Schritt | Inhalt | Anknüpfung in EagleEye |
+|---|---|---|
+| **501** | Quellen-Anbindungen (`sources.py`, `connectors.py`: 20+ Quellen, je Quelle feste Hosts, Lizenz, Verlässlichkeit, Exposition, verarbeitet/liefert) als Provider registrieren. Jeder Abruf läuft über euren freigabepflichtigen Weg. | `ProviderCollection120`, `execution497` – deckt Auftrag 2 eures Handoffs |
+| **502** | Aussagenmodell und Bewertung (`facts.py`, `analysis.py`): Admiralty-Code, Widersprüche, Red Flags, Korrelationsregeln – Ergebnisse als Prüfkandidaten in eure Warteschlangen. | Review-Register 488/494 |
+| **503** | Namensabgleich, Quellfamilien, Netzwerkanalyse aus **einer** Quelle statt doppelt (492 und PersonOSINT haben heute zwei Fassungen). | `intel492` |
+| **504** | Dossier-Vorlagen mit Belegdichte und Fußnoten (`report.py`) auf EagleEye-Evidence. | Bericht 479 |
+| **505** | Auftragsprüfung, Löschfristen, Überwachung, Netzausgänge (Proxy/Tor, „fail closed“) – hier wird die Logik übertragen, nicht nur eingebunden. | Governance 359, deckt Auftrag 4 |
+| danach | Entscheidung Einzelplatz oder Teambetrieb (Rollen, 2FA, PostgreSQL, Docker gibt es in PersonOSINT bereits). | – |
+
+Regel für alle Schritte: nichts doppelt speichern, nichts automatisch bestätigen, jede Außenabfrage freigabepflichtig.
+
+### Nachtrag 13. Nov.: Build 501 und PersonOSINT 1.6 arbeiten am selben Thema
+
+Mit `public_sources501` (ChatGPT) gibt es Schritt 501 im Hauptprogramm bereits für sechs Adapter – genau der vorgeschlagene Weg über
+`ProviderCollection120`. PersonOSINT 1.6 hat parallel 13 Quellen ergänzt (`PersonOSINT/personosint/connectors2.py`). **Doppelt vorhanden:**
+GND/lobid, abgeordnetenwatch, Crossref. **Nur in PersonOSINT:** französisches Firmenregister (Leitungspersonen), ICIJ online, INTERPOL Red
+Notices, FBI Wanted, GDELT-Presse, Wikipedia, DBLP, Keybase, Codeberg, Docker Hub sowie die älteren (GLEIF, Companies House,
+OpenCorporates, crt.sh, RDAP, OpenSanctions, Mastodon, Bluesky …). **Nur im Hauptprogramm:** HDX, OpenAlex-Veröffentlichungen, Common Crawl
+und der kuratierte Katalog der Bundes-/Registerzugänge.
+
+Vorschlag zur Arbeitsteilung: Die Antwort-Auswertung (aus JSON werden Treffer und Aussagen) bleibt in `PersonOSINT/personosint/` als
+Bibliothek; `public_sources501` ruft diese Funktionen mit dem eigenen, freigabepflichtigen Transport auf. Jede PersonOSINT-Quelle ist eine
+reine Funktion `runner(quelle, art, wert, http)` und nimmt jeden Transport mit einer `get(url, headers)`-Methode – ein Adapter auf
+`ProviderCollection120` ist damit je Quelle wenige Zeilen. Die Ein-Klick-Prüfung („Alle Quellen prüfen“) sollte es auf beiden Seiten geben:
+Beide Linien konnten ihre Quellen bisher nicht live bestätigen.
+
+### Nachtrag 19. Nov.: Zusammenführung aller aktiven Stränge, Codex-Befunde
+
+| Was | Ergebnis |
+|---|---|
+| `release/build500-internal-rc1` bis `affd7f8` | übernommen; Konflikt in `tests/test_build490_fresh_workspace.py` – eure gründlichere Fassung übernommen |
+| PR #95 Firecrawl | übernommen. **Fehler gefunden und behoben:** `r"site:([a-zA-Z0-9.-]+) ([^\\r\\n]+)"` schließt im Raw-String die Buchstaben „r“ und „n“ (und den Backslash) aus, nicht die Zeilenumbrüche. Folge: fast jede deutsche Suche wurde abgelehnt („Bundestag“), ein Zeilenumbruch dagegen angenommen. Der Strang hatte keine Tests; neu: `tests/test_firecrawl_guards.py` (14 Fälle, ohne Netz). |
+| PR #97 Austausch-Schnittstelle | übernommen, keine Konflikte; eigene Tests 44 bestanden (3 nur unter Windows) |
+| Codex-Review zu PR #94 (P1, P2) | beide behoben in PersonOSINT 1.6.1: 2FA-Bestätigung ist kein zweiter Anmeldeweg mehr (nur bei laufender Einrichtung, gleicher Fehlversuchszähler; neues Geheimnis bleibt vorläufig, bis es bestätigt ist); Vorschläge im Verbindungen-Reiter beidseitig fallgebunden. Regressionstests in `PersonOSINT/tests/test_security.py`. |
+| Ältere Zweige | 52 nicht zusammengeführte Zweige geprüft: 44 ohne fehlende Datei (alles in späterer Fassung enthalten), 8 überholte Parallelversuche – Übersicht `docs/ZWEIGE_STAND.md`. Nicht eingemischt, um keine alten Fassungen zurückzuholen. |
+
+**Prüfstand nach der Zusammenführung (`898c2f0`):** volle Regression lokal 2064 bestanden, 3 übersprungen (ClamAV), 118 ausgeschlossen, 0 Fehler; alle GitHub-Läufe des PR grün, einschließlich Windows-Offline-Installer, PersonOSINT unter Windows und DPAPI unter Windows.
+
+Weiterhin offen auf eurer Seite (Stand `affd7f8`): Befund 1 (volle Regression in `ci.yml` für 500 aus), Befund 2 (inzwischen erledigt, siehe Nachtrag 3), Befund 4 (Vier-Augen bei der Planfreigabe). Der Fix zu Befund 3 ist im gemeinsamen Branch,
+noch nicht auf `release/build500-internal-rc1`.
+
+### Nachtrag 20. Nov.: Schritte 501 und 502 umgesetzt – PersonOSINT ist der Recherche-Motor der Fallakte
+
+* **501** `src/eagleeye/infrastructure/providers/personosint_bridge.py`: 13 PersonOSINT-Quellen als `ProviderAdapter`
+  (`personosint_<quelle>_501`), in `default_adapters()` registriert und alle im Katalog von `public_sources501` auswählbar
+  (Benutzernamen-Check, Keybase, Codeberg, Docker Hub, Gravatar, crt.sh, Wikipedia, Nominatim, Firmenregister FR, ICIJ, INTERPOL rot/gelb, FBI).
+  PersonOSINT plant nur (Attrappe ohne Netz) und wertet aus; Abruf, Freigabe, Hostliste, Ratenbegrenzung, Wiederholung bleiben euer Motor.
+  Nicht übernommen, mit Grund in `EXCLUDED`: alles, was ihr schon habt; ORCID (Public API nur nichtkommerziell); OpenCorporates,
+  Companies House, OpenSanctions (Schlüssel/Lizenz); `wikidata_rel` (zweistufig).
+* **Kleine Motoränderung** in `ProviderCollection120Service.execute`: Provider mit `metadata["http_4xx_is_result"]` bekommen 4xx-Antworten
+  in `normalize` (bei Kontoquellen heißt 404 „gibt es nicht“). 429/5xx bleiben Fehler mit Wiederholung; alle anderen Provider unverändert.
+  Die Brücke setzt `supports_replay=False`, weil die Aufzeichnung JSON verlangt und Kontoquellen leere 404 oder HTML liefern.
+* **502** `application/personosint_analysis502.py` + Seite `/workbench/personanalyse` (Menü *Auswertung*), API `/api/research/personanalyse`:
+  `analysis.assess`, `red_flags`, `correlation.evaluate` auf den Aussagen im Prüfeingang; nur lesend, fallgebunden, abgelehnte/Dubletten = verworfen.
+* Paket: `pyproject.toml` nimmt `personosint` (samt `static`) mit auf. Tests: `tests/test_personosint_engine501.py` (20 Fälle).
+* **503** umgesetzt (siehe unten).
+
+### Nachtrag 20. Nov. (2): Schritt 503 – eine Fassung statt zwei
+
+| Baustein | Vorher | Jetzt |
+|---|---|---|
+| Namensabgleich | zwei Kopien (`intel492/entitymatch.py`, `personosint/namematch.py`); PersonOSINT ohne die Anker-Regel („Initialen oder GmbH allein reichen nicht“) | **eine** Fassung in `personosint/namematch.py` (`Prepared`, `compare_prepared`, `compare_names`); `entitymatch` behält Vorauswahl, Zwischenspeicher, FtM-Export. Nachgewiesen: 85 905 Namenspaare und die Fallvorschläge identisch zum bisherigen Verhalten der Fallakte. |
+| Quellfamilien | zwei Definitionen | Definition (5-Wort-Folgen, Mindestlänge, Schwellen, `shingles`) nur in `personosint/lineage.py`. PersonOSINT rechnet exakt, die Fallakte schätzt mit gespeicherten MinHash-Fingerabdrücken; ein Test prüft, dass beide dieselben Familien bilden. |
+| Netzwerkanalyse | NetworkX/Louvain (Fallakte) bzw. eigene Graphfunktionen (PersonOSINT) | **bewusst noch getrennt**: unterschiedliche Graphmodelle (geprüfte Relationen vs. Verbindungsgraph) – eine Vereinheitlichung würde die Ergebnisse beider Seiten ändern. Kandidat für einen eigenen Schritt. |
+
+Tests: `tests/test_personosint_single_source503.py`.
+
+### Nachtrag 20. Nov. (3): Netzwerkanalyse aus einem Kern, Abhängigkeiten ohne bekannte Lücken, Quellenprüfung für beide Teile
+
+* **Netzwerkanalyse**: Der gemeinsame Kern liegt in `personosint/network.py` (`analyse_weighted`) und `personosint/graph.py`
+  (`weighted_betweenness`, `louvain`, `best_path`). `intel492/network.py` (`analyse`, `path_between`) und die
+  PersonOSINT-Graphansicht nutzen ihn. NetworkX bleibt nur für den GEXF-Export.
+  Gegen NetworkX auf 300 Zufallsgraphen geprüft:
+  * Zentralität, Wege, Komponenten und Isolierte sind identisch.
+  * Die Louvain-Gruppen stimmen in 77 % der Fälle überein; die Modularität ist praktisch gleich (höchstens 0,035 darunter).
+* **Befund 2 erledigt**: `Pillow>=13,<14`, `starlette>=1.6,<2`, `cryptography>=50.0.2,<51`, `fastapi>=0.165`. Das ist der Stand von
+  `pip-audit`; vorher gab es Meldungen zu Pillow (CVE-2026-128066) und starlette (PYSEC-2026-161/248/249/2280/2281).
+  * Einzige Codeanpassung: starlette ≥ 1.0 wendet `max_part_size` auch auf urlencodierte Felder an, gemessen in %-kodierten Bytes.
+    Mehrsprachige Begründungen wurden dadurch mit 400 abgelehnt.
+  * In `bounded_form` (478), `app471.submission` und `buero._form` gilt die Feldgrenze deshalb wie bisher nur für Mehrteil-Formulare.
+    Bei urlencodierten Formularen begrenzt weiterhin `max_bytes` den ganzen Körper.
+  * Volle Regression mit alten **und** neuen Versionen ausgeführt.
+* **Quellenprüfung**: `tools/quellen_pruefen_fallakte.py` und `QUELLEN_PRUEFEN.bat` im Hauptordner. Je Fallakten-Quelle gibt es eine
+  unkritische Testabfrage über den abgesicherten Transport, ohne Speicherung; dazu kommt die bestehende PersonOSINT-Prüfung.
+* Volle Regression auf diesem Stand: **2113 bestanden**, 3 übersprungen, 118 ausgeschlossen. Fünf Tests waren mit euren Commits vom 20. Nov.
+  veraltet und sind angepasst, ohne eine Prüfung abzuschwächen: `test_build495_person_workbench` sucht jetzt per POST und prüft zusätzlich, dass
+  `GET ?term=` nichts mehr anzeigt (fe98ba7). `test_build500_release` übergibt dem Installer den erwarteten Laufzeitpfad (db4e78e). Zwei
+  Meldungs-Regexe akzeptieren die frühere Ablehnung „clean tracked source tree“ bzw. „cannot be a symbolic link“.
+
+## 5. Bitte an die ChatGPT-Linie
+
+1. Befund 1 und 2 vor der internen Freigabe erledigen (volle Regression wieder an, Versionen anheben).
+2. Den Fix zu Befund 3 übernehmen (`git cherry-pick` der beiden Dateien oder Pull-Request aus dem gemeinsamen Branch).
+3. Zu Abschnitt 4 Stellung nehmen: Passt „PersonOSINT als Bibliothek“ zu euren Schnittstellen in `ProviderCollection120`?
+   Ich liefere dann als ersten Schritt einen Adapter für zwei Quellen (GLEIF, Wikidata) samt Tests.
+4. Künftig auf dem gemeinsamen Branch aufsetzen, damit nicht wieder drei Stände auseinanderlaufen. Neue Pull-Requests bitte gegen
+   `claude/osint-platform-person-search-r875rx` (bzw. nach dem Zusammenführen von #94 gegen `release/build500-internal-rc1`), nicht gegen `main`:
+   `main` steht noch auf Build 478.
+
+## 6. Volle Regression auf dem zusammengeführten Stand
+
+`python tools/run_checkpoint_regression480.py` auf Commit `af5c9cf` des gemeinsamen Branches (Linux, Python 3.13,
+Chromium 1243 für die Browser-Tests): **1951 bestanden, 3 übersprungen, 118 ausgeschlossen, 0 Fehler** in 11:45 min.
+Die drei übersprungenen Tests brauchen einen echten Virenscanner (ClamAV) und laufen nur in dessen eigener CI.
+Nicht geprüft: Windows (dort gilt euer Actions-Lauf) und echte Netzabfragen (alle Tests arbeiten mit nachgebildeten Antworten).

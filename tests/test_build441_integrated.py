@@ -327,10 +327,13 @@ def test_dns_resolution_is_bounded_by_shared_task_deadline(tmp_path):
             time.sleep(0.20)
             return [PUBLIC_IP]
 
+        # Build the (lazily created) service first: only DNS resolution is under the deadline,
+        # not the service construction, which alone can take longer than 50 ms on a slow machine.
+        service = c.surface_retrieval_441
         deadline = time.monotonic() + 0.05
         started = time.monotonic()
         with pytest.raises(TimeoutError, match="DNS resolution"):
-            c.surface_retrieval_441._resolve_public(
+            service._resolve_public(
                 "deadline-dns.example.org",
                 resolver=slow_resolver,
                 deadline=deadline,

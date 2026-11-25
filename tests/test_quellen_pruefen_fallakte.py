@@ -1,0 +1,120 @@
+"""Prüfwerkzeug für die Quellen der Fallakte: eine Testabfrage je Quelle, nichts gespeichert, Zustände richtig eingeordnet."""
+import importlib.util
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from eagleeye.infrastructure.providers import ProviderTransportError, ProviderTransportResponse, ProviderValidationError
+from eagleeye.infrastructure.providers.adapters import default_adapters
+
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("quellen_pruefen_fallakte", ROOT / "tools" / "quellen_pruefen_fallakte.py")
+tool = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tool)
+
+
+class FakeTransport:
+    def __init__(self):
+        self.calls = []
+
+    def fetch(self, request, *, allowed_hosts, timeout_seconds, max_response_bytes):
+        host = urlsplit(request.url).hostname
+        self.calls.append(host)
+        assert host in allowed_hosts and request.method == "GET"
+        assert not {k.casefold() for k in request.headers} & {"authorization", "cookie", "x-api-key"}
+        if host == "lobid.org":
+            raise ProviderValidationError("provider DNS resolution failed: lobid.org")
+        if host == "api.gleif.org":
+            raise ProviderTransportError("timed out")
+        status = {"api.crossref.org": 429, "api.github.com": 403, "hub.docker.com": 404}.get(host, 200)
+        return ProviderTransportResponse(request.url, request.url, status, {"Content-Type": "application/json"}, b"{}")
+
+
+def test_every_source_gets_at_most_one_safe_request_and_clear_state(tmp_path, capsys):
+    adapters = default_adapters()
+    transport = FakeTransport()
+    rows = {r["key"]: r for r in (tool.check(a, transport) for a in adapters)}
+    assert len(transport.calls) <= len(adapters)
+    assert rows["lobid_gnd_persons_public_501"]["state"] == "nicht erreichbar"
+    assert rows["gleif_lei_public_135"]["state"] == "nicht erreichbar"
+    assert rows["crossref_topics_public_501"]["state"] == "gebremst"
+    assert rows["github_public_profile_120"]["state"] == "abgewiesen"
+    # Kontoquelle des PersonOSINT-Motors: 404 heißt „gibt es nicht“ – die Quelle antwortet.
+    assert rows["personosint_dockerhub_501"]["state"] == "antwortet"
+    assert sum(r["state"] == "antwortet" for r in rows.values()) >= 30
+    # Testbegriffe sind unkritisch (keine echten Zielpersonen außer einer bekannten historischen Person).
+    assert {r.get("query") for r in rows.values()} <= set(tool.TEST_QUERIES) | {None}
+    text = tool.report(list(rows.values()))
+    assert text.startswith("# Quellen der EagleEye-Fallakte") and "| GND / lobid – Personen | nicht erreichbar |" in text
+
+
+def test_auth_denials_are_not_success_even_when_4xx_means_missing_result():
+    from eagleeye.infrastructure.providers import ProviderTransportResponse
+
+    class DeniedTransport:
+        def __init__(self, status):
+            self.status = status
+
+        def fetch(self, request, *, allowed_hosts, timeout_seconds, max_response_bytes):
+            return ProviderTransportResponse(request.url, request.url, self.status,
+                                             {"Content-Type": "application/json"}, b"{}")
+
+    adapter = next(a for a in default_adapters()
+                   if a.definition.provider_key == "personosint_dockerhub_501")
+    assert adapter.definition.metadata.get("http_4xx_is_result")
+    for status in (401, 403):
+        row = tool.check(adapter, DeniedTransport(status))
+        assert row["state"] == "abgewiesen"
+        assert f"HTTP {status}" in row["detail"]
+    assert tool.check(adapter, DeniedTransport(404))["state"] == "antwortet"
+
+
+def test_one_provider_request_build_failure_does_not_abort_diagnostics(monkeypatch):
+    adapter = next(a for a in default_adapters() if a.definition.enabled and a.definition.supports_live
+                   and tool._query_for(a) is not None)
+    original = adapter.build_requests
+    calls = {"count": 0}
+
+    def fail_after_query_validation(request):
+        calls["count"] += 1
+        if calls["count"] > 1:
+            raise ProviderValidationError("synthetic invalid request")
+        return original(request)
+
+    monkeypatch.setattr(adapter, "build_requests", fail_after_query_validation)
+    row = tool.check(adapter, FakeTransport())
+    assert row["state"] == "nicht prüfbar"
+    assert calls["count"] >= 2
+
+
+def test_unknown_source_filter_fails_without_creating_false_success_report(tmp_path, capsys):
+    out = tmp_path / "diagnose.md"
+    result = tool.main(["--only", "does-not-exist-xyz", "--out", str(out)])
+    assert result == 2
+    assert not out.exists()
+    assert "Keine passende Quelle" in capsys.readouterr().err
+
+
+def test_diagnostics_never_send_credentials_or_state_changing_requests(monkeypatch):
+    from types import SimpleNamespace
+
+    adapter = next(a for a in default_adapters()
+                   if a.definition.enabled and a.definition.supports_live
+                   and tool._query_for(a) is not None)
+
+    class NoNetwork:
+        def fetch(self, *args, **kwargs):
+            raise AssertionError("unsafe diagnostic request reached transport")
+
+    for method, headers in (
+        ("POST", {}),
+        ("GET", {"Authorization": "Bearer synthetic-secret"}),
+        ("GET", {"Cookie": "session=synthetic"}),
+        ("GET", {"X-API-Key": "synthetic"}),
+    ):
+        monkeypatch.setattr(adapter, "build_requests",
+                            lambda request, m=method, h=headers: [
+                                SimpleNamespace(method=m, headers=h)
+                            ])
+        row = tool.check(adapter, NoNetwork())
+        assert row["state"] == "nicht prüfbar"
+        assert "nicht für Diagnosen erlaubten Abruf" in row["detail"]

@@ -1,9 +1,62 @@
-## Build 478 – Eigene Arbeitsbefunde mit Originalfundstelle
+## Büroverwaltung für Detektei- und OSINT-Betrieb (auf Build 500)
+
+Nach der Anmeldung öffnet sich das **Büro**: Mandanten, Aufträge mit fortlaufendem Aktenzeichen,
+Auftragsprüfung (Schutz von Zielpersonen, Warnsignale mit Begründungspflicht, Sperre bei bekannter
+Schutzanordnung), Web-Abrufe erst nach Annahme, Zeiterfassung und Auslagen mit Storno statt Löschen,
+Wiedervorlagen und Abgabefristen, Budgetwarnung, Mandantenbericht als PDF nach Empfängerstufe
+(Schutzklassen), Leistungsnachweis als PDF/CSV, Teamverwaltung, Aufbewahrungsfristen und endgültige
+Löschung mit Löschprotokoll. Bedienung: [BETRIEBSHANDBUCH_BUERO.md](BETRIEBSHANDBUCH_BUERO.md).
+
+Code: `src/eagleeye/application/buero/` (Dienst, Löschung), `src/eagleeye/interfaces/web/buero.py`,
+`buero_report.py`. Tests: `tests/test_buero_*.py`, `tests/test_privacy_search_post.py`.
+
+## Gemeinsamer Stand: EagleEye Build 500 (Kandidat) + Build 492 gehärtet + PersonOSINT 1.5
+
+Dieser Branch führt die drei Arbeitslinien zusammen. Prüfbericht zu Build 493–500 und Vorschlag für die weitere
+Zusammenführung: [CLAUDE_REVIEW_UND_UEBERGABE_500.md](CLAUDE_REVIEW_UND_UEBERGABE_500.md).
+
+## EagleEye PersonOSINT 1.5 – Personen- und Investigativrecherche mit Top-Dossier
+
+Im Ordner [`PersonOSINT/`](PersonOSINT/README.md) liegt eine neu programmierte, schlanke OSINT-Plattform auf
+Basis von Build 380: **Personensuche, Vermisstenrecherche und Verbindungsanalyse** mit interaktivem
+Netzwerkgraphen, Zeitleiste/Karte und **Word-Dossiers** (.docx) inkl. Vermissten-Suchplakat.
+Ausbauplan: [`PersonOSINT/ROADMAP_UNTERNEHMEN.md`](PersonOSINT/ROADMAP_UNTERNEHMEN.md).
+Start: `PersonOSINT/START_PERSONOSINT.bat` (Windows) bzw. `PersonOSINT/start_personosint.sh` (Linux/macOS).
+
+## Aktueller Integrationsstand – öffentliche Quellen und Personenrecherche
+
+Fall öffnen → **Geführte Recherche → Öffentliche Quellen und Personenrecherche**.
+55 Quellen sind nach Thema, Person, Unternehmen, Benutzername, Webadresse und Ort erschlossen.
+20 Katalogeinträge verwenden ausführbare Adapter; 35 zeigen ausdrücklich einen manuellen,
+Download- oder noch einzurichtenden Zugang. Suchpakete, konkrete Suchfreigaben, einmalige
+Providerläufe und die Übergabe als ungeprüfter Fallhinweis verwenden die vorhandene Fallakte.
+Neue Personenadapter: **GND/lobid** und **Abgeordnetenwatch**. Keine automatische
+Identitätsbestätigung oder Graphverknüpfung. [Umfang, Quellen und geprüfter Stand](docs/FREE_PUBLIC_SOURCES_PERSONS.md).
+
+## EagleEye Build 492 – Quellen beweisfest sichern und auswerten
+
+**Geführte Recherche** enthält vier neue Schritte: **Webseite als Beleg sichern** (WARC-Original + prüfbarer Haupttext, auch aus dem Internet Archive), **Struktur & Texterkennung** (Tabellen, Überschriften, OCR für Scans), **Quellenunabhängigkeit** („N Dokumente / M unabhängige Ursprünge“) und **Netzwerkanalyse** (Gruppen, Brückenpersonen, GEXF/FollowTheMoney-Export). Die Entity-Prüfung nutzt einen stärkeren, begründeten Abgleich. Alles bleibt Prüfmaterial – keine automatische Bestätigung. Installierte Paketnummer bleibt 490.0. Details, Messwerte und Grenzen: [BUILD_492_NOTES.md](BUILD_492_NOTES.md).
+
+## EagleEye Build 482 – Dork-Recherche, Bildakte, Graph und bestehender Ermittlungsablauf
+
+**Windows:** Archiv vollständig entpacken, `START_EAGLEEYE_PRO.bat` starten. Bestehende Falldaten nicht überschreiben. Python 3.12+ erforderlich. Der Installer heißt `INSTALL_EAGLEEYE_482.py`.
+
+**Arbeiten:** Regulären Fall anlegen/öffnen → `Geführte Recherche` → `Dork-Recherche` für kontrollierte Suchlinks zu vorhandenen Suchdiensten (manuell öffnen, nicht automatisch gecrawlt) → `Dokumente` für echte Originalbelege → `Bildakte` für lokalen Bildimport mit Metadaten und Ähnlichkeit → `Graph` für überprüfbare Beziehungen → `Evidence/Claims/Dossier`. Keine automatischen Identitätsfeststellungen. Das Vorhandensein von Links ist keine Aussage über Live-Suchabdeckung.
+
+**Build 482 ist vor erfolgreicher Windows-/Linux- und Security-Abnahme ein Entwicklungsstand und nicht für vertrauliche Kundenaufträge freigegeben.**
+
+## Build 481 – Durchgehender Ermittlungsweg und geprüfte Quellenübergabe
+
+**Windows:** ZIP vollständig entpacken und `START_EAGLEEYE_PRO.bat` starten. Der Starter erzeugt bei Bedarf ein isoliertes Python-3.12+-Runtime und verwendet einen stabilen lokalen Arbeitsordner. Aufeinanderfolgende Build-Ordner dürfen Fälle nicht verstecken. Achtung: Build 481 ist vor Abschluss der Windows-/Live-Abnahme nicht für vertrauliche Aufträge freigegeben.
+
+**Ermittlung:** Regulären Fall öffnen → **Geführte Recherche** → Dokumente importieren → Textextraktion im Dokumentenarchiv prüfen → **Quelle → Evidence** mit bewusster Herkunftsbegründung → Original-Evidence und Claims im bestehenden Profi-Workflow unabhängig prüfen → Living Dossier und vorhandenen Vier-Augen-Gate verwenden. Keine automatische Wahrheitsbehauptung und kein ungeprüfter KI-Claim.
+
+## Build 480 – Eigene Arbeitsbefunde mit Originalfundstelle
 
 Geführte Recherche → Arbeitsbefunde: Dokument und Originalanker auswählen,
 Beobachtung/Hypothese/Gegenbeleg/Unsicherheit formulieren und dauerhaft speichern.
 Originaltext und Hashes bleiben getrennt von der eigenen Interpretation sichtbar.
-Siehe [BUILD_478_NOTES.md](BUILD_478_NOTES.md).
+Siehe [BUILD_480_NOTES.md](BUILD_480_NOTES.md).
 
 ## Build 477 – Fallbezogenes Quelleninventar
 

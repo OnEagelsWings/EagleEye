@@ -3,6 +3,7 @@ import re
 from importlib.metadata import version as package_version
 from pathlib import Path
 from eagleeye_pro.version import BUILD as RUNTIME_BUILD,SCHEMA_VERSION
+from eagleeye_pro.version import historical_schema_compatible
 class Build420Phase18QualificationService:
  BUILD='420.0'; PACKAGE='420.0.0'
  def __init__(self,db,audit,*,build419,qualification420,install_dir,actor='local-analyst'): self.db=db; self.audit=audit; self.build419=build419; self.qualification420=qualification420; self.install_dir=Path(install_dir); self.actor=actor
@@ -15,7 +16,7 @@ class Build420Phase18QualificationService:
   try:p=package_version('eagleeye-personosint-pro')
   except Exception:
    pt=self.install_dir/'pyproject.toml'; txt=pt.read_text() if pt.exists() else ''; m=re.search(r'^version\\s*=\\s*["\\\']([^"\\\']+)',txt,re.M); p=m.group(1) if m else 'unknown'
-  return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':RUNTIME_BUILD==SCHEMA_VERSION and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]) and p!='unknown' and int(str(p).split('.')[0])>=int(self.PACKAGE.split('.')[0])}
+  return {'runtime_build':RUNTIME_BUILD,'schema_version':SCHEMA_VERSION,'package_version':p,'coherent':historical_schema_compatible(RUNTIME_BUILD, SCHEMA_VERSION, self.BUILD) and int(RUNTIME_BUILD.split('.')[0])>=int(self.BUILD.split('.')[0]) and p!='unknown' and int(str(p).split('.')[0])>=int(self.PACKAGE.split('.')[0])}
  def qualification_status(self):
   s=self.qualification420.status(); last=self.db.one('SELECT qualification_id,result,created_at FROM phase18_qualification_run_420 ORDER BY rowid DESC LIMIT 1'); last=dict(last) if last else None; component_integrity={};
   for name,svc in self.qualification420.services.items():
