@@ -155,3 +155,54 @@ def test_script_built_pages_are_rendered_and_slow_pages_still_give_an_image(site
     monkeypatch.setattr(pageimage, "LOAD_TIMEOUT", 2.0)
     slow = pageimage.take(f"http://site.test:{site['port']}/slow", browser=BROWSER, check=only_site, ports=None)
     assert not slow["complete"] and slow["png"].startswith(b"\x89PNG")
+
+
+def test_hung_browser_start_is_retried_once_and_lock_released(monkeypatch, tmp_path):
+    """A browser that hangs before opening the page is started once more; the page is never requested twice."""
+    fake = tmp_path / "browser"
+    fake.write_text("", encoding="utf-8")
+    calls = []
+
+    def once(url, **kw):
+        calls.append(url)
+        if len(calls) == 1:
+            raise pageimage._StartStalled("Der Browser hat beim Start nicht rechtzeitig geantwortet.")
+        return {"png": b"ok", "complete": True}
+
+    monkeypatch.setattr(pageimage, "_take_once", once)
+    assert pageimage.take("http://site.test/", browser=str(fake))["complete"] is True
+    assert len(calls) == 2
+    assert pageimage._ONE_AT_A_TIME.acquire(timeout=0.1)  # Sperre wieder frei
+    pageimage._ONE_AT_A_TIME.release()
+
+
+def test_browser_hanging_twice_gives_readable_message(monkeypatch, tmp_path):
+    fake = tmp_path / "browser"
+    fake.write_text("", encoding="utf-8")
+    calls = []
+
+    def stalled(url, **kw):
+        calls.append(url)
+        raise pageimage._StartStalled("hängt")
+
+    monkeypatch.setattr(pageimage, "_take_once", stalled)
+    with pytest.raises(pageimage.ImageError, match="nicht rechtzeitig geantwortet"):
+        pageimage.take("http://site.test/", browser=str(fake))
+    assert len(calls) == pageimage.START_ATTEMPTS == 2
+    assert pageimage._ONE_AT_A_TIME.acquire(timeout=0.1)
+    pageimage._ONE_AT_A_TIME.release()
+
+
+def test_other_errors_are_not_retried(monkeypatch, tmp_path):
+    fake = tmp_path / "browser"
+    fake.write_text("", encoding="utf-8")
+    calls = []
+
+    def fails(url, **kw):
+        calls.append(url)
+        raise pageimage.ImageError("Die Seite ließ sich im Browser nicht laden (net::ERR_FAILED).")
+
+    monkeypatch.setattr(pageimage, "_take_once", fails)
+    with pytest.raises(pageimage.ImageError, match="nicht laden"):
+        pageimage.take("http://site.test/", browser=str(fake))
+    assert len(calls) == 1

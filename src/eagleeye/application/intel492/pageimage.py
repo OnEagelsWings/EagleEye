@@ -442,6 +442,9 @@ def _launch(browser: str, profile: Path, proxy_port: int) -> subprocess.Popen:
             "--disable-features=Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,"
             "LocalNetworkAccessChecks,PrivateNetworkAccessPermissionPrompt",
             "--deny-permission-prompts",
+            # Without a desktop session, Edge/Chrome on Linux can block on the system keyring before it
+            # answers DevTools. The throwaway profile stores no passwords; Windows ignores the switch.
+            "--password-store=basic", "--use-mock-keychain",
             "--hide-scrollbars", "--mute-audio", f"--window-size={WIDTH},{VIEW_HEIGHT}", "about:blank"]
     if os.name == "posix" and hasattr(os, "geteuid") and os.geteuid() == 0:
         args.insert(1, "--no-sandbox")  # Chromium refuses to start as root otherwise (containers)
@@ -481,6 +484,9 @@ def _stop(process: subprocess.Popen, profile: Path) -> None:
         time.sleep(0.3)
 
 
+START_ATTEMPTS = 2  # one fresh browser start if the first one hangs before opening the page
+
+
 def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float = 45.0) -> dict:
     """Render url in the local browser and return the PNG plus what the browser contacted."""
     check = check or default_check
@@ -490,10 +496,29 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
         raise ImageError("Nur http- und https-Adressen.")
     if not _ONE_AT_A_TIME.acquire(timeout=timeout):
         raise ImageError("Es wird gerade ein anderes Seitenbild aufgenommen. Bitte gleich noch einmal versuchen.")
+    try:
+        for attempt in range(1, START_ATTEMPTS + 1):
+            try:
+                return _take_once(url, browser=browser, check=check, ports=ports, timeout=timeout)
+            except _StartStalled:
+                # The page was not requested yet, so a fresh browser start is safe and repeats nothing.
+                if attempt == START_ATTEMPTS:
+                    raise ImageError("Der Browser hat nicht rechtzeitig geantwortet. Bitte noch einmal versuchen.") from None
+    finally:
+        _ONE_AT_A_TIME.release()
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
+class _StartStalled(ImageError):
+    """The browser did not get as far as opening the page; starting it again is harmless."""
+
+
+def _take_once(url: str, *, browser: str, check, ports, timeout: float) -> dict:
     profile = Path(tempfile.mkdtemp(prefix="eagleeye-seitenbild-"))
     deadline = time.monotonic() + timeout
     process = None
     ws = None
+    navigating = False
     admitted: set[str] = set()
     try:
         with FilterProxy(check=check, ports=ports, admit=admitted.__contains__) as proxy:
@@ -517,6 +542,7 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
             tools.call("Emulation.setDeviceMetricsOverride",
                        {"width": WIDTH, "height": VIEW_HEIGHT, "deviceScaleFactor": 1, "mobile": False}, session)
             tools.events.clear()  # a late load event of about:blank must not count as the page's
+            navigating = True
             navigated = tools.call("Page.navigate", {"url": url}, session)
             if navigated.get("errorText"):
                 raise ImageError("Die Seite ließ sich im Browser nicht laden (" + str(navigated["errorText"])[:80] + ").")
@@ -559,7 +585,15 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
                     "hosts": sorted(proxy.hosts), "blocked": list(proxy.blocked), "requests": tools.requests,
                     "background_refused": len(proxy.background)}
     except TimeoutError:
+        if not navigating:
+            raise _StartStalled("Der Browser hat beim Start nicht rechtzeitig geantwortet.") from None
         raise ImageError("Der Browser hat nicht rechtzeitig geantwortet. Bitte noch einmal versuchen.") from None
+    except _StartStalled:
+        raise
+    except ImageError as exc:
+        if not navigating and str(exc).startswith("Der Browser hat nicht rechtzeitig geantwortet"):
+            raise _StartStalled(str(exc)) from None  # no DevTools port within the start-up budget
+        raise
     except (OSError, ValueError, KeyError) as exc:
         raise ImageError(f"Seitenbild nicht möglich ({type(exc).__name__}).") from None
     finally:
@@ -569,7 +603,6 @@ def take(url: str, *, browser: str, check=None, ports=(80, 443), timeout: float 
             _stop(process, profile)
         else:
             shutil.rmtree(profile, ignore_errors=True)
-        _ONE_AT_A_TIME.release()
 
 
 def target_url(row: dict) -> str:
