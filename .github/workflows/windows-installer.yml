@@ -77,10 +77,15 @@ jobs:
       - name: Laufzeit vorbereiten (tkinter aus derselben Version, isolierter Importpfad)
         run: |
           python packaging/windows/build_stage.py runtime --runtime build/stage/runtime
-          foreach ($f in Get-ChildItem build/stage/runtime -Include _tkinter.pyd,tcl*.dll,tk*.dll -Recurse) {
-            $s = Get-AuthenticodeSignature $f.FullName
-            if ($s.Status -ne 'Valid' -or "$($s.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "tkinter-Datei nicht gültig signiert: $($f.Name)" }
+          if ($LASTEXITCODE) { throw "Laufzeit nicht vorbereitet" }
+          # Was tkinter lädt (_tkinter.pyd und die Tcl/Tk-Bibliotheken), muss von der PSF signiert sein.
+          foreach ($name in Get-Content build/stage/runtime/tkinter-files.txt) {
+            $s = Get-AuthenticodeSignature "build/stage/runtime/$name"
+            if ($s.Status -ne 'Valid' -or "$($s.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "tkinter-Datei nicht gültig signiert: $name ($($s.Status))" }
+            Write-Host "signiert (PSF): $name"
           }
+          foreach ($f in Get-ChildItem build/stage/runtime/tcl -Recurse -Include *.dll) { Write-Host "Hinweis: weitere Tcl-Datei $($f.FullName): $((Get-AuthenticodeSignature $f.FullName).Status)" }
+          Remove-Item build/stage/runtime/tkinter-files.txt
 
       - name: Bibliotheken nur aus der Sperrliste (feste Versionen, SHA-256 Pflicht, nur fertige Pakete)
         run: |

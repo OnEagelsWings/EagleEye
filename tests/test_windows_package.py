@@ -141,3 +141,24 @@ def test_fallakte_entry_passes_the_program_folder(tmp_path, monkeypatch):
                      ["--install-root", str(tmp_path / "EagleEye"), "--choose-workspace"]]
     monkeypatch.setattr(desktop476, "main", lambda argv: (_ for _ in ()).throw(RuntimeError("kaputt")))
     assert windows_start.main(["fallakte"]) == 1, "a crash is reported, not a vanishing window"
+
+
+def test_runtime_gets_tkinter_from_the_full_installation_without_dde_and_registry(tmp_path):
+    stage = _load_build_stage()
+    tag = f"{sys.version_info[0]}{sys.version_info[1]}"
+    runtime, full = tmp_path / "runtime", tmp_path / "full"
+    runtime.mkdir()
+    for name in (f"python{tag}.dll", "libcrypto-3.dll", f"python{tag}._pth"):
+        (runtime / name).write_bytes(b"embed")
+    for rel in ("DLLs/_tkinter.pyd", "DLLs/tcl90.dll", "DLLs/tcl9tk90.dll", "DLLs/libcrypto-3.dll",
+                "Lib/tkinter/__init__.py", "Lib/tkinter/filedialog.py", "tcl/tcl9.0/init.tcl",
+                "tcl/tcl9.0/dde1.4/tcl9dde14.dll", "tcl/tcl9.0/reg1.3/tcl9registry13.dll", "tcl/tk9.0/tk.tcl"):
+        (full / rel).parent.mkdir(parents=True, exist_ok=True)
+        (full / rel).write_bytes(b"full")
+    stage.prepare_runtime(runtime, full)
+    assert (runtime / "libcrypto-3.dll").read_bytes() == b"embed", "the embeddable package's own files stay"
+    assert sorted((runtime / "tkinter-files.txt").read_text().split()) == ["_tkinter.pyd", "tcl90.dll", "tcl9tk90.dll"]
+    assert (runtime / "Lib" / "tkinter" / "filedialog.py").is_file()
+    assert (runtime / "tcl" / "tcl9.0" / "init.tcl").is_file() and (runtime / "tcl" / "tk9.0" / "tk.tcl").is_file()
+    assert not (runtime / "tcl" / "tcl9.0" / "dde1.4").exists() and not (runtime / "tcl" / "tcl9.0" / "reg1.3").exists()
+    assert (runtime / f"python{tag}._pth").read_text().splitlines()[-1] == "import site"

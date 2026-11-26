@@ -57,14 +57,22 @@ def prepare_runtime(runtime: Path, tk_source: Path) -> None:
     shutil.copytree(tk_source / "Lib" / "tkinter", runtime / "Lib" / "tkinter",
                     ignore=shutil.ignore_patterns("__pycache__", "test*"), dirs_exist_ok=True)
     copied = []
-    for pattern in ("_tkinter.pyd", "tcl*.dll", "tk*.dll", "zlib*.dll"):
-        for item in (tk_source / "DLLs").glob(pattern):
+    tkinter_pyd = tk_source / "DLLs" / "_tkinter.pyd"
+    if not tkinter_pyd.is_file():
+        raise SystemExit("tkinter-Bestandteile nicht gefunden in " + str(tk_source))
+    shutil.copy2(tkinter_pyd, runtime / tkinter_pyd.name)
+    copied.append(tkinter_pyd.name)
+    # The Tcl/Tk libraries (names differ between Tcl 8.6 and 9): every DLL of the full
+    # installation that the embeddable package lacks.
+    for item in sorted((tk_source / "DLLs").glob("*.dll")):
+        if not (runtime / item.name).exists():
             shutil.copy2(item, runtime / item.name)
             copied.append(item.name)
-    if "_tkinter.pyd" not in copied:
-        raise SystemExit("tkinter-Bestandteile nicht gefunden in " + str(tk_source))
-    shutil.copytree(tk_source / "tcl", runtime / "tcl", dirs_exist_ok=True)
-    print("Laufzeit vorbereitet:", runtime, "| tkinter:", ", ".join(sorted(copied)))
+    # Tcl's Windows-only "dde" and "registry" packages are not used by tkinter; leave them out.
+    shutil.copytree(tk_source / "tcl", runtime / "tcl", dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("dde[0-9]*", "reg[0-9]*", "*dde[0-9]*.dll", "*registry[0-9]*.dll"))
+    (runtime / "tkinter-files.txt").write_text("\n".join(copied) + "\n", encoding="ascii")
+    print("Laufzeit vorbereitet:", runtime, "| tkinter:", ", ".join(copied))
 
 
 def assemble(stage: Path, repo: Path = REPO) -> None:
