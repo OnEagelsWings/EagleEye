@@ -116,12 +116,15 @@ def test_tool_scripts_run_with_their_own_folder_on_the_import_path(tmp_path, cap
     (tool / "main_ee_test.py").write_text(
         "import sys\nfrom helper_ee_test import VALUE\nprint(VALUE, sys.argv[1:])\nraise SystemExit(3 if '--fail' in sys.argv else 0)\n",
         encoding="utf-8")
+    (tool / "plain_ee_test.py").write_text("from helper_ee_test import VALUE\nprint('ohne exit', VALUE)\n", encoding="utf-8")
     before = sys.path[:]
+    assert windows_start.run_script(tool / "plain_ee_test.py", []) == 0, "a script that simply ends succeeded"
     assert windows_start.run_script(tool / "main_ee_test.py", ["--init"]) == 0
     assert windows_start.run_script(tool / "main_ee_test.py", ["--fail"]) == 3
     assert sys.path == before
     out = capsys.readouterr().out
-    assert "nachbar ['--init']" in out and "nachbar ['--fail']" in out
+    assert "nachbar ['--init']" in out and "nachbar ['--fail']" in out and "ohne exit nachbar" in out
+    assert "__builtins__" not in out, "the script's globals are not printed"
     assert windows_start.run_script(tool / "fehlt.py", []) == 1
     sys.modules.pop("helper_ee_test", None)
 

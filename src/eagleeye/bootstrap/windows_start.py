@@ -93,8 +93,13 @@ def run_script(script: Path, args: list[str]) -> int:
     saved_argv, saved_path = sys.argv[:], sys.path[:]
     sys.argv = [str(script), *args]
     sys.path.insert(0, str(script.parent))
+
+    def run() -> int:
+        runpy.run_path(str(script), run_name="__main__")  # returns the script's globals, not an exit code
+        return 0
+
     try:
-        return _call(runpy.run_path, str(script), None, "__main__")
+        return _call(run)
     finally:
         sys.argv, sys.path[:] = saved_argv, saved_path
 
