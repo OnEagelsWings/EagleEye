@@ -53,7 +53,13 @@ def prepare_runtime(runtime: Path, tk_source: Path) -> None:
     (runtime / f"python{tag}._pth").write_text(pth_text(version), encoding="ascii")
     (runtime / "Lib" / "site-packages").mkdir(parents=True, exist_ok=True)
     # tkinter (folder picker, Forschungs-Brücke) is not part of the embeddable package.
-    # Take it from the official installation of exactly the same version.
+    # Take it from the official installation of exactly the same version
+    # (an installed Python or the unpacked tcltk.msi of python.org).
+    if not (tk_source / "DLLs" / "_tkinter.pyd").is_file():
+        # An unpacked MSI may nest the installation layout one level deeper.
+        found = next(iter(sorted(tk_source.rglob("DLLs/_tkinter.pyd"))), None)
+        if found is not None:
+            tk_source = found.parent.parent
     shutil.copytree(tk_source / "Lib" / "tkinter", runtime / "Lib" / "tkinter",
                     ignore=shutil.ignore_patterns("__pycache__", "test*"), dirs_exist_ok=True)
     copied = []

@@ -74,17 +74,24 @@ jobs:
           if ($bad) { $bad; throw "Python-Laufzeit nicht durchgehend gültig signiert" }
           Write-Host "Alle Programmdateien der Laufzeit gültig signiert (Python Software Foundation / Microsoft)."
 
-      - name: Laufzeit vorbereiten (tkinter aus derselben Version, isolierter Importpfad)
+      - name: Laufzeit vorbereiten (tkinter aus dem signierten Tcl/Tk-Paket von python.org, isolierter Importpfad)
         run: |
-          python packaging/windows/build_stage.py runtime --runtime build/stage/runtime
+          # Die eingebettete Fassung enthält kein tkinter. Das offizielle Teilpaket tcltk.msi derselben Version
+          # ist von der PSF signiert; die Signatur schützt auch die darin enthaltenen, selbst unsignierten
+          # Tcl/Tk-Bibliotheken. Entpackt wird es nur (msiexec /a), nicht installiert.
+          $v = '${{ steps.v.outputs.python }}'
+          Invoke-WebRequest "https://www.python.org/ftp/python/$v/amd64/tcltk.msi" -OutFile build/tcltk.msi
+          $s = Get-AuthenticodeSignature build/tcltk.msi
+          if ($s.Status -ne 'Valid' -or "$($s.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "tcltk.msi nicht gültig signiert: $($s.Status)" }
+          Write-Host "tcltk.msi SHA-256 $((Get-FileHash build/tcltk.msi -Algorithm SHA256).Hash.ToLower()), signiert: $($s.SignerCertificate.Subject)"
+          $target = "$PWD\build\tcltk"
+          $p = Start-Process msiexec -Wait -PassThru -ArgumentList '/a', "`"$PWD\build\tcltk.msi`"", "TARGETDIR=`"$target`"", '/qn', '/L*v', "`"$PWD\build\tcltk-entpacken.log`""
+          if ($p.ExitCode) { Get-Content build/tcltk-entpacken.log -Tail 30; throw "tcltk.msi ließ sich nicht entpacken ($($p.ExitCode))" }
+          Get-ChildItem $target -Recurse -Depth 1 | Select-Object -First 20 | ForEach-Object { $_.FullName }
+          python packaging/windows/build_stage.py runtime --runtime build/stage/runtime --tk-from $target
           if ($LASTEXITCODE) { throw "Laufzeit nicht vorbereitet" }
-          # Was tkinter lädt (_tkinter.pyd und die Tcl/Tk-Bibliotheken), muss von der PSF signiert sein.
-          foreach ($name in Get-Content build/stage/runtime/tkinter-files.txt) {
-            $s = Get-AuthenticodeSignature "build/stage/runtime/$name"
-            if ($s.Status -ne 'Valid' -or "$($s.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "tkinter-Datei nicht gültig signiert: $name ($($s.Status))" }
-            Write-Host "signiert (PSF): $name"
-          }
-          foreach ($f in Get-ChildItem build/stage/runtime/tcl -Recurse -Include *.dll) { Write-Host "Hinweis: weitere Tcl-Datei $($f.FullName): $((Get-AuthenticodeSignature $f.FullName).Status)" }
+          $pyd = Get-AuthenticodeSignature build/stage/runtime/_tkinter.pyd
+          if ($pyd.Status -ne 'Valid' -or "$($pyd.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "_tkinter.pyd nicht gültig signiert" }
           Remove-Item build/stage/runtime/tkinter-files.txt
 
       - name: Bibliotheken nur aus der Sperrliste (feste Versionen, SHA-256 Pflicht, nur fertige Pakete)

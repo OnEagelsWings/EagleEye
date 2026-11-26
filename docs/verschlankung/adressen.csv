@@ -1,0 +1,688 @@
+erreichbar;methoden;adresse;modul
+Menü/Link;GET;/;eagleeye.interfaces.web.buero
+Menü/Link;GET;/ai-checkpoint475;eagleeye.interfaces.web.app475
+Menü/Link;GET;/assets/build448/workspace.js;eagleeye.interfaces.web.app448
+Menü/Link;GET;/assets/build458/documents.js;eagleeye.interfaces.web.app458
+Menü/Link;GET;/assets/eagleeye-analysis.js;eagleeye.interfaces.web.analysis_tools
+Menü/Link;GET;/assistant471;eagleeye.interfaces.web.app471
+Formular;POST;/assistant471/generate;eagleeye.interfaces.web.app471
+Menü/Link;GET;/benchmark468;eagleeye.interfaces.web.app468
+Menü/Link;GET;/buero;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/auftrag;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/auftrag/ergaenzen;eagleeye.interfaces.web.buero
+Formular;POST;/buero/auftrag/ergaenzen;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/auftrag/neu;eagleeye.interfaces.web.buero
+Formular;POST;/buero/auftrag/neu;eagleeye.interfaces.web.buero
+Formular;POST;/buero/beweissicherung;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/einstellungen;eagleeye.interfaces.web.buero
+Formular;POST;/buero/einstellungen;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/konto;eagleeye.interfaces.web.buero
+Formular;POST;/buero/konto;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/loeschprotokoll;eagleeye.interfaces.web.buero
+Formular;GET;/buero/mandant;eagleeye.interfaces.web.buero
+Formular;POST;/buero/mandant;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/mandanten;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/rechnungen;eagleeye.interfaces.web.buero
+Formular;POST;/buero/rechnungen;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/sicherung;eagleeye.interfaces.web.buero
+Formular;POST;/buero/sicherung;eagleeye.interfaces.web.buero
+Formular;POST;/buero/sicherung/einstellungen;eagleeye.interfaces.web.buero
+Menü/Link;GET;/buero/team;eagleeye.interfaces.web.buero
+Formular;POST;/buero/team/benutzer;eagleeye.interfaces.web.buero
+Formular;GET;/buero/zeiten.csv;eagleeye.interfaces.web.buero
+Formular;POST;/cases;eagleeye.interfaces.web.app364
+Menü/Link;GET;/collect469;eagleeye.interfaces.web.app469
+Formular;POST;/collect469/import;eagleeye.interfaces.web.app469
+Menü/Link;GET;/documents458;eagleeye.interfaces.web.docview492
+Menü/Link;GET;/entities462;eagleeye.interfaces.web.app462
+Formular;POST;/entities462/create;eagleeye.interfaces.web.app462
+Formular;POST;/entities462/link;eagleeye.interfaces.web.app462
+Menü/Link;GET;/graph464;eagleeye.interfaces.web.app464
+Menü/Link;GET;/new-case;eagleeye.interfaces.web.app459
+Menü/Link;GET;/readiness470;eagleeye.interfaces.web.app470
+Menü/Link;GET;/review465;eagleeye.interfaces.web.app465
+Formular;POST;/security/logout;eagleeye.interfaces.web.app364
+Menü/Link;GET;/source-links463;eagleeye.interfaces.web.app463
+Formular;POST;/source-links463/create;eagleeye.interfaces.web.app463
+Menü/Link;GET;/workbench;eagleeye.interfaces.web.buero
+Menü/Link;GET;/workbench/ai498;eagleeye.interfaces.web.ai498
+Menü/Link;GET;/workbench/analysis-tools;eagleeye.interfaces.web.analysis_tools
+Menü/Link;GET;/workbench/bridge481;eagleeye.interfaces.web.bridge481
+Menü/Link;GET;/workbench/checkpoint;eagleeye.interfaces.web.checkpoint480
+Menü/Link;GET;/workbench/closure;eagleeye.interfaces.web.closure_workflow478
+Menü/Link;GET;/workbench/document;eagleeye.interfaces.web.docview492
+Menü/Link;GET;/workbench/dorks482;eagleeye.interfaces.web.recovery482
+Menü/Link;GET;/workbench/entities488;eagleeye.interfaces.web.entities488
+Menü/Link;GET;/workbench/expert;eagleeye.interfaces.web.tool_center477
+Menü/Link;GET;/workbench/findings;eagleeye.interfaces.web.findings478
+Menü/Link;GET;/workbench/images482;eagleeye.interfaces.web.recovery482
+Formular;POST;/workbench/images482;eagleeye.interfaces.web.recovery482
+Menü/Link;GET;/workbench/intel;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/intel/documents;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/intel/ftm.json;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/intel/lineage;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/intel/network;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/intel/network.gexf;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/intel/web;eagleeye.interfaces.web.intel492
+Formular;POST;/workbench/intel/web;eagleeye.interfaces.web.intel492
+Formular;POST;/workbench/intel/web/wayback;eagleeye.interfaces.web.intel492
+Menü/Link;GET;/workbench/leads483;eagleeye.interfaces.web.research483
+Menü/Link;GET;/workbench/media484;eagleeye.interfaces.web.media484
+Menü/Link;GET;/workbench/personanalyse;eagleeye.interfaces.web.personosint_analysis502
+Menü/Link;GET;/workbench/personosint493;eagleeye.interfaces.web.personosint493
+Formular;POST;/workbench/personosint493;eagleeye.interfaces.web.personosint493
+Menü/Link;GET;/workbench/personosint494;eagleeye.interfaces.web.personosint494
+Formular;POST;/workbench/personosint494;eagleeye.interfaces.web.personosint494
+Menü/Link;GET;/workbench/personosint495;eagleeye.interfaces.web.personosint495
+Formular;POST;/workbench/personosint495;eagleeye.interfaces.web.personosint495
+Menü/Link;GET;/workbench/pilot485;eagleeye.interfaces.web.pilot485
+Menü/Link;GET;/workbench/plan496;eagleeye.interfaces.web.plan496
+Formular;POST;/workbench/plan496/new;eagleeye.interfaces.web.plan496
+Menü/Link;GET;/workbench/public-sources;eagleeye.interfaces.web.public_sources501
+Formular;POST;/workbench/public-sources/filter;eagleeye.interfaces.web.public_sources501
+Formular;POST;/workbench/public-sources/{action};eagleeye.interfaces.web.public_sources501
+Menü/Link;GET;/workbench/release500;eagleeye.interfaces.web.app500
+Menü/Link;GET;/workbench/report;eagleeye.interfaces.web.report479
+Menü/Link;GET;/workbench/report.md;eagleeye.interfaces.web.report479
+Menü/Link;GET;/workbench/run497;eagleeye.interfaces.web.execution497
+Menü/Link;GET;/workbench/sources;eagleeye.interfaces.web.sources477
+Menü/Link;GET;/workbench/sources487;eagleeye.interfaces.web.sources487
+Menü/Link;GET;/workbench/transfer499;eagleeye.interfaces.web.transfer499
+Menü/Link;GET;/workflow461;eagleeye.interfaces.web.app461
+Schnittstelle ohne Aufrufer;GET;/api/build364;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/build364/final-status;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/build364/phase16-status;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/build364/remote-team;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/build365/final-status;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;GET;/api/build365/phase16-status;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;GET;/api/build366/corporate/connectors;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;GET;/api/build366/final-status;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;GET;/api/build366/phase16-status;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;GET;/api/build367/final-status;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;GET;/api/build367/phase16-status;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;GET;/api/build367/public-money/connectors;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;GET;/api/build368/final-status;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;GET;/api/build368/phase16-status;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;GET;/api/build368/reference/connectors;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;GET;/api/build369/final-status;eagleeye.interfaces.web.app369
+Schnittstelle ohne Aufrufer;GET;/api/build369/phase16-status;eagleeye.interfaces.web.app369
+Schnittstelle ohne Aufrufer;GET;/api/build370/crawler-roadmap;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;GET;/api/build370/final-status;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;GET;/api/build370/phase16-status;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;POST;/api/build370/tor-config;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;GET;/api/build370/tor-status;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;GET;/api/build371/final-status;eagleeye.interfaces.web.app371
+Schnittstelle ohne Aufrufer;GET;/api/build371/phase16-status;eagleeye.interfaces.web.app371
+Schnittstelle ohne Aufrufer;GET;/api/build372/final-status;eagleeye.interfaces.web.app372
+Schnittstelle ohne Aufrufer;GET;/api/build372/phase16-status;eagleeye.interfaces.web.app372
+Schnittstelle ohne Aufrufer;GET;/api/build373/final-status;eagleeye.interfaces.web.app373
+Schnittstelle ohne Aufrufer;GET;/api/build373/phase16-status;eagleeye.interfaces.web.app373
+Schnittstelle ohne Aufrufer;GET;/api/build374/final-status;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;GET;/api/build374/phase16-status;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;GET;/api/build375/ai-eval/holdout;eagleeye.interfaces.web.app375
+Schnittstelle ohne Aufrufer;GET;/api/build375/final-status;eagleeye.interfaces.web.app375
+Schnittstelle ohne Aufrufer;GET;/api/build375/phase16-status;eagleeye.interfaces.web.app375
+Schnittstelle ohne Aufrufer;GET;/api/build376/final-status;eagleeye.interfaces.web.app376
+Schnittstelle ohne Aufrufer;GET;/api/build376/phase16-status;eagleeye.interfaces.web.app376
+Schnittstelle ohne Aufrufer;GET;/api/build377/final-status;eagleeye.interfaces.web.app377
+Schnittstelle ohne Aufrufer;GET;/api/build377/phase16-status;eagleeye.interfaces.web.app377
+Schnittstelle ohne Aufrufer;GET;/api/build378/final-status;eagleeye.interfaces.web.app378
+Schnittstelle ohne Aufrufer;GET;/api/build378/phase16-status;eagleeye.interfaces.web.app378
+Schnittstelle ohne Aufrufer;GET;/api/build379/external-receipt-status;eagleeye.interfaces.web.app379
+Schnittstelle ohne Aufrufer;GET;/api/build379/final-status;eagleeye.interfaces.web.app379
+Schnittstelle ohne Aufrufer;GET;/api/build379/phase16-status;eagleeye.interfaces.web.app379
+Schnittstelle ohne Aufrufer;GET;/api/build379/qualification-contract;eagleeye.interfaces.web.app379
+Schnittstelle ohne Aufrufer;GET;/api/build380/crawler-slo-gate;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;GET;/api/build380/external-validation-matrix;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;GET;/api/build380/final-decision;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;GET;/api/build380/final-status;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;GET;/api/build380/phase16-status;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;GET;/api/build384/phase17-status;eagleeye.interfaces.web.app384
+Schnittstelle ohne Aufrufer;GET;/api/build385/acquisition-capabilities;eagleeye.interfaces.web.app385
+Schnittstelle ohne Aufrufer;GET;/api/build385/phase17-status;eagleeye.interfaces.web.app385
+Schnittstelle ohne Aufrufer;GET;/api/build386/phase17-status;eagleeye.interfaces.web.app386
+Schnittstelle ohne Aufrufer;GET;/api/build387/phase17-status;eagleeye.interfaces.web.app387
+Schnittstelle ohne Aufrufer;GET;/api/build388/phase17-status;eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;GET;/api/build389/phase17-status;eagleeye.interfaces.web.app389
+Schnittstelle ohne Aufrufer;GET;/api/build390/phase17-status;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;GET;/api/build390/source-independence-profiles;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;GET;/api/build391/phase17-status;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;GET;/api/build392/phase17-status;eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;GET;/api/build393/phase17-status;eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;GET;/api/build394/phase17-status;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;GET;/api/build395/phase17-status;eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;GET;/api/build396/phase17-status;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;GET;/api/build397/phase17-status;eagleeye.interfaces.web.app397
+Schnittstelle ohne Aufrufer;POST;/api/build398/holdout/reference-suite;eagleeye.interfaces.web.app398
+Schnittstelle ohne Aufrufer;POST;/api/build398/holdout/runs/external;eagleeye.interfaces.web.app398
+Schnittstelle ohne Aufrufer;POST;/api/build398/holdout/runs/{run_id}/reviews;eagleeye.interfaces.web.app398
+Schnittstelle ohne Aufrufer;GET;/api/build398/holdout/status;eagleeye.interfaces.web.app398
+Schnittstelle ohne Aufrufer;GET;/api/build398/phase17-status;eagleeye.interfaces.web.app398
+Schnittstelle ohne Aufrufer;GET;/api/build399/phase17-status;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;POST;/api/build399/soak/import-external;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;POST;/api/build399/soak/internal-framework-check;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;POST;/api/build399/soak/reference-plan;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;POST;/api/build399/soak/sessions/{session_id}/review;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;GET;/api/build399/soak/sessions/{session_id}/verify;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;GET;/api/build399/soak/status;eagleeye.interfaces.web.app399
+Schnittstelle ohne Aufrufer;POST;/api/build400/final-acceptance;eagleeye.interfaces.web.app400
+Schnittstelle ohne Aufrufer;GET;/api/build400/final-acceptance/{run_id};eagleeye.interfaces.web.app400
+Schnittstelle ohne Aufrufer;POST;/api/build400/final-acceptance/{run_id}/export;eagleeye.interfaces.web.app400
+Schnittstelle ohne Aufrufer;POST;/api/build400/final-acceptance/{run_id}/review;eagleeye.interfaces.web.app400
+Schnittstelle ohne Aufrufer;GET;/api/build400/final-acceptance/{run_id}/verify;eagleeye.interfaces.web.app400
+Schnittstelle ohne Aufrufer;GET;/api/build400/phase17-status;eagleeye.interfaces.web.app400
+Schnittstelle ohne Aufrufer;GET;/api/build401/phase18-status;eagleeye.interfaces.web.app401
+Schnittstelle ohne Aufrufer;GET;/api/build401/security-gate;eagleeye.interfaces.web.app401
+Schnittstelle ohne Aufrufer;GET;/api/build402/authorization-audit;eagleeye.interfaces.web.app402
+Schnittstelle ohne Aufrufer;GET;/api/build402/authorization-matrix;eagleeye.interfaces.web.app402
+Schnittstelle ohne Aufrufer;GET;/api/build402/phase18-status;eagleeye.interfaces.web.app402
+Schnittstelle ohne Aufrufer;GET;/api/build402/role-matrix;eagleeye.interfaces.web.app402
+Schnittstelle ohne Aufrufer;GET;/api/build403/negative-path-audit;eagleeye.interfaces.web.app403
+Schnittstelle ohne Aufrufer;GET;/api/build403/negative-path-catalog;eagleeye.interfaces.web.app403
+Schnittstelle ohne Aufrufer;GET;/api/build403/negative-path-status;eagleeye.interfaces.web.app403
+Schnittstelle ohne Aufrufer;GET;/api/build404/review-gate;eagleeye.interfaces.web.app404
+Schnittstelle ohne Aufrufer;GET;/api/build404/review-integrity;eagleeye.interfaces.web.app404
+Schnittstelle ohne Aufrufer;GET;/api/build404/review-rules;eagleeye.interfaces.web.app404
+Schnittstelle ohne Aufrufer;GET;/api/build405/source-registry;eagleeye.interfaces.web.app405
+Schnittstelle ohne Aufrufer;GET;/api/build405/source-registry/integrity;eagleeye.interfaces.web.app405
+Schnittstelle ohne Aufrufer;GET;/api/build405/source-registry/status;eagleeye.interfaces.web.app405
+Schnittstelle ohne Aufrufer;GET;/api/build406/phase18-status;eagleeye.interfaces.web.app406
+Schnittstelle ohne Aufrufer;GET;/api/build406/remediation-status;eagleeye.interfaces.web.app406
+Schnittstelle ohne Aufrufer;GET;/api/build407/data-fabric/adapters;eagleeye.interfaces.web.app407
+Schnittstelle ohne Aufrufer;GET;/api/build407/data-fabric/status;eagleeye.interfaces.web.app407
+Schnittstelle ohne Aufrufer;GET;/api/build408/federated-search/status;eagleeye.interfaces.web.app408
+Schnittstelle ohne Aufrufer;GET;/api/build409/retrieval-quality/status;eagleeye.interfaces.web.app409
+Schnittstelle ohne Aufrufer;GET;/api/build409/retrieval-quality/{search_id};eagleeye.interfaces.web.app409
+Schnittstelle ohne Aufrufer;GET;/api/build410/feedback-qualification/status;eagleeye.interfaces.web.app410
+Schnittstelle ohne Aufrufer;GET;/api/build411/temporal/status;eagleeye.interfaces.web.app411
+Schnittstelle ohne Aufrufer;GET;/api/build411/temporal/{search_id};eagleeye.interfaces.web.app411
+Schnittstelle ohne Aufrufer;GET;/api/build411/temporal/{search_id}/conflicts;eagleeye.interfaces.web.app411
+Schnittstelle ohne Aufrufer;GET;/api/build411/temporal/{search_id}/coverage;eagleeye.interfaces.web.app411
+Schnittstelle ohne Aufrufer;GET;/api/build412/relationships/status;eagleeye.interfaces.web.app412
+Schnittstelle ohne Aufrufer;GET;/api/build412/relationships/{search_id};eagleeye.interfaces.web.app412
+Schnittstelle ohne Aufrufer;GET;/api/build412/relationships/{search_id}/entity/{entity_id};eagleeye.interfaces.web.app412
+Schnittstelle ohne Aufrufer;GET;/api/build412/relationships/{search_id}/paths/{start_entity_id}/{end_entity_id};eagleeye.interfaces.web.app412
+Schnittstelle ohne Aufrufer;GET;/api/build413/cases/{case_id}/plans;eagleeye.interfaces.web.app413
+Schnittstelle ohne Aufrufer;GET;/api/build413/planner/status;eagleeye.interfaces.web.app413
+Schnittstelle ohne Aufrufer;POST;/api/build413/plans;eagleeye.interfaces.web.app413
+Schnittstelle ohne Aufrufer;GET;/api/build413/plans/{plan_id};eagleeye.interfaces.web.app413
+Schnittstelle ohne Aufrufer;POST;/api/build414/waves;eagleeye.interfaces.web.app414
+Schnittstelle ohne Aufrufer;GET;/api/build414/waves/status;eagleeye.interfaces.web.app414
+Schnittstelle ohne Aufrufer;POST;/api/build414/waves/{run_id}/advance;eagleeye.interfaces.web.app414
+Schnittstelle ohne Aufrufer;POST;/api/build414/waves/{run_id}/authorize;eagleeye.interfaces.web.app414
+Schnittstelle ohne Aufrufer;POST;/api/build415/multi-agent/sessions;eagleeye.interfaces.web.app415
+Schnittstelle ohne Aufrufer;POST;/api/build415/multi-agent/sessions/{session_id}/round;eagleeye.interfaces.web.app415
+Schnittstelle ohne Aufrufer;GET;/api/build415/multi-agent/status;eagleeye.interfaces.web.app415
+Schnittstelle ohne Aufrufer;GET;/api/build416/continuity/status;eagleeye.interfaces.web.app416
+Schnittstelle ohne Aufrufer;POST;/api/build416/multi-agent/sessions/{session_id}/round;eagleeye.interfaces.web.app416
+Schnittstelle ohne Aufrufer;POST;/api/build416/multi-agent/sessions/{session_id}/validate;eagleeye.interfaces.web.app416
+Schnittstelle ohne Aufrufer;GET;/api/build417/hypotheses/status;eagleeye.interfaces.web.app417
+Schnittstelle ohne Aufrufer;GET;/api/build417/hypotheses/{hypothesis_id};eagleeye.interfaces.web.app417
+Schnittstelle ohne Aufrufer;POST;/api/build417/hypotheses/{hypothesis_id}/items;eagleeye.interfaces.web.app417
+Schnittstelle ohne Aufrufer;POST;/api/build417/hypotheses/{hypothesis_id}/state;eagleeye.interfaces.web.app417
+Schnittstelle ohne Aufrufer;POST;/api/build417/multi-agent/sessions/{session_id}/hypotheses;eagleeye.interfaces.web.app417
+Schnittstelle ohne Aufrufer;POST;/api/build418/hypotheses/{hypothesis_id}/evidence;eagleeye.interfaces.web.app418
+Schnittstelle ohne Aufrufer;GET;/api/build418/matrix/status;eagleeye.interfaces.web.app418
+Schnittstelle ohne Aufrufer;GET;/api/build418/multi-agent/sessions/{session_id}/matrix;eagleeye.interfaces.web.app418
+Schnittstelle ohne Aufrufer;POST;/api/build419/multi-agent/sessions/{session_id}/syntheses;eagleeye.interfaces.web.app419
+Schnittstelle ohne Aufrufer;GET;/api/build419/syntheses/{synthesis_id};eagleeye.interfaces.web.app419
+Schnittstelle ohne Aufrufer;GET;/api/build419/synthesis/status;eagleeye.interfaces.web.app419
+Schnittstelle ohne Aufrufer;POST;/api/build420/qualification/run;eagleeye.interfaces.web.app420
+Schnittstelle ohne Aufrufer;GET;/api/build420/qualification/status;eagleeye.interfaces.web.app420
+Schnittstelle ohne Aufrufer;GET;/api/build421/acquisition/sources;eagleeye.interfaces.web.app421
+Schnittstelle ohne Aufrufer;POST;/api/build421/acquisition/sources;eagleeye.interfaces.web.app421
+Schnittstelle ohne Aufrufer;GET;/api/build421/acquisition/status;eagleeye.interfaces.web.app421
+Schnittstelle ohne Aufrufer;GET;/api/build422/acquisition/status;eagleeye.interfaces.web.app422
+Schnittstelle ohne Aufrufer;GET;/api/build422/cases/{case_id}/acquisition-events;eagleeye.interfaces.web.app422
+Schnittstelle ohne Aufrufer;POST;/api/build422/cases/{case_id}/acquisition-events;eagleeye.interfaces.web.app422
+Schnittstelle ohne Aufrufer;POST;/api/build423/acquisition-events/{event_id}/content;eagleeye.interfaces.web.app423
+Schnittstelle ohne Aufrufer;GET;/api/build423/content/status;eagleeye.interfaces.web.app423
+Schnittstelle ohne Aufrufer;GET;/api/build424/acquisition/sources/{source_id}/health;eagleeye.interfaces.web.app424
+Schnittstelle ohne Aufrufer;POST;/api/build424/acquisition/sources/{source_id}/health;eagleeye.interfaces.web.app424
+Schnittstelle ohne Aufrufer;GET;/api/build424/acquisition/status;eagleeye.interfaces.web.app424
+Schnittstelle ohne Aufrufer;GET;/api/build425/crawler/status;eagleeye.interfaces.web.app425
+Schnittstelle ohne Aufrufer;POST;/api/build425/crawler/tasks;eagleeye.interfaces.web.app425
+Schnittstelle ohne Aufrufer;GET;/api/build426/cases/{case_id}/crawl-priorities;eagleeye.interfaces.web.app426
+Schnittstelle ohne Aufrufer;GET;/api/build426/crawler/status;eagleeye.interfaces.web.app426
+Schnittstelle ohne Aufrufer;POST;/api/build426/crawler/tasks/{task_id}/priority;eagleeye.interfaces.web.app426
+Schnittstelle ohne Aufrufer;POST;/api/build427/acquisition-events/{event_id}/snapshot;eagleeye.interfaces.web.app427
+Schnittstelle ohne Aufrufer;GET;/api/build427/cases/{case_id}/changes;eagleeye.interfaces.web.app427
+Schnittstelle ohne Aufrufer;GET;/api/build427/crawler/status;eagleeye.interfaces.web.app427
+Schnittstelle ohne Aufrufer;POST;/api/build428/archive/captures;eagleeye.interfaces.web.app428
+Schnittstelle ohne Aufrufer;GET;/api/build428/archive/status;eagleeye.interfaces.web.app428
+Schnittstelle ohne Aufrufer;GET;/api/build428/cases/{case_id}/archive;eagleeye.interfaces.web.app428
+Schnittstelle ohne Aufrufer;GET;/api/build429/cases/{case_id}/news;eagleeye.interfaces.web.app429
+Schnittstelle ohne Aufrufer;POST;/api/build429/news/items;eagleeye.interfaces.web.app429
+Schnittstelle ohne Aufrufer;GET;/api/build429/news/status;eagleeye.interfaces.web.app429
+Schnittstelle ohne Aufrufer;GET;/api/build430/cases/{case_id}/news-extractions;eagleeye.interfaces.web.app430
+Schnittstelle ohne Aufrufer;GET;/api/build430/news/status;eagleeye.interfaces.web.app430
+Schnittstelle ohne Aufrufer;POST;/api/build430/news/{news_item_id}/extract;eagleeye.interfaces.web.app430
+Schnittstelle ohne Aufrufer;POST;/api/build431/cases/{case_id}/news-provenance/analyze;eagleeye.interfaces.web.app431
+Schnittstelle ohne Aufrufer;GET;/api/build431/cases/{case_id}/news-provenance/latest;eagleeye.interfaces.web.app431
+Schnittstelle ohne Aufrufer;GET;/api/build431/news-provenance/status;eagleeye.interfaces.web.app431
+Schnittstelle ohne Aufrufer;GET;/api/build432/cases/{case_id}/social;eagleeye.interfaces.web.app432
+Schnittstelle ohne Aufrufer;POST;/api/build432/cases/{case_id}/social/fixture;eagleeye.interfaces.web.app432
+Schnittstelle ohne Aufrufer;POST;/api/build432/cases/{case_id}/social/observation;eagleeye.interfaces.web.app432
+Schnittstelle ohne Aufrufer;GET;/api/build432/cases/{case_id}/social/report;eagleeye.interfaces.web.app432
+Schnittstelle ohne Aufrufer;POST;/api/build432/cases/{case_id}/social/selftest;eagleeye.interfaces.web.app432
+Schnittstelle ohne Aufrufer;GET;/api/build432/social/status;eagleeye.interfaces.web.app432
+Schnittstelle ohne Aufrufer;GET;/api/build433/cases/{case_id}/organizations;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;POST;/api/build433/cases/{case_id}/organizations;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;POST;/api/build433/cases/{case_id}/organizations/relations;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;GET;/api/build433/cases/{case_id}/organizations/report;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;POST;/api/build433/cases/{case_id}/organizations/selftest;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;GET;/api/build433/cases/{case_id}/organizations/{subject_id};eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;POST;/api/build433/cases/{case_id}/organizations/{subject_id}/observations;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;GET;/api/build433/organizations/status;eagleeye.interfaces.web.app433
+Schnittstelle ohne Aufrufer;GET;/api/build434/cases/{case_id}/registry-organizations;eagleeye.interfaces.web.app434
+Schnittstelle ohne Aufrufer;GET;/api/build434/cases/{case_id}/registry-organizations/identifier-candidates;eagleeye.interfaces.web.app434
+Schnittstelle ohne Aufrufer;POST;/api/build434/cases/{case_id}/registry-organizations/import;eagleeye.interfaces.web.app434
+Schnittstelle ohne Aufrufer;GET;/api/build434/cases/{case_id}/registry-organizations/report;eagleeye.interfaces.web.app434
+Schnittstelle ohne Aufrufer;POST;/api/build434/cases/{case_id}/registry-organizations/selftest;eagleeye.interfaces.web.app434
+Schnittstelle ohne Aufrufer;GET;/api/build434/registry-organizations/status;eagleeye.interfaces.web.app434
+Schnittstelle ohne Aufrufer;GET;/api/build435/cases/{case_id}/tor/report;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;POST;/api/build435/cases/{case_id}/tor/selftest;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;GET;/api/build435/cases/{case_id}/tor/tasks;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;POST;/api/build435/cases/{case_id}/tor/tasks;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;POST;/api/build435/cases/{case_id}/tor/tasks/{task_id}/execute-live;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;POST;/api/build435/cases/{case_id}/tor/tasks/{task_id}/review;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;GET;/api/build435/checkpoint;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;GET;/api/build435/tor/status;eagleeye.interfaces.web.app435
+Schnittstelle ohne Aufrufer;POST;/api/build436/cases/{case_id}/surface-onion/analyze;eagleeye.interfaces.web.app436
+Schnittstelle ohne Aufrufer;GET;/api/build436/cases/{case_id}/surface-onion/latest;eagleeye.interfaces.web.app436
+Schnittstelle ohne Aufrufer;GET;/api/build436/cases/{case_id}/surface-onion/report;eagleeye.interfaces.web.app436
+Schnittstelle ohne Aufrufer;POST;/api/build436/cases/{case_id}/surface-onion/selftest;eagleeye.interfaces.web.app436
+Schnittstelle ohne Aufrufer;GET;/api/build436/surface-onion/status;eagleeye.interfaces.web.app436
+Schnittstelle ohne Aufrufer;GET;/api/build437/cases/{case_id}/entity-resolution/bindings;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;GET;/api/build437/cases/{case_id}/entity-resolution/comparisons/{comparison_id};eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;POST;/api/build437/cases/{case_id}/entity-resolution/proposals;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;POST;/api/build437/cases/{case_id}/entity-resolution/proposals/{proposal_id}/review;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;GET;/api/build437/cases/{case_id}/entity-resolution/report;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;GET;/api/build437/cases/{case_id}/entity-resolution/review-queue;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;POST;/api/build437/cases/{case_id}/entity-resolution/selftest;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;POST;/api/build437/cases/{case_id}/entity-resolution/sync;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;GET;/api/build437/entity-resolution/status;eagleeye.interfaces.web.app437
+Schnittstelle ohne Aufrufer;GET;/api/build438/cases/{case_id}/fusion/entities/{entity_id};eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;GET;/api/build438/cases/{case_id}/fusion/groups;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;GET;/api/build438/cases/{case_id}/fusion/relationships;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;GET;/api/build438/cases/{case_id}/fusion/report;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;POST;/api/build438/cases/{case_id}/fusion/run;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;POST;/api/build438/cases/{case_id}/fusion/selftest;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;GET;/api/build438/cases/{case_id}/fusion/timeline;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;GET;/api/build438/fusion/status;eagleeye.interfaces.web.app438
+Schnittstelle ohne Aufrufer;GET;/api/build439/cases/{case_id}/investigation/loops;eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;POST;/api/build439/cases/{case_id}/investigation/loops;eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;GET;/api/build439/cases/{case_id}/investigation/loops/{loop_id};eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;POST;/api/build439/cases/{case_id}/investigation/loops/{loop_id}/advance;eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;POST;/api/build439/cases/{case_id}/investigation/loops/{loop_id}/authorize;eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;POST;/api/build439/cases/{case_id}/investigation/selftest;eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;GET;/api/build439/investigation/status;eagleeye.interfaces.web.app439
+Schnittstelle ohne Aufrufer;GET;/api/build440/cases/{case_id}/qualification/latest;eagleeye.interfaces.web.app440
+Schnittstelle ohne Aufrufer;POST;/api/build440/cases/{case_id}/qualification/run;eagleeye.interfaces.web.app440
+Schnittstelle ohne Aufrufer;GET;/api/build440/qualification/capabilities;eagleeye.interfaces.web.app440
+Schnittstelle ohne Aufrufer;GET;/api/build440/qualification/status;eagleeye.interfaces.web.app440
+Schnittstelle ohne Aufrufer;GET;/api/build441/cases/{case_id}/retrieval/runs;eagleeye.interfaces.web.app441
+Schnittstelle ohne Aufrufer;POST;/api/build441/cases/{case_id}/retrieval/selftest;eagleeye.interfaces.web.app441
+Schnittstelle ohne Aufrufer;POST;/api/build441/cases/{case_id}/tasks/{task_id}/execute;eagleeye.interfaces.web.app441
+Schnittstelle ohne Aufrufer;POST;/api/build441/cases/{case_id}/tasks/{task_id}/execute-loop-authorized;eagleeye.interfaces.web.app441
+Schnittstelle ohne Aufrufer;GET;/api/build441/retrieval/status;eagleeye.interfaces.web.app441
+Schnittstelle ohne Aufrufer;GET;/api/build442/cases/{case_id}/retrieval/runs;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;POST;/api/build442/cases/{case_id}/retrieval/selftest;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;POST;/api/build442/cases/{case_id}/tasks/{task_id}/execute;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;POST;/api/build442/cases/{case_id}/tasks/{task_id}/execute-loop-authorized;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;POST;/api/build442/cases/{case_id}/tasks/{task_id}/external-validation;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;GET;/api/build442/cases/{case_id}/tasks/{task_id}/telemetry;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;GET;/api/build442/retrieval/status;eagleeye.interfaces.web.app442
+Schnittstelle ohne Aufrufer;GET;/api/build443/cases/{case_id}/news/runs;eagleeye.interfaces.web.app443
+Schnittstelle ohne Aufrufer;POST;/api/build443/cases/{case_id}/news/selftest;eagleeye.interfaces.web.app443
+Schnittstelle ohne Aufrufer;POST;/api/build443/cases/{case_id}/sources/{source_id}/tasks;eagleeye.interfaces.web.app443
+Schnittstelle ohne Aufrufer;POST;/api/build443/cases/{case_id}/tasks/{task_id}/execute;eagleeye.interfaces.web.app443
+Schnittstelle ohne Aufrufer;GET;/api/build443/news/status;eagleeye.interfaces.web.app443
+Schnittstelle ohne Aufrufer;GET;/api/build444/cases/{case_id}/social/runs;eagleeye.interfaces.web.app444
+Schnittstelle ohne Aufrufer;POST;/api/build444/cases/{case_id}/social/selftest;eagleeye.interfaces.web.app444
+Schnittstelle ohne Aufrufer;POST;/api/build444/cases/{case_id}/sources/{source_id}/tasks;eagleeye.interfaces.web.app444
+Schnittstelle ohne Aufrufer;POST;/api/build444/cases/{case_id}/tasks/{task_id}/execute;eagleeye.interfaces.web.app444
+Schnittstelle ohne Aufrufer;GET;/api/build444/social/status;eagleeye.interfaces.web.app444
+Schnittstelle ohne Aufrufer;GET;/api/build445/cases/{case_id}/qualification/latest;eagleeye.interfaces.web.app445
+Schnittstelle ohne Aufrufer;POST;/api/build445/cases/{case_id}/qualification/run;eagleeye.interfaces.web.app445
+Schnittstelle ohne Aufrufer;GET;/api/build445/qualification/status;eagleeye.interfaces.web.app445
+Schnittstelle ohne Aufrufer;POST;/api/build446/cases/{case_id}/selftest;eagleeye.interfaces.web.app446
+Schnittstelle ohne Aufrufer;POST;/api/build446/dispatches/{dispatch_id}/execute;eagleeye.interfaces.web.app446
+Schnittstelle ohne Aufrufer;GET;/api/build446/loops/{loop_id}/dispatches;eagleeye.interfaces.web.app446
+Schnittstelle ohne Aufrufer;POST;/api/build446/loops/{loop_id}/dispatches/prepare;eagleeye.interfaces.web.app446
+Schnittstelle ohne Aufrufer;GET;/api/build446/loops/{loop_id}/executions;eagleeye.interfaces.web.app446
+Schnittstelle ohne Aufrufer;GET;/api/build446/status;eagleeye.interfaces.web.app446
+Schnittstelle ohne Aufrufer;GET;/api/build447/cases/{case_id}/claims;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;POST;/api/build447/cases/{case_id}/claims;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;GET;/api/build447/cases/{case_id}/dossiers;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;POST;/api/build447/cases/{case_id}/dossiers;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;GET;/api/build447/cases/{case_id}/evidence;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;POST;/api/build447/cases/{case_id}/evidence/sync;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;GET;/api/build447/status;eagleeye.interfaces.web.app447
+Schnittstelle ohne Aufrufer;GET;/api/build448/cases/{case_id}/snapshot;eagleeye.interfaces.web.app448
+Schnittstelle ohne Aufrufer;GET;/api/build448/cases/{case_id}/ui-audits;eagleeye.interfaces.web.app448
+Schnittstelle ohne Aufrufer;GET;/api/build448/status;eagleeye.interfaces.web.app448
+Schnittstelle ohne Aufrufer;GET;/api/build449/cases/{case_id}/reviews;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;GET;/api/build449/cases/{case_id}/snapshot;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;POST;/api/build449/cases/{case_id}/ui-audit;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;GET;/api/build449/cases/{case_id}/ui-audits;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;POST;/api/build449/reviews;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;POST;/api/build449/reviews/{review_id}/claim;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;POST;/api/build449/reviews/{review_id}/comments;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;POST;/api/build449/reviews/{review_id}/complete;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;POST;/api/build449/reviews/{review_id}/export;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;GET;/api/build449/status;eagleeye.interfaces.web.app449
+Schnittstelle ohne Aufrufer;GET;/api/build450/cases/{case_id}/latest;eagleeye.interfaces.web.app450
+Schnittstelle ohne Aufrufer;GET;/api/build450/status;eagleeye.interfaces.web.app450
+Schnittstelle ohne Aufrufer;POST;/api/build451/diagnose;eagleeye.interfaces.web.app451
+Schnittstelle ohne Aufrufer;GET;/api/build451/status;eagleeye.interfaces.web.app451
+Schnittstelle ohne Aufrufer;GET;/api/build452/status;eagleeye.interfaces.web.app452
+Schnittstelle ohne Aufrufer;POST;/api/build453/history/compare;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;POST;/api/build453/history/import;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;POST;/api/build453/history/plan;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;GET;/api/build453/history/{query_id}/candidates;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;POST;/api/build453/recovery/create;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;POST;/api/build453/recovery/stage;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;GET;/api/build453/recovery/{recovery_id}/verify;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;GET;/api/build453/status;eagleeye.interfaces.web.app453
+Schnittstelle ohne Aufrufer;POST;/api/build454/infrastructure/domain/pivots;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;POST;/api/build454/infrastructure/domain/plan;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;POST;/api/build454/infrastructure/import;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;GET;/api/build454/infrastructure/{case_id}/facts;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;GET;/api/build454/status;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;POST;/api/build454/xref/run;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;GET;/api/build454/xref/{case_id}/candidates;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;GET;/api/build454/xref/{case_id}/path;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;GET;/api/build454/xref/{case_id}/pivots;eagleeye.interfaces.web.app454
+Schnittstelle ohne Aufrufer;GET;/api/build455/cases/{case_id}/qualification;eagleeye.interfaces.web.app455
+Schnittstelle ohne Aufrufer;GET;/api/build455/status;eagleeye.interfaces.web.app455
+Schnittstelle ohne Aufrufer;POST;/api/build456/aliases/{candidate_id}/review;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;GET;/api/build456/cases/{case_id}/claims/{claim_id}/source-lineage;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;POST;/api/build456/cases/{case_id}/entity-scan;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;GET;/api/build456/cases/{case_id}/report;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;POST;/api/build456/evidence/{evidence_id}/source-lineage-review;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;POST;/api/build456/pairs/{pair_id}/review;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;GET;/api/build456/status;eagleeye.interfaces.web.app456
+Schnittstelle ohne Aufrufer;GET;/api/build457/cases/{case_id}/snapshot;eagleeye.interfaces.web.app457
+Schnittstelle ohne Aufrufer;GET;/api/build457/status;eagleeye.interfaces.web.app457
+Schnittstelle ohne Aufrufer;GET;/api/build458/cases/{case_id}/documents;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;POST;/api/build458/cases/{case_id}/documents;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;POST;/api/build458/claims/{claim_id}/citations;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;GET;/api/build458/claims/{claim_id}/citations;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;GET;/api/build458/documents/{document_id}/anchors;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;POST;/api/build458/documents/{document_id}/review;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;GET;/api/build458/status;eagleeye.interfaces.web.app458
+Schnittstelle ohne Aufrufer;GET;/api/capsules/{search_run_id}/opsec-v2;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/ai/crawler-monitor;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/ai/dossier;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/ai/snapshot;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/ai/waves;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/ai375/plan-assess;eagleeye.interfaces.web.app375
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/capsules;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/corporate/prepare;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/corporate/receipts;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/corporate/summary;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/corporate/{source_id}/enqueue;eagleeye.interfaces.web.app366
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/crawler/ops;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/crawler/recover;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/crawler/runs;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/crawler369/scheduler-tick;eagleeye.interfaces.web.app369
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/crawler369/soak;eagleeye.interfaces.web.app369
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/crawler369/sources/{source_id}/schedule;eagleeye.interfaces.web.app369
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/crawler369/status;eagleeye.interfaces.web.app369
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/dossier/export/request;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/dossier376/absence-observation;eagleeye.interfaces.web.app376
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/dossier376/build;eagleeye.interfaces.web.app376
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/dossier376/coverage;eagleeye.interfaces.web.app376
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/dossier376/packet;eagleeye.interfaces.web.app376
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/entity371/compare;eagleeye.interfaces.web.app371
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/entity371/crawl-lead;eagleeye.interfaces.web.app371
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/entity371/status;eagleeye.interfaces.web.app371
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/entity372/evaluate;eagleeye.interfaces.web.app372
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/entity372/lead-quality/{job_id};eagleeye.interfaces.web.app372
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/entity372/source-quality;eagleeye.interfaces.web.app372
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/geo-links;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/graph373;eagleeye.interfaces.web.app373
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/graph373/focus;eagleeye.interfaces.web.app373
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/graph373/navigate;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/graph373/navigation-plan;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/graph373/navigation-status;eagleeye.interfaces.web.app373
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/image-links;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/image377/provenance;eagleeye.interfaces.web.app377
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/image377/storage-pressure;eagleeye.interfaces.web.app377
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/image377/summary;eagleeye.interfaces.web.app377
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/image377/{media_id}/visual-geolocation;eagleeye.interfaces.web.app377
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/images;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/jobs;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/operations/incidents;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/operations/metrics;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/operations/readiness;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/operations/trace;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/operations/workers;eagleeye.interfaces.web.app365
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase16/autonomous-cycle;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase16/opsec-protect;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/acquisition-packets;eagleeye.interfaces.web.app385
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/acquisition-packets/{packet_id};eagleeye.interfaces.web.app385
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/acquisition-packets/{packet_id}/execution-readiness;eagleeye.interfaces.web.app385
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/acquisition-packets/{packet_id}/go;eagleeye.interfaces.web.app386
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/acquisition-packets/{packet_id}/go-preflight;eagleeye.interfaces.web.app386
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/acquisition-packets/{packet_id}/prepare;eagleeye.interfaces.web.app385
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/acquisition-plan;eagleeye.interfaces.web.app384
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/ai-candidate-feed;eagleeye.interfaces.web.app389
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/ai-corroboration-feed;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/ai-dialogue-feed;eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/ai-discussion-feed;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/ai-reasoning-feed;eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/ai-synthesis-feed;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/analyst/assessments;eagleeye.interfaces.web.app397
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/analyst/assessments/{assessment_id};eagleeye.interfaces.web.app397
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/analyst/assessments/{assessment_id}/recommendations;eagleeye.interfaces.web.app397
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/analyst/recommendations/{recommendation_id}/review;eagleeye.interfaces.web.app397
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/control-plane;eagleeye.interfaces.web.app384
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/corroboration-reviews;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/corroboration-reviews/{review_id};eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/corroboration-reviews/{review_id}/assess;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/corroboration-reviews/{review_id}/finalize;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/coverage;eagleeye.interfaces.web.app384
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/dialogue/proposals/{proposal_id}/review;eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/dialogue/sessions;eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/dialogue/sessions/{session_id};eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/dialogue/sessions/{session_id}/challenge;eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/dialogue/turns/{turn_id}/kernel;eagleeye.interfaces.web.app393
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/revision-proposals/{proposal_id}/apply;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/revision-proposals/{proposal_id}/review;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/sessions;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/discussion/sessions/{discussion_id};eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/sessions/{discussion_id}/compare-hypotheses;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/sessions/{discussion_id}/revision-proposals;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/sessions/{discussion_id}/turns;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/discussion/versions/{version_id}/kernel;eagleeye.interfaces.web.app394
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/evidence-candidates;eagleeye.interfaces.web.app389
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/evidence-candidates/{candidate_id}/independence-review;eagleeye.interfaces.web.app390
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/evidence-candidates/{candidate_id}/promote;eagleeye.interfaces.web.app389
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/evidence-candidates/{candidate_id}/verify;eagleeye.interfaces.web.app389
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/execution-dispatches/{dispatch_id};eagleeye.interfaces.web.app387
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/execution-dispatches/{dispatch_id}/verify;eagleeye.interfaces.web.app387
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/go-grants/{grant_id};eagleeye.interfaces.web.app386
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/go-grants/{grant_id}/execute;eagleeye.interfaces.web.app387
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/go-grants/{grant_id}/revoke;eagleeye.interfaces.web.app386
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/go-grants/{grant_id}/verify;eagleeye.interfaces.web.app386
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reanalysis/{proposal_id}/branch;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reanalysis/{proposal_id}/review;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reasoning/plans/{plan_id}/kernel;eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reasoning/plans/{plan_id}/review;eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reasoning/workspaces;eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/reasoning/workspaces/{workspace_id};eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reasoning/workspaces/{workspace_id}/plan;eagleeye.interfaces.web.app392
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reconciliation/baselines;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/reconciliation/baselines/latest;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reconciliation/scans;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/reconciliation/scans/{scan_id};eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reconciliation/scans/{scan_id}/advance-baseline;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/reconciliation/scans/{scan_id}/reanalysis-proposals;eagleeye.interfaces.web.app396
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/research-waves;eagleeye.interfaces.web.app384
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/state/adoption-proposals/{proposal_id}/apply;eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/state/adoption-proposals/{proposal_id}/review;eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/state/branches/{branch_id}/stage;eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/state/{target_type}/{target_id};eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/state/{target_type}/{target_id}/adoption-proposals;eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/state/{target_type}/{target_id}/branches;eagleeye.interfaces.web.app395
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/synthesis/claims/from-review/{review_id};eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/synthesis/claims/{claim_id}/review;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/synthesis/hypotheses;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/synthesis/hypotheses/{hypothesis_id}/review;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/synthesis/snapshot;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/synthesis/{object_type}/{object_id}/kernel;eagleeye.interfaces.web.app391
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/wave-sessions;eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/wave-sessions/{session_id};eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/wave-sessions/{session_id}/advance;eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/wave-sessions/{session_id}/dispatches/{dispatch_id};eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/wave-sessions/{session_id}/normalize-results;eagleeye.interfaces.web.app389
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/phase17/wave-sessions/{session_id}/reconcile;eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/phase17/wave-sessions/{session_id}/verify;eagleeye.interfaces.web.app388
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/pilot380/telemetry;eagleeye.interfaces.web.app380
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/public-money/prepare;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/public-money/receipts;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/public-money/summary;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/public-money/{source_id}/enqueue;eagleeye.interfaces.web.app367
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/qualification379/snapshot;eagleeye.interfaces.web.app379
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/reference/prepare;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/reference/receipts;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/reference/summary;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/reference/{source_id}/enqueue;eagleeye.interfaces.web.app368
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/search;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/team;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/team/assign;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/team/revoke;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/tor370/sources/{source_id}/enqueue;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/tor370/status;eagleeye.interfaces.web.app370
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/voice/interactions;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/voice/propose;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/voice/transcribe;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/voice378/crawler-intent/preview;eagleeye.interfaces.web.app378
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/voice378/crawler-intent/{intent_id}/confirm;eagleeye.interfaces.web.app378
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/voice378/interactions;eagleeye.interfaces.web.app378
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/voice378/transcribe;eagleeye.interfaces.web.app378
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/complete;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/configure;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/crawler/{source_id}/enqueue;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/handoff;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/handoff/accept;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/pause;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;POST;/api/cases/{case_id}/workflow374/resume;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;GET;/api/cases/{case_id}/workflow374/status;eagleeye.interfaces.web.app374
+Schnittstelle ohne Aufrufer;GET;/api/crawler/sources;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/dossier/export/{task_id};eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/dossier/export/{task_id}/execute;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/dossier/export/{task_id}/review;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/images/{media_id};eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/images/{media_id}/geo-analyze;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/images/{media_id}/landmark-reference;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/images/{media_id}/similarity;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/images/{media_id}/visual-context;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/jobs/{job_id}/frontier;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;GET;/api/research/personanalyse;eagleeye.interfaces.web.personosint_analysis502
+Schnittstelle ohne Aufrufer;GET;/api/research/public-sources;eagleeye.interfaces.web.public_sources501
+Schnittstelle ohne Aufrufer;POST;/api/team/users;eagleeye.interfaces.web.app364
+Schnittstelle ohne Aufrufer;POST;/api/voice/{intent_id}/execute;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/assets/build364.js;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/assistant471/review;eagleeye.interfaces.web.app471
+nur direkte Adresse;POST;/buero/arbeitsliste;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auftrag/anhalten;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auftrag/bearbeiten;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auftrag/pruefung;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auftrag/status;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auftrag/team;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auftrag/team/entziehen;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/auslage;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/bericht.pdf;eagleeye.interfaces.web.buero_report
+nur direkte Adresse;POST;/buero/frist;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/frist/erledigt;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/leistungsnachweis.csv;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/leistungsnachweis.pdf;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/loeschen;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/loeschen;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/loeschen/fortsetzen;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/rechnung;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/rechnung.pdf;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/rechnung/bezahlt;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/rechnung/storno;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/rechnungen.csv;eagleeye.interfaces.web.buero
+nur direkte Adresse;GET;/buero/sicherung/datei;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/sicherung/pruefen;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/storno;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/team/passwort;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/team/sperren;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/buero/zeit;eagleeye.interfaces.web.buero
+nur direkte Adresse;POST;/capsules/{search_run_id}/close;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/capsules/{search_run_id}/preflight;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id};eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id}/ai/briefing;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/ai/go;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/ai/intake;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/ai/tick;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/ai/wave/evaluate;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id}/analyst-graph;eagleeye.interfaces.web.app373
+nur direkte Adresse;POST;/cases/{case_id}/capsules/clearnet;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/connectors/official;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id}/corporate;eagleeye.interfaces.web.app366
+nur direkte Adresse;GET;/cases/{case_id}/crawler-production;eagleeye.interfaces.web.app369
+nur direkte Adresse;POST;/cases/{case_id}/crawler/source;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/crawler/{source_id}/enqueue;eagleeye.interfaces.web.app374
+nur direkte Adresse;POST;/cases/{case_id}/crawler/{source_id}/review;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/darknet/research;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/darknet/source;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/darknet/source/{source_id}/approve;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id}/entity-resolution-eval;eagleeye.interfaces.web.app372
+nur direkte Adresse;GET;/cases/{case_id}/entity-resolution-v2;eagleeye.interfaces.web.app371
+nur direkte Adresse;POST;/cases/{case_id}/images;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/objects/text;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id}/operations;eagleeye.interfaces.web.app365
+nur direkte Adresse;GET;/cases/{case_id}/public-money;eagleeye.interfaces.web.app367
+nur direkte Adresse;GET;/cases/{case_id}/reference-intelligence;eagleeye.interfaces.web.app368
+nur direkte Adresse;GET;/cases/{case_id}/search;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/cases/{case_id}/search/local;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/cases/{case_id}/tor-gateway;eagleeye.interfaces.web.app370
+nur direkte Adresse;GET;/cases/{case_id}/voice378;eagleeye.interfaces.web.app378
+nur direkte Adresse;GET;/cases/{case_id}/workflow374;eagleeye.interfaces.web.app374
+nur direkte Adresse;GET;/health;eagleeye.interfaces.web.app471
+nur direkte Adresse;GET;/legacy;eagleeye.interfaces.web.app450
+nur direkte Adresse;GET,HEAD;/openapi.json;fastapi.applications
+nur direkte Adresse;GET;/provenance466;eagleeye.interfaces.web.app466
+nur direkte Adresse;GET;/security/bootstrap;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/security/bootstrap;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/security/login;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/security/login;eagleeye.interfaces.web.app364
+nur direkte Adresse;GET;/security/start;eagleeye.interfaces.web.app364
+nur direkte Adresse;POST;/workbench/ai498/decide;eagleeye.interfaces.web.ai498
+nur direkte Adresse;POST;/workbench/ai498/generate;eagleeye.interfaces.web.ai498
+nur direkte Adresse;POST;/workbench/bridge481;eagleeye.interfaces.web.bridge481
+nur direkte Adresse;GET;/workbench/checkpoint489;eagleeye.interfaces.web.checkpoint489
+nur direkte Adresse;POST;/workbench/document/class;eagleeye.interfaces.web.docview492
+nur direkte Adresse;POST;/workbench/document/review;eagleeye.interfaces.web.docview492
+nur direkte Adresse;POST;/workbench/entities488;eagleeye.interfaces.web.entities488
+nur direkte Adresse;POST;/workbench/findings;eagleeye.interfaces.web.findings478
+nur direkte Adresse;GET;/workbench/image482/{media_id};eagleeye.interfaces.web.recovery482
+nur direkte Adresse;POST;/workbench/intel/documents;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/intel/documents/cancel;eagleeye.interfaces.web.intel492
+nur direkte Adresse;GET;/workbench/intel/jobs.json;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/intel/lineage/confirm;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/intel/markings;eagleeye.interfaces.web.intel492
+nur direkte Adresse;GET;/workbench/intel/progress.js;eagleeye.interfaces.web.intel492
+nur direkte Adresse;GET;/workbench/intel/pruefpaket.zip;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/intel/seitenbild;eagleeye.interfaces.web.intel492
+nur direkte Adresse;GET;/workbench/intel/seitenbild.png;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/intel/stempel;eagleeye.interfaces.web.intel492
+nur direkte Adresse;GET;/workbench/intel/warc;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/intel/web/archive;eagleeye.interfaces.web.intel492
+nur direkte Adresse;POST;/workbench/leads483;eagleeye.interfaces.web.research483
+nur direkte Adresse;POST;/workbench/personosint494/review;eagleeye.interfaces.web.personosint494
+nur direkte Adresse;POST;/workbench/plan496/annotate;eagleeye.interfaces.web.plan496
+nur direkte Adresse;POST;/workbench/plan496/review;eagleeye.interfaces.web.plan496
+nur direkte Adresse;POST;/workbench/plan496/step;eagleeye.interfaces.web.plan496
+nur direkte Adresse;GET;/workbench/recovery;eagleeye.interfaces.web.report479
+nur direkte Adresse;POST;/workbench/report/review;eagleeye.interfaces.web.report479
+nur direkte Adresse;POST;/workbench/run497;eagleeye.interfaces.web.execution497
+nur direkte Adresse;POST;/workbench/sources487;eagleeye.interfaces.web.sources487
+nur direkte Adresse;GET;/workbench/sources487/validation.js;eagleeye.interfaces.web.sources487
+nur direkte Adresse;POST;/workbench/transfer499;eagleeye.interfaces.web.transfer499

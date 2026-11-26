@@ -162,3 +162,17 @@ def test_runtime_gets_tkinter_from_the_full_installation_without_dde_and_registr
     assert (runtime / "tcl" / "tcl9.0" / "init.tcl").is_file() and (runtime / "tcl" / "tk9.0" / "tk.tcl").is_file()
     assert not (runtime / "tcl" / "tcl9.0" / "dde1.4").exists() and not (runtime / "tcl" / "tcl9.0" / "reg1.3").exists()
     assert (runtime / f"python{tag}._pth").read_text().splitlines()[-1] == "import site"
+
+
+def test_tkinter_source_may_be_an_unpacked_msi_with_a_nested_layout(tmp_path):
+    stage = _load_build_stage()
+    tag = f"{sys.version_info[0]}{sys.version_info[1]}"
+    runtime, msi = tmp_path / "runtime", tmp_path / "tcltk"
+    runtime.mkdir()
+    (runtime / f"python{tag}.dll").write_bytes(b"embed")
+    for rel in ("Python/DLLs/_tkinter.pyd", "Python/DLLs/tcl90.dll", "Python/Lib/tkinter/__init__.py", "Python/tcl/tcl9.0/init.tcl"):
+        (msi / rel).parent.mkdir(parents=True, exist_ok=True)
+        (msi / rel).write_bytes(b"msi")
+    stage.prepare_runtime(runtime, msi)
+    assert (runtime / "_tkinter.pyd").is_file() and (runtime / "tcl90.dll").is_file()
+    assert (runtime / "tcl" / "tcl9.0" / "init.tcl").is_file() and (runtime / "Lib" / "tkinter" / "__init__.py").is_file()

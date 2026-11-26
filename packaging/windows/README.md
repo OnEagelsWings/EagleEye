@@ -49,6 +49,8 @@ Arbeitsordner über dieselbe Einstellung, der Vault liegt am selben Ort.
 - Alle Bibliotheken stammen aus `requirements-windows.lock`: feste Versionen, jede mit SHA-256-Prüfsumme, nur
   fertige Pakete (kein Übersetzen von Quellcode beim Bau), mit einer Woche Wartezeit für neue Versionen.
 - Der Bau prüft die Windows-Signaturen aller Python-Programmdateien (Python Software Foundation / Microsoft).
+  tkinter stammt aus dem signierten Teilpaket `tcltk.msi` von python.org. Die Tcl/Tk-Bibliotheken darin sind auch
+  im Original nicht einzeln signiert; ihre Echtheit sichert die Signatur des Pakets.
 - `MANIFEST-SHA256.json` im Programmordner listet jede ausgelieferte Datei mit Prüfsumme, dazu Quell-Commit,
   Python-Version und Bibliotheksversionen.
 
