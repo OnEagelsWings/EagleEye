@@ -176,3 +176,26 @@ def test_tkinter_source_may_be_an_unpacked_msi_with_a_nested_layout(tmp_path):
     stage.prepare_runtime(runtime, msi)
     assert (runtime / "_tkinter.pyd").is_file() and (runtime / "tcl90.dll").is_file()
     assert (runtime / "tcl" / "tcl9.0" / "init.tcl").is_file() and (runtime / "Lib" / "tkinter" / "__init__.py").is_file()
+
+
+def test_dll_check_flags_visual_cpp_runtime_and_missing_libraries(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location("check_dlls", PACKAGING / "check_dlls.py")
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+    runtime, system32 = tmp_path / "runtime", tmp_path / "System32"
+    (runtime / "Lib" / "site-packages" / "cv2").mkdir(parents=True)
+    system32.mkdir()
+    (system32 / "KERNEL32.dll").write_bytes(b"")
+    (system32 / "MSVCP140.dll").write_bytes(b"")  # present on the build machine only via the redistributable
+    for name in ("python.exe", "python314.dll", "vcruntime140.dll", "Lib/site-packages/cv2/cv2.pyd"):
+        (runtime / name).write_bytes(b"MZ")
+    deps = {"python.exe": ["python314.dll", "KERNEL32.dll", "api-ms-win-crt-runtime-l1-1-0.dll"],
+            "cv2.pyd": ["MSVCP140.dll", "python3.dll", "VCRUNTIME140.dll"]}
+    monkeypatch.setattr(check, "imports", lambda path: deps.get(path.name, []))
+    problems = check.check(runtime, system32)
+    assert any("MSVCP140.dll" in p and "Redistributable" in p for p in problems)
+    assert any("python3.dll" in p and "weder im Paket noch in Windows" in p for p in problems)
+    assert not any("python.exe" in p for p in problems), "shipped files, Windows DLLs and API sets are fine"
+    (runtime / "msvcp140.dll").write_bytes(b"MZ")
+    (runtime / "python3.dll").write_bytes(b"MZ")
+    assert check.check(runtime, system32) == []

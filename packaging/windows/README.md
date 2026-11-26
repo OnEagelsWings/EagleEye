@@ -51,6 +51,9 @@ Arbeitsordner über dieselbe Einstellung, der Vault liegt am selben Ort.
 - Der Bau prüft die Windows-Signaturen aller Python-Programmdateien (Python Software Foundation / Microsoft).
   tkinter stammt aus dem signierten Teilpaket `tcltk.msi` von python.org. Die Tcl/Tk-Bibliotheken darin sind auch
   im Original nicht einzeln signiert; ihre Echtheit sichert die Signatur des Pakets.
+- Die C++-Laufzeit von Microsoft (`msvcp140.dll` u. a., Microsoft-signiert) liegt im Paket. Ein installiertes
+  „Visual C++ Redistributable“ ist nicht nötig. Der Bau liest bei jeder Programmdatei die benötigten DLLs aus
+  und bricht ab, wenn eine weder im Paket noch fester Teil von Windows ist (`check_dlls.py`).
 - `MANIFEST-SHA256.json` im Programmordner listet jede ausgelieferte Datei mit Prüfsumme, dazu Quell-Commit,
   Python-Version und Bibliotheksversionen.
 

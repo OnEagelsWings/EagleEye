@@ -93,6 +93,19 @@ jobs:
           $pyd = Get-AuthenticodeSignature build/stage/runtime/_tkinter.pyd
           if ($pyd.Status -ne 'Valid' -or "$($pyd.SignerCertificate.Subject)" -notmatch 'O=Python Software Foundation') { throw "_tkinter.pyd nicht gültig signiert" }
           Remove-Item build/stage/runtime/tkinter-files.txt
+          # Die eingebettete Fassung enthält nur die C-Laufzeit (vcruntime140). OpenCV, PyMuPDF u. a. brauchen
+          # zusätzlich die C++-Laufzeit. Microsoft erlaubt, sie neben dem Programm mitzuliefern ("app-local");
+          # so läuft EagleEye auch auf Rechnern ohne installiertes Visual C++ Redistributable.
+          foreach ($name in 'msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','msvcp140_atomic_wait.dll','msvcp140_codecvt_ids.dll','vcruntime140_1.dll','concrt140.dll','vcomp140.dll') {
+            $src = Join-Path $env:SystemRoot "System32\$name"
+            if ((Test-Path $src) -and -not (Test-Path "build/stage/runtime/$name")) {
+              $s = Get-AuthenticodeSignature $src
+              if ($s.Status -ne 'Valid' -or "$($s.SignerCertificate.Subject)" -notmatch 'O=Microsoft Corporation') { throw "$name nicht von Microsoft signiert" }
+              Copy-Item $src build/stage/runtime/
+              Write-Host "C++-Laufzeit mitgeliefert: $name ($((Get-Item $src).VersionInfo.FileVersion))"
+            }
+          }
+          if (-not (Test-Path build/stage/runtime/msvcp140.dll)) { throw "msvcp140.dll nicht gefunden" }
 
       - name: Bibliotheken nur aus der Sperrliste (feste Versionen, SHA-256 Pflicht, nur fertige Pakete)
         run: |
@@ -137,6 +150,8 @@ jobs:
           $env:PYTHONPATH = 'C:\nicht-vorhanden'; $env:PYTHONHOME = 'C:\nicht-vorhanden'
           & $py -I -c "import sys, site; assert not any('nicht-vorhanden' in p for p in sys.path), sys.path; assert all(p.lower().startswith(sys.prefix.lower()) for p in sys.path if p), sys.path; assert not site.ENABLE_USER_SITE; print('Importpfad nur im Programmordner:', sys.path)"
           if ($LASTEXITCODE) { throw "Laufzeit nicht isoliert" }
+          python packaging/windows/check_dlls.py "$app\runtime"
+          if ($LASTEXITCODE) { throw "Laufzeit unvollständig: fehlende DLL-Abhängigkeiten" }
           Remove-Item Env:PYTHONPATH, Env:PYTHONHOME
           & $py -I -c "import eagleeye.interfaces.web.app500, eagleeye.bootstrap.windows_start, personosint.vault_app, personosint.fallakte as f, tkinter, fitz, cv2, numpy, cryptography, docx, segno, pypdfium2, psycopg; assert f.available(); print('Tcl/Tk', tkinter.Tcl().eval('info patchlevel'))"
           if ($LASTEXITCODE) { throw "Importprüfung fehlgeschlagen" }
