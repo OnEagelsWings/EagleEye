@@ -2,6 +2,11 @@
 
 Ein Ordner, ein Start: **`START_HIER.bat`** doppelklicken und auswählen.
 
+> **Neu: Installationsprogramm ohne Python.** `EagleEye-Setup-<Version>.exe` (GitHub-Lauf „EagleEye Windows-Installer“)
+> installiert dieselben Teile mit eingebautem Python ins Startmenü. Python muss dann nicht installiert sein, und
+> PersonOSINT braucht beim ersten Start kein Internet mehr. Daten bleiben, wo sie sind. Anleitung und Signierung mit
+> dem eigenen Büro-Zertifikat: `packaging/windows/README.md`. Diese ZIP-Fassung mit `START_HIER.bat` bleibt vorerst bestehen.
+
 | Auswahl | Was startet | Wofür |
 |---|---|---|
 | **V** | **EagleEye Vault** (empfohlen) | Ihre private Recherche-Station im Browser: verschlüsselt (Passphrase + Zwei-Faktor-App), nur auf diesem Rechner erreichbar, Internet nur, wenn Sie es für eine Recherche freigeben. Darin die volle PersonOSINT-Oberfläche mit **Tiefenrecherche** (automatische Varianten, Dorks, Folgespuren), **Vermisstenregistern** samt Vermissten-Überwachung, **Tarnung** (Legenden mit eigenem verschlüsseltem Browser, neue Netzidentität je Suche), Treffer-Vorsortierung und Firmendaten aus OffeneRegister. Über **📁 Fallakte** öffnet sich die EagleEye-Fallakte (Büro, Mandanten, Rechnungen, Web-Belege) im selben Tresor, ohne zweite Anmeldung. Anleitungen: `PersonOSINT\docs\VAULT.md`, `PersonOSINT\docs\TIEFENRECHERCHE.md` |
