@@ -118,8 +118,11 @@ jobs:
         run: |
           python packaging/windows/build_stage.py assemble --stage build/stage
           # Vorübersetzt mit dem eingebauten Python: der Programmordner bleibt schreibgeschützt und startet trotzdem schnell.
-          & build/stage/runtime/python.exe -I -m compileall -q -j 0 --invalidation-mode unchecked-hash build/stage/runtime/Lib build/stage/tools
-          if ($LASTEXITCODE) { Write-Host "Hinweis: einzelne Dateien ließen sich nicht vorübersetzen (werden dann beim Start übersetzt)." }
+          & build/stage/runtime/python.exe -I -m compileall -q --invalidation-mode unchecked-hash build/stage/runtime/Lib build/stage/tools 2>&1 | Select-Object -Last 15
+          $py = (Get-ChildItem build/stage/runtime/Lib, build/stage/tools -Recurse -Filter *.py).Count
+          $pyc = (Get-ChildItem build/stage/runtime/Lib, build/stage/tools -Recurse -Filter *.pyc).Count
+          Write-Host "Vorübersetzt: $pyc von $py Python-Dateien"
+          if ($pyc -lt 0.95 * $py) { throw "Vorübersetzung unvollständig ($pyc von $py)" }
           python packaging/windows/build_stage.py manifest --stage build/stage --version ${{ steps.v.outputs.app }} --commit ${{ github.sha }} --embed-sha256 ${{ steps.embed.outputs.sha256 }} --python ${{ steps.v.outputs.python }}
           "{0:N0} MB im Paket" -f ((Get-ChildItem build/stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
 
@@ -150,9 +153,9 @@ jobs:
           $env:PYTHONPATH = 'C:\nicht-vorhanden'; $env:PYTHONHOME = 'C:\nicht-vorhanden'
           & $py -I -c "import sys, site; assert not any('nicht-vorhanden' in p for p in sys.path), sys.path; assert all(p.lower().startswith(sys.prefix.lower()) for p in sys.path if p), sys.path; assert not site.ENABLE_USER_SITE; print('Importpfad nur im Programmordner:', sys.path)"
           if ($LASTEXITCODE) { throw "Laufzeit nicht isoliert" }
+          Remove-Item Env:PYTHONPATH, Env:PYTHONHOME
           python packaging/windows/check_dlls.py "$app\runtime"
           if ($LASTEXITCODE) { throw "Laufzeit unvollständig: fehlende DLL-Abhängigkeiten" }
-          Remove-Item Env:PYTHONPATH, Env:PYTHONHOME
           & $py -I -c "import eagleeye.interfaces.web.app500, eagleeye.bootstrap.windows_start, personosint.vault_app, personosint.fallakte as f, tkinter, fitz, cv2, numpy, cryptography, docx, segno, pypdfium2, psycopg; assert f.available(); print('Tcl/Tk', tkinter.Tcl().eval('info patchlevel'))"
           if ($LASTEXITCODE) { throw "Importprüfung fehlgeschlagen" }
           $menu = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\EagleEye"
