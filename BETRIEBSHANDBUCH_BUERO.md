@@ -144,6 +144,37 @@ Was das nicht leistet: Ein Zeitstempel belegt den Zeitpunkt der Sicherung, nicht
 Richtigkeit des Inhalts. Ein einfacher (nicht qualifizierter) Zeitstempel unterliegt der
 freien Beweiswürdigung.
 
+#### 3.4.2 EU-Ausschreibungen (TED)
+
+**Recherche → EU-Ausschreibungen (TED)** durchsucht das Amtsblatt der EU für öffentliche Aufträge:
+eine Firma als **Gewinner** von Aufträgen, als **Auftraggeber** oder **überall** im Text, wahlweise
+nur für ein Land (z. B. `DEU`) und einen Zeitraum. Jede Zeile zeigt Datum, Bekanntmachung,
+Auftraggeber, Gewinner und, soweit veröffentlicht, den Wert. **Als Web-Beleg sichern** übernimmt
+die amtliche Bekanntmachung mit WARC-Datei, Zeitstempel und Prüfpaket in die Akte. Erfasst sind
+Aufträge oberhalb der EU-Schwellenwerte; ein Treffer belegt einen veröffentlichten Auftrag,
+keine Zahlung. Jede Suche wird mit Trefferliste in der Akte dokumentiert.
+
+#### 3.4.3 Darknet (Tor)
+
+**Recherche → Darknet (Tor)** – ab Werk ausgeschaltet.
+
+1. **Tor auf dem Rechner:** Tor Browser öffnen (Port 9150) oder den Tor-Dienst installieren (Port 9050).
+   EagleEye nutzt nur diesen lokalen Tor-Zugang, für jeden Fall über eine eigene Tor-Verbindung.
+2. **Einschalten (Büroleitung):** „Einstellungen“ → Port wählen, „eingeschaltet“ anhaken,
+   `DARKNET FREIGEBEN` eintippen. „Verbindung prüfen“ zeigt, ob Tor läuft und ein Onion-Dienst antwortet.
+3. **Suchen:** Suchbegriff eingeben; gesucht wird über Ahmia (eine Tor-Suchmaschine, die bekannte
+   Missbrauchsseiten ausfiltert). Ahmia sieht den Begriff, nicht die IP-Adresse des Büros.
+4. **Quelle vorschlagen:** Onion-Adresse, Name, Art und Begründung. Geprüft wird die Prüfsumme der
+   Adresse (nur gültige v3-Adressen).
+5. **Freigeben oder sperren (Büroleitung):** Abgerufen wird nur von freigegebenen Quellen.
+6. **Seite sichern:** Die Seite wird über Tor als Beleg „Darknet (Tor)“ gespeichert – WARC-Datei,
+   SHA-256, Text; Zeitstempel und Prüfpaket wie bei Web-Belegen. Es werden **nur Textseiten**
+   gesichert: keine Bilder, keine Skripte, keine PDFs, kein Seitenbild.
+
+Die Dienstanweisung steht auf der Seite: nur im angenommenen Auftrag, nur lesen, nichts kaufen
+oder herunterladen, kein Kontakt. Bei Darstellungen von Kindesmissbrauch sofort abbrechen, nichts
+sichern, Büroleitung informieren, Meldung an Polizei bzw. jugendschutz.net.
+
 ### 3.5 Zeit, Auslagen, Wiedervorlagen
 In der Auftragsakte:
 
