@@ -24,6 +24,10 @@ TABLE = """CREATE TABLE IF NOT EXISTS web_capture_492(
     record_hash TEXT NOT NULL)"""
 
 
+TITLE_PREFIX = {"live": "Web: ", "archive": "Archiv: ", "darknet": "Darknet: "}
+KIND_LABEL = {"live": "Live", "archive": "Archiv", "darknet": "Darknet (Tor)"}
+
+
 def _hash(row: dict) -> str:
     return hashlib.sha256(json.dumps({k: v for k, v in row.items() if k != "record_hash"},
         sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
@@ -64,7 +68,7 @@ def store_capture(ctx, *, identity: dict, case_id: str, result: dict, kind: str)
     try:
         imported = ctx.document_intelligence_458.import_bytes(
             identity=identity, case_id=case_id, filename=capture_id + result.get("document_suffix", ".txt"),
-            raw=result["document"], title=("Web: " if kind == "live" else "Archiv: ") + result["title"],
+            raw=result["document"], title=TITLE_PREFIX.get(kind, "Archiv: ") + result["title"],
             source_url=result["url"])
         meta = result["metadata"]
         row = {"capture_id": capture_id, "case_id": case_id, "document_id": imported["document_id"],
@@ -156,7 +160,7 @@ def provenance_for_document(ctx, case_id: str, document_id: str) -> dict | None:
 
 def report_fields(provenance: dict) -> list[tuple[str, str]]:
     """German label/value pairs for reports. Truth of the content is never implied."""
-    fields = [("Web-Beleg", ("Archivfassung (Internet Archive)" if provenance["kind"] == "archive" else "Live-Abruf")
+    fields = [("Web-Beleg", ({"archive": "Archivfassung (Internet Archive)", "darknet": "Darknet-Abruf über Tor"}.get(provenance["kind"], "Live-Abruf"))
                             + " durch EagleEye, gesichert als WARC-Datei"),
               ("Erfasste Adresse", provenance["url"])]
     if provenance["archive_url"]:

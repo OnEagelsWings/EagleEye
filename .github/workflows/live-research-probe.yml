@@ -1,0 +1,77 @@
+name: EagleEye Live-Recherche-Probe
+
+# Prüft mit echtem Internet und echtem Tor: TED-Schnittstelle, Darknet-Modul (Ahmia-Suche und
+# Onion-Abruf über Tor) und welche Datenquellen von Fallakte und PersonOSINT wirklich antworten.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/live_probe.py'
+      - 'src/eagleeye/application/ted.py'
+      - 'src/eagleeye/application/darknet/**'
+      - '.github/workflows/live-research-probe.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-research-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: EagleEye und PersonOSINT installieren
+        run: |
+          python -m pip install --disable-pip-version-check -q -e .
+          grep -vE '^(pytest|httpx)' PersonOSINT/requirements.txt > /tmp/posint-req.txt
+          python -m pip install --disable-pip-version-check -q -r /tmp/posint-req.txt
+
+      - name: TED (EU-Ausschreibungen) live
+        run: python tools/live_probe.py ted
+
+      - name: Tor installieren und starten
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tor
+          sudo systemctl start tor || true
+          for i in $(seq 1 90); do
+            if curl -s --max-time 10 --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip | grep -q '"IsTor":true'; then
+              echo "Tor bereit nach ${i}x2 s"; exit 0; fi
+            sleep 2
+          done
+          echo "Tor wurde nicht bereit"; sudo journalctl -u tor@default --no-pager | tail -30; exit 1
+
+      - name: Darknet-Modul live (Ahmia über Tor, Onion-Seite als Beleg)
+        run: python tools/live_probe.py darknet
+
+      - name: Quellen der Fallakte live
+        if: always()
+        continue-on-error: true
+        run: |
+          python tools/quellen_pruefen_fallakte.py --out quellen-fallakte.md
+          cat quellen-fallakte.md
+
+      - name: Quellen von PersonOSINT live
+        if: always()
+        continue-on-error: true
+        working-directory: PersonOSINT
+        run: |
+          python -m personosint check-sources --out ../quellen-personosint.md
+          cat ../quellen-personosint.md
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-recherche-probe
+          path: quellen-*.md
+          if-no-files-found: warn
+          retention-days: 14

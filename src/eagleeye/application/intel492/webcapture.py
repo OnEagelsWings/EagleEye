@@ -267,12 +267,12 @@ def _host_key(url: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
-def resolve_redirect(base: str, location: str) -> tuple[str, str]:
+def resolve_redirect(base: str, location: str, normalize: Callable[[str], str] = normalize_public_url) -> tuple[str, str]:
     """Return (absolute public target, problem). Relative targets are resolved against base."""
     if not location:
         return "", "Die Seite nennt kein Weiterleitungsziel."
     try:
-        return normalize_public_url(urljoin(base, location.strip())), ""
+        return normalize(urljoin(base, location.strip())), ""
     except CaptureError as exc:
         return "", str(exc)
 
@@ -401,22 +401,23 @@ def _snapshot_text(*, kind: str, url: str, requested: str, archive_url: str, cap
 
 
 def capture(url: str, *, transport: Transport | None = None, archive_url: str = "",
-            kind: str = "Live-Seite", via: Sequence[str] = ()) -> dict:
+            kind: str = "Live-Seite", via: Sequence[str] = (),
+            normalize: Callable[[str], str] = normalize_public_url, allow_pdf: bool = True) -> dict:
     """Fetch one page or PDF and return WARC bytes, the document to import and metadata.
 
     Redirects to the same server (including http→https and the www variant) are followed
     up to MAX_SAME_HOST_HOPS times and recorded in the WARC. A redirect to a different
     server is returned to the caller, so the user decides whether to contact that host.
     """
-    requested = normalize_public_url(url)
-    current = normalize_public_url(archive_url or url)
-    chain = [normalize_public_url(v) for v in list(via)[:MAX_CONFIRMED_HOPS]]
+    requested = normalize(url)
+    current = normalize(archive_url or url)
+    chain = [normalize(v) for v in list(via)[:MAX_CONFIRMED_HOPS]]
     transport = transport or PinnedTransport()
     hops: list[HttpResult] = []
     while True:
         result = transport.get(current, accept=ACCEPT)
         if 300 <= result.status < 400 and result.status != 304:
-            target, problem = resolve_redirect(current, result.header("Location"))
+            target, problem = resolve_redirect(current, result.header("Location"), normalize)
             if target and (target == current or target in [h.url for h in hops] or target in chain):
                 target, problem = "", "Die Seite leitet im Kreis weiter (Weiterleitungsschleife)."
             if target and _host_key(target) == _host_key(current) and len(hops) < MAX_SAME_HOST_HOPS:
@@ -433,6 +434,8 @@ def capture(url: str, *, transport: Transport | None = None, archive_url: str = 
     ctype = content_type(result)
     is_pdf = ctype == "application/pdf" or (ctype in ("application/octet-stream", "binary/octet-stream")
                                             and result.body.startswith(b"%PDF-"))
+    if is_pdf and not allow_pdf:
+        raise CaptureError("PDF-Dateien werden aus dieser Quelle nicht übernommen; gesichert werden nur Textseiten.")
     if not is_pdf and ctype not in TEXT_TYPES:
         raise CaptureError("Nicht unterstützter Inhaltstyp: " + (ctype or "unbekannt") + ".")
     limit = MAX_PDF if is_pdf else MAX_BODY

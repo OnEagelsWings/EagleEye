@@ -171,7 +171,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
             return ""
         state = ('<span class="ok">✓ WARC unverändert</span>' if provenance["integrity_verified"]
                  else '<span class="bad">✗ WARC verändert – nicht verwenden</span>')
-        kind = "Archivfassung" if provenance["kind"] == "archive" else "Web-Beleg"
+        kind = {"archive": "Archivfassung", "darknet": "Darknet-Beleg (Tor)"}.get(provenance["kind"], "Web-Beleg")
         extra = evidence_cells(case_id, provenance["capture_id"], read_only=True)
         return ('<p>' + kind + ', abgerufen ' + escape(provenance["captured_at"][:16].replace("T", " ")) + ' UTC · ' + state +
                 ' · <a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=provenance["capture_id"]) + '">WARC</a>'
@@ -182,6 +182,12 @@ def attach_intel492(app, build: str, base_dir) -> None:
         """(stamp row or None, check result or None) for the newest stamp of a capture."""
         current = (newest if newest is not None else stamps.latest(ctx, case_id, {capture_id})).get(capture_id)
         return (current, stamps.check(ctx, current["stamp_id"])) if current else (None, None)
+
+    def _darknet(capture_id):
+        try:
+            return captures.capture_row(ctx, capture_id)["kind"] == "darknet"
+        except KeyError:
+            return False
 
     def evidence_cells(case_id, capture_id, *, read_only=False, request=None, allowed=False, shots=None, newest=None):
         """Short HTML for page image and timestamp of one capture, with actions when allowed.
@@ -200,7 +206,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
                          + ('' if read_only or not shot["blocked"] else ' <span class="muted" title="Die Seite wollte Inhalte aus einem '
                             'internen Netz laden; der Filter hat das verhindert.">(' + str(shot["blocked"]) + ' interne Anfrage'
                             + ('n' if shot["blocked"] != 1 else '') + ' gesperrt)</span>'))
-        elif allowed and not read_only:
+        elif allowed and not read_only and not _darknet(capture_id):
             parts.append('<details><summary>Seitenbild aufnehmen</summary><form method="post" action="/workbench/intel/seitenbild">'
                          + hidden + '<label class="check"><input type="checkbox" name="opsec" value="yes" required><span>'
                          'Die Seite wird jetzt erneut abgerufen – das Bild zeigt den heutigen Stand, nicht den der Sicherung.</span></label>'
@@ -223,6 +229,8 @@ def attach_intel492(app, build: str, base_dir) -> None:
 
     def take_image(user, case_id, row):
         """Page image for a stored capture. Returns a short status code for the next page."""
+        if row["kind"] == "darknet":  # never load images or scripts from onion services
+            return "bild_fehler"
         browser = pageimage.find_browser(stamps.settings(ctx)["browser_path"])
         if not browser:
             ctx.audit.log("web_capture_image_failed_492", "web_capture", row["capture_id"], case_id,
@@ -620,7 +628,7 @@ def attach_intel492(app, build: str, base_dir) -> None:
             table += ('<tr><td><a href="' + _link("/workbench/document", case_id=case_id, document_id=row["document_id"]) + '">' +
                       escape(row["page_title"] or row["url"]) + '</a>' + (' <span class="pill">PDF</span>' if row["content_type"] == "application/pdf" else '') +
                       '<br><span class="muted">' + escape(row["url"][:160]) + '</span></td>'
-                      '<td>' + ("Archiv" if row["kind"] == "archive" else "Live") + '<br><span class="muted">' + escape(row["captured_at"][:16].replace("T", " ")) + ' UTC</span></td>'
+                      '<td>' + captures.KIND_LABEL.get(row["kind"], "Live") + '<br><span class="muted">' + escape(row["captured_at"][:16].replace("T", " ")) + ' UTC</span></td>'
                       '<td>' + escape(row["page_published"] or "–") + '</td><td>' + integrity + '</td>'
                       '<td>' + evidence_cells(case_id, row["capture_id"], request=request, allowed=allowed, shots=shots, newest=newest) + '</td>'
                       '<td><a href="' + _link("/workbench/intel/warc", case_id=case_id, capture_id=row["capture_id"]) + '">WARC</a> · '
