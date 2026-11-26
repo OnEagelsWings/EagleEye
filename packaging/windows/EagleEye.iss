@@ -15,7 +15,7 @@
   #define OutputDir "..\..\build\out"
 #endif
 #define Py "{app}\runtime\python.exe"
-#define Start "-I -m eagleeye.bootstrap.windows_start"
+#define Start "-I -X utf8 -m eagleeye.bootstrap.windows_start"
 
 [Setup]
 AppId={{B9B6A874-CF7A-4F78-8FF6-DF2816087837}

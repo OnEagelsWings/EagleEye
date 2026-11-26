@@ -97,7 +97,7 @@ def test_every_entry_has_a_start_menu_shortcut_and_the_workflow_checks_them():
     checked = set(re.findall(r"= '([a-z\-]+)'", workflow.split("$expected = @{", 1)[1].split("}", 1)[0]))
     assert checked == set(windows_start.ENTRIES)
     assert "runasoriginaluser" in iss, "the app must not start with the installer's admin rights"
-    assert '#define Start "-I -m eagleeye.bootstrap.windows_start"' in iss
+    assert '#define Start "-I -X utf8 -m eagleeye.bootstrap.windows_start"' in iss
 
 
 def test_program_folder_is_derived_from_the_bundled_runtime(tmp_path):
@@ -202,3 +202,15 @@ def test_dll_check_flags_visual_cpp_runtime_and_missing_libraries(tmp_path, monk
     (runtime / "msvcp140.dll").write_bytes(b"MZ")
     (runtime / "python3.dll").write_bytes(b"MZ")
     assert check.check(runtime, system32) == []
+
+
+def test_output_that_cannot_show_a_character_does_not_crash_the_launcher(tmp_path, monkeypatch):
+    import io
+
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252")  # what Windows uses when output goes to a file
+    monkeypatch.setattr(sys, "stdout", stream)
+    windows_start._safe_output()
+    print("Fallakte über die Vault-Leiste („📁 Fallakte“)")
+    stream.flush()
+    assert b"Fallakte" in raw.getvalue()

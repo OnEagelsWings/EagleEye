@@ -151,19 +151,19 @@ jobs:
         run: |
           $app = "$env:ProgramFiles\EagleEye"; $py = "$app\runtime\python.exe"
           $env:PYTHONPATH = 'C:\nicht-vorhanden'; $env:PYTHONHOME = 'C:\nicht-vorhanden'
-          & $py -I -c "import sys, site; assert not any('nicht-vorhanden' in p for p in sys.path), sys.path; assert all(p.lower().startswith(sys.prefix.lower()) for p in sys.path if p), sys.path; assert not site.ENABLE_USER_SITE; print('Importpfad nur im Programmordner:', sys.path)"
+          & $py -I -X utf8 -c "import sys, site; assert sys.flags.utf8_mode; assert not any('nicht-vorhanden' in p for p in sys.path), sys.path; assert all(p.lower().startswith(sys.prefix.lower()) for p in sys.path if p), sys.path; assert not site.ENABLE_USER_SITE; print('Importpfad nur im Programmordner:', sys.path)"
           if ($LASTEXITCODE) { throw "Laufzeit nicht isoliert" }
           Remove-Item Env:PYTHONPATH, Env:PYTHONHOME
           python packaging/windows/check_dlls.py "$app\runtime"
           if ($LASTEXITCODE) { throw "Laufzeit unvollständig: fehlende DLL-Abhängigkeiten" }
-          & $py -I -c "import eagleeye.interfaces.web.app500, eagleeye.bootstrap.windows_start, personosint.vault_app, personosint.fallakte as f, tkinter, fitz, cv2, numpy, cryptography, docx, segno, pypdfium2, psycopg; assert f.available(); print('Tcl/Tk', tkinter.Tcl().eval('info patchlevel'))"
+          & $py -I -X utf8 -c "import eagleeye.interfaces.web.app500, eagleeye.bootstrap.windows_start, personosint.vault_app, personosint.fallakte as f, tkinter, fitz, cv2, numpy, cryptography, docx, segno, pypdfium2, psycopg; assert f.available(); print('Tcl/Tk', tkinter.Tcl().eval('info patchlevel'))"
           if ($LASTEXITCODE) { throw "Importprüfung fehlgeschlagen" }
           $menu = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\EagleEye"
           $shell = New-Object -ComObject WScript.Shell
           $expected = @{ 'EagleEye Fallakte' = 'fallakte'; 'EagleEye Vault (empfohlen)' = 'vault'; 'PersonOSINT' = 'personosint'; 'PersonOSINT als Server' = 'personosint-server'; 'Quellen prüfen' = 'quellen'; 'Analyse-Arbeitsplatz' = 'analyse'; 'Forschungs-Brücke' = 'forschung'; 'Werkzeuge\Arbeitsordner wählen' = 'datenordner'; 'Werkzeuge\Startdiagnose' = 'diagnose' }
           foreach ($name in $expected.Keys) {
             $lnk = $shell.CreateShortcut("$menu\$name.lnk")
-            if ($lnk.TargetPath -ne $py -or $lnk.Arguments -ne "-I -m eagleeye.bootstrap.windows_start $($expected[$name])") { throw "Startmenü-Eintrag falsch: $name -> $($lnk.TargetPath) $($lnk.Arguments)" }
+            if ($lnk.TargetPath -ne $py -or $lnk.Arguments -ne "-I -X utf8 -m eagleeye.bootstrap.windows_start $($expected[$name])") { throw "Startmenü-Eintrag falsch: $name -> $($lnk.TargetPath) $($lnk.Arguments)" }
           }
           Write-Host "Startmenü: $($expected.Count) Einträge zeigen auf die eingebaute Laufzeit."
 
@@ -176,14 +176,14 @@ jobs:
           $ws = Join-Path $env:RUNNER_TEMP 'ee-diagnose'
           $env:EAGLEEYE_DATA_DIR = "$ws\workspace"; $env:EAGLEEYE_SETTINGS_DIR = "$ws\config"
           New-Item -ItemType Directory -Force "$ws\workspace" | Out-Null
-          & $py -I -m eagleeye.bootstrap.windows_start diagnose
+          & $py -I -X utf8 -m eagleeye.bootstrap.windows_start diagnose
           if ($LASTEXITCODE) { throw "Startdiagnose fehlgeschlagen" }
           Remove-Item Env:EAGLEEYE_DATA_DIR, Env:EAGLEEYE_SETTINGS_DIR
-          & $py -I -m eagleeye.bootstrap.windows_start skript "$app\tools\research_exchange\install_local.py" --init
+          & $py -I -X utf8 -m eagleeye.bootstrap.windows_start skript "$app\tools\research_exchange\install_local.py" --init
           if ($LASTEXITCODE) { throw "Forschungs-Brücke: Einrichtung fehlgeschlagen" }
-          & $py -I -m eagleeye.bootstrap.windows_start skript "$app\tools\analysis\bridge.py" --help
+          & $py -I -X utf8 -m eagleeye.bootstrap.windows_start skript "$app\tools\analysis\bridge.py" --help
           if ($LASTEXITCODE) { throw "Analyse-Arbeitsplatz startet nicht" }
-          $vault = Start-Process -PassThru -FilePath $py -ArgumentList '-I','-m','eagleeye.bootstrap.windows_start','vault','--no-browser','--port','8399','--vault-dir',"$env:RUNNER_TEMP\ee-vault" -RedirectStandardOutput "$env:RUNNER_TEMP\vault.log" -RedirectStandardError "$env:RUNNER_TEMP\vault.err"
+          $vault = Start-Process -PassThru -FilePath $py -ArgumentList '-I','-X','utf8','-m','eagleeye.bootstrap.windows_start','vault','--no-browser','--port','8399','--vault-dir',"$env:RUNNER_TEMP\ee-vault" -RedirectStandardOutput "$env:RUNNER_TEMP\vault.log" -RedirectStandardError "$env:RUNNER_TEMP\vault.err"
           $ok = $false
           for ($i = 0; $i -lt 90 -and -not $ok; $i++) {
             Start-Sleep -Seconds 1

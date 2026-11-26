@@ -229,7 +229,7 @@ def _check(root,install,python):
         command=[str(python),"-I","-m","eagleeye.bootstrap.desktop476",
                  "--install-root",str(install),"--no-browser"]
     else:  # the installed Start-menu entry derives the program folder from its own runtime
-        command=[str(python),"-I","-m",*LAUNCHER,"--no-browser"]
+        command=[str(python),"-I","-X","utf8","-m",*LAUNCHER,"--no-browser"]
     # A PIPE can fill during a verbose first start and deadlock the launcher.
     # Keep the output in a private file so health polling and shutdown progress.
     log = tempfile.TemporaryFile(mode="w+t", encoding="utf-8")
@@ -396,7 +396,7 @@ def main(argv=None):
     if args.installed:
         install=args.installed.resolve()
         RUNTIME_DIR, INTERPRETER = "runtime", ("python.exe",)
-        LAUNCHER = ("eagleeye.bootstrap.windows_start", "fallakte")
+        LAUNCHER = ("eagleeye.bootstrap.windows_start", "fallakte")  # started like the Start-menu entry
     else:
         install=Path(__file__).resolve().parents[1]
     python=(install/RUNTIME_DIR).joinpath(*INTERPRETER)

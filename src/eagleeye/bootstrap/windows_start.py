@@ -1,7 +1,7 @@
 """Start-menu entries of the installed Windows package.
 
 The installer puts an official Python runtime into ``<Programmordner>\\runtime`` and creates one
-shortcut per entry, e.g. ``runtime\\python.exe -I -m eagleeye.bootstrap.windows_start fallakte``.
+shortcut per entry, e.g. ``runtime\\python.exe -I -X utf8 -m eagleeye.bootstrap.windows_start fallakte``.
 Nothing here needs a Python installation on the computer, and nothing is written into the program
 folder: cases, settings and reports stay in the user's own folders.
 """
@@ -149,7 +149,7 @@ def _analyse(app: Path, extra: list[str]) -> int:
 
 def _forschung(app: Path) -> int:
     tool = app / "tools" / "research_exchange"
-    init = subprocess.run([sys.executable, "-I", "-m", "eagleeye.bootstrap.windows_start", "skript",
+    init = subprocess.run([sys.executable, "-I", "-X", "utf8", "-m", "eagleeye.bootstrap.windows_start", "skript",
                            str(tool / "install_local.py"), "--init"], check=False)
     if init.returncode:
         print("Fehler bei der lokalen Einrichtung. Keine Übertragung gestartet.", flush=True)
@@ -157,7 +157,17 @@ def _forschung(app: Path) -> int:
     return run_script(tool / "desktop_ui.py", [])
 
 
+def _safe_output() -> None:
+    """Never crash on a character the output cannot show (e.g. an emoji when output goes to a file)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _safe_output()
     parser = argparse.ArgumentParser(description="EagleEye-Start (installiertes Windows-Paket)")
     parser.add_argument("entry", choices=[*ENTRIES, "skript"])
     parser.add_argument("rest", nargs=argparse.REMAINDER)
